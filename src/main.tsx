@@ -6,7 +6,10 @@ import { RouterProvider } from "react-router";
 import { ChakraProvider } from "@chakra-ui/react";
 
 import theme from "@/config/theme.ts";
+import "@/css/index.scss";
 import { router } from "@/routes/AppRoutes";
+
+import "./main.scss";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

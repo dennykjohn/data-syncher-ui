@@ -1,8 +1,9 @@
 import { createBrowserRouter } from "react-router";
 
-import AuthLayout from "@/layouts/AuthLayout";
+import ClientRoutes from "@/constants/client-routes";
+import AuthLayout from "@/layouts/AuthLayout/AuthLayout";
 import DashboardLayout from "@/layouts/DashboardLayout";
-import AppLayout from "@/layouts/WebsiteLayout";
+import WebsiteLayout from "@/layouts/WebsiteLayout/WebsiteLayout";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import DashboardHome from "@/pages/dashboard/DashboardHome";
@@ -11,20 +12,20 @@ import HomePage from "@/pages/website/HomePage";
 
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: <AppLayout />,
+    path: ClientRoutes.HOME,
+    element: <WebsiteLayout />,
     children: [{ index: true, element: <HomePage /> }],
   },
   {
-    path: "/auth",
+    path: ClientRoutes.AUTH,
     element: <AuthLayout />,
     children: [
-      { path: "login", element: <LoginPage /> },
-      { path: "register", element: <RegisterPage /> },
+      { path: ClientRoutes.LOGIN, element: <LoginPage /> },
+      { path: ClientRoutes.REGISTER, element: <RegisterPage /> },
     ],
   },
   {
-    path: "/dashboard",
+    path: ClientRoutes.DASHBOARD,
     element: <DashboardLayout />,
     children: [
       { index: true, element: <DashboardHome /> },
