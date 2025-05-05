@@ -6,6 +6,15 @@ import {
 } from "@chakra-ui/react";
 
 const theme = defineConfig({
+  globalCss: {
+    ":root": {
+      "--brand-500": "{colors.brand.500}",
+    },
+    body: {
+      bg: { _light: "white", _dark: "gray.900" },
+      color: { _light: "gray.800", _dark: "white" },
+    },
+  },
   cssVarsPrefix: "ck",
   theme: {
     breakpoints: {
