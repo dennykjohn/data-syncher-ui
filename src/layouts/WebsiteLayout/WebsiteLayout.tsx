@@ -1,6 +1,6 @@
-import { Outlet } from "react-router";
-
 import { Grid } from "@chakra-ui/react";
+
+import { Outlet } from "react-router";
 
 import WebsiteContainer from "@/components/ui/WebsiteContainer";
 import Navbar from "@/components/website/Navbar";
