@@ -11,8 +11,9 @@ module.exports = {
   jsxBracketSameLine: false, // Put the closing `>` of a multi-line JSX element at the end of the last line
   endOfLine: "lf", // Use LF for line endings
   importOrder: [
-    "^react",
+    "^react$",
     "@chakra-ui/react",
+    "^react-icons(/.*)?$",
     "<THIRD_PARTY_MODULES>",
     "^@context/(.*)$",
     "^@/(.*)$",

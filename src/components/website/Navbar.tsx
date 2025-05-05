@@ -1,6 +1,8 @@
-import { Link, useNavigate } from "react-router";
-
 import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
+
+import { PiUserCircleLight } from "react-icons/pi";
+
+import { Link, useNavigate } from "react-router";
 
 import Logo from "@/assets/logo.svg";
 import ClientRoutes from "@/constants/client-routes";
@@ -46,13 +48,16 @@ const Navbar = () => {
       <Flex gap={4}>
         <Button
           onClick={() => navigate(`${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`)}
+          colorPalette="brand"
         >
+          <PiUserCircleLight />
           Login
         </Button>
         <Button
           onClick={() =>
             navigate(`${ClientRoutes.AUTH}/${ClientRoutes.REGISTER}`)
           }
+          variant="ghost"
         >
           Sign Up
         </Button>
