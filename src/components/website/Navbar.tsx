@@ -35,7 +35,7 @@ const Navbar = () => {
           transition="transform 0.2s"
           _hover={{ transform: "scale(1.05)" }}
         />
-        <Text fontSize="2xl" fontWeight="semibold" color="var(--primary-color)">
+        <Text fontSize="2xl" fontWeight="semibold" color="brand.500">
           Datasyncher
         </Text>
       </Flex>

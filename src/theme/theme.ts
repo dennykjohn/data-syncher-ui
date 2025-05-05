@@ -38,7 +38,7 @@ const theme = defineConfig({
         },
         brand: {
           solid: { value: "{colors.brand.500}" },
-          contrast: { value: "{colors.brand.100}" },
+          contrast: { value: "{colors.white}" },
           fg: { value: "{colors.brand.700}" },
           muted: { value: "{colors.brand.100}" },
           subtle: { value: "{colors.brand.200}" },
