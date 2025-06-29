@@ -12,7 +12,6 @@ export default function Container({ children }: { children: ReactNode }) {
       overflowY="auto"
       paddingInline={{ base: 3, md: 8 }}
       paddingBlock={{ base: 4, md: 8 }}
-      bg="gray.50"
     >
       {children}
     </Flex>

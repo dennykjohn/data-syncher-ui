@@ -22,6 +22,8 @@ const Navbar = () => {
       alignItems="center"
       padding={4}
       h="80px"
+      onClick={() => navigate(ClientRoutes.HOME)}
+      cursor={"pointer"}
     >
       <Flex justifyContent={"center"} alignItems="center" gap={2}>
         <Image
@@ -29,7 +31,6 @@ const Navbar = () => {
           alt="Logo"
           width={{ base: "40px", md: "50px" }}
           height={{ base: "40px", md: "50px" }}
-          onClick={() => navigate(ClientRoutes.HOME)}
           cursor="pointer"
           transition="transform 0.2s"
           _hover={{ transform: "scale(1.05)" }}
