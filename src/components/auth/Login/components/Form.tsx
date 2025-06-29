@@ -21,12 +21,7 @@ import ClientRoutes from "@/constants/client-routes";
 
 export default function Form() {
   return (
-    <Flex
-      justifyContent="center"
-      alignItems="center"
-      height="100%"
-      p={{ base: 6, md: 8 }}
-    >
+    <Flex justifyContent="center" alignItems="center" p={{ base: 6 }}>
       <Fieldset.Root size="lg" maxW={{ base: "lg", md: "md" }} w="100%">
         <Stack gap={4} mb={2}>
           <Image
