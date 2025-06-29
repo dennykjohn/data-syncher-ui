@@ -1,9 +1,9 @@
 import { createBrowserRouter } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
-import AuthLayout from "@/layouts/AuthLayout/AuthLayout";
+import AuthLayout from "@/layouts/AuthLayout";
 import DashboardLayout from "@/layouts/DashboardLayout";
-import WebsiteLayout from "@/layouts/WebsiteLayout/WebsiteLayout";
+import WebsiteLayout from "@/layouts/WebsiteLayout";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import DashboardHome from "@/pages/dashboard/DashboardHome";
