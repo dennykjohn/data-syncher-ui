@@ -26,6 +26,7 @@ export default function Layout() {
         overflowY="auto"
         height="calc(100vh - 60px)"
         bg="gray.50"
+        mt={{ base: "60px", md: "0" }}
       >
         <Outlet />
       </GridItem>
