@@ -5,6 +5,10 @@ import {
   mergeConfigs,
 } from "@chakra-ui/react";
 
+import "@fontsource/plus-jakarta-sans/400.css";
+import "@fontsource/plus-jakarta-sans/500.css";
+import "@fontsource/plus-jakarta-sans/700.css";
+
 const theme = defineConfig({
   globalCss: {
     ":root": {
@@ -13,6 +17,7 @@ const theme = defineConfig({
     body: {
       bg: { _light: "white", _dark: "gray.900" },
       color: { _light: "gray.800", _dark: "white" },
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
     },
   },
   cssVarsPrefix: "ck",
@@ -38,6 +43,10 @@ const theme = defineConfig({
           900: { value: "#190537" },
         },
         primary: { value: "#4980ff" },
+      },
+      fonts: {
+        heading: { value: "'Plus Jakarta Sans', sans-serif" },
+        body: { value: "'Plus Jakarta Sans', sans-serif" },
       },
     },
     semanticTokens: {
