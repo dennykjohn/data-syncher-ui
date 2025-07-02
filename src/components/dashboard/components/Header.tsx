@@ -7,13 +7,11 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 
-import { useNavigate } from "react-router";
-
-import ClientRoutes from "@/constants/client-routes";
+import useAuth from "@/context/Auth/useAuth";
 
 const Header = ({ sidebarWidth }: { sidebarWidth: string }) => {
   const sidebarDisplay = useBreakpointValue({ base: "none", md: "block" });
-  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   return (
     <GridItem
@@ -55,7 +53,7 @@ const Header = ({ sidebarWidth }: { sidebarWidth: string }) => {
                   value="logout"
                   cursor="pointer"
                   onClick={() => {
-                    navigate(`${ClientRoutes.AUTH}`);
+                    logout();
                   }}
                 >
                   Logout
