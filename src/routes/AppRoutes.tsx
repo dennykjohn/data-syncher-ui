@@ -24,6 +24,10 @@ export const router = createBrowserRouter([
     path: ClientRoutes.AUTH,
     element: <AuthLayout />,
     children: [
+      {
+        index: true,
+        element: <Navigate to={ClientRoutes.LOGIN} replace />,
+      },
       { path: ClientRoutes.LOGIN, element: <LoginPage /> },
       { path: ClientRoutes.REGISTER, element: <RegisterPage /> },
     ],
@@ -32,7 +36,6 @@ export const router = createBrowserRouter([
     path: ClientRoutes.DASHBOARD,
     element: <DashboardLayout />,
     children: [
-      // Redirect to Connectors if no path is specified
       {
         index: true,
         element: <Navigate to={ClientRoutes.CONNECTORS} replace />,
