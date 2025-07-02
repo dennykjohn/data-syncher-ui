@@ -1,6 +1,6 @@
 import { createContext, useState } from "react";
 
-//import { useNavigate } from "react-router";
+import Cookies from "js-cookie";
 
 import ClientRoutes from "@/constants/client-routes";
 import { type AuthContextType, type AuthState } from "@/types/auth";
@@ -8,27 +8,31 @@ import { type AuthContextType, type AuthState } from "@/types/auth";
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  //const navigate = useNavigate();
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     user: null,
-    accessToken: null,
-    refreshToken: null,
+    access_token: null,
+    refresh_token: null,
   });
 
   const login = ({
-    accessToken,
-    refreshToken,
+    access_token,
+    refresh_token,
   }: {
-    accessToken: string;
-    refreshToken: string;
+    access_token: string;
+    refresh_token: string;
   }) => {
     try {
       setAuthState({
         isAuthenticated: true,
         user: null,
-        accessToken,
-        refreshToken,
+        access_token,
+        refresh_token,
+      });
+      Cookies.set("access_token", access_token, {
+        expires: 7,
+        secure: true,
+        sameSite: "Strict",
       });
       window.location.href = ClientRoutes.DASHBOARD;
     } catch (error) {
@@ -40,9 +44,10 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setAuthState({
       isAuthenticated: false,
       user: null,
-      accessToken: null,
-      refreshToken: null,
+      access_token: null,
+      refresh_token: null,
     });
+    Cookies.remove("access_token");
     window.location.href = ClientRoutes.AUTH;
   };
 

@@ -52,7 +52,11 @@ export default function Form() {
         url: ServerRoutes.auth.login(),
         data,
       });
-      login(respData);
+      console.log("Login response:", respData);
+      login({
+        access_token: respData.access_token,
+        refresh_token: respData.refresh_token,
+      });
     } catch {
       setHasError(true);
       if (passwordRef.current) {

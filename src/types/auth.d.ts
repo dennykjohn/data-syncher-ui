@@ -1,6 +1,6 @@
 export type LoginResponse = {
-  accessToken: string;
-  refreshToken: string;
+  access_token: string;
+  refresh_token: string;
 };
 
 export interface AuthContextType {
@@ -17,6 +17,6 @@ type User = {
 type AuthState = {
   isAuthenticated: boolean;
   user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
+  access_token: string | null;
+  refresh_token: string | null;
 };
