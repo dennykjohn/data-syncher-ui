@@ -35,7 +35,10 @@ const PageHeader = ({
             {breadcrumbs.map(({ route, label }, idx) => (
               <Breadcrumb.Item key={idx} cursor={route ? "pointer" : "default"}>
                 {idx > 0 && <Breadcrumb.Separator />}
-                <Breadcrumb.Link onClick={() => handleBreadcrumbClick(route)}>
+                <Breadcrumb.Link
+                  onClick={() => handleBreadcrumbClick(route)}
+                  fontWeight={route ? "normal" : "bold"}
+                >
                   {label}
                 </Breadcrumb.Link>
               </Breadcrumb.Item>
