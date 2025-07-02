@@ -1,12 +1,15 @@
 import { createBrowserRouter } from "react-router";
 
+import Connectors from "@/components/dashboard/components/Connectors/Connectors";
+import Destination from "@/components/dashboard/components/Destination/Destination";
+//Layouts and Pages
 import ClientRoutes from "@/constants/client-routes";
 import AuthLayout from "@/layouts/AuthLayout";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import WebsiteLayout from "@/layouts/WebsiteLayout";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
-import DashboardHome from "@/pages/dashboard/DashboardHome";
+//Dashboard components
 import SettingsPage from "@/pages/dashboard/SettingsPage";
 import HomePage from "@/pages/website/HomePage";
 
@@ -28,7 +31,8 @@ export const router = createBrowserRouter([
     path: ClientRoutes.DASHBOARD,
     element: <DashboardLayout />,
     children: [
-      { index: true, element: <DashboardHome /> },
+      { index: true, path: ClientRoutes.CONNECTTORS, element: <Connectors /> },
+      { path: ClientRoutes.DESTINATION, element: <Destination /> },
       { path: "settings", element: <SettingsPage /> },
     ],
   },

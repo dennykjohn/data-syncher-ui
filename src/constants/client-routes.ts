@@ -9,5 +9,7 @@ const ClientRoutes = {
 
   // Dashboard
   DASHBOARD: "/dashboard",
+  CONNECTTORS: "connectors",
+  DESTINATION: "destination",
 } as const;
 export default ClientRoutes;

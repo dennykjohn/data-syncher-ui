@@ -62,6 +62,7 @@ const theme = defineConfig({
           subtle: { value: "{colors.brand.200}" },
           emphasized: { value: "{colors.brand.300}" },
           focusRing: { value: "{colors.brand.500}" },
+          accentOrange: { value: "#FF7D54" },
         },
       },
     },
