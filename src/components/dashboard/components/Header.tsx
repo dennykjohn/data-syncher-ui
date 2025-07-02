@@ -44,7 +44,7 @@ const Header = ({ sidebarWidth }: { sidebarWidth: string }) => {
             <Menu.Positioner>
               <Menu.Content>
                 <Menu.Item value="account" cursor="pointer">
-                  Account
+                  My Account
                 </Menu.Item>
                 <Menu.Item value="settings" cursor="pointer">
                   Settings
