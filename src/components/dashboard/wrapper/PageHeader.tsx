@@ -28,7 +28,7 @@ const PageHeader = ({
   };
 
   return (
-    <Flex justifyContent="space-between" align="center" w="100%">
+    <Flex justifyContent="space-between" align="center">
       <Flex direction="column" gap={2}>
         <Breadcrumb.Root size="lg">
           <Breadcrumb.List>
