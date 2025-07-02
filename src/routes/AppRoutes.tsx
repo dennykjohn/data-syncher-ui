@@ -1,7 +1,8 @@
-import { createBrowserRouter } from "react-router";
+import { Navigate, createBrowserRouter } from "react-router";
 
 import Connectors from "@/components/dashboard/components/Connectors/Connectors";
 import Destination from "@/components/dashboard/components/Destination/Destination";
+import Plans from "@/components/dashboard/components/Plans/Plans";
 //Layouts and Pages
 import ClientRoutes from "@/constants/client-routes";
 import AuthLayout from "@/layouts/AuthLayout";
@@ -31,8 +32,14 @@ export const router = createBrowserRouter([
     path: ClientRoutes.DASHBOARD,
     element: <DashboardLayout />,
     children: [
-      { index: true, path: ClientRoutes.CONNECTTORS, element: <Connectors /> },
+      // Redirect to Connectors if no path is specified
+      {
+        index: true,
+        element: <Navigate to={ClientRoutes.CONNECTORS} replace />,
+      },
+      { path: ClientRoutes.CONNECTORS, element: <Connectors /> },
       { path: ClientRoutes.DESTINATION, element: <Destination /> },
+      { path: ClientRoutes.PLANS, element: <Plans /> },
       { path: "settings", element: <SettingsPage /> },
     ],
   },

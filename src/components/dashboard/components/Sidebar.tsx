@@ -7,7 +7,7 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 
-import { MdOutlineArrowRightAlt, MdWrapText } from "react-icons/md";
+import { MdCategory, MdOutlineArrowRightAlt, MdWrapText } from "react-icons/md";
 
 import { useLocation, useNavigate } from "react-router";
 
@@ -26,12 +26,17 @@ const Sidebar = ({ sidebarWidth }: { sidebarWidth: string }) => {
     {
       label: "Connectors",
       icon: <MdOutlineArrowRightAlt size={24} />,
-      path: ClientRoutes.CONNECTTORS,
+      path: ClientRoutes.CONNECTORS,
     },
     {
       label: "Destination",
       icon: <MdWrapText size={24} />,
       path: ClientRoutes.DESTINATION,
+    },
+    {
+      label: "Plans",
+      icon: <MdCategory size={24} />,
+      path: ClientRoutes.PLANS,
     },
   ];
 
