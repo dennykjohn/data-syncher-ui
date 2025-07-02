@@ -1,17 +1,29 @@
 import { Flex } from "@chakra-ui/react";
 
+import ClientRoutes from "@/constants/client-routes";
+import TableComponent from "@/shared/Table/Table";
+
+import PageHeader from "../../wrapper/PageHeader";
+import TableFilter from "../../wrapper/TableFilter";
+
 const Destination = () => {
   return (
-    <Flex
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="center"
-      height="100%"
-      width="100%"
-      padding={4}
-    >
-      <h1>Destination Page</h1>
-      <p>This is where you can manage your destinations.</p>
+    <Flex flexDirection="column" height="100%" gap={8}>
+      <PageHeader
+        breadcrumbs={[
+          {
+            label: "Destinations",
+            route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION}`,
+          },
+          { label: "Destinations", route: "" },
+        ]}
+        buttonLabel="Add Destination"
+        //onCreateClick={() => console.log("Add Destination clicked")}
+      />
+      <TableFilter />
+      <Flex>
+        <TableComponent />
+      </Flex>
     </Flex>
   );
 };

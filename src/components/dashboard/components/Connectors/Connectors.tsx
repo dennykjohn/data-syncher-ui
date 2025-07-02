@@ -17,7 +17,7 @@ const Connectors = () => {
           { label: "Connectors", route: "" },
         ]}
         buttonLabel="Add Connector"
-        onCreateClick={() => console.log("Add Connector clicked")}
+        //onCreateClick={() => console.log("Add Connector clicked")}
       />
       <NoConnections />
     </Flex>

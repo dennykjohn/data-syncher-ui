@@ -9,7 +9,7 @@ import { useNavigate } from "react-router";
 interface PageHeaderProps {
   breadcrumbs: { label: string; route?: string }[];
   buttonLabel: string;
-  onCreateClick: () => void;
+  onCreateClick?: () => void;
   children?: ReactNode;
 }
 
@@ -37,7 +37,7 @@ const PageHeader = ({
                 {idx > 0 && <Breadcrumb.Separator />}
                 <Breadcrumb.Link
                   onClick={() => handleBreadcrumbClick(route)}
-                  fontWeight={route ? "normal" : "bold"}
+                  fontWeight={route ? "normal" : "semibold"}
                 >
                   {label}
                 </Breadcrumb.Link>
