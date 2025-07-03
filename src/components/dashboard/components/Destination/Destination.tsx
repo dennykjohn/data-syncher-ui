@@ -79,7 +79,7 @@ const Destination = () => {
         <Table<DestinationItem>
           data={items}
           columns={columns}
-          totalNumberOfPages={1}
+          totalNumberOfPages={100}
           updateCurrentPage={() => {}}
         />
       </Flex>

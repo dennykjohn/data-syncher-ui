@@ -1,8 +1,8 @@
 import { ReactNode } from "react";
 
-import { Flex, FlexProps } from "@chakra-ui/react";
+import { GridItem, GridItemProps } from "@chakra-ui/react";
 
-type AuthContainerProps = FlexProps & {
+type AuthContainerProps = GridItemProps & {
   children: ReactNode;
 };
 
@@ -11,16 +11,19 @@ export default function AuthContainer({
   ...props
 }: AuthContainerProps) {
   return (
-    <Flex
+    <GridItem
+      area="main"
       as="main"
-      flex={1}
-      flexDirection="column"
-      alignItems="center"
-      overflowY="auto"
-      h="100vh"
       {...props}
+      p={{ base: 6, md: 8 }}
+      bg="white"
+      justifyContent={"center"}
+      alignItems={"center"}
+      display={"flex"}
+      maxW="600px"
+      marginInline={{ base: "auto", md: "auto" }}
     >
       {children}
-    </Flex>
+    </GridItem>
   );
 }

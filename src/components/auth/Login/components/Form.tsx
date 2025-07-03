@@ -52,7 +52,6 @@ export default function Form() {
         url: ServerRoutes.auth.login(),
         data,
       });
-      console.log("Login response:", respData);
       login({
         access_token: respData.access_token,
         refresh_token: respData.refresh_token,
@@ -70,14 +69,7 @@ export default function Form() {
 
   return (
     <form style={{ width: "100%" }} onSubmit={handleSubmit}>
-      <Flex
-        justifyContent="center"
-        alignItems="center"
-        p={{ base: 6, md: 0 }}
-        w={{ base: "100%", md: "70%" }}
-        margin={{ base: "auto", md: "0 auto" }}
-        h="100%"
-      >
+      <Flex justifyContent="center" alignItems="center">
         <Fieldset.Root
           size="lg"
           w="100%"

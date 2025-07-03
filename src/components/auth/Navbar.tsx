@@ -1,4 +1,4 @@
-import { Flex, Image, Text } from "@chakra-ui/react";
+import { Flex, GridItem, Image, Text } from "@chakra-ui/react";
 
 import { useNavigate } from "react-router";
 
@@ -9,7 +9,8 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   return (
-    <Flex
+    <GridItem
+      area="header"
       as="nav"
       bg="white"
       boxShadow="md"
@@ -21,11 +22,10 @@ const Navbar = () => {
       justifyContent="space-between"
       alignItems="center"
       padding={4}
-      h="80px"
       onClick={() => navigate(ClientRoutes.HOME)}
       cursor={"pointer"}
     >
-      <Flex justifyContent={"center"} alignItems="center" gap={2}>
+      <Flex justifyContent="flex-start" alignItems="center" gap={2}>
         <Image
           src={Logo}
           alt="Logo"
@@ -39,7 +39,7 @@ const Navbar = () => {
           Datasyncher
         </Text>
       </Flex>
-    </Flex>
+    </GridItem>
   );
 };
 export default Navbar;

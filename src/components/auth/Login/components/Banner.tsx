@@ -1,10 +1,11 @@
-import { Flex, Text } from "@chakra-ui/react";
+import { GridItem, Text } from "@chakra-ui/react";
 
 import LogoWhite from "@/assets/images/logo-white.svg";
 
 const Banner = () => {
   return (
-    <Flex
+    <GridItem
+      area="banner"
       background="brand.500"
       backgroundImage={`url("${LogoWhite}"), url("${LogoWhite}")`}
       backgroundRepeat="no-repeat, no-repeat"
@@ -27,7 +28,7 @@ const Banner = () => {
         Datasyncher simplifies your data migration, ETL processes, and real-time
         synchronization so your business can focus on what truly matters.
       </Text>
-    </Flex>
+    </GridItem>
   );
 };
 export default Banner;
