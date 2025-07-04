@@ -21,7 +21,6 @@ export default function AuthContainer({
       alignItems={"center"}
       display={"flex"}
       maxW="600px"
-      marginInline={{ base: "auto", md: "auto" }}
     >
       {children}
     </GridItem>
