@@ -3,6 +3,7 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
+import Cookies from "js-cookie";
 
 import ClientRoutes from "@/constants/client-routes";
 import { type ErrorResponseType } from "@/types/error";
@@ -29,7 +30,7 @@ AxiosInstance.interceptors.request.use(
     config: InternalAxiosRequestConfig & { customToken?: string },
   ): InternalAxiosRequestConfig => {
     const token =
-      config.headers.customToken ?? localStorage.getItem("AccessToken") ?? null;
+      config.headers.customToken ?? Cookies.get("access_token") ?? null;
 
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
@@ -57,7 +58,7 @@ AxiosInstance.interceptors.response.use(
       error.response?.status === 401 &&
       errorCode === "INVALID_OR_EXPIRED_TOKEN"
     ) {
-      localStorage.removeItem("AccessToken");
+      Cookies.remove("access_token");
       window.location.href = ClientRoutes.LOGIN;
     }
     return Promise.reject(error.response?.data);
