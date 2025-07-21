@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import {
   Button,
@@ -20,55 +20,17 @@ import GoogleLogo from "@/assets/google-logo.svg";
 import Logo from "@/assets/logo.svg";
 import { PasswordInput } from "@/components/ui/password-input";
 import ClientRoutes from "@/constants/client-routes";
-import ServerRoutes from "@/constants/server-routes";
-import useAuth from "@/context/Auth/useAuth";
-import AxiosInstance from "@/lib/axios/api-client";
-import { type LoginResponse } from "@/types/auth";
 
-export default function Form() {
-  const { login } = useAuth();
+const Register = () => {
   const navigate = useNavigate();
-
-  const passwordRef = useRef<HTMLInputElement>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const [hasError] = useState(false);
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     // Handle form submission logic here
-    const formData = new FormData(event.currentTarget);
-    const data = {
-      username: formData.get("email") as string,
-      password: formData.get("password") as string,
-    };
-    if (!data.username || !data.password) {
-      setHasError(true);
-      return;
-    }
-    try {
-      setIsLoading(true);
-      setHasError(false);
-      const { data: respData }: { data: LoginResponse } = await AxiosInstance({
-        method: "POST",
-        url: ServerRoutes.auth.login(),
-        data,
-      });
-      login({
-        access_token: respData.access_token,
-        refresh_token: respData.refresh_token,
-      });
-    } catch {
-      setHasError(true);
-      setIsLoading(false);
-      if (passwordRef.current) {
-        passwordRef.current.value = "";
-        passwordRef.current.focus();
-      }
-    }
   };
 
   return (
-    <form style={{ width: "100%" }} onSubmit={handleSubmit}>
+    <form onSubmit={handleFormSubmit} style={{ width: "100%" }}>
       <Flex justifyContent="center" alignItems="center">
         <Fieldset.Root
           size="lg"
@@ -119,7 +81,6 @@ export default function Form() {
               <PasswordInput
                 name="password"
                 placeholder="Enter your password"
-                ref={passwordRef}
               />
             </Field.Root>
           </Fieldset.Content>
@@ -141,7 +102,7 @@ export default function Form() {
             alignSelf="center"
             colorPalette="brand"
             w="70%"
-            loading={isLoading}
+            // loading={isLoading}
           >
             Submit
           </Button>
@@ -160,4 +121,6 @@ export default function Form() {
       </Flex>
     </form>
   );
-}
+};
+
+export default Register;

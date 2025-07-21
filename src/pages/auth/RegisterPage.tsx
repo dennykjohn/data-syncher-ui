@@ -1,9 +1,5 @@
-import { Box, Text } from "@chakra-ui/react";
+import Register from "@/components/auth/Register/Register";
 
 export default function RegisterPage() {
-  return (
-    <Box>
-      <Text>register page</Text>
-    </Box>
-  );
+  return <Register />;
 }
