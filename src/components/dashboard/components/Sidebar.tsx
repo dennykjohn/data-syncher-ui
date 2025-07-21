@@ -26,7 +26,7 @@ const Sidebar = ({ sidebarWidth }: { sidebarWidth: string }) => {
     {
       label: "Connectors",
       icon: <MdOutlineArrowRightAlt size={24} />,
-      path: ClientRoutes.CONNECTORS,
+      path: ClientRoutes.CONNECTORS.ROOT,
     },
     {
       label: "Destination",

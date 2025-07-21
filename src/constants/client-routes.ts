@@ -9,7 +9,10 @@ const ClientRoutes = {
 
   // Dashboard
   DASHBOARD: "/dashboard",
-  CONNECTORS: "connectors",
+  CONNECTORS: {
+    ROOT: "connectors",
+    ADD: "add",
+  },
   DESTINATION: "destination",
   PLANS: "plans",
 } as const;

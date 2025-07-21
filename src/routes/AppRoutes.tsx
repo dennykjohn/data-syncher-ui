@@ -2,6 +2,7 @@ import { Navigate, createBrowserRouter } from "react-router";
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Connectors from "@/components/dashboard/components/Connectors/Connectors";
+import NewConnector from "@/components/dashboard/components/Connectors/components/NewConnector/NewConnector";
 import Destination from "@/components/dashboard/components/Destination/Destination";
 import Plans from "@/components/dashboard/components/Plans/Plans";
 //Layouts and Pages
@@ -43,9 +44,13 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to={ClientRoutes.CONNECTORS} replace />,
+            element: <Navigate to={ClientRoutes.CONNECTORS.ROOT} replace />,
           },
-          { path: ClientRoutes.CONNECTORS, element: <Connectors /> },
+          { path: ClientRoutes.CONNECTORS.ROOT, element: <Connectors /> },
+          {
+            path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.ADD}`,
+            element: <NewConnector />,
+          },
           { path: ClientRoutes.DESTINATION, element: <Destination /> },
           { path: ClientRoutes.PLANS, element: <Plans /> },
           { path: "settings", element: <SettingsPage /> },
