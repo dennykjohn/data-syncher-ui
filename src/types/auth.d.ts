@@ -10,8 +10,14 @@ export interface AuthContextType {
 }
 
 type User = {
-  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
+  role: null;
+  profile_image: null;
+  company: {
+    cmp_name: string;
+  };
 };
 
 type AuthState = {

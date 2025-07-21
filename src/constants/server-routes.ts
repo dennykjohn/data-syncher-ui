@@ -1,7 +1,7 @@
 const ServerRoutes = {
   auth: {
     login: () => "/authentication/",
-    profile: () => "/profile-details",
+    profile: () => "/user/profile/",
     companyDetails: ({ companyId }: { companyId: string }) =>
       `/company-details/${companyId}`,
   },

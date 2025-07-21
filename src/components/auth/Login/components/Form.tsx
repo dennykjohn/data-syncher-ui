@@ -58,12 +58,11 @@ export default function Form() {
       });
     } catch {
       setHasError(true);
+      setIsLoading(false);
       if (passwordRef.current) {
         passwordRef.current.value = "";
         passwordRef.current.focus();
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
