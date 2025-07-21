@@ -12,7 +12,7 @@ const NewConnector = () => {
             label: "Connector",
             route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
           },
-          { label: "Configure", route: "" },
+          { label: "Configure" },
         ]}
         title="Select source type"
         subtitle="Select your source type want to create your connectors from"

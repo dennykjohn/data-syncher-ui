@@ -5,6 +5,9 @@ const ServerRoutes = {
     companyDetails: ({ companyId }: { companyId: string }) =>
       `/company-details/${companyId}`,
   },
+  destination: {
+    listAllDestinations: () => "destinations/all/",
+  },
 } as const;
 
 export default ServerRoutes;

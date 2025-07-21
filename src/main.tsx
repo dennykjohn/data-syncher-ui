@@ -12,14 +12,26 @@ import theme from "@/theme/theme";
 
 import "./main.scss";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: false,
+    },
+  },
+});
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary fallback={<div>Something went wrong</div>}>
       <ChakraProvider value={theme}>
         <AuthProvider>
-          <RouterProvider router={router} />
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
         </AuthProvider>
       </ChakraProvider>
     </ErrorBoundary>
