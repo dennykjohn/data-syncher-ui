@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-import { Breadcrumb, Button, Flex } from "@chakra-ui/react";
+import { Breadcrumb, Button, Flex, Text } from "@chakra-ui/react";
 
 import { FaPlus } from "react-icons/fa6";
 
@@ -8,9 +8,11 @@ import { useNavigate } from "react-router";
 
 interface PageHeaderProps {
   breadcrumbs: { label: string; route?: string }[];
-  buttonLabel: string;
+  buttonLabel?: string;
   onCreateClick?: () => void;
   children?: ReactNode;
+  title?: string;
+  subtitle?: string;
 }
 
 const PageHeader = ({
@@ -18,6 +20,8 @@ const PageHeader = ({
   buttonLabel,
   onCreateClick,
   children,
+  title,
+  subtitle,
 }: PageHeaderProps) => {
   const navigate = useNavigate();
 
@@ -29,28 +33,35 @@ const PageHeader = ({
 
   return (
     <Flex justifyContent="space-between" align="center">
-      <Flex direction="column" gap={2}>
+      <Flex direction="column" gap={1}>
         <Breadcrumb.Root size="lg">
           <Breadcrumb.List>
             {breadcrumbs.map(({ route, label }, idx) => (
               <Breadcrumb.Item key={idx} cursor={route ? "pointer" : "default"}>
-                {idx > 0 && <Breadcrumb.Separator />}
-                <Breadcrumb.Link
-                  onClick={() => handleBreadcrumbClick(route)}
-                  fontWeight={route ? "normal" : "semibold"}
-                >
+                <Breadcrumb.Link onClick={() => handleBreadcrumbClick(route)}>
                   {label}
                 </Breadcrumb.Link>
+                <Breadcrumb.Separator />
               </Breadcrumb.Item>
             ))}
           </Breadcrumb.List>
         </Breadcrumb.Root>
-        {children}
+        <Flex flexDirection={"column"} gap={0.2}>
+          {title && (
+            <Text fontSize="xl" fontWeight="bold">
+              {title}
+            </Text>
+          )}
+          {subtitle && <Text fontSize="sm">{subtitle}</Text>}
+          {children}
+        </Flex>
       </Flex>
-      <Button colorPalette="brand" onClick={onCreateClick}>
-        <FaPlus />
-        {buttonLabel}
-      </Button>
+      {buttonLabel && (
+        <Button colorPalette="brand" onClick={onCreateClick}>
+          <FaPlus />
+          {buttonLabel}
+        </Button>
+      )}
     </Flex>
   );
 };

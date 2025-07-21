@@ -18,8 +18,8 @@ const Connectors = () => {
             label: "Connectors",
             route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
           },
-          { label: "Connectors", route: "" },
         ]}
+        title="Connectors"
         buttonLabel="Add Connector"
         onCreateClick={() => navigate(ClientRoutes.CONNECTORS.ADD)}
       />
