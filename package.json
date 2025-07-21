@@ -11,7 +11,7 @@
     "chakra:snippet": "chakra-cli snippet add"
   },
   "dependencies": {
-    "@chakra-ui/react": "^3.21.1",
+    "@chakra-ui/react": "^3.22.0",
     "@emotion/react": "^11.14.0",
     "@fontsource/plus-jakarta-sans": "^5.2.6",
     "axios": "^1.10.0",
@@ -20,23 +20,23 @@
     "react-dom": "^18.3.1",
     "react-error-boundary": "^6.0.0",
     "react-icons": "^5.5.0",
-    "react-router": "^7.6.3"
+    "react-router": "^7.7.0"
   },
   "devDependencies": {
-    "@chakra-ui/cli": "^3.21.1",
-    "@eslint/js": "^9.30.1",
+    "@chakra-ui/cli": "^3.22.0",
+    "@eslint/js": "^9.31.0",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/js-cookie": "^3.0.6",
-    "@types/node": "^24.0.10",
+    "@types/node": "^24.0.15",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "@typescript-eslint/eslint-plugin": "^8.35.1",
-    "@typescript-eslint/parser": "^8.35.1",
-    "@vitejs/plugin-react-swc": "^3.10.2",
-    "eslint": "^9.30.1",
-    "eslint-config-prettier": "^10.1.5",
+    "@typescript-eslint/eslint-plugin": "^8.37.0",
+    "@typescript-eslint/parser": "^8.37.0",
+    "@vitejs/plugin-react-swc": "^3.11.0",
+    "eslint": "^9.31.0",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-check-file": "^3.3.0",
-    "eslint-plugin-prettier": "^5.5.1",
+    "eslint-plugin-prettier": "^5.5.3",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -46,7 +46,7 @@
     "prettier": "^3.6.2",
     "sass": "^1.89.2",
     "typescript": "~5.8.3",
-    "typescript-eslint": "^8.35.1",
-    "vite": "^7.0.2"
+    "typescript-eslint": "^8.37.0",
+    "vite": "^7.0.5"
   }
 }
