@@ -8,3 +8,12 @@ export type MasterDestinationList = {
   totalElements: number;
   size: number;
 };
+
+export interface NewDestinationFormState {
+  destinationName: string;
+  accountName: string;
+  databaseName: string;
+  warehouseName: string;
+  username: string;
+  password: string;
+}

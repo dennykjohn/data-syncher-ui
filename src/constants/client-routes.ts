@@ -16,6 +16,7 @@ const ClientRoutes = {
   DESTINATION: {
     ROOT: "destinations",
     ADD: "add",
+    CONFIGURE: "configure",
   },
   PLANS: "plans",
 } as const;

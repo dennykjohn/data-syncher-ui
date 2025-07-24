@@ -5,6 +5,7 @@ import Connectors from "@/components/dashboard/components/Connectors/Connectors"
 import NewConnector from "@/components/dashboard/components/Connectors/components/NewConnector/NewConnector";
 import Destination from "@/components/dashboard/components/Destination/Destination";
 import NewDestination from "@/components/dashboard/components/Destination/components/NewDestination/NewDestination";
+import NewDestinationForm from "@/components/dashboard/components/Destination/components/NewDestination/components/NewDestinationForm";
 import Plans from "@/components/dashboard/components/Plans/Plans";
 //Layouts and Pages
 import ClientRoutes from "@/constants/client-routes";
@@ -59,6 +60,10 @@ export const router = createBrowserRouter([
           {
             path: `${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
             element: <NewDestination />,
+          },
+          {
+            path: `${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.CONFIGURE}`,
+            element: <NewDestinationForm />,
           },
           /** End Destination Routes */
           { path: ClientRoutes.PLANS, element: <Plans /> },

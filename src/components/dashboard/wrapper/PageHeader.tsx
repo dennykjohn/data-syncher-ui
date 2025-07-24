@@ -35,7 +35,7 @@ const PageHeader = ({
     <Flex justifyContent="space-between" align="center">
       <Flex direction="column" gap={1}>
         <Breadcrumb.Root size="lg">
-          <Breadcrumb.List>
+          <Breadcrumb.List flexWrap={"wrap"} gap={2}>
             {breadcrumbs.map(({ route, label }, idx) => (
               <Breadcrumb.Item key={idx} cursor={route ? "pointer" : "default"}>
                 <Breadcrumb.Link onClick={() => handleBreadcrumbClick(route)}>
@@ -48,7 +48,7 @@ const PageHeader = ({
         </Breadcrumb.Root>
         <Flex flexDirection={"column"} gap={0.2}>
           {title && (
-            <Text fontSize="xl" fontWeight="bold">
+            <Text fontSize="2xl" fontWeight="bold">
               {title}
             </Text>
           )}

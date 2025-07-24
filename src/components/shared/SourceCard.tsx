@@ -1,6 +1,14 @@
 import { Flex, Image, Text } from "@chakra-ui/react";
 
-const SourceCard = ({ title, image }: { title: string; image: string }) => {
+const SourceCard = ({
+  title,
+  image,
+  handleClick,
+}: {
+  title: string;
+  image: string;
+  handleClick: () => void;
+}) => {
   return (
     <Flex
       direction="column"
@@ -15,6 +23,7 @@ const SourceCard = ({ title, image }: { title: string; image: string }) => {
       flexWrap={"wrap"}
       cursor={"pointer"}
       _hover={{ boxShadow: "lg" }}
+      onClick={handleClick}
     >
       <Image src={image} alt={title} h="86px" />
       <Text fontSize="md" wordBreak={"break-word"} textAlign="center">
