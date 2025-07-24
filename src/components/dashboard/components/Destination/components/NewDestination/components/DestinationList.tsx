@@ -15,23 +15,42 @@ import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useFetchMasterDestinationList from "@/queryOptions/destination/useFetchMasterDestinationList";
+import useSelectDestination from "@/queryOptions/destination/useSelectDestination";
 
 const DestinationList = () => {
-  const {
-    data: { content: destinationList },
-    isLoading,
-  } = useFetchMasterDestinationList();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDestinationId, setSelectedDestinationId] = useState<
+    number | null
+  >(null);
 
-  if (isLoading) {
+  const {
+    data: { content: destinationList },
+    isLoading: isFetchingDestinationsLoading,
+  } = useFetchMasterDestinationList();
+
+  const {
+    mutate: selectDestination,
+    isPending: isSelectingDestinationPending,
+  } = useSelectDestination();
+
+  if (isFetchingDestinationsLoading) {
     return <LoadingSpinner />;
   }
 
-  const handleDestionationClick = () =>
-    navigate(
-      `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.CONFIGURE}`,
+  const handleDestionationClick = ({ dst_id }: { dst_id: number }) => {
+    setSelectedDestinationId(dst_id);
+    selectDestination(
+      { destination: dst_id },
+      {
+        onSuccess: () => {
+          navigate(
+            `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.CONFIGURE}`,
+          );
+        },
+      },
     );
+  };
 
   const filteredDestinations = destinationList.filter(({ name }) =>
     name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -73,7 +92,11 @@ const DestinationList = () => {
               key={dst_id}
               title={name}
               image={image}
-              handleClick={handleDestionationClick}
+              handleClick={() => handleDestionationClick({ dst_id })}
+              isLoading={
+                selectedDestinationId === dst_id &&
+                isSelectingDestinationPending
+              }
             />
           );
         })}

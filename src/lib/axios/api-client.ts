@@ -47,17 +47,7 @@ AxiosInstance.interceptors.request.use(
 AxiosInstance.interceptors.response.use(
   (response: AxiosResponse): AxiosResponse => response,
   async (error: AxiosError): Promise<ErrorResponseType> => {
-    const data = error.response?.data;
-    let errorCode: string | undefined = undefined;
-
-    if (typeof data === "object" && data !== null && "error" in data) {
-      errorCode = (data as { error: string }).error;
-    }
-
-    if (
-      error.response?.status === 401 &&
-      errorCode === "INVALID_OR_EXPIRED_TOKEN"
-    ) {
+    if (error.response?.status === 401) {
       Cookies.remove("access_token");
       window.location.href = ClientRoutes.LOGIN;
     }
