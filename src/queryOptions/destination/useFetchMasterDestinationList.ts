@@ -4,16 +4,16 @@ import { type MasterDestinationList } from "@/types/destination";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 
-export default function useFetchMasterDestinationList() {
-  return useSuspenseQuery<MasterDestinationList>({
-    queryKey: ["masterDestinationList"],
-    queryFn: fetchMasterDestinationList,
-  });
-}
-
 const fetchMasterDestinationList = async () => {
   const { data } = await AxiosInstance.get(
     ServerRoutes.destination.listMasterDestinations(),
   );
   return data;
 };
+
+export default function useFetchMasterDestinationList() {
+  return useSuspenseQuery<MasterDestinationList>({
+    queryKey: ["masterDestinationList"],
+    queryFn: fetchMasterDestinationList,
+  });
+}
