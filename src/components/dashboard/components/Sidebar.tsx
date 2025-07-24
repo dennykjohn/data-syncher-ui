@@ -31,7 +31,7 @@ const Sidebar = ({ sidebarWidth }: { sidebarWidth: string }) => {
     {
       label: "Destination",
       icon: <MdWrapText size={24} />,
-      path: ClientRoutes.DESTINATION,
+      path: ClientRoutes.DESTINATION.ROOT,
     },
     {
       label: "Plans",

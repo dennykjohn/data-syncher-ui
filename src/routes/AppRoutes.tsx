@@ -4,6 +4,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Connectors from "@/components/dashboard/components/Connectors/Connectors";
 import NewConnector from "@/components/dashboard/components/Connectors/components/NewConnector/NewConnector";
 import Destination from "@/components/dashboard/components/Destination/Destination";
+import NewDestination from "@/components/dashboard/components/Destination/components/NewDestination/NewDestination";
 import Plans from "@/components/dashboard/components/Plans/Plans";
 //Layouts and Pages
 import ClientRoutes from "@/constants/client-routes";
@@ -46,12 +47,20 @@ export const router = createBrowserRouter([
             index: true,
             element: <Navigate to={ClientRoutes.CONNECTORS.ROOT} replace />,
           },
+          /** Start Connectors Routes */
           { path: ClientRoutes.CONNECTORS.ROOT, element: <Connectors /> },
           {
             path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.ADD}`,
             element: <NewConnector />,
           },
-          { path: ClientRoutes.DESTINATION, element: <Destination /> },
+          /** End Connectors Routes */
+          /** Start Destination Routes */
+          { path: ClientRoutes.DESTINATION.ROOT, element: <Destination /> },
+          {
+            path: `${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
+            element: <NewDestination />,
+          },
+          /** End Destination Routes */
           { path: ClientRoutes.PLANS, element: <Plans /> },
           { path: "settings", element: <SettingsPage /> },
         ],

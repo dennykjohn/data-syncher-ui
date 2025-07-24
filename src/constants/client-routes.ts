@@ -13,7 +13,10 @@ const ClientRoutes = {
     ROOT: "connectors",
     ADD: "add",
   },
-  DESTINATION: "destination",
+  DESTINATION: {
+    ROOT: "destinations",
+    ADD: "add",
+  },
   PLANS: "plans",
 } as const;
 export default ClientRoutes;

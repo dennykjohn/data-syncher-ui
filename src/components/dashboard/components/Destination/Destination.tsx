@@ -1,5 +1,7 @@
 import { Flex } from "@chakra-ui/react";
 
+import { useNavigate } from "react-router";
+
 import ClientRoutes from "@/constants/client-routes";
 import Table, { type Column } from "@/shared/Table";
 
@@ -61,6 +63,8 @@ const Destination = () => {
     { header: "Sync Frequency", accessor: "syncFrequency" },
   ];
 
+  const navigate = useNavigate();
+
   return (
     <Flex flexDirection="column" height="100%" gap={8}>
       <PageHeader
@@ -72,7 +76,7 @@ const Destination = () => {
           { label: "Destinations", route: "" },
         ]}
         buttonLabel="Add Destination"
-        //onCreateClick={() => console.log("Add Destination clicked")}
+        onCreateClick={() => navigate(ClientRoutes.DESTINATION.ADD)}
       />
       <TableFilter />
       <Flex h="100%">
