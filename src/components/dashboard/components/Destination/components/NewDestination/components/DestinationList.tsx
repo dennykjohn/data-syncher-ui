@@ -25,7 +25,7 @@ const DestinationList = () => {
       h="100%"
       justifyContent={"center"}
     >
-      <Flex gap={8} wrap="wrap">
+      <Flex gap={8} wrap="wrap" justifyContent="center">
         {destinationList.map(({ dst_id, name }) => {
           let image;
           switch (name) {
