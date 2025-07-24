@@ -1,22 +1,48 @@
+import { lazy } from "react";
+
 import { Navigate, createBrowserRouter } from "react-router";
 
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import Connectors from "@/components/dashboard/components/Connectors/Connectors";
-import NewConnector from "@/components/dashboard/components/Connectors/components/NewConnector/NewConnector";
-import Destination from "@/components/dashboard/components/Destination/Destination";
-import NewDestination from "@/components/dashboard/components/Destination/components/NewDestination/NewDestination";
-import NewDestinationForm from "@/components/dashboard/components/Destination/components/NewDestination/components/NewDestinationForm";
-import Plans from "@/components/dashboard/components/Plans/Plans";
-//Layouts and Pages
 import ClientRoutes from "@/constants/client-routes";
-import AuthLayout from "@/layouts/AuthLayout";
-import DashboardLayout from "@/layouts/DashboardLayout";
-import WebsiteLayout from "@/layouts/WebsiteLayout";
-import LoginPage from "@/pages/auth/LoginPage";
-import RegisterPage from "@/pages/auth/RegisterPage";
-//Dashboard components
-import SettingsPage from "@/pages/dashboard/SettingsPage";
-import HomePage from "@/pages/website/HomePage";
+
+const ProtectedRoute = lazy(() => import("@/components/auth/ProtectedRoute"));
+const Connectors = lazy(
+  () => import("@/components/dashboard/components/Connectors/Connectors"),
+);
+const NewConnector = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/Connectors/components/NewConnector/NewConnector"
+    ),
+);
+const Destination = lazy(
+  () => import("@/components/dashboard/components/Destination/Destination"),
+);
+const NewDestination = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/Destination/components/NewDestination/NewDestination"
+    ),
+);
+const NewDestinationForm = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/Destination/components/NewDestination/components/NewDestinationForm"
+    ),
+);
+const Plans = lazy(
+  () => import("@/components/dashboard/components/Plans/Plans"),
+);
+
+// Layouts
+const AuthLayout = lazy(() => import("@/layouts/AuthLayout"));
+const DashboardLayout = lazy(() => import("@/layouts/DashboardLayout"));
+const WebsiteLayout = lazy(() => import("@/layouts/WebsiteLayout"));
+
+// Pages
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const SettingsPage = lazy(() => import("@/pages/dashboard/SettingsPage"));
+const HomePage = lazy(() => import("@/pages/website/HomePage"));
 
 export const router = createBrowserRouter([
   {
