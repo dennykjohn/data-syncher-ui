@@ -39,6 +39,8 @@ const DestinationList = () => {
   }
 
   const handleDestionationClick = ({ dst_id }: { dst_id: number }) => {
+    // Prevent multiple clicks while a destination is being selected
+    if (isSelectingDestinationPending) return;
     setSelectedDestinationId(dst_id);
     selectDestination(
       { destination: dst_id },

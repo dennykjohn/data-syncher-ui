@@ -8,7 +8,7 @@ const LoadingSpinner = () => (
     position={"absolute"}
     width="100%"
   >
-    <Spinner color="brand.500" animationDuration="0.8s" size="lg" />
+    <Spinner color="brand.500" animationDuration="0.8s" size="md" />
   </Flex>
 );
 
