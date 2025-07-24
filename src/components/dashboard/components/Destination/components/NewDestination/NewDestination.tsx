@@ -12,7 +12,7 @@ const NewDestination = () => {
       <PageHeader
         breadcrumbs={[
           {
-            label: "Destination",
+            label: "Destinations",
             route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
           },
           { label: "Add destination" },

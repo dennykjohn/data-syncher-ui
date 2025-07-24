@@ -37,7 +37,7 @@ const NewDestinationForm = () => {
       <PageHeader
         breadcrumbs={[
           {
-            label: "Destination",
+            label: "Destinations",
             route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
           },
           {
