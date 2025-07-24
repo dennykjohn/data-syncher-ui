@@ -6,7 +6,7 @@ const ServerRoutes = {
       `/company-details/${companyId}`,
   },
   destination: {
-    listAllDestinations: () => "destinations/all/",
+    listMasterDestinations: () => "destinations/all/",
   },
 } as const;
 
