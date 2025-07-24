@@ -1,4 +1,8 @@
-import { Flex } from "@chakra-ui/react";
+import { useState } from "react";
+
+import { Flex, Input, InputGroup } from "@chakra-ui/react";
+
+import { LuSearch } from "react-icons/lu";
 
 import { useNavigate } from "react-router";
 
@@ -9,6 +13,7 @@ import SnowFlakeIllustration from "@/assets/images/snowflake.svg";
 import SourceCard from "@/components/shared/SourceCard";
 import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
+import { VIEW_CONFIG } from "@/constants/view-config";
 import useFetchMasterDestinationList from "@/queryOptions/destination/useFetchMasterDestinationList";
 
 const DestinationList = () => {
@@ -17,6 +22,7 @@ const DestinationList = () => {
     isLoading,
   } = useFetchMasterDestinationList();
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -27,15 +33,27 @@ const DestinationList = () => {
       `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.CONFIGURE}`,
     );
 
+  const filteredDestinations = destinationList.filter(({ name }) =>
+    name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
   return (
     <Flex
       direction="column"
       alignItems={"center"}
       h="100%"
       justifyContent={"center"}
+      gap={VIEW_CONFIG.pageGap}
     >
-      <Flex gap={8} wrap="wrap" justifyContent="center">
-        {destinationList.map(({ dst_id, name }) => {
+      <InputGroup endElement={<LuSearch />} maxW="md">
+        <Input
+          placeholder="Search destination"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </InputGroup>
+      <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
+        {filteredDestinations.map(({ dst_id, name }) => {
           let image;
           switch (name) {
             case "Snowflake":
