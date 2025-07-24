@@ -1,5 +1,7 @@
 import { Flex, Image, Text } from "@chakra-ui/react";
 
+import { VIEW_CONFIG } from "@/constants/view-config";
+
 import LoadingSpinner from "./Spinner";
 
 const SourceCard = ({
@@ -21,7 +23,7 @@ const SourceCard = ({
       borderRadius="md"
       alignItems="center"
       justifyContent={"center"}
-      gap={6}
+      gap={VIEW_CONFIG.pageGap}
       w="3xs"
       flexWrap={"wrap"}
       cursor={isLoading ? "not-allowed" : "pointer"}
