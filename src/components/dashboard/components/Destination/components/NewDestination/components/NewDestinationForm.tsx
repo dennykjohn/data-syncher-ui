@@ -1,10 +1,10 @@
-import { useReducer } from "react";
+import { useEffect, useReducer } from "react";
 
 import { Button, Field, Fieldset, Flex, Input } from "@chakra-ui/react";
 
 import { MdKeyboardBackspace, MdOutlineSave } from "react-icons/md";
 
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import ClientRoutes from "@/constants/client-routes";
@@ -15,6 +15,21 @@ import { initialState, newDestinationFormReducer } from "./reducer";
 
 const NewDestinationForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { destinationId, destinationName } = location.state || {};
+
+  useEffect(() => {
+    // If the user navigates directly to this form
+    // without choosing a destination, redirect
+    // them back to the Add Destination page.
+    if (!destinationId || !destinationName) {
+      navigate(
+        `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
+        { replace: true },
+      );
+    }
+  }, [destinationId, destinationName, navigate]);
+
   const [formState, dispatch] = useReducer(
     newDestinationFormReducer,
     initialState,
@@ -45,7 +60,7 @@ const NewDestinationForm = () => {
           },
           { label: "Configure" },
         ]}
-        title="Configure your Snowflake destination"
+        title={`Configure your ${destinationName} destination`}
         subtitle="Follow guide to setup your destination"
       />
 

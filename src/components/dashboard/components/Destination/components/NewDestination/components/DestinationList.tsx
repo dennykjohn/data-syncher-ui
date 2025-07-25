@@ -48,6 +48,14 @@ const DestinationList = () => {
         onSuccess: () => {
           navigate(
             `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.CONFIGURE}`,
+            {
+              state: {
+                destinationId: dst_id,
+                destinationName: destinationList.find(
+                  (d) => d.dst_id === dst_id,
+                )?.name,
+              },
+            },
           );
         },
       },
