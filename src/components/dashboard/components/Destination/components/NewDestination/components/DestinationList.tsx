@@ -24,15 +24,18 @@ const DestinationList = () => {
     number | null
   >(null);
 
-  const {
-    data: { content: destinationList },
-    isLoading: isFetchingDestinationsLoading,
-  } = useFetchMasterDestinationList();
+  const { data, isLoading: isFetchingDestinationsLoading } =
+    useFetchMasterDestinationList();
 
   const {
     mutate: selectDestination,
     isPending: isSelectingDestinationPending,
   } = useSelectDestination();
+
+  if (!data) {
+    return <LoadingSpinner />;
+  }
+  const destinationList = data.content;
 
   if (isFetchingDestinationsLoading) {
     return <LoadingSpinner />;
