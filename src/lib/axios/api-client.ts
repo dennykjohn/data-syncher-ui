@@ -49,7 +49,7 @@ AxiosInstance.interceptors.response.use(
   async (error: AxiosError): Promise<ErrorResponseType> => {
     if (error.response?.status === 401) {
       Cookies.remove("access_token");
-      window.location.href = `/${ClientRoutes.LOGIN}`;
+      window.location.href = `${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`;
     }
     return Promise.reject(error.response?.data);
   },
