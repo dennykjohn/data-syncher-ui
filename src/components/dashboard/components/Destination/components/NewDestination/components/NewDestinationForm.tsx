@@ -20,12 +20,11 @@ const NewDestinationForm = () => {
     initialState,
   );
 
-  const handleInputChange = (
-    field: keyof NewDestinationFormState,
-    value: string,
-  ) => {
-    dispatch({ type: "UPDATE_FIELD", field, value });
-  };
+  const handleInputChange =
+    (field: keyof NewDestinationFormState) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      dispatch({ type: "UPDATE_FIELD", field, value: event.target.value });
+    };
 
   const handleFormSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -60,9 +59,7 @@ const NewDestinationForm = () => {
               <Input
                 placeholder="Enter your destination name"
                 value={formState.destinationName}
-                onChange={(e) =>
-                  handleInputChange("destinationName", e.target.value)
-                }
+                onChange={handleInputChange("destinationName")}
               />
               <Field.HelperText>
                 A unique name for your destination
@@ -75,9 +72,7 @@ const NewDestinationForm = () => {
               <Input
                 placeholder="Enter your account name"
                 value={formState.accountName}
-                onChange={(e) =>
-                  handleInputChange("accountName", e.target.value)
-                }
+                onChange={handleInputChange("accountName")}
               />
             </Field.Root>
             <Field.Root required>
@@ -87,9 +82,7 @@ const NewDestinationForm = () => {
               <Input
                 placeholder="Enter your database name"
                 value={formState.databaseName}
-                onChange={(e) =>
-                  handleInputChange("databaseName", e.target.value)
-                }
+                onChange={handleInputChange("databaseName")}
               />
             </Field.Root>
             <Field.Root required>
@@ -100,9 +93,7 @@ const NewDestinationForm = () => {
               <Input
                 placeholder="Enter your warehouse name"
                 value={formState.warehouseName}
-                onChange={(e) =>
-                  handleInputChange("warehouseName", e.target.value)
-                }
+                onChange={handleInputChange("warehouseName")}
               />
             </Field.Root>
             <Field.Root required>
@@ -113,7 +104,7 @@ const NewDestinationForm = () => {
               <Input
                 placeholder="Enter your username"
                 value={formState.username}
-                onChange={(e) => handleInputChange("username", e.target.value)}
+                onChange={handleInputChange("username")}
               />
             </Field.Root>
             <Field.Root required>
@@ -124,7 +115,7 @@ const NewDestinationForm = () => {
               <Input
                 placeholder="Enter your password"
                 value={formState.password}
-                onChange={(e) => handleInputChange("password", e.target.value)}
+                onChange={handleInputChange("password")}
               />
             </Field.Root>
           </Fieldset.Content>
