@@ -7,6 +7,7 @@ import { MdKeyboardBackspace, MdOutlineSave } from "react-icons/md";
 import { useLocation, useNavigate } from "react-router";
 
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
+import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import { type NewDestinationFormState } from "@/types/destination";
@@ -43,6 +44,10 @@ const NewDestinationForm = () => {
 
   const handleFormSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    toaster.success({
+      title: "Toast Title",
+      description: "Toast Description",
+    });
     // console.log("Form submitted with data:", formState);
   };
 

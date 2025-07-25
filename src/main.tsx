@@ -5,6 +5,7 @@ import { ChakraProvider } from "@chakra-ui/react";
 import { ErrorBoundary } from "react-error-boundary";
 import { RouterProvider } from "react-router";
 
+import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/Auth/AuthContext";
 import "@/css/index.scss";
 import { router } from "@/routes/AppRoutes";
@@ -28,6 +29,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary fallback={<div>Something went wrong</div>}>
       <ChakraProvider value={theme}>
+        <Toaster />
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
             <RouterProvider router={router} />
