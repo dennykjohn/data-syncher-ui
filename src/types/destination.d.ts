@@ -17,3 +17,15 @@ export interface NewDestinationFormState {
   username: string;
   password: string;
 }
+
+export interface CreateDestinationPayload {
+  dst: string;
+  name: string;
+  config_data: {
+    account: string;
+    database: string;
+    warehouse: string;
+    username: string;
+    password: string;
+  };
+}

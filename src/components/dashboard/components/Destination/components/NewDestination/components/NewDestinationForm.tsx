@@ -10,7 +10,11 @@ import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
-import { type NewDestinationFormState } from "@/types/destination";
+import useCreateDestination from "@/queryOptions/destination/useCreateDestination";
+import {
+  type CreateDestinationPayload,
+  type NewDestinationFormState,
+} from "@/types/destination";
 
 import { initialState, newDestinationFormReducer } from "./reducer";
 
@@ -18,6 +22,7 @@ const NewDestinationForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { destinationId, destinationName } = location.state || {};
+  const { mutate: createDestination, isPending } = useCreateDestination();
 
   useEffect(() => {
     // If the user navigates directly to this form
@@ -44,11 +49,50 @@ const NewDestinationForm = () => {
 
   const handleFormSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    toaster.success({
-      title: "Toast Title",
-      description: "Toast Description",
+
+    const payload: CreateDestinationPayload = {
+      dst: destinationName,
+      name: formState.destinationName,
+      config_data: {
+        account: formState.accountName,
+        database: formState.databaseName,
+        warehouse: formState.warehouseName,
+        username: formState.username,
+        password: formState.password,
+      },
+    };
+
+    if (
+      !payload.dst ||
+      !payload.name ||
+      !payload.config_data.account ||
+      !payload.config_data.database ||
+      !payload.config_data.warehouse ||
+      !payload.config_data.username ||
+      !payload.config_data.password
+    ) {
+      toaster.error({
+        title: "Error",
+        description: "All fields are required.",
+      });
+      return;
+    }
+
+    createDestination(payload, {
+      onSuccess: () => {
+        toaster.success({
+          title: "Destination created successfully",
+          description: `Your ${destinationName} destination has been created.`,
+        });
+        navigate(`${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`);
+      },
+      onError: (error) => {
+        toaster.error({
+          title: "Error creating destination",
+          description: error.message,
+        });
+      },
     });
-    // console.log("Form submitted with data:", formState);
   };
 
   return (
@@ -148,7 +192,7 @@ const NewDestinationForm = () => {
               <MdKeyboardBackspace />
               Back
             </Button>
-            <Button type="submit" colorPalette="brand">
+            <Button type="submit" colorPalette="brand" loading={isPending}>
               <MdOutlineSave />
               Save & authorize
             </Button>

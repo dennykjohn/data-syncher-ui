@@ -8,6 +8,7 @@ const ServerRoutes = {
   destination: {
     listMasterDestinations: () => "destinations/all/",
     selectDestination: () => "destinations/select-destination/",
+    createDestination: () => "destinations/create/",
   },
 } as const;
 

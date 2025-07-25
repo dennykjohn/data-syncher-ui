@@ -33,7 +33,11 @@ const DestinationList = () => {
   } = useSelectDestination();
 
   if (!data) {
-    return <LoadingSpinner />;
+    return (
+      <Flex>
+        <LoadingSpinner />
+      </Flex>
+    );
   }
   const destinationList = data.content;
 
