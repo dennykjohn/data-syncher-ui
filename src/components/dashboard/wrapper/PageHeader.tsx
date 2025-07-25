@@ -41,7 +41,7 @@ const PageHeader = ({
                 <Breadcrumb.Link onClick={() => handleBreadcrumbClick(route)}>
                   {label}
                 </Breadcrumb.Link>
-                <Breadcrumb.Separator />
+                <Breadcrumb.Separator as="span" />
               </Breadcrumb.Item>
             ))}
           </Breadcrumb.List>
