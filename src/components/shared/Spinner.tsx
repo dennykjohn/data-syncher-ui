@@ -1,14 +1,29 @@
-import { Flex, Spinner } from "@chakra-ui/react";
+import { Flex, FlexProps, Spinner, SpinnerProps } from "@chakra-ui/react";
 
-const LoadingSpinner = () => (
+interface LoadingSpinnerProps {
+  containerProps?: FlexProps;
+  spinnerProps?: SpinnerProps;
+}
+
+const LoadingSpinner = ({
+  containerProps,
+  spinnerProps,
+  ...flexProps
+}: LoadingSpinnerProps & FlexProps) => (
   <Flex
     justify="center"
     align="center"
     height="100%"
-    position={"absolute"}
     width="100%"
+    {...flexProps}
+    {...containerProps}
   >
-    <Spinner color="brand.500" animationDuration="0.8s" size="md" />
+    <Spinner
+      color="brand.500"
+      animationDuration="0.8s"
+      size="md"
+      {...spinnerProps}
+    />
   </Flex>
 );
 

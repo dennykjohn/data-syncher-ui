@@ -36,7 +36,7 @@ const SourceCard = ({
       <Text fontSize="md" wordBreak={"break-word"} textAlign="center">
         {title}
       </Text>
-      {isLoading && <LoadingSpinner />}
+      {isLoading && <LoadingSpinner position="absolute" />}
     </Flex>
   );
 };
