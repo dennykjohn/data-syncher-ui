@@ -29,6 +29,8 @@ type TableProps<T> = {
   totalNumberOfPages: number;
   updateCurrentPage: (_currentPage: number) => void;
   isLoading?: boolean;
+  onRowClick?: (_row: T, _index: number) => void;
+  rowCursor?: string;
 };
 
 const Table = <T,>({
@@ -37,6 +39,8 @@ const Table = <T,>({
   totalNumberOfPages,
   updateCurrentPage,
   isLoading = false,
+  onRowClick,
+  rowCursor = "pointer",
 }: TableProps<T>) => {
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -45,6 +49,12 @@ const Table = <T,>({
   useEffect(() => {
     updateCurrentPage(currentPage);
   }, [updateCurrentPage, currentPage]);
+
+  const handleRowClick = (item: T, index: number) => {
+    if (onRowClick) {
+      onRowClick(item, index);
+    }
+  };
 
   return (
     <Stack w="100%">
@@ -95,7 +105,14 @@ const Table = <T,>({
           </ChakraTable.Header>
           <ChakraTable.Body>
             {data.map((item, index) => (
-              <ChakraTable.Row key={index} h={12}>
+              <ChakraTable.Row
+                key={index}
+                h={12}
+                cursor={onRowClick ? rowCursor : "default"}
+                onClick={() => handleRowClick(item, index)}
+                _hover={onRowClick ? { bg: "gray.100" } : {}}
+                transition="background-color 0.2s"
+              >
                 {columns.map((column) => (
                   <ChakraTable.Cell
                     key={String(column.accessor)}

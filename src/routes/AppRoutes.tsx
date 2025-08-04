@@ -23,10 +23,10 @@ const NewDestination = lazy(
       "@/components/dashboard/components/Destination/components/NewDestination/NewDestination"
     ),
 );
-const NewDestinationForm = lazy(
+const DestinationForm = lazy(
   () =>
     import(
-      "@/components/dashboard/components/Destination/components/NewDestination/components/NewDestinationForm"
+      "@/components/dashboard/components/Destination/components/NewDestination/components/DestinationForm"
     ),
 );
 const Plans = lazy(
@@ -89,7 +89,11 @@ export const router = createBrowserRouter([
           },
           {
             path: `${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.CONFIGURE}`,
-            element: <NewDestinationForm />,
+            element: <DestinationForm mode="add" />,
+          },
+          {
+            path: `${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.EDIT}/:destinationId`,
+            element: <DestinationForm mode="edit" />,
           },
           /** End Destination Routes */
           { path: ClientRoutes.PLANS, element: <Plans /> },

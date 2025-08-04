@@ -4,37 +4,60 @@ import { Button, Field, Fieldset, Flex, Input } from "@chakra-ui/react";
 
 import { MdKeyboardBackspace, MdOutlineSave } from "react-icons/md";
 
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
+import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useCreateDestination from "@/queryOptions/destination/useCreateDestination";
+import { useFetchDestinationById } from "@/queryOptions/destination/useFetchDestinationById";
 import {
-  type CreateDestinationPayload,
+  type Destination,
   type NewDestinationFormState,
 } from "@/types/destination";
 
 import { initialState, newDestinationFormReducer } from "./reducer";
 
-const NewDestinationForm = () => {
+const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const params = useParams<{ destinationId: string }>();
   const { destinationId, destinationName } = location.state || {};
   const { mutate: createDestination, isPending } = useCreateDestination();
+  const { data: destinationData, isPending: isFetchDestinationByIdPending } =
+    useFetchDestinationById(params.destinationId || "");
+
+  // If the mode is edit, we need to pre-fill
+  // the form with the existing destination data
+  useEffect(() => {
+    if (destinationData && mode === "edit") {
+      dispatch({
+        type: "SET_FORM",
+        payload: {
+          destinationName: destinationData.name,
+          accountName: destinationData.config_data.account,
+          databaseName: destinationData.config_data.database,
+          warehouseName: destinationData.config_data.warehouse,
+          username: destinationData.config_data.username,
+          password: destinationData.config_data.password,
+        },
+      });
+    }
+  }, [destinationData, mode]);
 
   useEffect(() => {
     // If the user navigates directly to this form
-    // without choosing a destination, redirect
+    // without choosing a destination on Add Destination, redirect
     // them back to the Add Destination page.
-    if (!destinationId || !destinationName) {
+    if (mode === "add" && (!destinationId || !destinationName)) {
       navigate(
         `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
         { replace: true },
       );
     }
-  }, [destinationId, destinationName, navigate]);
+  }, [destinationId, destinationName, mode, navigate]);
 
   const [formState, dispatch] = useReducer(
     newDestinationFormReducer,
@@ -50,7 +73,7 @@ const NewDestinationForm = () => {
   const handleFormSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
-    const payload: CreateDestinationPayload = {
+    const payload: Destination = {
       dst: destinationName,
       name: formState.destinationName,
       config_data: {
@@ -103,10 +126,14 @@ const NewDestinationForm = () => {
             label: "Destinations",
             route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
           },
-          {
-            label: "Add destination",
-            route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
-          },
+          ...(mode === "add"
+            ? [
+                {
+                  label: "Add destination",
+                  route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
+                },
+              ]
+            : []),
           { label: "Configure" },
         ]}
         title={`Configure your ${destinationName} destination`}
@@ -114,7 +141,17 @@ const NewDestinationForm = () => {
       />
 
       <form onSubmit={handleFormSubmit}>
-        <Fieldset.Root size="lg" maxW="lg">
+        <Fieldset.Root size="lg" maxW="lg" position={"relative"}>
+          {isFetchDestinationByIdPending && (
+            <LoadingSpinner
+              position="absolute"
+              top={0}
+              left={0}
+              right={0}
+              bottom={0}
+              zIndex={1000}
+            />
+          )}
           <Fieldset.Content>
             <Field.Root required>
               <Field.Label>
@@ -203,4 +240,4 @@ const NewDestinationForm = () => {
   );
 };
 
-export default NewDestinationForm;
+export default DestinationForm;

@@ -9,6 +9,9 @@ const ServerRoutes = {
     listMasterDestinations: () => "destinations/all/",
     selectDestination: () => "destinations/select-destination/",
     createDestination: () => "destinations/create/",
+    listDestinations: ({ page, size }: { page: number; size: number }) =>
+      `destinations?page=${page}&size=${size}`,
+    fetchDestinationById: (id: string) => `destinations/detail/${id}`,
   },
 } as const;
 

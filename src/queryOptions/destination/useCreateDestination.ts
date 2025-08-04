@@ -1,6 +1,6 @@
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
-import { type CreateDestinationPayload } from "@/types/destination";
+import { type Destination } from "@/types/destination";
 
 import { useMutation } from "@tanstack/react-query";
 
@@ -9,7 +9,7 @@ interface CreateDestinationResponse {
 }
 
 const createDestination = async (
-  payload: CreateDestinationPayload,
+  payload: Destination,
 ): Promise<CreateDestinationResponse> => {
   const { data } = await AxiosInstance.post<CreateDestinationResponse>(
     ServerRoutes.destination.createDestination(),
@@ -19,11 +19,7 @@ const createDestination = async (
 };
 
 export default function useCreateDestination() {
-  return useMutation<
-    CreateDestinationResponse,
-    Error,
-    CreateDestinationPayload
-  >({
+  return useMutation<CreateDestinationResponse, Error, Destination>({
     mutationFn: createDestination,
   });
 }
