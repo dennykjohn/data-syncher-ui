@@ -2,6 +2,8 @@ import { Drawer, Portal } from "@chakra-ui/react";
 
 import Sidebar from "./Sidebar";
 
+const SIDEBAR_WIDTH = "240px";
+
 const SidebarMobile = ({
   showSidebar,
   setShowSidebar,
@@ -21,9 +23,9 @@ const SidebarMobile = ({
       <Portal>
         <Drawer.Backdrop />
         <Drawer.Positioner>
-          <Drawer.Content maxW="240px">
+          <Drawer.Content maxW={SIDEBAR_WIDTH}>
             <Sidebar
-              sidebarWidth="240px"
+              sidebarWidth={SIDEBAR_WIDTH}
               isDrawer={true}
               onMenuItemClick={() => setShowSidebar(false)}
             />
