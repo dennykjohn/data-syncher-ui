@@ -12,6 +12,7 @@ const ClientRoutes = {
   CONNECTORS: {
     ROOT: "connectors",
     ADD: "add",
+    EDIT: "edit",
   },
   DESTINATION: {
     ROOT: "destinations",
