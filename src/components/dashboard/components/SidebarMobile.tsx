@@ -21,9 +21,9 @@ const SidebarMobile = ({
       <Portal>
         <Drawer.Backdrop />
         <Drawer.Positioner>
-          <Drawer.Content>
+          <Drawer.Content maxW="240px">
             <Sidebar
-              sidebarWidth="320px"
+              sidebarWidth="240px"
               isDrawer={true}
               onMenuItemClick={() => setShowSidebar(false)}
             />
