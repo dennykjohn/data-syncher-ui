@@ -15,10 +15,20 @@ import CustomerIcon from "@/assets/images/customer-icon.svg";
 import Logo from "@/assets/images/logo.svg";
 import ClientRoutes from "@/constants/client-routes";
 
-const Sidebar = ({ sidebarWidth }: { sidebarWidth: string }) => {
+const Sidebar = ({
+  sidebarWidth,
+  isDrawer,
+  onMenuItemClick,
+}: {
+  sidebarWidth: string;
+  isDrawer: boolean;
+  onMenuItemClick?: () => void;
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const sidebarDisplay = useBreakpointValue({ base: "none", md: "block" });
+  const sidebarDisplay = isDrawer
+    ? "block"
+    : useBreakpointValue({ base: "none", md: "block" });
   const isActive = (path: string, exact = false) =>
     exact ? location.pathname === path : location.pathname.includes(path);
 
@@ -104,7 +114,10 @@ const Sidebar = ({ sidebarWidth }: { sidebarWidth: string }) => {
               paddingInline={3}
               cursor={"pointer"}
               gap={2}
-              onClick={() => navigate(path)}
+              onClick={() => {
+                navigate(path);
+                onMenuItemClick?.();
+              }}
               color={active ? "brand.accentOrange" : "white"}
               _hover={{
                 bgColor: "gray.600",

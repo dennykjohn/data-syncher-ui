@@ -18,7 +18,7 @@ export default function Layout() {
       gridTemplateColumns={{ base: "1fr", md: `${sidebarWidth} 1fr` }}
       height="100vh"
     >
-      <Sidebar sidebarWidth={sidebarWidth} />
+      <Sidebar sidebarWidth={sidebarWidth} isDrawer={false} />
       <Header sidebarWidth={sidebarWidth} />
       <GridItem
         area="main"

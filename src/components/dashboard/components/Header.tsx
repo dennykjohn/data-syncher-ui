@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import {
   Avatar,
   Flex,
@@ -7,7 +9,11 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 
+import { RxHamburgerMenu } from "react-icons/rx";
+
 import useAuth from "@/context/Auth/useAuth";
+
+import SidebarMobile from "./SidebarMobile";
 
 const Header = ({ sidebarWidth }: { sidebarWidth: string }) => {
   const sidebarDisplay = useBreakpointValue({ base: "none", md: "block" });
@@ -15,6 +21,7 @@ const Header = ({ sidebarWidth }: { sidebarWidth: string }) => {
     logout,
     authState: { user },
   } = useAuth();
+  const [showSidebar, setShowSidebar] = useState(false);
 
   return (
     <GridItem
@@ -31,6 +38,21 @@ const Header = ({ sidebarWidth }: { sidebarWidth: string }) => {
       alignItems="center"
       boxShadow={"0 2px 4px rgba(0, 0, 0, 0.1)"}
     >
+      {showSidebar && (
+        <SidebarMobile
+          showSidebar={showSidebar}
+          setShowSidebar={setShowSidebar}
+        />
+      )}
+      <Flex
+        display={{ base: "flex", md: "none" }}
+        alignItems="center"
+        justifyContent="space-between"
+        cursor="pointer"
+        onClick={() => setShowSidebar(true)}
+      >
+        <RxHamburgerMenu size={24} color="gray" />
+      </Flex>
       <Flex
         marginLeft="auto"
         justifyContent="space-between"
