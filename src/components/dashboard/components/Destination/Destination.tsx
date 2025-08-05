@@ -37,7 +37,7 @@ const columns: Column<DestinationTableItem>[] = [
         variant="solid"
         size="sm"
       >
-        {is_active ? "Active" : "Inactive"}
+        {is_active ? "Active" : "Paused"}
       </Badge>
     ),
   },
