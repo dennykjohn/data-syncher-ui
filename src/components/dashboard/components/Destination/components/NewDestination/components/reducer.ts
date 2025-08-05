@@ -1,6 +1,7 @@
 import { type NewDestinationFormState } from "@/types/destination";
 
 export const initialState: NewDestinationFormState = {
+  dst: "",
   destinationName: "",
   accountName: "",
   databaseName: "",

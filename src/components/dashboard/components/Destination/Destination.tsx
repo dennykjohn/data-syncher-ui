@@ -1,7 +1,8 @@
 import { useState } from "react";
 
-import { Flex } from "@chakra-ui/react";
+import { Badge, Flex } from "@chakra-ui/react";
 
+import { format } from "date-fns";
 import { useNavigate } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
@@ -14,12 +15,32 @@ import TableFilter from "../../wrapper/TableFilter";
 
 const columns: Column<DestinationTableItem>[] = [
   { header: "Name", accessor: "name" },
-  { header: "Source", accessor: "dst" },
   { header: "Destination", accessor: "dst" },
-  { header: "Status", accessor: "dst" },
-  { header: "Created At", accessor: "created_at" },
-  { header: "Updated At", accessor: "updated_at" },
-  { header: "Sync Frequency", accessor: "dst" },
+  {
+    header: "Created At",
+    accessor: "created_at",
+    render: (_, { created_at }) =>
+      format(new Date(created_at), "hh:mm a, dd MMMM"),
+  },
+  {
+    header: "Updated At",
+    accessor: "updated_at",
+    render: (_, { updated_at }) =>
+      format(new Date(updated_at), "hh:mm a, dd MMMM"),
+  },
+  {
+    header: "Status",
+    accessor: "is_active",
+    render: (_, { is_active }) => (
+      <Badge
+        colorPalette={is_active ? "green" : "red"}
+        variant="solid"
+        size="sm"
+      >
+        {is_active ? "Active" : "Inactive"}
+      </Badge>
+    ),
+  },
 ];
 const SIZE = 10;
 

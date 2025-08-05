@@ -10,6 +10,7 @@ export type MasterDestinationList = {
 };
 
 export interface NewDestinationFormState {
+  dst: string;
   destinationName: string;
   accountName: string;
   databaseName: string;

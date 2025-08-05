@@ -13,11 +13,16 @@ import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useCreateDestination from "@/queryOptions/destination/useCreateDestination";
 import { useFetchDestinationById } from "@/queryOptions/destination/useFetchDestinationById";
+import { useUpdateDestination } from "@/queryOptions/destination/useUpdateDestination";
 import {
   type Destination,
   type NewDestinationFormState,
 } from "@/types/destination";
 
+import {
+  BreadcrumbsForEditDestination,
+  BreadcrumbsForNewDestination,
+} from "./helper";
 import { initialState, newDestinationFormReducer } from "./reducer";
 
 const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
@@ -28,14 +33,19 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   const { mutate: createDestination, isPending } = useCreateDestination();
   const { data: destinationData, isPending: isFetchDestinationByIdPending } =
     useFetchDestinationById(params.destinationId || "");
+  const { mutate: updateDestination } = useUpdateDestination({
+    id: params.destinationId || "",
+  });
 
   // If the mode is edit, we need to pre-fill
   // the form with the existing destination data
   useEffect(() => {
     if (destinationData && mode === "edit") {
+      console.log("Editing destination data:", destinationData);
       dispatch({
         type: "SET_FORM",
         payload: {
+          dst: destinationData.dst,
           destinationName: destinationData.name,
           accountName: destinationData.config_data.account,
           databaseName: destinationData.config_data.database,
@@ -44,6 +54,17 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
           password: destinationData.config_data.password,
         },
       });
+    } else if (mode === "add") {
+      // If the mode is add, we reset the form state
+      dispatch({ type: "RESET_FORM" });
+      // Set dst from location state if available
+      if (destinationName) {
+        dispatch({
+          type: "UPDATE_FIELD",
+          field: "dst",
+          value: destinationName,
+        });
+      }
     }
   }, [destinationData, mode]);
 
@@ -74,7 +95,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
     event.preventDefault();
 
     const payload: Destination = {
-      dst: destinationName,
+      dst: formState.dst,
       name: formState.destinationName,
       config_data: {
         account: formState.accountName,
@@ -101,6 +122,29 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       return;
     }
 
+    // If mode is edit, update the existing destination
+    if (mode === "edit") {
+      updateDestination(payload, {
+        onSuccess: () => {
+          toaster.success({
+            title: "Destination updated successfully",
+            description: `Your ${formState.destinationName} destination has been updated.`,
+          });
+          navigate(
+            `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
+          );
+        },
+        onError: (error) => {
+          toaster.error({
+            title: "Error updating destination",
+            description: error.message,
+          });
+        },
+      });
+      return;
+    }
+
+    // If mode is add, create a new destination
     createDestination(payload, {
       onSuccess: () => {
         toaster.success({
@@ -121,28 +165,22 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
       <PageHeader
-        breadcrumbs={[
-          {
-            label: "Destinations",
-            route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
-          },
-          ...(mode === "add"
-            ? [
-                {
-                  label: "Add destination",
-                  route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
-                },
-              ]
-            : []),
-          { label: "Configure" },
-        ]}
-        title={`Configure your ${destinationName} destination`}
+        breadcrumbs={
+          mode === "add"
+            ? BreadcrumbsForNewDestination
+            : BreadcrumbsForEditDestination
+        }
+        title={
+          mode === "add"
+            ? `Configure your ${formState.dst} destination`
+            : `Edit your ${formState.dst} destination`
+        }
         subtitle="Follow guide to setup your destination"
       />
 
       <form onSubmit={handleFormSubmit}>
         <Fieldset.Root size="lg" maxW="lg" position={"relative"}>
-          {isFetchDestinationByIdPending && (
+          {mode === "edit" && isFetchDestinationByIdPending && (
             <LoadingSpinner
               position="absolute"
               top={0}
