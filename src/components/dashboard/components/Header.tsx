@@ -11,7 +11,10 @@ import useAuth from "@/context/Auth/useAuth";
 
 const Header = ({ sidebarWidth }: { sidebarWidth: string }) => {
   const sidebarDisplay = useBreakpointValue({ base: "none", md: "block" });
-  const { logout } = useAuth();
+  const {
+    logout,
+    authState: { user },
+  } = useAuth();
 
   return (
     <GridItem
@@ -36,8 +39,7 @@ const Header = ({ sidebarWidth }: { sidebarWidth: string }) => {
         <Menu.Root positioning={{ placement: "bottom-end" }}>
           <Menu.Trigger rounded="full">
             <Avatar.Root colorPalette="blue" cursor="pointer">
-              <Avatar.Fallback name="Random" />
-              <Avatar.Image src="https://randomuser.me/api/portraits/men/42.jpg" />
+              <Avatar.Fallback name={user?.first_name} />
             </Avatar.Root>
           </Menu.Trigger>
           <Portal>
