@@ -10,12 +10,24 @@ import {
 } from "@chakra-ui/react";
 
 import { RxHamburgerMenu } from "react-icons/rx";
+import {
+  TbLayoutSidebarLeftCollapse,
+  TbLayoutSidebarRightCollapse,
+} from "react-icons/tb";
 
 import useAuth from "@/context/Auth/useAuth";
 
 import SidebarMobile from "./SidebarMobile";
 
-const Header = ({ sidebarWidth }: { sidebarWidth: string }) => {
+const Header = ({
+  sidebarWidth,
+  onSidebarToggle,
+  isSidebarCollapsed,
+}: {
+  sidebarWidth: string;
+  onSidebarToggle: () => void;
+  isSidebarCollapsed: boolean;
+}) => {
   const sidebarDisplay = useBreakpointValue({ base: "none", md: "block" });
   const {
     logout,
@@ -44,6 +56,19 @@ const Header = ({ sidebarWidth }: { sidebarWidth: string }) => {
           setShowSidebar={setShowSidebar}
         />
       )}
+      <Flex
+        display={{ base: "none", md: "flex" }}
+        alignItems="center"
+        justifyContent="space-between"
+        cursor="pointer"
+        onClick={() => onSidebarToggle()}
+      >
+        {isSidebarCollapsed ? (
+          <TbLayoutSidebarRightCollapse size={24} color="gray" />
+        ) : (
+          <TbLayoutSidebarLeftCollapse size={24} color="gray" />
+        )}
+      </Flex>
       <Flex
         display={{ base: "flex", md: "none" }}
         alignItems="center"

@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Grid, GridItem } from "@chakra-ui/react";
 
 import { Outlet } from "react-router";
@@ -6,7 +8,9 @@ import Header from "@/components/dashboard/components/Header";
 import Sidebar from "@/components/dashboard/components/Sidebar";
 
 export default function Layout() {
-  const sidebarWidth = "240px";
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const sidebarWidth = isSidebarCollapsed ? "0" : "240px";
+  const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
   return (
     <Grid
@@ -17,9 +21,14 @@ export default function Layout() {
       gridTemplateRows={{ base: "1fr", md: "60px 1fr" }}
       gridTemplateColumns={{ base: "1fr", md: `${sidebarWidth} 1fr` }}
       height="100vh"
+      transition="grid-template-columns 0.3s ease"
     >
       <Sidebar sidebarWidth={sidebarWidth} isDrawer={false} />
-      <Header sidebarWidth={sidebarWidth} />
+      <Header
+        sidebarWidth={sidebarWidth}
+        onSidebarToggle={toggleSidebar}
+        isSidebarCollapsed={isSidebarCollapsed}
+      />
       <GridItem
         area="main"
         p={6}
