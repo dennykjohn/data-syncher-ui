@@ -89,7 +89,7 @@ const DestinationList = () => {
         />
       </InputGroup>
       <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
-        {filteredDestinations.map(({ dst_id, name }) => {
+        {filteredDestinations?.map(({ dst_id, name }) => {
           let image;
           switch (name) {
             case "Snowflake":

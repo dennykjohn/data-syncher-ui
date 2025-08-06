@@ -1,0 +1,96 @@
+import { useState } from "react";
+
+import { Flex, Input, InputGroup } from "@chakra-ui/react";
+
+import { LuSearch } from "react-icons/lu";
+
+import DataBricksIllustration from "@/assets/images/databricks.svg";
+import SalesforceSandboxIllustration from "@/assets/images/salesforce-sandbox.svg";
+import SalesForceIllustration from "@/assets/images/salesforce.svg";
+import SnowFlakeIllustration from "@/assets/images/snowflake.svg";
+import PageHeader from "@/components/dashboard/wrapper/PageHeader";
+import SourceCard from "@/components/shared/SourceCard";
+import LoadingSpinner from "@/components/shared/Spinner";
+import ClientRoutes from "@/constants/client-routes";
+import { VIEW_CONFIG } from "@/constants/view-config";
+import useFetchAllUserCreatedDestinationList from "@/queryOptions/destination/useFetchAllUserCreatedDestinationList";
+
+const Destination = ({
+  selectedDestination,
+  onDestinationSelect,
+}: {
+  selectedDestination: string;
+  onDestinationSelect: (destination: string) => void;
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const { data: destinationList, isLoading } =
+    useFetchAllUserCreatedDestinationList();
+  console.log("Destinations:", destinationList);
+
+  const filteredDestinations = destinationList?.filter(({ name }) =>
+    name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  return (
+    <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
+      <PageHeader
+        breadcrumbs={[
+          {
+            label: "Connector",
+            route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
+          },
+          { label: "Configure" },
+        ]}
+        title="Select destination type"
+        subtitle="Select an existing destination or add a new one"
+      />
+      <Flex
+        direction="column"
+        alignItems={"center"}
+        h="100%"
+        justifyContent={"center"}
+        gap={VIEW_CONFIG.pageGap}
+      >
+        <InputGroup endElement={<LuSearch />} maxW="md">
+          <Input
+            placeholder="Search destination"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </InputGroup>
+        {isLoading && <LoadingSpinner />}
+        {!isLoading && (
+          <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
+            {filteredDestinations?.map(({ dst, name, dst_config_id }) => {
+              let image;
+              switch (dst) {
+                case "Snowflake":
+                  image = SnowFlakeIllustration;
+                  break;
+                case "SalesforceSandbox":
+                  image = SalesforceSandboxIllustration;
+                  break;
+                case "Salesforce":
+                  image = SalesForceIllustration;
+                  break;
+                default:
+                  image = DataBricksIllustration;
+              }
+              return (
+                <SourceCard
+                  key={dst_config_id}
+                  title={name}
+                  image={image}
+                  handleClick={() =>
+                    onDestinationSelect(dst_config_id.toString())
+                  }
+                />
+              );
+            })}
+          </Flex>
+        )}
+      </Flex>
+    </Flex>
+  );
+};
+export default Destination;
