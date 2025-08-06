@@ -33,9 +33,10 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   const { mutate: createDestination, isPending } = useCreateDestination();
   const { data: destinationData, isPending: isFetchDestinationByIdPending } =
     useFetchDestinationById(params.destinationId || "");
-  const { mutate: updateDestination } = useUpdateDestination({
-    id: params.destinationId || "",
-  });
+  const { mutate: updateDestination, isPending: isUpdateDestinationPending } =
+    useUpdateDestination({
+      id: params.destinationId || "",
+    });
 
   // If the mode is edit, we need to pre-fill
   // the form with the existing destination data
@@ -130,9 +131,6 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
             title: "Destination updated successfully",
             description: `Your ${formState.destinationName} destination has been updated.`,
           });
-          navigate(
-            `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
-          );
         },
         onError: (error) => {
           toaster.error({
@@ -267,9 +265,13 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
               <MdKeyboardBackspace />
               Back
             </Button>
-            <Button type="submit" colorPalette="brand" loading={isPending}>
+            <Button
+              type="submit"
+              colorPalette="brand"
+              loading={isPending || isUpdateDestinationPending}
+            >
               <MdOutlineSave />
-              Save & authorize
+              {mode === "edit" ? "Save changes" : "Save & authorize"}
             </Button>
           </Flex>
         </Fieldset.Root>

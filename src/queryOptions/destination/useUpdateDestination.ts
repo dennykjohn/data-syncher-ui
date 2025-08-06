@@ -1,3 +1,4 @@
+import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 import { type Destination } from "@/types/destination";
 
@@ -8,7 +9,7 @@ const updateDestination = async (
   payload: Destination,
 ): Promise<Destination> => {
   const response = await AxiosInstance.put(
-    `/api/destinations/update/${id}`,
+    ServerRoutes.destination.updateDestination(id),
     payload,
   );
   return response.data;

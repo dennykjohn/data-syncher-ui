@@ -16,6 +16,7 @@ const ServerRoutes = {
       `destinations?page=${page}&size=${size}`,
     fetchDestinationById: (id: string) => `destinations/detail/${id}`,
     fetchAllUserCreatedDestinationList: () => "/destinations/?page=1&size=100",
+    updateDestination: (id: string) => `destinations/update/${id}/`,
   },
   connector: {
     listConnectorsByPage: ({ page, size }: { page: number; size: number }) =>
