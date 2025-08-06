@@ -21,7 +21,7 @@ export default function Layout() {
       gridTemplateRows={{ base: "1fr", md: "60px 1fr" }}
       gridTemplateColumns={{ base: "1fr", md: `${sidebarWidth} 1fr` }}
       height="100vh"
-      transition="grid-template-columns 0.3s ease"
+      transition="grid-template-columns 0.3s ease-in-out"
     >
       <Sidebar sidebarWidth={sidebarWidth} isDrawer={false} />
       <Header
@@ -36,6 +36,7 @@ export default function Layout() {
         height="calc(100vh - 60px)"
         bg="gray.50"
         mt={{ base: "60px", md: "0" }}
+        transition="all 0.3s ease-in-out"
       >
         <Outlet />
       </GridItem>
