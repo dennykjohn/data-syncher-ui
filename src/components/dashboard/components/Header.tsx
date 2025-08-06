@@ -9,11 +9,8 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 
+import { GoSidebarCollapse, GoSidebarExpand } from "react-icons/go";
 import { RxHamburgerMenu } from "react-icons/rx";
-import {
-  TbLayoutSidebarLeftCollapse,
-  TbLayoutSidebarRightCollapse,
-} from "react-icons/tb";
 
 import useAuth from "@/context/Auth/useAuth";
 
@@ -64,9 +61,9 @@ const Header = ({
         onClick={() => onSidebarToggle()}
       >
         {isSidebarCollapsed ? (
-          <TbLayoutSidebarRightCollapse size={24} color="gray" />
+          <GoSidebarCollapse size={24} color="gray" />
         ) : (
-          <TbLayoutSidebarLeftCollapse size={24} color="gray" />
+          <GoSidebarExpand size={24} color="gray" />
         )}
       </Flex>
       <Flex
