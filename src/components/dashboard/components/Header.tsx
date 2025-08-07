@@ -83,7 +83,7 @@ const Header = ({
             }
             transition="all 0.3s ease-in-out"
           >
-            <GoSidebarCollapse size={24} color="gray" />
+            <GoSidebarExpand size={24} color="gray" />
           </Box>
           {/* Expand Icon */}
           <Box
@@ -96,7 +96,7 @@ const Header = ({
             }
             transition="all 0.3s ease-in-out"
           >
-            <GoSidebarExpand size={24} color="gray" />
+            <GoSidebarCollapse size={24} color="gray" />
           </Box>
         </Box>
       </Flex>
