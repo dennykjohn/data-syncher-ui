@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import {
   Avatar,
+  Box,
   Flex,
   GridItem,
   Menu,
@@ -59,12 +60,45 @@ const Header = ({
         justifyContent="space-between"
         cursor="pointer"
         onClick={() => onSidebarToggle()}
+        borderRadius="md"
+        _hover={{
+          bg: "gray.100",
+        }}
+        transition="all 0.2s ease-in-out"
       >
-        {isSidebarCollapsed ? (
-          <GoSidebarCollapse size={24} color="gray" />
-        ) : (
-          <GoSidebarExpand size={24} color="gray" />
-        )}
+        <Box
+          position="relative"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
+          {/* Collapse Icon */}
+          <Box
+            position="absolute"
+            opacity={isSidebarCollapsed ? 0 : 1}
+            transform={
+              isSidebarCollapsed
+                ? "rotate(180deg) scale(0.8)"
+                : "rotate(0deg) scale(1)"
+            }
+            transition="all 0.3s ease-in-out"
+          >
+            <GoSidebarCollapse size={24} color="gray" />
+          </Box>
+          {/* Expand Icon */}
+          <Box
+            position="absolute"
+            opacity={isSidebarCollapsed ? 1 : 0}
+            transform={
+              isSidebarCollapsed
+                ? "rotate(0deg) scale(1)"
+                : "rotate(-180deg) scale(0.8)"
+            }
+            transition="all 0.3s ease-in-out"
+          >
+            <GoSidebarExpand size={24} color="gray" />
+          </Box>
+        </Box>
       </Flex>
       <Flex
         display={{ base: "flex", md: "none" }}
