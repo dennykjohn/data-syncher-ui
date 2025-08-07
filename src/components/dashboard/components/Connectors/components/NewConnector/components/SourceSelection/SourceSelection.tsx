@@ -4,9 +4,7 @@ import { Flex, Input, InputGroup } from "@chakra-ui/react";
 
 import { LuSearch } from "react-icons/lu";
 
-import DataBricksIllustration from "@/assets/images/databricks.svg";
-import MicrosoftDynamicsIllustration from "@/assets/images/ms-dynamics.svg";
-import SnowFlakeIllustration from "@/assets/images/snowflake.svg";
+import { getSourceImage } from "@/components/dashboard/utils/getImage";
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import SourceCard from "@/components/shared/SourceCard";
 import LoadingSpinner from "@/components/shared/Spinner";
@@ -60,22 +58,11 @@ const Source = ({
         {!isLoading && (
           <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
             {filteredSourceList?.map(({ name, src_id }) => {
-              let image;
-              switch (name) {
-                case "Snowflake":
-                  image = SnowFlakeIllustration;
-                  break;
-                case "MicrosoftDynamics365_FO":
-                  image = MicrosoftDynamicsIllustration;
-                  break;
-                default:
-                  image = DataBricksIllustration;
-              }
               return (
                 <SourceCard
                   key={src_id}
                   title={name}
-                  image={image}
+                  image={getSourceImage(name)}
                   handleClick={() => onSourceSelect(src_id.toString())}
                 />
               );

@@ -6,10 +6,7 @@ import { LuSearch } from "react-icons/lu";
 
 import { useNavigate } from "react-router";
 
-import DataBricksIllustration from "@/assets/images/databricks.svg";
-import SalesforceSandboxIllustration from "@/assets/images/salesforce-sandbox.svg";
-import SalesForceIllustration from "@/assets/images/salesforce.svg";
-import SnowFlakeIllustration from "@/assets/images/snowflake.svg";
+import { getDestinationImage } from "@/components/dashboard/utils/getImage";
 import SourceCard from "@/components/shared/SourceCard";
 import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
@@ -90,25 +87,11 @@ const DestinationList = () => {
       </InputGroup>
       <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
         {filteredDestinations?.map(({ dst_id, name }) => {
-          let image;
-          switch (name) {
-            case "Snowflake":
-              image = SnowFlakeIllustration;
-              break;
-            case "SalesforceSandbox":
-              image = SalesforceSandboxIllustration;
-              break;
-            case "Salesforce":
-              image = SalesForceIllustration;
-              break;
-            default:
-              image = DataBricksIllustration;
-          }
           return (
             <SourceCard
               key={dst_id}
               title={name}
-              image={image}
+              image={getDestinationImage(name)}
               handleClick={() => handleDestionationClick({ dst_id })}
               isLoading={
                 selectedDestinationId === dst_id &&

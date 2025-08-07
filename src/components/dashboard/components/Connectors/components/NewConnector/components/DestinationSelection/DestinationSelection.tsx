@@ -4,10 +4,7 @@ import { Flex, Input, InputGroup } from "@chakra-ui/react";
 
 import { LuSearch } from "react-icons/lu";
 
-import DataBricksIllustration from "@/assets/images/databricks.svg";
-import SalesforceSandboxIllustration from "@/assets/images/salesforce-sandbox.svg";
-import SalesForceIllustration from "@/assets/images/salesforce.svg";
-import SnowFlakeIllustration from "@/assets/images/snowflake.svg";
+import { getDestinationImage } from "@/components/dashboard/utils/getImage";
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import SourceCard from "@/components/shared/SourceCard";
 import LoadingSpinner from "@/components/shared/Spinner";
@@ -62,25 +59,11 @@ const Destination = ({
         {!isLoading && (
           <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
             {filteredDestinations?.map(({ dst, name, dst_config_id }) => {
-              let image;
-              switch (dst) {
-                case "Snowflake":
-                  image = SnowFlakeIllustration;
-                  break;
-                case "SalesforceSandbox":
-                  image = SalesforceSandboxIllustration;
-                  break;
-                case "Salesforce":
-                  image = SalesForceIllustration;
-                  break;
-                default:
-                  image = DataBricksIllustration;
-              }
               return (
                 <SourceCard
                   key={dst_config_id}
                   title={name}
-                  image={image}
+                  image={getDestinationImage(dst)}
                   handleClick={() =>
                     onDestinationSelect(dst_config_id.toString())
                   }
