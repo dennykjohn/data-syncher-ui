@@ -14,6 +14,12 @@ const NewConnector = lazy(
       "@/components/dashboard/components/Connectors/components/NewConnector/NewConnector"
     ),
 );
+const ConnectorDetails = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/Connectors/components/ConnectorDetails/ConnectorDetails"
+    ),
+);
 const Destination = lazy(
   () => import("@/components/dashboard/components/Destination/Destination"),
 );
@@ -79,6 +85,10 @@ export const router = createBrowserRouter([
           {
             path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.ADD}`,
             element: <NewConnector />,
+          },
+          {
+            path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/:connectionId`,
+            element: <ConnectorDetails />,
           },
           /** End Connectors Routes */
           /** Start Destination Routes */

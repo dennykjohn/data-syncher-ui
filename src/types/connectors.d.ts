@@ -1,4 +1,5 @@
 export interface ConnectorTableItem {
+  connection_id: number;
   connector_name: string;
   source_name: string;
   destination_name: string;

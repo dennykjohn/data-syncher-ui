@@ -72,7 +72,7 @@ const Connectors = () => {
           updateCurrentPage={updateCurrentPage}
           isLoading={isLoading}
           onRowClick={(row) =>
-            navigate(`${ClientRoutes.CONNECTORS.EDIT}/${row.source_name}`)
+            navigate(`${ClientRoutes.CONNECTORS.EDIT}/${row.connection_id}`)
           }
         />
       </Flex>
