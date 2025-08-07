@@ -28,6 +28,7 @@ const ConnectorTabs = () => {
     if (selectedTab && connectionId) {
       const newPath = `/dashboard/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${selectedTab.route}`;
 
+      // Mark navigation as non-urgent
       startTransition(() => {
         navigate(newPath);
       });
