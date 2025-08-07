@@ -1,4 +1,4 @@
-type ConnectorStatus = "A" | "P" | "B";
+export type ConnectorStatus = "A" | "P" | "B";
 
 export interface ConnectorTableItem {
   connection_id: number;

@@ -7,14 +7,17 @@ import { useNavigate } from "react-router";
 import ClientRoutes from "@/constants/client-routes";
 import { useFetchConnectorsListByPage } from "@/queryOptions/connector/useFetchConnectorsListByPage";
 import Table, { type Column } from "@/shared/Table";
-import { type ConnectorTableItem } from "@/types/connectors";
+import {
+  type ConnectorStatus,
+  type ConnectorTableItem,
+} from "@/types/connectors";
 
 import { getDestinationImage, getSourceImage } from "../../utils/getImage";
 import PageHeader from "../../wrapper/PageHeader";
 import TableFilter from "../../wrapper/TableFilter";
 import NoConnections from "./components/NoConnections";
 
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: ConnectorStatus) => {
   switch (status) {
     case "A":
       return "green";
