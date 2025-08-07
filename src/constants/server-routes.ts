@@ -21,6 +21,7 @@ const ServerRoutes = {
   connector: {
     listConnectorsByPage: ({ page, size }: { page: number; size: number }) =>
       `home?page=${page}&size=${size}`,
+    fetchConnectorById: (id: string) => `connection/${id}`,
   },
 } as const;
 

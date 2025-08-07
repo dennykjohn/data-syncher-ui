@@ -13,6 +13,10 @@ const ClientRoutes = {
     ROOT: "connectors",
     ADD: "add",
     EDIT: "edit",
+    OVERVIEW: "overview",
+    SCHEMA: "schema",
+    USAGE: "usage",
+    SETTINGS: "settings",
   },
   DESTINATION: {
     ROOT: "destinations",

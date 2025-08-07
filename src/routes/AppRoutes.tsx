@@ -20,6 +20,30 @@ const ConnectorDetails = lazy(
       "@/components/dashboard/components/Connectors/components/ConnectorDetails/ConnectorDetails"
     ),
 );
+const ConnectorOverview = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Overview"
+    ),
+);
+const ConnectorSchema = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Schema"
+    ),
+);
+const ConnectorUsage = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Usage"
+    ),
+);
+const ConnectorSettings = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Settings"
+    ),
+);
 const Destination = lazy(
   () => import("@/components/dashboard/components/Destination/Destination"),
 );
@@ -89,6 +113,30 @@ export const router = createBrowserRouter([
           {
             path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/:connectionId`,
             element: <ConnectorDetails />,
+            children: [
+              {
+                index: true,
+                element: (
+                  <Navigate to={ClientRoutes.CONNECTORS.OVERVIEW} replace />
+                ),
+              },
+              {
+                path: ClientRoutes.CONNECTORS.OVERVIEW,
+                element: <ConnectorOverview />,
+              },
+              {
+                path: ClientRoutes.CONNECTORS.SCHEMA,
+                element: <ConnectorSchema />,
+              },
+              {
+                path: ClientRoutes.CONNECTORS.USAGE,
+                element: <ConnectorUsage />,
+              },
+              {
+                path: ClientRoutes.CONNECTORS.SETTINGS,
+                element: <ConnectorSettings />,
+              },
+            ],
           },
           /** End Connectors Routes */
           /** Start Destination Routes */

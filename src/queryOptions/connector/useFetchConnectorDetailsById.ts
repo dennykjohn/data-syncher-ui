@@ -1,0 +1,20 @@
+import ServerRoutes from "@/constants/server-routes";
+import AxiosInstance from "@/lib/axios/api-client";
+import { type Connector } from "@/types/connectors";
+
+import { useQuery } from "@tanstack/react-query";
+
+const fetchConnectorById = async (id: string): Promise<Connector> => {
+  const { data } = await AxiosInstance.get<Connector>(
+    ServerRoutes.connector.fetchConnectorById(id),
+  );
+  return data;
+};
+
+export const useFetchConnectorById = (id: string) => {
+  return useQuery({
+    queryKey: ["Connector", id],
+    queryFn: () => fetchConnectorById(id),
+    enabled: !!id,
+  });
+};
