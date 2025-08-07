@@ -43,9 +43,7 @@ const columns: Column<ConnectorTableItem>[] = [
           boxSize="24px"
           objectFit="contain"
         />
-        <Text fontSize="sm" color="gray.700">
-          {source_name}
-        </Text>
+        <Text fontSize="sm">{source_name}</Text>
       </HStack>
     ),
   },
@@ -60,9 +58,7 @@ const columns: Column<ConnectorTableItem>[] = [
           boxSize="24px"
           objectFit="contain"
         />
-        <Text fontSize="sm" color="gray.700">
-          {destination_name}
-        </Text>
+        <Text fontSize="sm">{destination_name}</Text>
       </HStack>
     ),
   },

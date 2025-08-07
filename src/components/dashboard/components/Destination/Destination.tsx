@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Badge, Flex } from "@chakra-ui/react";
+import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 
 import { format } from "date-fns";
 import { useNavigate } from "react-router";
@@ -10,12 +10,27 @@ import { useFetchDestinationListByPage } from "@/queryOptions/destination/useFet
 import Table, { type Column } from "@/shared/Table";
 import { type DestinationTableItem } from "@/types/destination";
 
+import { getDestinationImage } from "../../utils/getImage";
 import PageHeader from "../../wrapper/PageHeader";
 import TableFilter from "../../wrapper/TableFilter";
 
 const columns: Column<DestinationTableItem>[] = [
   { header: "Name", accessor: "name" },
-  { header: "Destination", accessor: "dst" },
+  {
+    header: "Destination",
+    accessor: "dst",
+    render: (_, { dst }) => (
+      <HStack gap={1} align="center">
+        <Image
+          src={getDestinationImage(dst)}
+          alt={dst}
+          boxSize="24px"
+          objectFit="contain"
+        />
+        <Text fontSize="sm">{dst}</Text>
+      </HStack>
+    ),
+  },
   {
     header: "Created At",
     accessor: "created_at",
@@ -61,6 +76,7 @@ const Destination = () => {
     <Flex flexDirection="column" height="100%" gap={8}>
       <PageHeader
         breadcrumbs={[{ label: "Destinations", route: "" }]}
+        title="Destinations"
         buttonLabel="Add Destination"
         onCreateClick={() => navigate(ClientRoutes.DESTINATION.ADD)}
       />
