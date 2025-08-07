@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Badge, Flex } from "@chakra-ui/react";
+import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 
 import { useNavigate } from "react-router";
 
@@ -9,16 +9,59 @@ import { useFetchConnectorsListByPage } from "@/queryOptions/connector/useFetchC
 import Table, { type Column } from "@/shared/Table";
 import { type ConnectorTableItem } from "@/types/connectors";
 
+import { getDestinationImage, getSourceImage } from "../../utils/getImage";
 import PageHeader from "../../wrapper/PageHeader";
 import TableFilter from "../../wrapper/TableFilter";
 import NoConnections from "./components/NoConnections";
 
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "A":
+      return "green";
+    case "P":
+      return "yellow";
+    case "B":
+      return "red";
+    default:
+      return "gray";
+  }
+};
+
 const columns: Column<ConnectorTableItem>[] = [
   { header: "Name", accessor: "connector_name" },
-  { header: "Source", accessor: "source_name" },
+  {
+    header: "Source",
+    accessor: "source_name",
+    render: (_, { source_name }) => (
+      <HStack gap={1} align="center">
+        <Image
+          src={getSourceImage(source_name)}
+          alt={source_name}
+          boxSize="24px"
+          objectFit="contain"
+        />
+        <Text fontSize="sm" color="gray.700">
+          {source_name}
+        </Text>
+      </HStack>
+    ),
+  },
   {
     header: "Destination",
     accessor: "destination_name",
+    render: (_, { destination_name }) => (
+      <HStack gap={1} align="center">
+        <Image
+          src={getDestinationImage(destination_name)}
+          alt={destination_name}
+          boxSize="24px"
+          objectFit="contain"
+        />
+        <Text fontSize="sm" color="gray.700">
+          {destination_name}
+        </Text>
+      </HStack>
+    ),
   },
   {
     header: "Last sync",
@@ -28,8 +71,19 @@ const columns: Column<ConnectorTableItem>[] = [
     header: "Status",
     accessor: "status",
     render: (_, { status }) => (
-      <Badge colorPalette={status ? "green" : "red"} variant="solid" size="sm">
-        {status ? "Active" : "Paused"}
+      <Badge colorPalette={getStatusColor(status)} variant="solid" size="sm">
+        {(() => {
+          switch (status) {
+            case "A":
+              return "Active";
+            case "P":
+              return "Paused";
+            case "B":
+              return "Broken";
+            default:
+              return "Unknown";
+          }
+        })()}
       </Badge>
     ),
   },
