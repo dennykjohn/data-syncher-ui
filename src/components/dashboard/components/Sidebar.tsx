@@ -20,6 +20,7 @@ import { useLocation, useNavigate } from "react-router";
 import CustomerIcon from "@/assets/images/customer-icon.svg";
 import Logo from "@/assets/images/logo.svg";
 import ClientRoutes from "@/constants/client-routes";
+import useAuth from "@/context/Auth/useAuth";
 
 const Sidebar = ({
   sidebarWidth,
@@ -36,6 +37,9 @@ const Sidebar = ({
   const sidebarDisplay = isDrawer ? "block" : breakpointDisplay;
   const isActive = (path: string, exact = false) =>
     exact ? location.pathname === path : location.pathname.includes(path);
+  const {
+    authState: { user },
+  } = useAuth();
 
   const NavLinks = [
     {
@@ -114,7 +118,7 @@ const Sidebar = ({
           />
           <Box>
             <Text fontSize="xl" fontWeight="semibold">
-              Edvanta
+              {user?.company?.cmp_name}
             </Text>
           </Box>
         </Flex>
