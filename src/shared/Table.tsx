@@ -7,11 +7,12 @@ import {
   Flex,
   IconButton,
   Pagination,
-  Spinner,
   Stack,
 } from "@chakra-ui/react";
 
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
+
+import LoadingSpinner from "@/components/shared/Spinner";
 
 type RenderFunction<T> = (_value: T[keyof T], _row: T) => React.ReactNode;
 
@@ -71,6 +72,7 @@ const Table = <T,>({
           variant="outline"
           striped
           colorPalette="gray"
+          position="relative"
         >
           {isLoading && (
             <Box
@@ -85,7 +87,7 @@ const Table = <T,>({
               backgroundColor="rgba(255, 255, 255, 0.8)"
               zIndex="1"
             >
-              <Spinner size="xl" />
+              <LoadingSpinner />
             </Box>
           )}
           <ChakraTable.Header h={12} bg="white">
