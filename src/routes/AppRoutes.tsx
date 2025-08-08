@@ -65,6 +65,10 @@ const Plans = lazy(
 const UserSettings = lazy(
   () => import("@/components/dashboard/components/UserSettings/UserSettings"),
 );
+const AccountSettings = lazy(
+  () =>
+    import("@/components/dashboard/components/AccountSettings/AccountSettings"),
+);
 
 // Layouts
 const AuthLayout = lazy(() => import("@/layouts/AuthLayout"));
@@ -159,6 +163,10 @@ export const router = createBrowserRouter([
           /** End Destination Routes */
           { path: ClientRoutes.PLANS, element: <Plans /> },
           { path: ClientRoutes.USER_SETTINGS.ROOT, element: <UserSettings /> },
+          {
+            path: ClientRoutes.ACCOUNT_SETTINGS.ROOT,
+            element: <AccountSettings />,
+          },
           { path: "settings", element: <SettingsPage /> },
         ],
       },

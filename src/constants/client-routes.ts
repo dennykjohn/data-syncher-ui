@@ -28,5 +28,8 @@ const ClientRoutes = {
   USER_SETTINGS: {
     ROOT: "user",
   },
+  ACCOUNT_SETTINGS: {
+    ROOT: "account",
+  },
 } as const;
 export default ClientRoutes;

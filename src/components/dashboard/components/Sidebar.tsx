@@ -8,7 +8,12 @@ import {
 } from "@chakra-ui/react";
 
 import { FaUsers } from "react-icons/fa6";
-import { MdCategory, MdOutlineArrowRightAlt, MdWrapText } from "react-icons/md";
+import {
+  MdCategory,
+  MdOutlineArrowRightAlt,
+  MdOutlineSettings,
+  MdWrapText,
+} from "react-icons/md";
 
 import { useLocation, useNavigate } from "react-router";
 
@@ -49,6 +54,11 @@ const Sidebar = ({
       path: ClientRoutes.USER_SETTINGS.ROOT,
     },
     {
+      label: "Account Settings",
+      icon: <MdOutlineSettings size={24} />,
+      path: ClientRoutes.ACCOUNT_SETTINGS.ROOT,
+    },
+    {
       label: "Plans",
       icon: <MdCategory size={24} />,
       path: ClientRoutes.PLANS,
@@ -81,6 +91,7 @@ const Sidebar = ({
           transition="transform 0.2s"
           _hover={{ transform: "scale(1.05)" }}
           style={{ fill: "white" }}
+          onClick={() => navigate(ClientRoutes.CONNECTORS.ROOT)}
         />
         <Text fontSize="2xl" fontWeight="semibold">
           Datasyncher
