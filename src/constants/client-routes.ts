@@ -25,5 +25,8 @@ const ClientRoutes = {
     CONFIGURE: "configure",
   },
   PLANS: "plans",
+  USER_SETTINGS: {
+    ROOT: "user",
+  },
 } as const;
 export default ClientRoutes;

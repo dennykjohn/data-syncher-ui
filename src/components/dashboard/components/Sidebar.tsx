@@ -7,6 +7,7 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 
+import { FaUsers } from "react-icons/fa6";
 import { MdCategory, MdOutlineArrowRightAlt, MdWrapText } from "react-icons/md";
 
 import { useLocation, useNavigate } from "react-router";
@@ -26,9 +27,8 @@ const Sidebar = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const sidebarDisplay = isDrawer
-    ? "block"
-    : useBreakpointValue({ base: "none", md: "block" });
+  const breakpointDisplay = useBreakpointValue({ base: "none", md: "block" });
+  const sidebarDisplay = isDrawer ? "block" : breakpointDisplay;
   const isActive = (path: string, exact = false) =>
     exact ? location.pathname === path : location.pathname.includes(path);
 
@@ -42,6 +42,11 @@ const Sidebar = ({
       label: "Destination",
       icon: <MdWrapText size={24} />,
       path: ClientRoutes.DESTINATION.ROOT,
+    },
+    {
+      label: "User Settings",
+      icon: <FaUsers size={24} />,
+      path: ClientRoutes.USER_SETTINGS.ROOT,
     },
     {
       label: "Plans",
