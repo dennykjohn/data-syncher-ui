@@ -83,7 +83,7 @@ const Sidebar = ({
       overflowY="auto"
       zIndex="1000"
       color="white"
-      transition={"width 0.3s ease-in-out"}
+      //transition={"width 0.2s ease-in-out"}
     >
       <Flex justifyContent="flex-start" alignItems="center" gap={2} p={2}>
         <Image
