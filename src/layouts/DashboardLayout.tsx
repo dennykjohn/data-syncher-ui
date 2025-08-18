@@ -5,11 +5,11 @@ import { Grid, GridItem } from "@chakra-ui/react";
 import { Outlet } from "react-router";
 
 import Header from "@/components/dashboard/components/Header";
-import Sidebar from "@/components/dashboard/components/Sidebar";
+import Sidebar from "@/components/dashboard/components/Sidebar/Sidebar";
 
 export default function Layout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const sidebarWidth = isSidebarCollapsed ? "0" : "240px";
+  const sidebarWidth = isSidebarCollapsed ? "0" : "250px";
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
   return (

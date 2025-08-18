@@ -15,7 +15,7 @@ import { RxHamburgerMenu } from "react-icons/rx";
 
 import useAuth from "@/context/Auth/useAuth";
 
-import SidebarMobile from "./SidebarMobile";
+import SidebarMobile from "./Sidebar/SidebarMobile";
 
 const Header = ({
   sidebarWidth,

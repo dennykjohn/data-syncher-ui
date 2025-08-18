@@ -8,12 +8,7 @@ import {
 } from "@chakra-ui/react";
 
 import { FaUsers } from "react-icons/fa6";
-import {
-  MdCategory,
-  MdOutlineArrowRightAlt,
-  MdOutlineSettings,
-  MdWrapText,
-} from "react-icons/md";
+import { MdCategory, MdOutlineArrowRightAlt, MdWrapText } from "react-icons/md";
 
 import { useLocation, useNavigate } from "react-router";
 
@@ -21,6 +16,9 @@ import CustomerIcon from "@/assets/images/customer-icon.svg";
 import Logo from "@/assets/images/logo.svg";
 import ClientRoutes from "@/constants/client-routes";
 import useAuth from "@/context/Auth/useAuth";
+
+import SidebarAccordion from "./Accordion";
+import MenuItem from "./MenuItem";
 
 const Sidebar = ({
   sidebarWidth,
@@ -46,26 +44,25 @@ const Sidebar = ({
       label: "Connectors",
       icon: <MdOutlineArrowRightAlt size={24} />,
       path: ClientRoutes.CONNECTORS.ROOT,
+      isAccordion: false,
     },
     {
       label: "Destination",
       icon: <MdWrapText size={24} />,
       path: ClientRoutes.DESTINATION.ROOT,
+      isAccordion: false,
     },
     {
       label: "User Settings",
       icon: <FaUsers size={24} />,
       path: ClientRoutes.USER_SETTINGS.ROOT,
-    },
-    {
-      label: "Account Settings",
-      icon: <MdOutlineSettings size={24} />,
-      path: ClientRoutes.ACCOUNT_SETTINGS.ROOT,
+      isAccordion: true,
     },
     {
       label: "Plans",
       icon: <MdCategory size={24} />,
       path: ClientRoutes.PLANS,
+      isAccordion: false,
     },
   ];
 
@@ -124,32 +121,30 @@ const Sidebar = ({
         </Flex>
       </Flex>
       <Flex flexDirection={"column"} gap={2}>
-        {NavLinks.map(({ label, icon, path }) => {
+        {NavLinks.map((props) => {
+          const { label, icon, path, isAccordion } = props;
           const active = isActive(path);
 
+          if (isAccordion) {
+            return (
+              <SidebarAccordion
+                active={active}
+                isActive={isActive}
+                onMenuItemClick={onMenuItemClick}
+              />
+            );
+          }
+
           return (
-            <Flex
+            <MenuItem
               key={label}
-              alignItems="center"
-              paddingBlock={2}
-              paddingInline={3}
-              cursor={"pointer"}
-              gap={2}
-              onClick={() => {
-                navigate(path);
-                onMenuItemClick?.();
-              }}
-              color={active ? "brand.accentOrange" : "white"}
-              _hover={{
-                bgColor: "gray.600",
-                color: active ? "brand.accentOrange" : "white",
-              }}
-              transition="background-color 0.2s, color 0.2s"
-            >
-              {icon}
-              {isActive(path)}
-              <Text fontSize="lg">{label}</Text>
-            </Flex>
+              label={label}
+              icon={icon}
+              isActive={isActive}
+              path={path}
+              active={active}
+              onMenuItemClick={onMenuItemClick}
+            />
           );
         })}
       </Flex>
