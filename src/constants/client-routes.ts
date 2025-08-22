@@ -26,7 +26,9 @@ const ClientRoutes = {
   },
   PLANS: "plans",
   USER_SETTINGS: {
-    ROOT: "user",
+    ROOT: "user-settings",
+    USERS: "users",
+    PROFILE: "profile",
   },
   ACCOUNT_SETTINGS: {
     ROOT: "account",

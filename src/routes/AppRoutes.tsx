@@ -62,8 +62,12 @@ const DestinationForm = lazy(
 const Plans = lazy(
   () => import("@/components/dashboard/components/Plans/Plans"),
 );
-const UserSettings = lazy(
-  () => import("@/components/dashboard/components/UserSettings/UserSettings"),
+const Profile = lazy(
+  () =>
+    import("@/components/dashboard/components/UserSettings/Profile/Profile"),
+);
+const Users = lazy(
+  () => import("@/components/dashboard/components/UserSettings/Users/Users"),
 );
 const AccountSettings = lazy(
   () =>
@@ -78,7 +82,6 @@ const WebsiteLayout = lazy(() => import("@/layouts/WebsiteLayout"));
 // Pages
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
-const SettingsPage = lazy(() => import("@/pages/dashboard/SettingsPage"));
 const HomePage = lazy(() => import("@/pages/website/HomePage"));
 
 export const router = createBrowserRouter([
@@ -162,12 +165,20 @@ export const router = createBrowserRouter([
           },
           /** End Destination Routes */
           { path: ClientRoutes.PLANS, element: <Plans /> },
-          { path: ClientRoutes.USER_SETTINGS.ROOT, element: <UserSettings /> },
+          /** Start User Settings Routes */
+          {
+            path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
+            element: <Users />,
+          },
+          {
+            path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.PROFILE}`,
+            element: <Profile />,
+          },
+          /** End User Settings Routes */
           {
             path: ClientRoutes.ACCOUNT_SETTINGS.ROOT,
             element: <AccountSettings />,
           },
-          { path: "settings", element: <SettingsPage /> },
         ],
       },
     ],

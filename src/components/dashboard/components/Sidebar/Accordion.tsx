@@ -8,7 +8,6 @@ import ClientRoutes from "@/constants/client-routes";
 import MenuItem from "./MenuItem";
 
 const SidebarAccordion = ({
-  active,
   isActive,
   onMenuItemClick,
 }: {
@@ -30,18 +29,21 @@ const SidebarAccordion = ({
             </Flex>
             <Accordion.ItemIndicator />
           </Accordion.ItemTrigger>
-          <Accordion.ItemContent>
+          <Accordion.ItemContent ml={6}>
             <Accordion.ItemBody>
-              {links.map(({ label, path }) => (
-                <MenuItem
-                  key={label}
-                  label={label}
-                  path={path}
-                  isActive={isActive}
-                  onMenuItemClick={onMenuItemClick}
-                  active={active}
-                />
-              ))}
+              {links.map(({ label, path }) => {
+                const active = isActive(path);
+                return (
+                  <MenuItem
+                    key={label}
+                    label={label}
+                    path={path}
+                    isActive={isActive}
+                    onMenuItemClick={onMenuItemClick}
+                    active={active}
+                  />
+                );
+              })}
             </Accordion.ItemBody>
           </Accordion.ItemContent>
         </Accordion.Item>
@@ -57,7 +59,16 @@ const items = [
     value: "a",
     title: "User Settings",
     icon: <FaUsers size={24} />,
-    links: [{ label: "Profile", path: ClientRoutes.USER_SETTINGS.ROOT }],
+    links: [
+      {
+        label: "Profile",
+        path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.PROFILE}`,
+      },
+      {
+        label: "Users",
+        path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
+      },
+    ],
   },
   {
     value: "b",
