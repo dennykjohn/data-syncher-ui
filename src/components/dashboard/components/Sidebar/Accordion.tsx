@@ -56,7 +56,7 @@ export default SidebarAccordion;
 
 const items = [
   {
-    value: "a",
+    value: "userSettings",
     title: "User Settings",
     icon: <FaUsers size={24} />,
     links: [
@@ -71,7 +71,7 @@ const items = [
     ],
   },
   {
-    value: "b",
+    value: "accountSettings",
     title: "Account Settings",
     icon: <MdOutlineSettings size={24} />,
     links: [{ label: "Billing", path: ClientRoutes.ACCOUNT_SETTINGS.ROOT }],

@@ -23,6 +23,11 @@ const ServerRoutes = {
       `home?page=${page}&size=${size}`,
     fetchConnectorById: (id: string) => `connection/${id}`,
   },
+  user: {
+    listUsersByPage: ({ page, size }: { page: number; size: number }) =>
+      `users?page=${page}&size=${size}`,
+    fetchUserById: (id: string) => `users/detail/${id}`,
+  },
 } as const;
 
 export default ServerRoutes;

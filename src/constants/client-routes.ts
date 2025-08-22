@@ -28,6 +28,7 @@ const ClientRoutes = {
   USER_SETTINGS: {
     ROOT: "user-settings",
     USERS: "users",
+    USER_EDIT: "edit",
     PROFILE: "profile",
   },
   ACCOUNT_SETTINGS: {
