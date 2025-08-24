@@ -2,7 +2,7 @@ import { Grid, useBreakpointValue } from "@chakra-ui/react";
 
 import { Outlet } from "react-router";
 
-import Banner from "@/components/auth/Login/components/Banner";
+import Banner from "@/components/auth/Banner";
 import Navbar from "@/components/auth/Navbar";
 import AuthContainer from "@/components/ui/AuthContainer";
 

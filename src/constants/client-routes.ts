@@ -6,6 +6,7 @@ const ClientRoutes = {
   AUTH: "/auth",
   LOGIN: "login",
   REGISTER: "register",
+  FORGOT_PASSWORD: "forgot-password",
 
   // Dashboard
   DASHBOARD: "/dashboard",

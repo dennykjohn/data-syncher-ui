@@ -4,61 +4,23 @@ import { Navigate, createBrowserRouter } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
 
+import {
+  ConnectorDetails,
+  ConnectorOverview,
+  ConnectorSchema,
+  ConnectorSettings,
+  ConnectorUsage,
+  Connectors,
+  NewConnector,
+} from "./ConnectorRoutes";
+import {
+  Destination,
+  DestinationForm,
+  NewDestination,
+} from "./DestinationRoutes";
+
 const ProtectedRoute = lazy(() => import("@/components/auth/ProtectedRoute"));
-const Connectors = lazy(
-  () => import("@/components/dashboard/components/Connectors/Connectors"),
-);
-const NewConnector = lazy(
-  () =>
-    import(
-      "@/components/dashboard/components/Connectors/components/NewConnector/NewConnector"
-    ),
-);
-const ConnectorDetails = lazy(
-  () =>
-    import(
-      "@/components/dashboard/components/Connectors/components/ConnectorDetails/ConnectorDetails"
-    ),
-);
-const ConnectorOverview = lazy(
-  () =>
-    import(
-      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Overview"
-    ),
-);
-const ConnectorSchema = lazy(
-  () =>
-    import(
-      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Schema"
-    ),
-);
-const ConnectorUsage = lazy(
-  () =>
-    import(
-      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Usage"
-    ),
-);
-const ConnectorSettings = lazy(
-  () =>
-    import(
-      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Settings"
-    ),
-);
-const Destination = lazy(
-  () => import("@/components/dashboard/components/Destination/Destination"),
-);
-const NewDestination = lazy(
-  () =>
-    import(
-      "@/components/dashboard/components/Destination/components/NewDestination/NewDestination"
-    ),
-);
-const DestinationForm = lazy(
-  () =>
-    import(
-      "@/components/dashboard/components/Destination/components/NewDestination/components/DestinationForm"
-    ),
-);
+
 const Plans = lazy(
   () => import("@/components/dashboard/components/Plans/Plans"),
 );
@@ -78,6 +40,9 @@ const UserForm = lazy(
 const AccountSettings = lazy(
   () =>
     import("@/components/dashboard/components/AccountSettings/AccountSettings"),
+);
+const ForgotPassword = lazy(
+  () => import("@/components/auth/ForgotPassword/ForgotPassword"),
 );
 
 // Layouts
@@ -106,6 +71,7 @@ export const router = createBrowserRouter([
       },
       { path: ClientRoutes.LOGIN, element: <LoginPage /> },
       { path: ClientRoutes.REGISTER, element: <RegisterPage /> },
+      { path: ClientRoutes.FORGOT_PASSWORD, element: <ForgotPassword /> },
     ],
   },
   // 🌟 PROTECTED ROUTES

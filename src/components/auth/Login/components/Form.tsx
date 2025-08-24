@@ -130,7 +130,7 @@ export default function Form() {
               <Checkbox.Control />
               <Checkbox.Label>Remember me</Checkbox.Label>
             </Checkbox.Root>
-            <Link to={ClientRoutes.REGISTER}>
+            <Link to={`${ClientRoutes.AUTH}/${ClientRoutes.FORGOT_PASSWORD}`}>
               <Span color="brand.500" fontSize="14px">
                 Forgot password ?
               </Span>
