@@ -1,17 +1,39 @@
-import { Flex } from "@chakra-ui/react";
+import { Flex, Grid, Text } from "@chakra-ui/react";
+
+import PageHeader from "../../wrapper/PageHeader";
+import Card from "./Card";
+import PlanTable from "./Table";
+import { CardData } from "./tableData";
 
 const Plans = () => {
   return (
-    <Flex
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="center"
-      height="100%"
-      width="100%"
-      padding={4}
-    >
-      <h1>Plans Page</h1>
-      <p>This is where you can manage your plans.</p>
+    <Flex flexDirection="column" height="100%" gap={8}>
+      <PageHeader
+        breadcrumbs={[
+          {
+            label: "User Profile",
+            route: "",
+          },
+        ]}
+        title="Plans"
+      />
+      <Flex alignItems="center" flexDirection="column" gap={4}>
+        <Text fontSize="2xl" fontWeight="bold">
+          Pay as per your usage
+        </Text>
+        <Text textAlign="center">
+          DataSyncher offers both pay-as-you-go and contractual pricing options.
+          Contractual pricing provides a 20% reduction in annual charges.
+          Additionally, the higher the data transfer volume, the lower the cost
+          per unit.
+        </Text>
+      </Flex>
+      <Grid gridTemplateColumns="repeat(3, 1fr)" gap={4}>
+        {CardData.map((card) => (
+          <Card key={card.id} {...card} />
+        ))}
+      </Grid>
+      <PlanTable />
     </Flex>
   );
 };

@@ -32,6 +32,7 @@ type TableProps<T> = {
   isLoading?: boolean;
   onRowClick?: (_row: T, _index: number) => void;
   rowCursor?: string;
+  hidePagination?: boolean;
 };
 
 const Table = <T,>({
@@ -42,6 +43,7 @@ const Table = <T,>({
   isLoading = false,
   onRowClick,
   rowCursor = "pointer",
+  hidePagination = false,
 }: TableProps<T>) => {
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -133,34 +135,36 @@ const Table = <T,>({
           </ChakraTable.Body>
         </ChakraTable.Root>
       </ChakraTable.ScrollArea>
-      <Flex justifyContent={"flex-end"} mt={4}>
-        <Pagination.Root
-          count={totalPages}
-          pageSize={5}
-          page={currentPage}
-          onPageChange={(e) => setCurrentPage(e.page)}
-        >
-          <ButtonGroup variant="ghost" size="sm" wrap="wrap">
-            <Pagination.PrevTrigger asChild>
-              <IconButton>
-                <LuChevronLeft /> Previous
-              </IconButton>
-            </Pagination.PrevTrigger>
-            <Pagination.Items
-              render={(page) => (
-                <IconButton variant={{ base: "ghost", _selected: "outline" }}>
-                  {page.value}
+      {!hidePagination && (
+        <Flex justifyContent={"flex-end"} mt={4}>
+          <Pagination.Root
+            count={totalPages}
+            pageSize={5}
+            page={currentPage}
+            onPageChange={(e) => setCurrentPage(e.page)}
+          >
+            <ButtonGroup variant="ghost" size="sm" wrap="wrap">
+              <Pagination.PrevTrigger asChild>
+                <IconButton>
+                  <LuChevronLeft /> Previous
                 </IconButton>
-              )}
-            />
-            <Pagination.NextTrigger asChild>
-              <IconButton>
-                Next <LuChevronRight />
-              </IconButton>
-            </Pagination.NextTrigger>
-          </ButtonGroup>
-        </Pagination.Root>
-      </Flex>
+              </Pagination.PrevTrigger>
+              <Pagination.Items
+                render={(page) => (
+                  <IconButton variant={{ base: "ghost", _selected: "outline" }}>
+                    {page.value}
+                  </IconButton>
+                )}
+              />
+              <Pagination.NextTrigger asChild>
+                <IconButton>
+                  Next <LuChevronRight />
+                </IconButton>
+              </Pagination.NextTrigger>
+            </ButtonGroup>
+          </Pagination.Root>
+        </Flex>
+      )}
     </Stack>
   );
 };

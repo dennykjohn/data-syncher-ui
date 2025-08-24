@@ -15,13 +15,14 @@ const ServerRoutes = {
     listDestinationsByPage: ({ page, size }: { page: number; size: number }) =>
       `destinations?page=${page}&size=${size}`,
     fetchDestinationById: (id: string) => `destinations/detail/${id}`,
+    // Below API to be corrected
     fetchAllUserCreatedDestinationList: () => "/destinations/?page=1&size=100",
     updateDestination: (id: string) => `destinations/update/${id}/`,
   },
   connector: {
     listConnectorsByPage: ({ page, size }: { page: number; size: number }) =>
       `home?page=${page}&size=${size}`,
-    fetchConnectorById: (id: string) => `connection/${id}`,
+    fetchConnectorById: (id: string) => `connection/setup/${id}`,
   },
   user: {
     listUsersByPage: ({ page, size }: { page: number; size: number }) =>
