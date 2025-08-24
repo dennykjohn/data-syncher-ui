@@ -79,3 +79,8 @@ export const CardData = [
     ],
   },
 ];
+
+export const Description = `DataSyncher offers both pay-as-you-go and contractual pricing options.
+          Contractual pricing provides a 20% reduction in annual charges.
+          Additionally, the higher the data transfer volume, the lower the cost
+          per unit.`;

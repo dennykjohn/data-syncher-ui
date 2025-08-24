@@ -1,12 +1,23 @@
-import { Flex, Text } from "@chakra-ui/react";
+import { Flex } from "@chakra-ui/react";
+
+import PageHeader from "@/components/dashboard/wrapper/PageHeader";
+
+import ProfileForm from "./Form";
 
 const Profile = () => {
   return (
-    <Flex direction="column" p={4}>
-      <Text fontSize="2xl" mb={4}>
-        User Profile
-      </Text>
-      {/* User profile components go here */}
+    <Flex direction="column" gap={8}>
+      <PageHeader
+        breadcrumbs={[
+          {
+            label: "User Settings",
+            route: "/settings",
+          },
+        ]}
+        title="Profile"
+        subtitle="You can update your personal details here"
+      />
+      <ProfileForm />
     </Flex>
   );
 };
