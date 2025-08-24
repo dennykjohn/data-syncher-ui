@@ -17,7 +17,12 @@ async function fetchUsersListByPage(
   const { data } = await AxiosInstance.get(
     ServerRoutes.user.listUsersByPage({ page, size }),
   );
-  return data;
+  // To be Fixed
+  const newSchema = {
+    ...data,
+    content: data.users,
+  };
+  return newSchema;
 }
 
 export function useFetchUsersListByPage(params: FetchUsersParams) {

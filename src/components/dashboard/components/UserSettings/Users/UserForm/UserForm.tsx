@@ -1,15 +1,32 @@
-import { useReducer } from "react";
+import { useReducer, useState } from "react";
 
 import { Button, Field, Fieldset, Flex, Input, Stack } from "@chakra-ui/react";
 
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import { PasswordInput } from "@/components/ui/password-input";
+import passwordPolicy from "@/config/password-policy";
 
 import { BreadcrumbsForEditUser, BreadcrumbsForNewUser } from "./helper";
 import { type UserState, initialState, userReducer } from "./reducer";
 
 const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
   const [formState, dispatch] = useReducer(userReducer, initialState);
+  const [error, setError] = useState<{
+    message: string;
+    field: keyof UserState;
+  } | null>(null);
+
+  // Validate password policy on blur
+  const handlePasswordBlur = ({ field }: { field: keyof UserState }) => {
+    if (!passwordPolicy.passwordRegex.test(formState[field])) {
+      setError({
+        message: passwordPolicy.passwordPolicyErrorMessage,
+        field: field,
+      });
+    } else if (error?.field === field) {
+      setError(null);
+    }
+  };
 
   const handleInputChange =
     (field: keyof UserState) =>
@@ -19,7 +36,14 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    // Password match check
+    if (formState.password !== formState.confirmPassword) {
+      setError({ message: "Passwords do not match", field: "confirmPassword" });
+      return;
+    }
+    setError(null);
     // Handle form submission
+    console.log("Form submitted:", formState);
   };
 
   return (
@@ -75,7 +99,7 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
               />
             </Field.Root>
             {/** Password */}
-            <Field.Root required>
+            <Field.Root required invalid={error?.field === "password"}>
               <Field.Label>
                 Password <Field.RequiredIndicator />
               </Field.Label>
@@ -83,10 +107,12 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
                 placeholder="Enter your password"
                 value={formState.password}
                 onChange={handleInputChange("password")}
+                onBlur={() => handlePasswordBlur({ field: "password" })}
               />
+              <Field.ErrorText>{error?.message}</Field.ErrorText>
             </Field.Root>
             {/** Confirm Password */}
-            <Field.Root required>
+            <Field.Root required invalid={error?.field === "confirmPassword"}>
               <Field.Label>
                 Confirm Password <Field.RequiredIndicator />
               </Field.Label>
@@ -94,7 +120,9 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
                 placeholder="Confirm your password"
                 value={formState.confirmPassword}
                 onChange={handleInputChange("confirmPassword")}
+                onBlur={() => handlePasswordBlur({ field: "password" })}
               />
+              <Field.ErrorText>{error?.message}</Field.ErrorText>
             </Field.Root>
           </Fieldset.Content>
         </Fieldset.Root>

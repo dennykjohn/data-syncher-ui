@@ -25,6 +25,7 @@ const ServerRoutes = {
     fetchConnectorById: (id: string) => `connection/setup/${id}`,
   },
   user: {
+    createUser: () => "users/",
     listUsersByPage: ({ page, size }: { page: number; size: number }) =>
       `users?page=${page}&size=${size}`,
     fetchUserById: (id: string) => `users/detail/${id}`,
