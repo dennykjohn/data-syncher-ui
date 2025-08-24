@@ -69,6 +69,12 @@ const Profile = lazy(
 const Users = lazy(
   () => import("@/components/dashboard/components/UserSettings/Users/Users"),
 );
+const UserForm = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/UserSettings/Users/UserForm/UserForm"
+    ),
+);
 const AccountSettings = lazy(
   () =>
     import("@/components/dashboard/components/AccountSettings/AccountSettings"),
@@ -169,6 +175,14 @@ export const router = createBrowserRouter([
           {
             path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
             element: <Users />,
+          },
+          {
+            path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}/${ClientRoutes.USER_SETTINGS.USER_ADD}`,
+            element: <UserForm mode="add" />,
+          },
+          {
+            path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}/${ClientRoutes.USER_SETTINGS.USER_EDIT}/:userId`,
+            element: <UserForm mode="edit" />,
           },
           {
             path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.PROFILE}`,

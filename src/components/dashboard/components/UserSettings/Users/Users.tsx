@@ -50,7 +50,7 @@ const Users = () => {
         ]}
         title="Users & permissions"
         buttonLabel="Add Member"
-        onCreateClick={() => navigate(ClientRoutes.CONNECTORS.ADD)}
+        onCreateClick={() => navigate(`${ClientRoutes.USER_SETTINGS.USER_ADD}`)}
       />
       {data?.totalElements === 0 && <NoUsers />}
       <TableFilter />
