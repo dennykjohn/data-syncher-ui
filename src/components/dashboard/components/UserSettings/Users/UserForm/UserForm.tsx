@@ -41,6 +41,13 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
       setError({ message: "Passwords do not match", field: "confirmPassword" });
       return;
     }
+    if (!passwordPolicy.passwordRegex.test(formState.password)) {
+      setError({
+        message: passwordPolicy.passwordPolicyErrorMessage,
+        field: "password",
+      });
+      return;
+    }
     setError(null);
     // Handle form submission
     console.log("Form submitted:", formState);
