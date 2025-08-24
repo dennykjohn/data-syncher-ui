@@ -4,6 +4,7 @@ import { Navigate, createBrowserRouter } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
 
+import { ForgotPassword, LoginPage, RegisterPage } from "./AuthRoutes";
 import {
   ConnectorDetails,
   ConnectorOverview,
@@ -18,6 +19,7 @@ import {
   DestinationForm,
   NewDestination,
 } from "./DestinationRoutes";
+import { AuthLayout, DashboardLayout, WebsiteLayout } from "./LayoutRoutes";
 
 const ProtectedRoute = lazy(() => import("@/components/auth/ProtectedRoute"));
 
@@ -41,18 +43,8 @@ const AccountSettings = lazy(
   () =>
     import("@/components/dashboard/components/AccountSettings/AccountSettings"),
 );
-const ForgotPassword = lazy(
-  () => import("@/components/auth/ForgotPassword/ForgotPassword"),
-);
-
-// Layouts
-const AuthLayout = lazy(() => import("@/layouts/AuthLayout"));
-const DashboardLayout = lazy(() => import("@/layouts/DashboardLayout"));
-const WebsiteLayout = lazy(() => import("@/layouts/WebsiteLayout"));
 
 // Pages
-const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
-const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
 const HomePage = lazy(() => import("@/pages/website/HomePage"));
 
 export const router = createBrowserRouter([
