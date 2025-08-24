@@ -14,7 +14,7 @@ const columns: Column<TableRow>[] = [
 
 const DataTable = () => {
   return (
-    <Flex h="100%">
+    <Flex h="100%" pb={8}>
       <Table
         columns={columns}
         data={TableData}

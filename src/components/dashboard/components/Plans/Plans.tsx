@@ -11,7 +11,7 @@ const Plans = () => {
       <PageHeader
         breadcrumbs={[
           {
-            label: "User Profile",
+            label: "Plans",
             route: "",
           },
         ]}
@@ -21,7 +21,7 @@ const Plans = () => {
         <Text fontSize="2xl" fontWeight="bold">
           Pay as per your usage
         </Text>
-        <Text textAlign="center">
+        <Text textAlign="center" maxWidth={{ base: "90%", md: "60%" }}>
           DataSyncher offers both pay-as-you-go and contractual pricing options.
           Contractual pricing provides a 20% reduction in annual charges.
           Additionally, the higher the data transfer volume, the lower the cost
