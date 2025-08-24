@@ -11,7 +11,7 @@ const Profile = () => {
         breadcrumbs={[
           {
             label: "User Settings",
-            route: "/settings",
+            route: "",
           },
         ]}
         title="Profile"
