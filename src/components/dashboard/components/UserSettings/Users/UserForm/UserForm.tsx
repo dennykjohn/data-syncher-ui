@@ -6,6 +6,7 @@ import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import { PasswordInput } from "@/components/ui/password-input";
 import passwordPolicy from "@/config/password-policy";
 
+import RoleDropdown from "./Role";
 import { BreadcrumbsForEditUser, BreadcrumbsForNewUser } from "./helper";
 import { type UserState, initialState, userReducer } from "./reducer";
 
@@ -51,6 +52,10 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
     setError(null);
     // Handle form submission
     console.log("Form submitted:", formState);
+  };
+
+  const handleRoleChange = (value: string) => {
+    dispatch({ type: "UPDATE_FIELD", field: "role", value });
   };
 
   return (
@@ -131,6 +136,10 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
               />
               <Field.ErrorText>{error?.message}</Field.ErrorText>
             </Field.Root>
+            <RoleDropdown
+              handleRoleChange={handleRoleChange}
+              formState={formState}
+            />
           </Fieldset.Content>
         </Fieldset.Root>
         <Button type="submit" colorPalette="brand" alignSelf="flex-end" mt={2}>
