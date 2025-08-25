@@ -16,3 +16,16 @@ export type User = {
   confirm_password: string;
   role: UserRole;
 };
+
+export type UserProfile = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: UserRole | null;
+  company: {
+    cmp_name: string;
+    start_date: string;
+    end_date: string;
+  };
+  profile_image: string | null;
+};

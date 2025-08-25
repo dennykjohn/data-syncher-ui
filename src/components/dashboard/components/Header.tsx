@@ -13,6 +13,9 @@ import {
 import { GoSidebarCollapse, GoSidebarExpand } from "react-icons/go";
 import { RxHamburgerMenu } from "react-icons/rx";
 
+import { useNavigate } from "react-router";
+
+import ClientRoutes from "@/constants/client-routes";
 import useAuth from "@/context/Auth/useAuth";
 
 import SidebarMobile from "./Sidebar/SidebarMobile";
@@ -32,6 +35,7 @@ const Header = ({
     authState: { user },
   } = useAuth();
   const [showSidebar, setShowSidebar] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <GridItem
@@ -123,11 +127,16 @@ const Header = ({
           <Portal>
             <Menu.Positioner>
               <Menu.Content>
-                <Menu.Item value="account" cursor="pointer">
-                  My Account
-                </Menu.Item>
-                <Menu.Item value="settings" cursor="pointer">
-                  Settings
+                <Menu.Item
+                  value="my-profile"
+                  cursor="pointer"
+                  onClick={() => {
+                    navigate(
+                      `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.PROFILE}`,
+                    );
+                  }}
+                >
+                  My Profile
                 </Menu.Item>
                 <Menu.Item
                   value="logout"

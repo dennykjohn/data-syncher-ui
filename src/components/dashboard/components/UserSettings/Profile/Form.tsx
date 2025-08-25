@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button, Field, Fieldset, Input, Stack } from "@chakra-ui/react";
+
+import { format, parseISO } from "date-fns";
+
+import LoadingSpinner from "@/components/shared/Spinner";
+import useFetchCurrentUserProfile from "@/queryOptions/user/useFetchCurrentUserProfile";
 
 import { type FormState, initialState } from "./helper";
 
@@ -9,6 +14,28 @@ const ProfileForm = () => {
   const [errors, setErrors] = useState<
     Partial<Record<keyof FormState, string>>
   >({});
+  const { data: userProfile, isLoading } = useFetchCurrentUserProfile();
+
+  useEffect(() => {
+    if (userProfile) {
+      const regex = /(\.\d{3})\d+Z$/;
+      const cleanedStartDate = parseISO(
+        userProfile.company?.start_date.replace(regex, "$1Z"),
+      );
+      const cleanedEndDate = parseISO(
+        userProfile.company?.end_date.replace(regex, "$1Z"),
+      );
+      setForm((prev) => ({
+        ...prev,
+        firstName: userProfile.first_name,
+        lastName: userProfile.last_name,
+        email: userProfile.email,
+        cmp_name: userProfile.company?.cmp_name,
+        start_date: format(cleanedStartDate, "yyyy-MM-dd"),
+        end_date: format(cleanedEndDate, "yyyy-MM-dd"),
+      }));
+    }
+  }, [userProfile]);
 
   const onChange = (key: keyof FormState) => (value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -19,6 +46,10 @@ const ProfileForm = () => {
     event.preventDefault();
     // Handle form submission
   };
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <Stack
@@ -73,6 +104,7 @@ const ProfileForm = () => {
           <Field.Root required invalid={!!errors.start_date}>
             <Field.Label>Start date</Field.Label>
             <Input
+              type="date"
               placeholder="Enter your start date"
               value={form.start_date}
               onChange={(ev) => onChange("start_date")(ev.target.value)}
@@ -83,6 +115,7 @@ const ProfileForm = () => {
           <Field.Root required invalid={!!errors.end_date}>
             <Field.Label>End date</Field.Label>
             <Input
+              type="date"
               placeholder="Enter your end date"
               value={form.end_date}
               onChange={(ev) => onChange("end_date")(ev.target.value)}

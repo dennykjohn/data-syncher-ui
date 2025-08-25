@@ -29,6 +29,7 @@ const ServerRoutes = {
     listUsersByPage: ({ page, size }: { page: number; size: number }) =>
       `users?page=${page}&size=${size}`,
     fetchUserById: (id: string) => `users/detail/${id}`,
+    getCurrentUserProfile: () => "user/profile/",
   },
 } as const;
 
