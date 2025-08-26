@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Flex } from "@chakra-ui/react";
 
@@ -25,10 +25,17 @@ const SIZE = 10;
 const Users = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
-  const { data, isLoading } = useFetchUsersListByPage({
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const { data, isLoading, refetch } = useFetchUsersListByPage({
     page: currentPage,
     size: SIZE,
+    searchTerm,
   });
+
+  useEffect(() => {
+    refetch();
+  }, [searchTerm, refetch]);
 
   const totalNumberOfPages = data ? Math.ceil(data.totalElements / SIZE) : 0;
   const updateCurrentPage = (page: number) => {
@@ -53,7 +60,11 @@ const Users = () => {
         onCreateClick={() => navigate(`${ClientRoutes.USER_SETTINGS.USER_ADD}`)}
       />
       {data?.totalElements === 0 && <NoUsers />}
-      <TableFilter />
+      <TableFilter
+        handleSearchInputChange={(e) => {
+          setSearchTerm(e.target.value);
+        }}
+      />
       <Flex h="100%">
         <Table<UserTableItem>
           data={data?.content || []}
@@ -61,10 +72,8 @@ const Users = () => {
           totalNumberOfPages={totalNumberOfPages}
           updateCurrentPage={updateCurrentPage}
           isLoading={isLoading}
-          onRowClick={(row) =>
-            navigate(
-              `${ClientRoutes.USER_SETTINGS}/${ClientRoutes.USER_SETTINGS.USERS}${ClientRoutes.USER_SETTINGS.USER_EDIT}/${row.first_name}`,
-            )
+          onRowClick={({ user_id }) =>
+            navigate(`${ClientRoutes.USER_SETTINGS.USER_EDIT}/${user_id}`)
           }
         />
       </Flex>

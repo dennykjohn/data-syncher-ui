@@ -8,21 +8,22 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 export interface FetchConnectorsParams {
   page: number;
   size: number;
+  searchTerm?: string;
 }
 
 async function fetchConnectorsListByPage(
   params: FetchConnectorsParams,
 ): Promise<PaginationResponse<ConnectorTableItem>> {
-  const { page, size } = params;
+  const { page, size, searchTerm } = params;
   const { data } = await AxiosInstance.get(
-    ServerRoutes.connector.listConnectorsByPage({ page, size }),
+    ServerRoutes.connector.listConnectorsByPage({ page, size, searchTerm }),
   );
   return data;
 }
 
 export function useFetchConnectorsListByPage(params: FetchConnectorsParams) {
   return useQuery<PaginationResponse<ConnectorTableItem>, Error>({
-    queryKey: ["connectors", params.page, params.size],
+    queryKey: ["connectors", params.page, params.size, params.searchTerm],
     queryFn: () => fetchConnectorsListByPage(params),
     placeholderData: keepPreviousData,
   });

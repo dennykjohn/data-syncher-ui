@@ -64,7 +64,7 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
         breadcrumbs={
           mode === "add" ? BreadcrumbsForNewUser : BreadcrumbsForEditUser
         }
-        title={mode === "add" ? `Add member` : `Edit member detail`}
+        title={mode === "add" ? `Add member` : `Edit member`}
       />
       <Stack
         as="form"

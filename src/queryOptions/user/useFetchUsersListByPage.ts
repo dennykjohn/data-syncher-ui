@@ -8,26 +8,22 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 export interface FetchUsersParams {
   page: number;
   size: number;
+  searchTerm?: string;
 }
 
 async function fetchUsersListByPage(
   params: FetchUsersParams,
 ): Promise<PaginationResponse<UserTableItem>> {
-  const { page, size } = params;
+  const { page, size, searchTerm } = params;
   const { data } = await AxiosInstance.get(
-    ServerRoutes.user.listUsersByPage({ page, size }),
+    ServerRoutes.user.listUsersByPage({ page, size, searchTerm }),
   );
-  // To be Fixed
-  const newSchema = {
-    ...data,
-    content: data.users,
-  };
-  return newSchema;
+  return data;
 }
 
 export function useFetchUsersListByPage(params: FetchUsersParams) {
   return useQuery<PaginationResponse<UserTableItem>, Error>({
-    queryKey: ["users", params.page, params.size],
+    queryKey: ["users", params.page, params.size, params.searchTerm],
     queryFn: () => fetchUsersListByPage(params),
     placeholderData: keepPreviousData,
   });

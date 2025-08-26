@@ -1,6 +1,7 @@
 export type UserRole = "Administrator";
 
 export type UserTableItem = {
+  user_id: number;
   first_name: string;
   last_name: string;
   email: string;
@@ -21,11 +22,11 @@ export type UserProfile = {
   first_name: string;
   last_name: string;
   email: string;
-  role: UserRole | null;
+  role: UserRole;
   company: {
     cmp_name: string;
     start_date: string;
     end_date: string;
   };
-  profile_image: string | null;
+  profile_image?: string | null;
 };

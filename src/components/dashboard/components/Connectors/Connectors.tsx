@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 
@@ -92,10 +92,17 @@ const SIZE = 10;
 const Connectors = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
-  const { data, isLoading } = useFetchConnectorsListByPage({
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const { data, isLoading, refetch } = useFetchConnectorsListByPage({
     page: currentPage,
     size: SIZE,
+    searchTerm,
   });
+
+  useEffect(() => {
+    refetch();
+  }, [searchTerm, refetch]);
 
   const totalNumberOfPages = data ? Math.ceil(data.totalElements / SIZE) : 0;
   const updateCurrentPage = (page: number) => {
@@ -116,7 +123,9 @@ const Connectors = () => {
         onCreateClick={() => navigate(ClientRoutes.CONNECTORS.ADD)}
       />
       {data?.totalElements === 0 && <NoConnections />}
-      <TableFilter />
+      <TableFilter
+        handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
+      />
       <Flex h="100%">
         <Table<ConnectorTableItem>
           data={data?.content || []}

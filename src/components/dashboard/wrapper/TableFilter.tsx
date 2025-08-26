@@ -1,3 +1,5 @@
+import { useRef } from "react";
+
 import { Flex, Input, InputGroup } from "@chakra-ui/react";
 
 import { MdSearch } from "react-icons/md";
@@ -13,6 +15,18 @@ const TableFilter = ({
   handleSearchInputChange,
   children,
 }: TableFilterProps) => {
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleDebouncedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!handleSearchInputChange) return;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      handleSearchInputChange(e);
+    }, 400); // 400ms debounce
+  };
+
   return (
     <Flex>
       <Flex>
@@ -20,7 +34,7 @@ const TableFilter = ({
           <Input
             placeholder="Search"
             size="md"
-            onChange={handleSearchInputChange}
+            onChange={handleDebouncedChange}
           />
         </InputGroup>
       </Flex>

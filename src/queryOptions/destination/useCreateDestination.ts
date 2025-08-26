@@ -2,7 +2,7 @@ import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 import { type Destination } from "@/types/destination";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface CreateDestinationResponse {
   message: string;
@@ -19,7 +19,13 @@ const createDestination = async (
 };
 
 export default function useCreateDestination() {
+  const queryClient = useQueryClient();
   return useMutation<CreateDestinationResponse, Error, Destination>({
     mutationFn: createDestination,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["destinations", "allUserCreatedDestinationList"],
+      });
+    },
   });
 }

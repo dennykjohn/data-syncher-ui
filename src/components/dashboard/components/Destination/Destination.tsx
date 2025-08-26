@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 
@@ -62,10 +62,17 @@ const SIZE = 10;
 const Destination = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
-  const { data, isLoading } = useFetchDestinationListByPage({
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const { data, isLoading, refetch } = useFetchDestinationListByPage({
     page: currentPage,
     size: SIZE,
+    searchTerm,
   });
+
+  useEffect(() => {
+    refetch();
+  }, [searchTerm, refetch]);
 
   const totalNumberOfPages = data ? Math.ceil(data.totalElements / SIZE) : 0;
   const updateCurrentPage = (page: number) => {
@@ -80,7 +87,9 @@ const Destination = () => {
         buttonLabel="Add Destination"
         onCreateClick={() => navigate(ClientRoutes.DESTINATION.ADD)}
       />
-      <TableFilter />
+      <TableFilter
+        handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
+      />
       <Flex h="100%">
         <Table<DestinationTableItem>
           data={data?.content || []}

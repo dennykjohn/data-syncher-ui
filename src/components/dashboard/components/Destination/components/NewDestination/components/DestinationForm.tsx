@@ -42,7 +42,6 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   // the form with the existing destination data
   useEffect(() => {
     if (destinationData && mode === "edit") {
-      console.log("Editing destination data:", destinationData);
       dispatch({
         type: "SET_FORM",
         payload: {
@@ -67,7 +66,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
         });
       }
     }
-  }, [destinationData, mode]);
+  }, [destinationData, destinationName, mode]);
 
   useEffect(() => {
     // If the user navigates directly to this form
@@ -159,6 +158,10 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       },
     });
   };
+
+  if (isFetchDestinationByIdPending) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
