@@ -6,8 +6,10 @@ import { useParams } from "react-router";
 
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import { PasswordInput } from "@/components/ui/password-input";
+import { toaster } from "@/components/ui/toaster";
 import passwordPolicy from "@/config/password-policy";
 import useFetchUserById from "@/queryOptions/user/useFetchUserById";
+import { useUpdateUser } from "@/queryOptions/user/useUpdateUserById";
 
 import RoleDropdown from "./Role";
 import { BreadcrumbsForEditUser, BreadcrumbsForNewUser } from "./helper";
@@ -21,6 +23,8 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
   } | null>(null);
   const params = useParams<{ userId: string }>();
   const { data: userData } = useFetchUserById(Number(params.userId));
+
+  const { mutate: updateUser } = useUpdateUser({ id: Number(params.userId) });
 
   useEffect(() => {
     // Fetch user data if in edit mode
@@ -61,11 +65,14 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     // Password match check
-    if (formState.password !== formState.confirmPassword) {
+    if (mode === "add" && formState.password !== formState.confirmPassword) {
       setError({ message: "Passwords do not match", field: "confirmPassword" });
       return;
     }
-    if (!passwordPolicy.passwordRegex.test(formState.password)) {
+    if (
+      mode === "add" &&
+      !passwordPolicy.passwordRegex.test(formState.password)
+    ) {
       setError({
         message: passwordPolicy.passwordPolicyErrorMessage,
         field: "password",
@@ -73,8 +80,33 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
       return;
     }
     setError(null);
-    // Handle form submission
-    //console.log("Form submitted:", formState);
+    // Handle Edit User submission
+    if (mode === "edit") {
+      updateUser(
+        {
+          first_name: formState.firstName,
+          last_name: formState.lastName,
+          company_email: formState.companyEmail,
+          password: formState.password,
+          confirm_password: formState.confirmPassword,
+          role: formState.role,
+        },
+        {
+          onSuccess: () => {
+            toaster.success({
+              title: "Member updated successfully",
+            });
+          },
+          onError: (error) => {
+            toaster.error({
+              title: "Error updating member",
+              description: error.message,
+            });
+          },
+        },
+      );
+      console.log("Form submitted:", formState);
+    }
   };
 
   const handleRoleChange = (value: string) => {
@@ -134,31 +166,35 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
               />
             </Field.Root>
             {/** Password */}
-            <Field.Root required invalid={error?.field === "password"}>
-              <Field.Label>
-                Password <Field.RequiredIndicator />
-              </Field.Label>
-              <PasswordInput
-                placeholder="Enter your password"
-                value={formState.password}
-                onChange={handleInputChange("password")}
-                onBlur={() => handlePasswordBlur({ field: "password" })}
-              />
-              <Field.ErrorText>{error?.message}</Field.ErrorText>
-            </Field.Root>
+            {mode === "add" && (
+              <Field.Root required invalid={error?.field === "password"}>
+                <Field.Label>
+                  Password <Field.RequiredIndicator />
+                </Field.Label>
+                <PasswordInput
+                  placeholder="Enter your password"
+                  value={formState.password}
+                  onChange={handleInputChange("password")}
+                  onBlur={() => handlePasswordBlur({ field: "password" })}
+                />
+                <Field.ErrorText>{error?.message}</Field.ErrorText>
+              </Field.Root>
+            )}
             {/** Confirm Password */}
-            <Field.Root required invalid={error?.field === "confirmPassword"}>
-              <Field.Label>
-                Confirm Password <Field.RequiredIndicator />
-              </Field.Label>
-              <PasswordInput
-                placeholder="Confirm your password"
-                value={formState.confirmPassword}
-                onChange={handleInputChange("confirmPassword")}
-                onBlur={() => handlePasswordBlur({ field: "password" })}
-              />
-              <Field.ErrorText>{error?.message}</Field.ErrorText>
-            </Field.Root>
+            {mode === "add" && (
+              <Field.Root required invalid={error?.field === "confirmPassword"}>
+                <Field.Label>
+                  Confirm Password <Field.RequiredIndicator />
+                </Field.Label>
+                <PasswordInput
+                  placeholder="Confirm your password"
+                  value={formState.confirmPassword}
+                  onChange={handleInputChange("confirmPassword")}
+                  onBlur={() => handlePasswordBlur({ field: "password" })}
+                />
+                <Field.ErrorText>{error?.message}</Field.ErrorText>
+              </Field.Root>
+            )}
             <RoleDropdown
               handleRoleChange={handleRoleChange}
               formState={formState}

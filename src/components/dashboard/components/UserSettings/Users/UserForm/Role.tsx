@@ -1,5 +1,7 @@
 import { Portal, Select, createListCollection } from "@chakra-ui/react";
 
+import useFetchUserRoleList from "@/queryOptions/user/useFetchUserRoleList";
+
 import { type UserState } from "./reducer";
 
 const RoleDropdown = ({
@@ -9,6 +11,17 @@ const RoleDropdown = ({
   handleRoleChange: (_value: string) => void;
   formState: UserState;
 }) => {
+  const { data: userRoles } = useFetchUserRoleList();
+  const roleItems =
+    userRoles?.map((role) => ({
+      label: role.role_name,
+      value: role.role_name,
+    })) ?? [];
+
+  const frameworks = createListCollection({
+    items: roleItems,
+  });
+
   return (
     <Select.Root
       collection={frameworks}
@@ -45,7 +58,3 @@ const RoleDropdown = ({
 };
 
 export default RoleDropdown;
-
-const frameworks = createListCollection({
-  items: [{ label: "Administrator", value: "Administrator" }],
-});
