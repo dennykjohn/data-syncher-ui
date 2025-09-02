@@ -1,5 +1,6 @@
 export type UserState = {
   companyEmail: string;
+  companyName: string;
   firstName: string;
   lastName: string;
   password: string;
@@ -9,6 +10,7 @@ export type UserState = {
 
 export const initialState: UserState = {
   companyEmail: "",
+  companyName: "",
   firstName: "",
   lastName: "",
   password: "",

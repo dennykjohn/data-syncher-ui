@@ -16,7 +16,7 @@ import NoUsers from "./NoUsers";
 const columns: Column<UserTableItem>[] = [
   { header: "First Name", accessor: "first_name" },
   { header: "Last Name", accessor: "last_name" },
-  { header: "Email", accessor: "email" },
+  { header: "Role", accessor: "role" },
   { header: "Company Email", accessor: "company_email" },
   { header: "Company Name", accessor: "company_name" },
 ];

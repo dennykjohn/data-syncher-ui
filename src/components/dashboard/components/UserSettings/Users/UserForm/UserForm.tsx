@@ -1,10 +1,13 @@
-import { useReducer, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 
 import { Button, Field, Fieldset, Flex, Input, Stack } from "@chakra-ui/react";
+
+import { useParams } from "react-router";
 
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import { PasswordInput } from "@/components/ui/password-input";
 import passwordPolicy from "@/config/password-policy";
+import useFetchUserById from "@/queryOptions/user/useFetchUserById";
 
 import RoleDropdown from "./Role";
 import { BreadcrumbsForEditUser, BreadcrumbsForNewUser } from "./helper";
@@ -16,6 +19,26 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
     message: string;
     field: keyof UserState;
   } | null>(null);
+  const params = useParams<{ userId: string }>();
+  const { data: userData } = useFetchUserById(Number(params.userId));
+
+  useEffect(() => {
+    // Fetch user data if in edit mode
+    if (userData && mode === "edit") {
+      dispatch({
+        type: "SET_USER",
+        payload: {
+          firstName: userData.first_name,
+          lastName: userData.last_name,
+          companyEmail: userData.company_email,
+          companyName: userData.company_name,
+          role: userData.role,
+          password: "",
+          confirmPassword: "",
+        },
+      });
+    }
+  }, [mode, userData]);
 
   // Validate password policy on blur
   const handlePasswordBlur = ({ field }: { field: keyof UserState }) => {
@@ -51,7 +74,7 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
     }
     setError(null);
     // Handle form submission
-    console.log("Form submitted:", formState);
+    //console.log("Form submitted:", formState);
   };
 
   const handleRoleChange = (value: string) => {

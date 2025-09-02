@@ -17,10 +17,12 @@ const fetchUserById = async (id: number): Promise<User> => {
   return data;
 };
 
-export const useFetchUserById = (id: number): UseQueryResult<User> => {
+const useFetchUserById = (id: number): UseQueryResult<User> => {
   return useQuery({
     queryKey: ["user", id],
     queryFn: () => fetchUserById(id),
     enabled: Boolean(id),
   });
 };
+
+export default useFetchUserById;
