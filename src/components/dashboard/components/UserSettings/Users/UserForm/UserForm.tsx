@@ -2,12 +2,15 @@ import { useEffect, useReducer, useState } from "react";
 
 import { Button, Field, Fieldset, Flex, Input, Stack } from "@chakra-ui/react";
 
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
+import LoadingSpinner from "@/components/shared/Spinner";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import passwordPolicy from "@/config/password-policy";
+import ClientRoutes from "@/constants/client-routes";
+import useCreateUser from "@/queryOptions/user/useCreateMember";
 import useFetchUserById from "@/queryOptions/user/useFetchUserById";
 import { useUpdateUser } from "@/queryOptions/user/useUpdateUserById";
 
@@ -16,15 +19,21 @@ import { BreadcrumbsForEditUser, BreadcrumbsForNewUser } from "./helper";
 import { type UserState, initialState, userReducer } from "./reducer";
 
 const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
+  const navigate = useNavigate();
   const [formState, dispatch] = useReducer(userReducer, initialState);
   const [error, setError] = useState<{
     message: string;
     field: keyof UserState;
   } | null>(null);
   const params = useParams<{ userId: string }>();
-  const { data: userData } = useFetchUserById(Number(params.userId));
-
-  const { mutate: updateUser } = useUpdateUser({ id: Number(params.userId) });
+  const { data: userData, isLoading: isFetchUserLoading } = useFetchUserById(
+    Number(params.userId),
+  );
+  const { mutate: updateUser, isPending: isUpdateUserPending } = useUpdateUser({
+    id: Number(params.userId),
+  });
+  const { mutate: createUser, isPending: isCreateUserPending } =
+    useCreateUser();
 
   useEffect(() => {
     // Fetch user data if in edit mode
@@ -79,7 +88,40 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
       });
       return;
     }
+    if (!formState.role) {
+      setError({ message: "Role is required", field: "role" });
+      return;
+    }
     setError(null);
+    // Handle Add User submission
+    if (mode === "add") {
+      createUser(
+        {
+          first_name: formState.firstName,
+          last_name: formState.lastName,
+          company_email: formState.companyEmail,
+          password: formState.password,
+          confirm_password: formState.confirmPassword,
+          role: formState.role,
+        },
+        {
+          onSuccess: () => {
+            toaster.success({
+              title: "Member created successfully",
+            });
+            navigate(
+              `${ClientRoutes.DASHBOARD}/${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
+            );
+          },
+          onError: (error) => {
+            toaster.error({
+              title: error?.message || "Error creating member",
+              description: error.message,
+            });
+          },
+        },
+      );
+    }
     // Handle Edit User submission
     if (mode === "edit") {
       updateUser(
@@ -96,6 +138,9 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
             toaster.success({
               title: "Member updated successfully",
             });
+            navigate(
+              `${ClientRoutes.DASHBOARD}/${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
+            );
           },
           onError: (error) => {
             toaster.error({
@@ -105,13 +150,16 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
           },
         },
       );
-      console.log("Form submitted:", formState);
     }
   };
 
   const handleRoleChange = (value: string) => {
     dispatch({ type: "UPDATE_FIELD", field: "role", value });
   };
+
+  if (isFetchUserLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <Flex flexDirection="column" gap={8}>
@@ -198,10 +246,17 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
             <RoleDropdown
               handleRoleChange={handleRoleChange}
               formState={formState}
+              error={error}
             />
           </Fieldset.Content>
         </Fieldset.Root>
-        <Button type="submit" colorPalette="brand" alignSelf="flex-end" mt={2}>
+        <Button
+          type="submit"
+          colorPalette="brand"
+          alignSelf="flex-end"
+          mt={2}
+          loading={isCreateUserPending || isUpdateUserPending}
+        >
           {mode === "add" ? "Add Member" : "Update"}
         </Button>
       </Stack>

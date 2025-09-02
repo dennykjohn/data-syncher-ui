@@ -3,7 +3,7 @@ export type UserRole = {
   role_name: string;
 };
 
-export type UpdateUserPayload = {
+export type CreateUserPayload = {
   first_name: string;
   last_name: string;
   company_email: string;
@@ -11,6 +11,8 @@ export type UpdateUserPayload = {
   confirm_password: string;
   role: string;
 };
+
+export type UpdateUserPayload = CreateUserPayload;
 
 export type UserTableItem = {
   user_id: number;

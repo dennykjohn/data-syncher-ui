@@ -1,6 +1,6 @@
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
-import { type User } from "@/types/user";
+import { type CreateUserPayload } from "@/types/user";
 
 import { useMutation } from "@tanstack/react-query";
 
@@ -8,7 +8,9 @@ interface CreateUserResponse {
   message: string;
 }
 
-const createUser = async (payload: User): Promise<CreateUserResponse> => {
+const createUser = async (
+  payload: CreateUserPayload,
+): Promise<CreateUserResponse> => {
   const { data } = await AxiosInstance.post<CreateUserResponse>(
     ServerRoutes.user.createUser(),
     payload,
@@ -17,7 +19,7 @@ const createUser = async (payload: User): Promise<CreateUserResponse> => {
 };
 
 export default function useCreateUser() {
-  return useMutation<CreateUserResponse, Error, User>({
+  return useMutation<CreateUserResponse, Error, CreateUserPayload>({
     mutationFn: createUser,
   });
 }
