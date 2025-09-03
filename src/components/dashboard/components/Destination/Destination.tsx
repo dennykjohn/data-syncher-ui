@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { useNavigate } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
+import { VIEW_CONFIG } from "@/constants/view-config";
 import { useFetchDestinationListByPage } from "@/queryOptions/destination/useFetchDestinationListByPage";
 import Table, { type Column } from "@/shared/Table";
 import { type DestinationTableItem } from "@/types/destination";
@@ -80,7 +81,7 @@ const Destination = () => {
   };
 
   return (
-    <Flex flexDirection="column" height="100%" gap={8}>
+    <Flex flexDirection="column" height="100%" gap={VIEW_CONFIG.pageGap}>
       <PageHeader
         breadcrumbs={[{ label: "Destinations", route: "" }]}
         title="Destinations"

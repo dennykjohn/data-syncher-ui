@@ -18,11 +18,11 @@ const ConnectorDetails = () => {
   );
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <LoadingSpinner />;
   }
 
   if (!connector) {
-    return <div>Connector not found</div>;
+    return <Flex>Connector not found</Flex>;
   }
 
   return (

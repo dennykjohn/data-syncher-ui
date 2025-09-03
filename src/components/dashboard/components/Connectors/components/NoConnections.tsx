@@ -1,5 +1,7 @@
 import { Flex, Image, Text } from "@chakra-ui/react";
 
+import { VIEW_CONFIG } from "@/constants/view-config";
+
 import NoConnectionsIllustration from "../assets/empty.svg";
 
 const NoConnections = () => {
@@ -8,8 +10,8 @@ const NoConnections = () => {
       h="100%"
       justifyContent="center"
       alignItems="center"
-      flexDirection={"column"}
-      gap={8}
+      flexDirection="column"
+      gap={VIEW_CONFIG.pageGap}
     >
       <Image src={NoConnectionsIllustration} alt="No connections" />
       <Flex textAlign={"center"} flexDirection={"column"} gap={2}>

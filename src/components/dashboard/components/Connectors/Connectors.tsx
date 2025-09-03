@@ -5,6 +5,7 @@ import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 import { useNavigate } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
+import { VIEW_CONFIG } from "@/constants/view-config";
 import { useFetchConnectorsListByPage } from "@/queryOptions/connector/useFetchConnectorsListByPage";
 import Table, { type Column } from "@/shared/Table";
 import {
@@ -110,7 +111,7 @@ const Connectors = () => {
   };
 
   return (
-    <Flex flexDirection="column" gap={8} h="100%">
+    <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
       <PageHeader
         breadcrumbs={[
           {
