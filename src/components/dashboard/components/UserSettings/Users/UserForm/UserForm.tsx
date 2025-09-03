@@ -10,6 +10,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import passwordPolicy from "@/config/password-policy";
 import ClientRoutes from "@/constants/client-routes";
+import { VIEW_CONFIG } from "@/constants/view-config";
 import useCreateUser from "@/queryOptions/user/useCreateMember";
 import useFetchUserById from "@/queryOptions/user/useFetchUserById";
 import { useUpdateUser } from "@/queryOptions/user/useUpdateUserById";
@@ -162,7 +163,7 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
   }
 
   return (
-    <Flex flexDirection="column" gap={8}>
+    <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap}>
       <PageHeader
         breadcrumbs={
           mode === "add" ? BreadcrumbsForNewUser : BreadcrumbsForEditUser

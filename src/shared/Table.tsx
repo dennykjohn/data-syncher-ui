@@ -91,7 +91,6 @@ const Table = <T,>({
           variant="outline"
           striped
           colorPalette="gray"
-          position="relative"
         >
           <ChakraTable.Header h={12} bg="white">
             <ChakraTable.Row>

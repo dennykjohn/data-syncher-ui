@@ -7,6 +7,7 @@ import { useNavigate } from "react-router";
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import TableFilter from "@/components/dashboard/wrapper/TableFilter";
 import ClientRoutes from "@/constants/client-routes";
+import { VIEW_CONFIG } from "@/constants/view-config";
 import { useFetchUsersListByPage } from "@/queryOptions/user/useFetchUsersListByPage";
 import Table, { type Column } from "@/shared/Table";
 import { type UserTableItem } from "@/types/user";
@@ -43,7 +44,7 @@ const Users = () => {
   };
 
   return (
-    <Flex flexDirection="column" gap={8} h="100%">
+    <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
       <PageHeader
         breadcrumbs={[
           {

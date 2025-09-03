@@ -1,12 +1,13 @@
 import { Flex } from "@chakra-ui/react";
 
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
+import { VIEW_CONFIG } from "@/constants/view-config";
 
 import ProfileForm from "./Form";
 
 const Profile = () => {
   return (
-    <Flex direction="column" gap={8}>
+    <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
       <PageHeader
         breadcrumbs={[
           {

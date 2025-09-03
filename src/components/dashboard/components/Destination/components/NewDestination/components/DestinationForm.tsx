@@ -1,6 +1,6 @@
 import { useEffect, useReducer } from "react";
 
-import { Button, Field, Fieldset, Flex, Input } from "@chakra-ui/react";
+import { Button, Field, Fieldset, Flex, Input, Stack } from "@chakra-ui/react";
 
 import { MdKeyboardBackspace, MdOutlineSave } from "react-icons/md";
 
@@ -159,7 +159,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
     });
   };
 
-  if (isFetchDestinationByIdPending) {
+  if (mode === "edit" && isFetchDestinationByIdPending) {
     return <LoadingSpinner />;
   }
 
@@ -179,7 +179,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
         subtitle="Follow guide to setup your destination"
       />
 
-      <form onSubmit={handleFormSubmit}>
+      <Stack as="form" onSubmit={handleFormSubmit}>
         <Fieldset.Root size="lg" maxW="lg" position={"relative"}>
           {mode === "edit" && isFetchDestinationByIdPending && (
             <LoadingSpinner
@@ -278,7 +278,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
             </Button>
           </Flex>
         </Fieldset.Root>
-      </form>
+      </Stack>
     </Flex>
   );
 };
