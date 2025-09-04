@@ -4,6 +4,7 @@ const ServerRoutes = {
     profile: () => "/user/profile/",
     companyDetails: ({ companyId }: { companyId: string }) =>
       `/company-details/${companyId}`,
+    passwordReset: () => "password-reset/",
   },
   source: {
     listMasterSources: () => "source/all/",

@@ -16,7 +16,6 @@ import {
 
 import { Link, useNavigate } from "react-router";
 
-import GoogleLogo from "@/assets/google-logo.svg";
 import Logo from "@/assets/logo.svg";
 import { PasswordInput } from "@/components/ui/password-input";
 import ClientRoutes from "@/constants/client-routes";
@@ -146,16 +145,6 @@ export default function Form() {
             Submit
           </Button>
           <Separator />
-          <Button variant="outline" alignSelf="center" w="70%">
-            <Image
-              src={GoogleLogo}
-              alt="Google Logo"
-              width="24px"
-              height="24px"
-              mr={2}
-            />
-            Sign in with Google
-          </Button>
         </Fieldset.Root>
       </Flex>
     </form>
