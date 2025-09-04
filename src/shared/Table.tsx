@@ -125,9 +125,11 @@ const Table = <T,>({
                       md: "table-cell",
                     }}
                   >
-                    {column.render
-                      ? column.render(item[column.accessor as keyof T], item)
-                      : String(item[column.accessor as keyof T])}
+                    <Box truncate maxW="200px">
+                      {column.render
+                        ? column.render(item[column.accessor as keyof T], item)
+                        : String(item[column.accessor as keyof T])}
+                    </Box>
                   </ChakraTable.Cell>
                 ))}
               </ChakraTable.Row>
