@@ -9,11 +9,13 @@ const SourceCard = ({
   image,
   handleClick,
   isLoading = false,
+  isSelected,
 }: {
   title: string;
   image: string;
   handleClick: () => void;
   isLoading?: boolean;
+  isSelected?: boolean;
 }) => {
   return (
     <Flex
@@ -31,6 +33,7 @@ const SourceCard = ({
       onClick={isLoading ? undefined : handleClick}
       position="relative"
       opacity={isLoading ? 0.6 : 1}
+      border={isSelected ? "2px solid" : "none"}
     >
       <Image src={image} alt={title} h="86px" />
       <Text fontSize="md" wordBreak={"break-word"} textAlign="center">

@@ -1,7 +1,8 @@
 import { useState } from "react";
 
-import { Flex, Input, InputGroup } from "@chakra-ui/react";
+import { Button, Flex, Input, InputGroup } from "@chakra-ui/react";
 
+import { IoMdArrowBack } from "react-icons/io";
 import { LuSearch } from "react-icons/lu";
 
 import { getSourceImage } from "@/components/dashboard/utils/getImage";
@@ -15,13 +16,15 @@ import useFetchMasterSourceList from "@/queryOptions/useFetchMasterSourceList";
 const Source = ({
   selectedSource,
   onSourceSelect,
+  handlePrevious,
 }: {
-  selectedSource: string;
-  onSourceSelect: (source: string) => void;
+  selectedSource: number | null;
+  onSourceSelect: (_source: number) => void;
+  handlePrevious: () => void;
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { data: sourceList, isLoading } = useFetchMasterSourceList();
-  console.log("Sources:", sourceList);
+  console.log("Sources:", sourceList, selectedSource);
 
   const filteredSourceList = sourceList?.filter(({ name }) =>
     name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -58,18 +61,24 @@ const Source = ({
         {!isLoading && (
           <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
             {filteredSourceList?.map(({ name, src_id }) => {
+              const isSelected = selectedSource === src_id;
               return (
                 <SourceCard
                   key={src_id}
                   title={name}
                   image={getSourceImage(name)}
-                  handleClick={() => onSourceSelect(src_id.toString())}
+                  handleClick={() => onSourceSelect(src_id)}
+                  isSelected={isSelected}
                 />
               );
             })}
           </Flex>
         )}
       </Flex>
+      <Button alignSelf="center" variant="outline" onClick={handlePrevious}>
+        <IoMdArrowBack />
+        Back
+      </Button>
     </Flex>
   );
 };

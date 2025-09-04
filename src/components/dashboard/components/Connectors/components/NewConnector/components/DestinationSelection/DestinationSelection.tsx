@@ -16,13 +16,13 @@ const Destination = ({
   selectedDestination,
   onDestinationSelect,
 }: {
-  selectedDestination: string;
-  onDestinationSelect: (destination: string) => void;
+  selectedDestination: number | null;
+  onDestinationSelect: (_destination: number) => void;
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { data: destinationList, isLoading } =
     useFetchAllUserCreatedDestinationList();
-  console.log("Destinations:", destinationList);
+  console.log("Destinations:", destinationList, selectedDestination);
 
   const filteredDestinations = destinationList?.filter(({ name }) =>
     name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -59,14 +59,14 @@ const Destination = ({
         {!isLoading && (
           <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
             {filteredDestinations?.map(({ dst, name, dst_config_id }) => {
+              const isSelected = dst_config_id === selectedDestination;
               return (
                 <SourceCard
                   key={dst_config_id}
                   title={name}
                   image={getDestinationImage(dst)}
-                  handleClick={() =>
-                    onDestinationSelect(dst_config_id.toString())
-                  }
+                  isSelected={isSelected}
+                  handleClick={() => onDestinationSelect(dst_config_id)}
                 />
               );
             })}

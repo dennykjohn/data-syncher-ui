@@ -1,19 +1,31 @@
+import { type ConnectorFormState } from "./type";
+
 const STEPS = 3;
 
 export type ConnectorFormAction =
   | { type: "NEXT_STEP" }
   | { type: "PREVIOUS_STEP" }
   | { type: "SET_STEP"; step: number }
-  | { type: "SET_SOURCE"; source: any }
-  | { type: "SET_DESTINATION"; destination: any }
-  | { type: "UPDATE_CONFIGURATION"; field: string; value: any }
-  | { type: "SET_CONFIGURATION"; configuration: Record<string, any> };
+  | { type: "SET_SOURCE"; source: number }
+  | { type: "SET_DESTINATION"; destination: number }
+  | { type: "UPDATE_CONFIGURATION"; field: string; value: string }
+  | { type: "SET_CONFIGURATION"; configuration: Record<string, string> };
 
 export const initialState: ConnectorFormState = {
   currentStep: 1,
   source: null,
   destination: null,
-  configuration: {},
+  configuration: {
+    destinationName: "",
+    destinationSchema: "",
+    connectionName: "",
+    accountName: "",
+    databaseName: "",
+    warehouseName: "",
+    schema: "",
+    username: "",
+    password: "",
+  },
 };
 
 export const connectorFormReducer = (
