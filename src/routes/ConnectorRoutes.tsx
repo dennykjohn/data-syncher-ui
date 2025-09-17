@@ -18,13 +18,13 @@ export const ConnectorDetails = lazy(
 export const ConnectorOverview = lazy(
   () =>
     import(
-      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Overview"
+      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Overview/Overview"
     ),
 );
 export const ConnectorSchema = lazy(
   () =>
     import(
-      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Schema"
+      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Settings/Schema"
     ),
 );
 export const ConnectorUsage = lazy(
@@ -36,6 +36,6 @@ export const ConnectorUsage = lazy(
 export const ConnectorSettings = lazy(
   () =>
     import(
-      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Settings"
+      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Settings/Settings"
     ),
 );
