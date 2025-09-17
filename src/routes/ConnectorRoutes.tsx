@@ -30,7 +30,7 @@ export const ConnectorSchema = lazy(
 export const ConnectorUsage = lazy(
   () =>
     import(
-      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Usage"
+      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Usage/Usage"
     ),
 );
 export const ConnectorSettings = lazy(

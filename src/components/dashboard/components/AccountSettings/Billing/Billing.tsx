@@ -73,7 +73,10 @@ const Billing = () => {
       />
       <Chart.Root maxH="sm" chart={chart}>
         <BarChart data={chart.data}>
-          <CartesianGrid stroke={chart.color("border")} vertical={false} />
+          <CartesianGrid
+            stroke={chart.color("border.muted")}
+            vertical={false}
+          />
           <XAxis
             axisLine={false}
             tickLine={false}

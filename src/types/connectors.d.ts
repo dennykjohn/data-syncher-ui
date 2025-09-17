@@ -27,3 +27,16 @@ export interface Connector {
   destination_name: string;
   company_name: string;
 }
+
+export interface ConnectorSyncStats {
+  daily_labels: string[];
+  new_rec_values_daily: number[];
+  mod_rec_values_daily: number[];
+  del_rec_values_daily: number[];
+  monthly_labels: string[];
+  new_rec_values_monthly: number[];
+  mod_rec_values_monthly: number[];
+  del_rec_values_monthly: number[];
+  readable_time_frequency: string;
+  cmp_id: number;
+}

@@ -1,6 +1,5 @@
 import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
 
-import { IoIosSettings } from "react-icons/io";
 import { LuDot } from "react-icons/lu";
 import { MdOutlinePauseCircleOutline } from "react-icons/md";
 
@@ -33,7 +32,6 @@ const Header = ({ connector }: { connector: Connector }) => {
           <Box>
             <Flex gap={2} alignItems="center">
               <Text>{source_name}</Text>
-              <IoIosSettings size={20} />
             </Flex>
             <Text fontSize="sm">Source</Text>
           </Box>
@@ -53,7 +51,6 @@ const Header = ({ connector }: { connector: Connector }) => {
           <Box>
             <Flex gap={2} alignItems="center">
               <Text>{destination_name}</Text>
-              <IoIosSettings size={20} />
             </Flex>
             <Flex flexWrap={"wrap"} gap={1} alignItems="center">
               <Text fontSize="sm">Destination</Text>
