@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 
 const fetchCurrentMonthBilling = async () => {
   const { data } = await AxiosInstance.get(
-    ServerRoutes.billing.listCurrentMonthBilling(),
+    ServerRoutes.billing.listCurrentMonthBilling({ companyId: "1" }),
   );
   return data;
 };

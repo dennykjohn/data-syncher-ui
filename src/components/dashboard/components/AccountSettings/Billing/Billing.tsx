@@ -8,6 +8,7 @@ import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useAuth from "@/context/Auth/useAuth";
+import useFetchAnnualBilling from "@/queryOptions/billing/useFetchAnnualBilling";
 import useFetchCurrentMonthBilling from "@/queryOptions/billing/useFetchCurrentMonthBilling";
 
 import BillingSelector from "./BillingSelector";
@@ -24,20 +25,37 @@ const Billing = () => {
     "current-month",
   ]);
 
-  const { data, isLoading } = useFetchCurrentMonthBilling();
+  const { data: MonthlyBillingData, isLoading } = useFetchCurrentMonthBilling();
   // REMOVE THE MATH.RANDOM ONCE THE API IS PROVIDING REAL DATA
-  const billingData = data?.current_month_labels.map((label, index) => ({
-    day: label,
-    usage:
-      data.current_month_billing[index] + (Math.floor(Math.random() * 6) + 1),
-  }));
+  const billingDataMonthly = MonthlyBillingData?.current_month_labels.map(
+    (label, index) => ({
+      day: label,
+      usage:
+        MonthlyBillingData.current_month_billing[index] +
+        (Math.floor(Math.random() * 6) + 1),
+    }),
+  );
+
+  const { data: AnnualBillingData, isLoading: isLoadingAnnual } =
+    useFetchAnnualBilling();
+  const billingDataAnnual = AnnualBillingData?.monthly_labels.map(
+    (label, index) => ({
+      day: label,
+      usage:
+        AnnualBillingData.monthly_total_rec_values[index] +
+        (Math.floor(Math.random() * 6) + 1),
+    }),
+  );
 
   const chart = useChart({
-    data: billingData || [],
+    data:
+      selectedRange[0] === "current-month"
+        ? billingDataMonthly || []
+        : billingDataAnnual || [],
     series: [{ name: "usage", color: "purple.300" }],
   });
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading || isLoadingAnnual) return <LoadingSpinner />;
   return (
     <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
       <PageHeader

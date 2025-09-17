@@ -4,3 +4,11 @@ export interface MonthlyBillingData {
   current_month_billing: number[];
   billing_period: string;
 }
+
+export interface YearlyBillingData {
+  years: number[];
+  selected_year: number;
+  monthly_labels: string[];
+  monthly_total_rec_values: number[];
+  cmp_id: string;
+}

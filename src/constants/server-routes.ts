@@ -59,7 +59,10 @@ const ServerRoutes = {
     getCurrentUserProfile: () => "user/profile/",
   },
   billing: {
-    listCurrentMonthBilling: () => "billing/summary/1",
+    listCurrentMonthBilling: ({ companyId }: { companyId: string }) =>
+      `billing/summary/${companyId}`,
+    listAnnualBilling: ({ companyId }: { companyId: string }) =>
+      `billing/${companyId}/annual-usage/`,
   },
 } as const;
 
