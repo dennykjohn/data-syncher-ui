@@ -41,7 +41,7 @@ const UserForm = lazy(
 );
 const AccountSettings = lazy(
   () =>
-    import("@/components/dashboard/components/AccountSettings/AccountSettings"),
+    import("@/components/dashboard/components/AccountSettings/Billing/Billing"),
 );
 
 // Pages

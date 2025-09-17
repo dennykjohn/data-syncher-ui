@@ -58,6 +58,9 @@ const ServerRoutes = {
     updateUser: (id: number) => `users/${id}`,
     getCurrentUserProfile: () => "user/profile/",
   },
+  billing: {
+    listCurrentMonthBilling: () => "billing/summary/1",
+  },
 } as const;
 
 export default ServerRoutes;
