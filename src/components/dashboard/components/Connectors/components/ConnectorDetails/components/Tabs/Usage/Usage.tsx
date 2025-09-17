@@ -38,7 +38,6 @@ const Usage = () => {
     "Deleted Records":
       data.del_rec_values_daily[index] + (Math.floor(Math.random() * 6) + 1),
   }));
-  console.log("Daily usage data: ", dailyUsageData);
 
   const monthlyUsageData = data?.monthly_labels.map((label, index) => ({
     month: format(new Date(label), "MMM yyyy"),
