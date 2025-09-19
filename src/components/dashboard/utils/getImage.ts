@@ -35,7 +35,7 @@ export const getSourceImage = (name: string, fallback?: string): string => {
   // Normalize the name: lowercase, remove spaces, underscores, special chars
   const normalizedName = name
     .toLowerCase()
-    .replace(/[\s\-\.]/g, "")
+    .replace(/[\s\-.]/g, "")
     .replace(/365/g, "365"); // Keep numbers
 
   // Try exact match first
@@ -88,6 +88,6 @@ export const getAllImages = () => {
  * Check if an image exists for a given name
  */
 export const hasImage = (name: string): boolean => {
-  const normalizedName = name.toLowerCase().replace(/[\s\-\.]/g, "");
+  const normalizedName = name.toLowerCase().replace(/[\s\-.]/g, "");
   return normalizedName in IMAGE_MAP;
 };
