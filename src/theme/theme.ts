@@ -42,7 +42,6 @@ const theme = defineConfig({
           800: { value: "#2c0f5e" },
           900: { value: "#190537" },
         },
-        primary: { value: "#4980ff" },
       },
       fonts: {
         heading: { value: "'Plus Jakarta Sans', sans-serif" },

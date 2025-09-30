@@ -46,6 +46,7 @@ const ServerRoutes = {
     fetchConnectorById: (id: string) => `connection/setup/${id}`,
     fetchConnectorUsageById: (id: string) => `connection/${id}/usage/`,
     fetchConnectorSettings: (id: string) => `connection/setup/${id}/`,
+    toggleStatus: (id: number) => `connection/${id}/toggle/`,
   },
   user: {
     createUser: () => "users/",

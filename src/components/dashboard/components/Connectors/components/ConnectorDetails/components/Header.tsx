@@ -8,10 +8,23 @@ import {
   getDestinationImage,
   getSourceImage,
 } from "@/components/dashboard/utils/getImage";
+import { toaster } from "@/components/ui/toaster";
+import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
 
 const Header = ({ connector }: { connector: Connector }) => {
-  const { source_name, destination_name } = connector;
+  const { source_name, destination_name, status, connection_id } = connector;
+
+  const { mutate: toggleConnectionStatus, isPending } =
+    useToggleConnectionStatus({
+      connectorId: connection_id,
+    });
+
+  const onToggleSuccess = () => {
+    toaster.success({
+      title: "Connector status updated",
+    });
+  };
 
   return (
     <Flex flexDirection="column" gap={4}>
@@ -61,20 +74,33 @@ const Header = ({ connector }: { connector: Connector }) => {
         </Flex>
       </Flex>
       <Flex justifyContent="flex-end" gap={2}>
-        <Button colorPalette="green" size="xs" variant="solid">
-          Active
-        </Button>
-        <Button
-          colorPalette="gray"
-          size="xs"
-          variant="outline"
-          onClick={() => {
-            // Handle action
-          }}
-        >
-          <MdOutlinePauseCircleOutline size={20} />
-          Pause
-        </Button>
+        {(status === "P" || status === "B") && (
+          <Button
+            colorPalette="green"
+            size="xs"
+            variant="solid"
+            loading={isPending}
+            onClick={() =>
+              toggleConnectionStatus(undefined, { onSuccess: onToggleSuccess })
+            }
+          >
+            Active
+          </Button>
+        )}
+        {status === "A" && (
+          <Button
+            colorPalette="gray"
+            size="xs"
+            variant="outline"
+            loading={isPending}
+            onClick={() =>
+              toggleConnectionStatus(undefined, { onSuccess: onToggleSuccess })
+            }
+          >
+            <MdOutlinePauseCircleOutline size={20} />
+            Pause
+          </Button>
+        )}
       </Flex>
     </Flex>
   );

@@ -13,7 +13,7 @@ const fetchConnectorById = async (id: string): Promise<Connector> => {
 
 export const useFetchConnectorById = (id: string) => {
   return useQuery({
-    queryKey: ["Connector", id],
+    queryKey: ["connector", id],
     queryFn: () => fetchConnectorById(id),
     enabled: !!id,
   });
