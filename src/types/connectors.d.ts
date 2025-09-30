@@ -40,3 +40,20 @@ export interface ConnectorSyncStats {
   readable_time_frequency: string;
   cmp_id: number;
 }
+
+export type ConnectorSettingsApiResponse = {
+  connection_id: number;
+  time_frequency: string;
+  safety_interval: string;
+  execution_order: string;
+  sync_start_date: string | null;
+  chunk_count: number;
+  status: ConnectorStatus;
+  readable_time_frequency: string;
+  readable_safety_interval: string;
+  dst_min_count: number;
+  dst_max_count: number;
+  source_name: string;
+  destination_name: string;
+  company_name: string;
+};
