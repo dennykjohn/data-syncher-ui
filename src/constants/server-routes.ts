@@ -1,4 +1,8 @@
 const ServerRoutes = {
+  common: {
+    fetchFormSchema: ({ type, source }: { type: string; source: string }) =>
+      `${source}/schema/${type}/`,
+  },
   auth: {
     login: () => "/authentication/",
     profile: () => "/user/profile/",

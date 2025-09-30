@@ -22,13 +22,7 @@ export interface NewDestinationFormState {
 export interface Destination {
   dst: string;
   name: string;
-  config_data: {
-    account: string;
-    database: string;
-    warehouse: string;
-    username: string;
-    password: string;
-  };
+  config_data: Record<string, string>;
 }
 
 export type DestinationTableItem = {
