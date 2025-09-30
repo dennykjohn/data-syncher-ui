@@ -4,6 +4,7 @@ import { Box, Button, Checkbox, Flex, Grid, Text } from "@chakra-ui/react";
 
 import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
+import { MdRefresh } from "react-icons/md";
 
 import { useOutletContext } from "react-router";
 
@@ -34,15 +35,17 @@ const Schema = () => {
 
   return (
     <Flex flexDirection="column" gap={4} pb={8}>
-      <Flex direction="column" gap={2} mb={4}>
+      <Flex direction={{ base: "row", md: "column" }} gap={2} mb={2}>
         <Text fontWeight="semibold">Target Details</Text>
         <Flex justifyContent="space-between" alignItems="center">
           <Text>Target database: AT Denny</Text>
           <Text>Target Schema: AT Denny</Text>
           <Button variant="ghost" colorPalette="red" color="red.500">
+            <MdRefresh />
             Refresh schema
           </Button>
           <Button variant="outline" colorPalette="brand">
+            <MdRefresh />
             Update schema
           </Button>
         </Flex>
@@ -57,6 +60,14 @@ const Schema = () => {
           padding={4}
           bgColor="white"
         >
+          <Flex mb={4} justifyContent="space-between">
+            <Text fontSize="sm" fontWeight="semibold">
+              Table Names
+            </Text>
+            <Text fontSize="sm" fontWeight="semibold">
+              Select
+            </Text>
+          </Flex>
           {unSelectedTables?.map(({ table, table_fields }, index) => {
             const isEven = index % 2 === 0;
             const rowBg = isEven ? "gray.100" : "white";
@@ -117,10 +128,30 @@ const Schema = () => {
           borderWidth={1}
           borderColor="gray.300"
           borderRadius="lg"
-          padding={2}
+          padding={4}
+          bgColor="white"
         >
-          {selectedTables?.map((table) => {
-            return <div key={table.table}>{table.table}</div>;
+          <Flex mb={4}>
+            <Text fontSize="sm" fontWeight="semibold">
+              Selected Tables
+            </Text>
+          </Flex>
+          {selectedTables?.map(({ table }, index) => {
+            const isEven = index % 2 === 0;
+            const rowBg = isEven ? "gray.100" : "white";
+
+            return (
+              <Flex
+                key={table}
+                justifyContent="space-between"
+                backgroundColor={rowBg}
+                alignItems="center"
+                padding={2}
+                borderRadius={4}
+              >
+                <Text>{table}</Text>
+              </Flex>
+            );
           })}
         </Flex>
       </Grid>
