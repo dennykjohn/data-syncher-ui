@@ -19,7 +19,7 @@ export const queryClient = new QueryClient({
     onError: (error: unknown, query) => {
       const err = error as Error;
       toaster.error({
-        title: err.message ?? "Query Error",
+        title: err.message ?? "Could not load content",
         description:
           err.description ?? "Something went wrong while fetching data.",
       });
@@ -30,7 +30,7 @@ export const queryClient = new QueryClient({
     onError: (error: unknown, _variables, _context, mutation) => {
       const err = error as Error;
       toaster.error({
-        title: err.message ?? "Mutation Error",
+        title: err.message ?? "Could not complete action",
         description:
           err.description ?? "Something went wrong while saving changes.",
       });

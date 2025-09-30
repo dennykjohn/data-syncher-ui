@@ -143,12 +143,6 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
               `${ClientRoutes.DASHBOARD}/${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
             );
           },
-          onError: (error) => {
-            toaster.error({
-              title: "Error updating member",
-              description: error.message,
-            });
-          },
         },
       );
     }
