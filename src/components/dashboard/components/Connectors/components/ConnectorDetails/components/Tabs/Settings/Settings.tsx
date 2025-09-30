@@ -2,17 +2,14 @@ import { Button, Flex, Text } from "@chakra-ui/react";
 
 import { MdOutlineEdit } from "react-icons/md";
 
-import { useParams } from "react-router";
+import { useOutletContext } from "react-router";
 
-import useFetchConnectorSettings from "@/queryOptions/connector/useFetchConnectorSettings";
+import { type Connector } from "@/types/connectors";
 
 import Form from "./Form";
 
 const Settings = () => {
-  const { connectionId } = useParams<{ connectionId: string }>();
-  const { data: connectorSettings } = useFetchConnectorSettings(
-    connectionId || "",
-  );
+  const connector = useOutletContext<Connector>();
 
   return (
     <Flex flexDirection="column" gap={4}>
@@ -24,13 +21,13 @@ const Settings = () => {
           <Flex>
             <Text fontSize="sm">Connected by:</Text>
             <Text fontSize="sm" fontWeight="semibold">
-              {connectorSettings?.company_name}
+              {connector?.company_name}
             </Text>
           </Flex>
           <Flex>
             <Text fontSize="sm">Connected on:</Text>
             <Text fontSize="sm" fontWeight="semibold">
-              {connectorSettings?.destination_name}
+              {connector?.destination_name}
             </Text>
           </Flex>
         </Flex>

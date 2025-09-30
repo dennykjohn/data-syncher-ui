@@ -57,3 +57,10 @@ export type ConnectorSettingsApiResponse = {
   destination_name: string;
   company_name: string;
 };
+
+export type ConnectorTable = {
+  table: string;
+  selected: boolean;
+  sequence: null;
+  table_fields: Record<string, string>;
+};

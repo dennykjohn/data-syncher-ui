@@ -30,7 +30,7 @@ const ConnectorDetails = () => {
       <Header connector={connector} />
       <Tabs />
       <Suspense fallback={<LoadingSpinner />}>
-        <Outlet context={{ connector }} />
+        <Outlet context={connector} />
       </Suspense>
     </Flex>
   );

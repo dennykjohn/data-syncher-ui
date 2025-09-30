@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Flex } from "@chakra-ui/react";
 
 import { format } from "date-fns";
-import { useParams } from "react-router";
+import { useOutletContext } from "react-router";
 import {
   Bar,
   BarChart,
@@ -18,16 +18,17 @@ import {
 import LoadingSpinner from "@/components/shared/Spinner";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useFetchConnectorUsageById from "@/queryOptions/connector/useFetchConnectorUsage";
+import { type Connector } from "@/types/connectors";
 
 import UsageSelector from "./UsageSelector";
 import { Chart, useChart } from "@chakra-ui/charts";
 
 const Usage = () => {
-  const { connectionId } = useParams();
+  const context = useOutletContext<Connector>();
   const [selectedRange, setSelectedRange] = useState<string[]>([
     "current-month",
   ]);
-  const { data, isLoading } = useFetchConnectorUsageById(connectionId || "");
+  const { data, isLoading } = useFetchConnectorUsageById(context.connection_id);
 
   const dailyUsageData = data?.daily_labels.map((label, index) => ({
     month: format(new Date(label), "dd"),

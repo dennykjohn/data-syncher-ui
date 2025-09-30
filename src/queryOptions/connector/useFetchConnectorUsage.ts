@@ -4,14 +4,14 @@ import { type ConnectorSyncStats } from "@/types/connectors";
 
 import { useQuery } from "@tanstack/react-query";
 
-const fetchConnectorUsageById = async (id: string) => {
+const fetchConnectorUsageById = async (id: number) => {
   const { data } = await AxiosInstance.get(
     ServerRoutes.connector.fetchConnectorUsageById(id),
   );
   return data;
 };
 
-export default function useFetchConnectorUsageById(id: string) {
+export default function useFetchConnectorUsageById(id: number) {
   return useQuery<ConnectorSyncStats>({
     queryKey: ["ConnectorUsage", id],
     queryFn: () => fetchConnectorUsageById(id),
