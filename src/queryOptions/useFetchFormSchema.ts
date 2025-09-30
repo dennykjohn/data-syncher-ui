@@ -27,5 +27,6 @@ export default function useFetchFormSchema({
   return useQuery<FieldConfig[]>({
     queryKey: ["FormFieldInputs", type, source],
     queryFn: () => fetchMasterSourceList({ type, source }),
+    enabled: !!type && !!source,
   });
 }
