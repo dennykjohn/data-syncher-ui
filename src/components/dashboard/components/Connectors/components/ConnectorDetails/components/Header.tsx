@@ -1,7 +1,8 @@
 import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
 
+import { CiPause1 } from "react-icons/ci";
+import { IoMdCheckmark } from "react-icons/io";
 import { LuDot } from "react-icons/lu";
-import { MdOutlinePauseCircleOutline } from "react-icons/md";
 
 import Arrow from "@/assets/images/arrow-cool-down.svg";
 import {
@@ -76,6 +77,20 @@ const Header = ({ connector }: { connector: Connector }) => {
       <Flex justifyContent="flex-end" gap={2}>
         {(status === "P" || status === "B") && (
           <Button
+            colorPalette="yellow"
+            size="xs"
+            variant="solid"
+            loading={isPending}
+            onClick={() =>
+              toggleConnectionStatus(undefined, { onSuccess: onToggleSuccess })
+            }
+          >
+            <CiPause1 />
+            Paused
+          </Button>
+        )}
+        {status === "A" && (
+          <Button
             colorPalette="green"
             size="xs"
             variant="solid"
@@ -84,21 +99,8 @@ const Header = ({ connector }: { connector: Connector }) => {
               toggleConnectionStatus(undefined, { onSuccess: onToggleSuccess })
             }
           >
+            <IoMdCheckmark />
             Active
-          </Button>
-        )}
-        {status === "A" && (
-          <Button
-            colorPalette="gray"
-            size="xs"
-            variant="outline"
-            loading={isPending}
-            onClick={() =>
-              toggleConnectionStatus(undefined, { onSuccess: onToggleSuccess })
-            }
-          >
-            <MdOutlinePauseCircleOutline size={20} />
-            Pause
           </Button>
         )}
       </Flex>
