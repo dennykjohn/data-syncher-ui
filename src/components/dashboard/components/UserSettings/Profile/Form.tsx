@@ -5,7 +5,10 @@ import { Button, Field, Fieldset, Input, Stack } from "@chakra-ui/react";
 import { format, parseISO } from "date-fns";
 
 import LoadingSpinner from "@/components/shared/Spinner";
+import { toaster } from "@/components/ui/toaster";
 import useFetchCurrentUserProfile from "@/queryOptions/user/useFetchCurrentUserProfile";
+import { useUpdateCurrentUserProfile } from "@/queryOptions/user/useUpdateCurrentUserProfile";
+import { type UpdateCurrentUserPayload } from "@/types/user";
 
 import { type FormState, initialState } from "./helper";
 
@@ -15,6 +18,7 @@ const ProfileForm = () => {
     Partial<Record<keyof FormState, string>>
   >({});
   const { data: userProfile, isLoading } = useFetchCurrentUserProfile();
+  const { mutate: updateProfile, isPending } = useUpdateCurrentUserProfile();
 
   useEffect(() => {
     if (userProfile) {
@@ -44,7 +48,19 @@ const ProfileForm = () => {
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    // Handle form submission
+    const payload: UpdateCurrentUserPayload = {
+      first_name: form.firstName,
+      last_name: form.lastName,
+      ...form,
+    };
+    updateProfile(payload, {
+      onSuccess: () => {
+        toaster.success({
+          title: "Profile updated successfully",
+          description: `Your profile has been updated.`,
+        });
+      },
+    });
   };
 
   if (isLoading) {
@@ -130,6 +146,7 @@ const ProfileForm = () => {
         size="md"
         alignSelf="flex-end"
         mt={2}
+        loading={isLoading || isPending}
       >
         Update profile
       </Button>

@@ -62,6 +62,7 @@ const ServerRoutes = {
     fetchUserById: (id: number) => `users/${id}`,
     updateUser: (id: number) => `users/${id}`,
     getCurrentUserProfile: () => "user/profile/",
+    updateCurrentUserProfile: () => `user/profile/`,
   },
   billing: {
     listCurrentMonthBilling: ({ companyId }: { companyId: string }) =>

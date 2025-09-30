@@ -1,22 +1,21 @@
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
-import { type Destination } from "@/types/destination";
+import { type UpdateCurrentUserPayload, type UserProfile } from "@/types/user";
 
 import { useMutation } from "@tanstack/react-query";
 
-const updateDestination = async (
-  id: string,
-  payload: Destination,
-): Promise<Destination> => {
+const updateCurrentUserProfile = async (
+  payload: UpdateCurrentUserPayload,
+): Promise<UserProfile> => {
   const response = await AxiosInstance.put(
-    ServerRoutes.destination.updateDestination(id),
+    ServerRoutes.user.updateCurrentUserProfile(),
     payload,
   );
   return response.data;
 };
 
-export function useUpdateDestination({ id }: { id: string }) {
-  return useMutation<Destination, Error, Destination>({
-    mutationFn: (payload) => updateDestination(id, payload),
+export function useUpdateCurrentUserProfile() {
+  return useMutation<UserProfile, Error, UpdateCurrentUserPayload>({
+    mutationFn: (payload) => updateCurrentUserProfile(payload),
   });
 }

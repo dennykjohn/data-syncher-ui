@@ -37,3 +37,12 @@ export type UserProfile = {
   };
   profile_image?: string | null;
 };
+
+export type UpdateCurrentUserPayload = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  cmp_name: string;
+  start_date: string;
+  end_date: string;
+};
