@@ -12,8 +12,6 @@ const NewConnector = () => {
 
   const handleNext = () => dispatch({ type: "NEXT_STEP" });
   const handlePrevious = () => dispatch({ type: "PREVIOUS_STEP" });
-  const handleConfigurationChange = (field: string, value: string) =>
-    dispatch({ type: "UPDATE_CONFIGURATION", field, value });
 
   const handleStepClick = (stepId: number) => {
     // Allow navigation to previous steps only
@@ -22,7 +20,7 @@ const NewConnector = () => {
     }
   };
 
-  const handleSourceSelect = (source: number) => {
+  const handleSourceSelect = (source: string) => {
     dispatch({ type: "SET_SOURCE", source });
     handleNext();
   };
@@ -74,7 +72,6 @@ const NewConnector = () => {
         return (
           <ConnectorConfiguration
             state={state}
-            onConfigurationChange={handleConfigurationChange}
             handlePrevious={handlePrevious}
           />
         );

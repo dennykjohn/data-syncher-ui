@@ -18,7 +18,7 @@ const Source = ({
   onSourceSelect,
   handlePrevious,
 }: {
-  selectedSource: number | null;
+  selectedSource: string | null;
   onSourceSelect: (_source: string) => void;
   handlePrevious: () => void;
 }) => {
@@ -61,7 +61,7 @@ const Source = ({
         {!isLoading && (
           <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
             {filteredSourceList?.map(({ name, src_id }) => {
-              const isSelected = selectedSource === src_id;
+              const isSelected = selectedSource === name;
               return (
                 <SourceCard
                   key={src_id}
