@@ -9,12 +9,12 @@ const fetchMasterSourceList = async ({
   source,
 }: {
   type: string;
-  source: string;
+  source: "destinations" | "source";
 }) => {
   const { data } = await AxiosInstance.get(
     ServerRoutes.common.fetchFormSchema({ type, source }),
   );
-  return data.fields;
+  return source === "source" ? data.schema : data.fields;
 };
 
 export default function useFetchFormSchema({
@@ -22,7 +22,7 @@ export default function useFetchFormSchema({
   source,
 }: {
   type: string;
-  source: string;
+  source: "destinations" | "source";
 }) {
   return useQuery<FieldConfig[]>({
     queryKey: ["FormFieldInputs", type, source],

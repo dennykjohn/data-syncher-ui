@@ -1,6 +1,6 @@
 export interface ConnectorFormState {
   currentStep: number;
-  source: number | null;
+  source: string | null;
   destination: number | null;
   configuration: Record<string, string>;
 }

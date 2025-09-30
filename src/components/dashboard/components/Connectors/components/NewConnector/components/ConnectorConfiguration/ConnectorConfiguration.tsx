@@ -1,26 +1,29 @@
-import { Button, Field, Fieldset, Flex, Input, Stack } from "@chakra-ui/react";
+import { Flex } from "@chakra-ui/react";
 
-import { IoMdArrowBack } from "react-icons/io";
-
+import DynamicForm from "@/components/dashboard/helpers/DynamicForm";
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
+import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
+import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 
 import { type ConnectorFormState } from "../../type";
 
 const ConnectorConfiguration = ({
   state,
-  onConfigurationChange,
   handlePrevious,
 }: {
   state: ConnectorFormState;
-  onConfigurationChange: (_field: string, _value: string) => void;
   handlePrevious: () => void;
 }) => {
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
+  const handleFormSubmit = (values: Record<string, string>) => {
+    console.log(values);
   };
+
+  const { data: formSchema } = useFetchFormSchema({
+    type: state?.source || "",
+    source: "source",
+  });
 
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
@@ -35,35 +38,18 @@ const ConnectorConfiguration = ({
         title="Enter authorization details"
         subtitle="Provide the necessary details to authorize the connector"
       />
-      <Stack as="form" onSubmit={handleSubmit} gap={4}>
-        <Fieldset.Root size="lg" maxW="lg">
-          <Fieldset.Content>
-            <Field.Root required>
-              <Field.Label>
-                Destination type and Name <Field.RequiredIndicator />
-              </Field.Label>
-              <Input
-                placeholder="Enter your destination name"
-                // value={state.destinationName}
-                // onChange={onConfigurationChange("destinationName")}
-              />
-            </Field.Root>
-          </Fieldset.Content>
-          <Flex justifyContent="space-between">
-            <Button
-              alignSelf="center"
-              variant="outline"
-              onClick={handlePrevious}
-            >
-              <IoMdArrowBack />
-              Back
-            </Button>
-            <Button type="submit" colorPalette="brand">
-              Save & authorize
-            </Button>
-          </Flex>
-        </Fieldset.Root>
-      </Stack>
+      {formSchema ? (
+        <DynamicForm
+          config={{ fields: formSchema }}
+          onSubmit={(values) => {
+            handleFormSubmit(values);
+          }}
+          loading={false}
+          hanldeBackButtonClick={handlePrevious}
+        />
+      ) : (
+        <LoadingSpinner />
+      )}
     </Flex>
   );
 };

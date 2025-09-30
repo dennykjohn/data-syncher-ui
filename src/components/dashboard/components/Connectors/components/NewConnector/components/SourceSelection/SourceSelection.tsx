@@ -19,7 +19,7 @@ const Source = ({
   handlePrevious,
 }: {
   selectedSource: number | null;
-  onSourceSelect: (_source: number) => void;
+  onSourceSelect: (_source: string) => void;
   handlePrevious: () => void;
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,7 +67,7 @@ const Source = ({
                   key={src_id}
                   title={name}
                   image={getSourceImage(name)}
-                  handleClick={() => onSourceSelect(src_id)}
+                  handleClick={() => onSourceSelect(name)}
                   isSelected={isSelected}
                 />
               );

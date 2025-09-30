@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 
-import { Button, Field, Input, VStack } from "@chakra-ui/react";
+import { Button, Field, Flex, Input, VStack } from "@chakra-ui/react";
 
+import { IoMdArrowBack } from "react-icons/io";
 import { MdOutlineSave } from "react-icons/md";
 
 import { type FieldConfig } from "@/types/form";
@@ -15,6 +16,7 @@ interface DynamicFormProps {
   onSubmit: (_values: Record<string, string>) => void;
   loading?: boolean;
   defaultValues?: Record<string, string>;
+  hanldeBackButtonClick?: () => void;
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -22,6 +24,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   onSubmit,
   defaultValues,
   loading,
+  hanldeBackButtonClick,
 }) => {
   const initialValues = config.fields.reduce(
     (acc, field) => ({
@@ -99,16 +102,25 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   return (
     <VStack gap={4} align="stretch" as="form" maxW="lg">
       {config.fields.map((field) => renderInput(field))}
-      <Button
-        colorPalette="brand"
-        onClick={handleSubmit}
-        alignSelf="flex-end"
-        loading={loading}
-        disabled={loading}
-      >
-        <MdOutlineSave />
-        Submit
-      </Button>
+      <Flex justifyContent="space-between">
+        {hanldeBackButtonClick && (
+          <Button variant="outline" onClick={hanldeBackButtonClick}>
+            <IoMdArrowBack />
+            Back
+          </Button>
+        )}
+        <Button
+          colorPalette="brand"
+          onClick={handleSubmit}
+          alignSelf="flex-end"
+          loading={loading}
+          disabled={loading}
+          marginLeft="auto"
+        >
+          <MdOutlineSave />
+          Submit
+        </Button>
+      </Flex>
     </VStack>
   );
 };
