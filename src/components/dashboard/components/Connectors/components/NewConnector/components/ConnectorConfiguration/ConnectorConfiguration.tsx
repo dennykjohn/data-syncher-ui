@@ -20,10 +20,14 @@ const ConnectorConfiguration = ({
     console.log(values);
   };
 
-  const { data: formSchema } = useFetchFormSchema({
+  const { data: formSchema, isLoading } = useFetchFormSchema({
     type: state?.source || "",
     source: "source",
   });
+
+  if (isLoading || !formSchema) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
@@ -38,18 +42,14 @@ const ConnectorConfiguration = ({
         title="Enter authorization details"
         subtitle="Provide the necessary details to authorize the connector"
       />
-      {formSchema ? (
-        <DynamicForm
-          config={{ fields: formSchema }}
-          onSubmit={(values) => {
-            handleFormSubmit(values);
-          }}
-          loading={false}
-          hanldeBackButtonClick={handlePrevious}
-        />
-      ) : (
-        <LoadingSpinner />
-      )}
+      <DynamicForm
+        config={{ fields: formSchema }}
+        onSubmit={(values) => {
+          handleFormSubmit(values);
+        }}
+        loading={false}
+        hanldeBackButtonClick={handlePrevious}
+      />
     </Flex>
   );
 };

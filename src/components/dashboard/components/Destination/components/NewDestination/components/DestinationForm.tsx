@@ -35,10 +35,11 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       id: params.destinationId || "",
     });
 
-  const { data: formSchema } = useFetchFormSchema({
-    type: destinationData?.dst || destinationName || "",
-    source: "destinations",
-  });
+  const { data: formSchema, isLoading: isFormSchemaLoading } =
+    useFetchFormSchema({
+      type: destinationData?.dst || destinationName || "",
+      source: "destinations",
+    });
 
   useEffect(() => {
     // If the user navigates directly to this form
@@ -90,6 +91,10 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
     return <LoadingSpinner />;
   }
 
+  if (isFormSchemaLoading || !formSchema) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
       <PageHeader
@@ -105,22 +110,18 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
         }
         subtitle="Follow guide to setup your destination"
       />
-      {formSchema ? (
-        <DynamicForm
-          config={{ fields: formSchema }}
-          onSubmit={(values) => {
-            handleFormSubmit(values);
-          }}
-          loading={isPending || isUpdateDestinationPending}
-          defaultValues={
-            mode === "edit" && destinationData
-              ? destinationData.config_data
-              : undefined
-          }
-        />
-      ) : (
-        <LoadingSpinner />
-      )}
+      <DynamicForm
+        config={{ fields: formSchema }}
+        onSubmit={(values) => {
+          handleFormSubmit(values);
+        }}
+        loading={isPending || isUpdateDestinationPending}
+        defaultValues={
+          mode === "edit" && destinationData
+            ? destinationData.config_data
+            : undefined
+        }
+      />
     </Flex>
   );
 };
