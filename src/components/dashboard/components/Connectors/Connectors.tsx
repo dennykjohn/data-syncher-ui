@@ -110,6 +110,7 @@ const Connectors = () => {
     setCurrentPage(page);
   };
 
+  //if (data?.totalElements === 0) return <NoConnections />;
   return (
     <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
       <PageHeader
@@ -124,9 +125,11 @@ const Connectors = () => {
         onCreateClick={() => navigate(ClientRoutes.CONNECTORS.ADD)}
       />
       {data?.totalElements === 0 && <NoConnections />}
-      <TableFilter
-        handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
-      />
+      {!!data?.totalElements && data?.totalElements > 0 && (
+        <TableFilter
+          handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
+        />
+      )}
       <Flex h="100%">
         <Table<ConnectorTableItem>
           data={data?.content || []}

@@ -14,6 +14,7 @@ import { type DestinationTableItem } from "@/types/destination";
 import { getDestinationImage } from "../../utils/getImage";
 import PageHeader from "../../wrapper/PageHeader";
 import TableFilter from "../../wrapper/TableFilter";
+import NoDestinations from "./components/NoDestination";
 
 const columns: Column<DestinationTableItem>[] = [
   { header: "Name", accessor: "name" },
@@ -88,9 +89,12 @@ const Destination = () => {
         buttonLabel="Add Destination"
         onCreateClick={() => navigate(ClientRoutes.DESTINATION.ADD)}
       />
-      <TableFilter
-        handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
-      />
+      {data?.totalElements === 0 && <NoDestinations />}
+      {!!data?.totalElements && data?.totalElements > 0 && (
+        <TableFilter
+          handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
+        />
+      )}
       <Flex h="100%">
         <Table<DestinationTableItem>
           data={data?.content || []}
