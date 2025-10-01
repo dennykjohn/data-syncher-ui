@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Box, Button, Checkbox, Flex, Grid, Text } from "@chakra-ui/react";
 
@@ -10,23 +10,59 @@ import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
-import { type Connector } from "@/types/connectors";
+import { type Connector, type ConnectorTable } from "@/types/connectors";
 
 const Schema = () => {
   const context = useOutletContext<Connector>();
   const { data: tables, isLoading } = useFetchConnectorTableById(
     context.connection_id,
   );
-  const selectedTables = tables?.filter((table) => table.selected);
-  const unSelectedTables = tables?.filter((table) => !table.selected);
+
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [selectedTables, setSelectedTables] = useState<ConnectorTable[]>([]);
+
+  useEffect(() => {
+    if (tables) {
+      setSelectedTables(tables.filter((t) => t.selected));
+    }
+  }, [tables]);
+
+  const unSelectedTables = useMemo(
+    () => tables?.filter((t) => !t.selected) || [],
+    [tables],
+  );
 
   // Track expanded tables
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const toggleExpand = (table: string) => {
+  const toggleExpand = (table: string) =>
     setExpanded((prev) => ({
       ...prev,
       [table]: !prev[table],
     }));
+
+  // Drag and drop state
+  const [draggedItem, setDraggedItem] = useState<null | ConnectorTable>(null);
+  const handleDragStart = (table: ConnectorTable) => {
+    setDraggedItem(table);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); // Allow drop
+  };
+
+  const handleDrop = (targetItem: ConnectorTable) => {
+    if (!draggedItem || draggedItem.table === targetItem.table) return;
+
+    const newList = [...selectedTables!] as ConnectorTable[];
+    const draggedIndex = newList.findIndex(
+      (i) => i.table === draggedItem.table,
+    );
+    const targetIndex = newList.findIndex((i) => i.table === targetItem.table);
+
+    newList.splice(draggedIndex, 1);
+    newList.splice(targetIndex, 0, draggedItem);
+
+    setSelectedTables(newList);
+    setDraggedItem(null);
   };
 
   if (isLoading) {
@@ -136,20 +172,24 @@ const Schema = () => {
               Selected Tables
             </Text>
           </Flex>
-          {selectedTables?.map(({ table }, index) => {
+          {selectedTables?.map((table, index) => {
             const isEven = index % 2 === 0;
             const rowBg = isEven ? "gray.100" : "white";
 
             return (
               <Flex
-                key={table}
+                key={table.table}
                 justifyContent="space-between"
                 backgroundColor={rowBg}
                 alignItems="center"
                 padding={2}
                 borderRadius={4}
+                draggable
+                onDragStart={() => handleDragStart(table)}
+                onDragOver={handleDragOver}
+                onDrop={() => handleDrop(table)}
               >
-                <Text>{table}</Text>
+                <Text>{table.table}</Text>
               </Flex>
             );
           })}
