@@ -49,6 +49,7 @@ const ServerRoutes = {
     toggleStatus: (id: number) => `connection/${id}/toggle/`,
     fetchConnectorTableById: (id: number) => `connection/${id}/tables/`,
     refreshSchema: (id: number) => `connection/${id}/refresh-schema/`,
+    deleteConnection: (id: number) => `connection/${id}/delete/`,
   },
   user: {
     createUser: () => "users/",

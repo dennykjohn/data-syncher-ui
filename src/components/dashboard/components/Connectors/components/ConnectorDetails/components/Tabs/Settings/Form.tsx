@@ -1,4 +1,4 @@
-import { useReducer } from "react";
+import { useReducer, useState } from "react";
 
 import {
   Button,
@@ -17,6 +17,7 @@ import { toaster } from "@/components/ui/toaster";
 import useUpdateConnectionSettings from "@/queryOptions/connector/schema/useUpdateConnectionSettings";
 import { type Connector } from "@/types/connectors";
 
+import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 import {
   executionOrderOptions,
   safetyIntervalOptions,
@@ -25,6 +26,7 @@ import {
 import { reducer } from "./reducer";
 
 const Form = (props: Connector) => {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const {
     sync_start_date,
     time_frequency,
@@ -166,7 +168,12 @@ const Form = (props: Connector) => {
           </Button>
         </Flex>
         <Flex gap={4}>
-          <Button variant="outline" colorPalette="red" color={"red.500"}>
+          <Button
+            variant="outline"
+            colorPalette="red"
+            color="red.500"
+            onClick={() => setShowDeleteDialog(true)}
+          >
             <CiTrash />
             Delete
           </Button>
@@ -188,6 +195,13 @@ const Form = (props: Connector) => {
           </Button>
         </Flex>
       </Flex>
+      {showDeleteDialog && (
+        <DeleteConfirmationDialog
+          open={showDeleteDialog}
+          setShowDeleteDialog={setShowDeleteDialog}
+          connectorId={props.connection_id}
+        />
+      )}
     </Flex>
   );
 };
