@@ -16,7 +16,12 @@ const Settings = () => {
       <Text fontSize="md" fontWeight="semibold">
         Connection details
       </Text>
-      <Flex justifyContent={"space-between"} alignItems="center">
+      <Flex
+        justifyContent={{ base: "space-between", md: "space-between" }}
+        alignItems={{ base: "flex-start", md: "center" }}
+        direction={{ base: "column", md: "row" }}
+        gap={4}
+      >
         <Flex gap={4}>
           <Flex>
             <Text fontSize="sm">Connected by:</Text>
