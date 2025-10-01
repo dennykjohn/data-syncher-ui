@@ -245,7 +245,7 @@ const Schema = () => {
                 onDrop={() => handleDrop(table)}
               >
                 <Flex gap={2} alignItems="center">
-                  <Text>{table.table}</Text>
+                  <Text fontSize="sm">{table.table}</Text>
                   {status === "in_progress" && <Image src={SandtimeIcon} />}
                   {status === "completed" && <Image src={CheckIcon} />}
                   {status === "failed" && <Image src={ErrorIcon} />}
