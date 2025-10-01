@@ -28,7 +28,7 @@ export type User = UserTableItem;
 export type UserProfile = {
   first_name: string;
   last_name: string;
-  email: string;
+  company_email: string;
   role: string;
   company: {
     cmp_name: string;
@@ -41,7 +41,7 @@ export type UserProfile = {
 export type UpdateCurrentUserPayload = {
   first_name: string;
   last_name: string;
-  email: string;
+  company_email: string;
   cmp_name: string;
   start_date: string;
   end_date: string;

@@ -33,7 +33,7 @@ const ProfileForm = () => {
         ...prev,
         firstName: userProfile.first_name,
         lastName: userProfile.last_name,
-        email: userProfile.email,
+        company_email: userProfile.company_email,
         cmp_name: userProfile.company?.cmp_name,
         start_date: format(cleanedStartDate, "yyyy-MM-dd"),
         end_date: format(cleanedEndDate, "yyyy-MM-dd"),
@@ -97,14 +97,14 @@ const ProfileForm = () => {
             <Field.ErrorText>{errors.lastName}</Field.ErrorText>
           </Field.Root>
           {/* Email */}
-          <Field.Root required invalid={!!errors.email}>
+          <Field.Root required invalid={!!errors.company_email}>
             <Field.Label>Email</Field.Label>
             <Input
               placeholder="Enter your email"
-              value={form.email}
-              onChange={(ev) => onChange("email")(ev.target.value)}
+              value={form.company_email}
+              onChange={(ev) => onChange("company_email")(ev.target.value)}
             />
-            <Field.ErrorText>{errors.email}</Field.ErrorText>
+            <Field.ErrorText>{errors.company_email}</Field.ErrorText>
           </Field.Root>
           {/* Company name */}
           <Field.Root required invalid={!!errors.cmp_name}>

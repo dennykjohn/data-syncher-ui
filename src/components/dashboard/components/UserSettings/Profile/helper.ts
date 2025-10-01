@@ -1,7 +1,7 @@
 export type FormState = {
   firstName: string;
   lastName: string;
-  email: string;
+  company_email: string;
   cmp_name: string;
   start_date: string;
   end_date: string;
@@ -10,7 +10,7 @@ export type FormState = {
 export const initialState: FormState = {
   firstName: "",
   lastName: "",
-  email: "",
+  company_email: "",
   cmp_name: "",
   start_date: "",
   end_date: "",
