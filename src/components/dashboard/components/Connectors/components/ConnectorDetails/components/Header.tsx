@@ -68,8 +68,12 @@ const Header = ({ connector }: { connector: Connector }) => {
             </Flex>
             <Flex flexWrap={"wrap"} gap={1} alignItems="center">
               <Text fontSize="sm">Destination</Text>
-              <LuDot size={24} />
-              <Text fontSize="sm">Loads every 5 minutes</Text>
+              {status === "A" && (
+                <>
+                  <LuDot size={24} />
+                  <Text fontSize="sm">Loads every 5 minutes</Text>
+                </>
+              )}
             </Flex>
           </Box>
         </Flex>

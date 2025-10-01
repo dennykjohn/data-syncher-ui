@@ -66,9 +66,7 @@ const Form = (props: Connector) => {
               dispatch({
                 type: "SET_FIELD",
                 field: "sync_start_date",
-                value: new Date(e.currentTarget.value)
-                  .toISOString()
-                  .replace(/\.\d{3}Z$/, "Z"),
+                value: e.currentTarget.value,
               })
             }
           />

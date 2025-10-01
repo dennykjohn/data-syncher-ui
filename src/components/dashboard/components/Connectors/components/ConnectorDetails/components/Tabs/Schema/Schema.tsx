@@ -4,6 +4,9 @@ import { Box, Checkbox, Flex, Grid, Image, Text } from "@chakra-ui/react";
 
 import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
+import { IoRefreshSharp } from "react-icons/io5";
+import { RxDragHandleDots2 } from "react-icons/rx";
+import { SlRefresh } from "react-icons/sl";
 
 import { useOutletContext } from "react-router";
 
@@ -195,6 +198,29 @@ const Schema = () => {
                   {status === "in_progress" && <Image src={SandtimeIcon} />}
                   {status === "completed" && <Image src={CheckIcon} />}
                   {status === "failed" && <Image src={ErrorIcon} />}
+                </Flex>
+                <Flex gap={3}>
+                  <Box
+                    _hover={{ color: "brand.500", backgroundColor: "gray.300" }}
+                    p={1}
+                    borderRadius="sm"
+                  >
+                    <IoRefreshSharp cursor="pointer" />
+                  </Box>
+                  <Box
+                    _hover={{ color: "brand.500", backgroundColor: "gray.300" }}
+                    p={1}
+                    borderRadius="sm"
+                  >
+                    <SlRefresh cursor="pointer" />
+                  </Box>
+                  <Box
+                    _hover={{ color: "brand.500", backgroundColor: "gray.300" }}
+                    p={1}
+                    borderRadius="sm"
+                  >
+                    <RxDragHandleDots2 cursor="grab" />
+                  </Box>
                 </Flex>
               </Flex>
             );
