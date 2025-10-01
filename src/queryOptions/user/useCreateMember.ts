@@ -2,7 +2,7 @@ import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 import { type CreateUserPayload } from "@/types/user";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface CreateUserResponse {
   message: string;
@@ -19,7 +19,13 @@ const createUser = async (
 };
 
 export default function useCreateUser() {
+  const queryClient = useQueryClient();
   return useMutation<CreateUserResponse, Error, CreateUserPayload>({
     mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["users"],
+      });
+    },
   });
 }
