@@ -13,30 +13,49 @@ const Actions = ({ connection_id }: { connection_id: number }) => {
     useFetchConnectorTableById(connection_id);
 
   return (
-    <Flex direction={{ base: "row", md: "column" }} gap={2} mb={2}>
-      <Text fontWeight="semibold">Target Details</Text>
-      <Flex justifyContent="space-between" alignItems="center">
-        <Text>Target database: AT Denny</Text>
-        <Text>Target Schema: AT Denny</Text>
-        <Button
-          variant="ghost"
-          colorPalette="red"
-          color="red.500"
-          onClick={() => refreshSchema()}
-          loading={isRefreshing}
-        >
-          <MdRefresh />
-          Refresh schema
-        </Button>
-        <Button
-          variant="outline"
-          colorPalette="brand"
-          loading={isLoading}
-          onClick={() => fetchTables()}
-        >
-          <MdRefresh />
-          Update schema
-        </Button>
+    <Flex direction="column" gap={2} mb={2}>
+      <Flex w="100%">
+        <Text fontWeight="semibold" flexGrow={1} w="100%">
+          Target Details
+        </Text>
+      </Flex>
+      <Flex
+        justifyContent="space-between"
+        alignItems="center"
+        flexWrap="wrap"
+        gap={4}
+      >
+        <Flex gap={4}>
+          <Flex gap={2}>
+            <Text>Target database:</Text>
+            <Text fontWeight="semibold">AT Denny</Text>
+          </Flex>
+          <Flex gap={2}>
+            <Text>Target Schema:</Text>
+            <Text fontWeight="semibold">AT Denny</Text>
+          </Flex>
+        </Flex>
+        <Flex gap={4}>
+          <Button
+            variant="ghost"
+            colorPalette="red"
+            color="red.500"
+            onClick={() => refreshSchema()}
+            loading={isRefreshing}
+          >
+            <MdRefresh />
+            Refresh schema
+          </Button>
+          <Button
+            variant="outline"
+            colorPalette="brand"
+            loading={isLoading}
+            onClick={() => fetchTables()}
+          >
+            <MdRefresh />
+            Update schema
+          </Button>
+        </Flex>
       </Flex>
     </Flex>
   );

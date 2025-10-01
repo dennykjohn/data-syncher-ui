@@ -32,22 +32,16 @@ const Usage = () => {
 
   const dailyUsageData = data?.daily_labels.map((label, index) => ({
     month: format(new Date(label), "dd"),
-    "New Records":
-      data.new_rec_values_daily[index] + (Math.floor(Math.random() * 6) + 1),
-    "Modified Records":
-      data.mod_rec_values_daily[index] + (Math.floor(Math.random() * 6) + 1),
-    "Deleted Records":
-      data.del_rec_values_daily[index] + (Math.floor(Math.random() * 6) + 1),
+    "New Records": data.new_rec_values_daily[index],
+    "Modified Records": data.mod_rec_values_daily[index],
+    "Deleted Records": data.del_rec_values_daily[index],
   }));
 
   const monthlyUsageData = data?.monthly_labels.map((label, index) => ({
     month: format(new Date(label), "MMM yyyy"),
-    "New Records":
-      data.new_rec_values_monthly[index] + (Math.floor(Math.random() * 6) + 1),
-    "Modified Records":
-      data.mod_rec_values_monthly[index] + (Math.floor(Math.random() * 6) + 1),
-    "Deleted Records":
-      data.del_rec_values_monthly[index] + (Math.floor(Math.random() * 6) + 1),
+    "New Records": data.new_rec_values_monthly[index],
+    "Modified Records": data.mod_rec_values_monthly[index],
+    "Deleted Records": data.del_rec_values_monthly[index],
   }));
 
   const chart = useChart({

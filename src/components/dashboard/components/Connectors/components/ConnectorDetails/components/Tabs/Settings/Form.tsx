@@ -54,7 +54,7 @@ const Form = (props: Connector) => {
   const [formState, dispatch] = useReducer(reducer, initialFormState);
 
   return (
-    <Flex direction="column" gap={4} mb={{ base: 8, md: 0 }}>
+    <Flex direction="column" gap={4} mb={{ base: 8, md: 8 }}>
       <Stack gap="8" flexWrap="wrap" direction="row">
         <Field.Root maxW="sm">
           <Field.Label>Start date & time (UTC)</Field.Label>
