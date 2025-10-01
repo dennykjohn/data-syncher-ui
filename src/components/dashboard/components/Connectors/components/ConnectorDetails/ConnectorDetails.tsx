@@ -14,7 +14,7 @@ import Tabs from "./components/Tabs/Tabs";
 const ConnectorDetails = () => {
   const { connectionId } = useParams<{ connectionId: string }>();
   const { data: connector, isLoading } = useFetchConnectorById(
-    connectionId || "",
+    Number(connectionId) || 0,
   );
 
   if (isLoading) {

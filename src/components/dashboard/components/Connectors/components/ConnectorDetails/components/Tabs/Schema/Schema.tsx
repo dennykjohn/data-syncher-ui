@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { Box, Button, Checkbox, Flex, Grid, Text } from "@chakra-ui/react";
+import { Box, Checkbox, Flex, Grid, Text } from "@chakra-ui/react";
 
 import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
-import { MdRefresh } from "react-icons/md";
 
 import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import { type Connector, type ConnectorTable } from "@/types/connectors";
+
+import Actions from "./Actions";
 
 const Schema = () => {
   const context = useOutletContext<Connector>();
@@ -71,21 +72,7 @@ const Schema = () => {
 
   return (
     <Flex flexDirection="column" gap={4} pb={8}>
-      <Flex direction={{ base: "row", md: "column" }} gap={2} mb={2}>
-        <Text fontWeight="semibold">Target Details</Text>
-        <Flex justifyContent="space-between" alignItems="center">
-          <Text>Target database: AT Denny</Text>
-          <Text>Target Schema: AT Denny</Text>
-          <Button variant="ghost" colorPalette="red" color="red.500">
-            <MdRefresh />
-            Refresh schema
-          </Button>
-          <Button variant="outline" colorPalette="brand">
-            <MdRefresh />
-            Update schema
-          </Button>
-        </Flex>
-      </Flex>
+      <Actions {...context} />
       <Grid templateColumns="1fr 1fr" gap={4}>
         <Flex
           direction="column"

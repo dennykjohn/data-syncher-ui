@@ -43,11 +43,12 @@ const ServerRoutes = {
       searchTerm?: string;
     }) =>
       `home?page=${page}&size=${size}${searchTerm ? `&search=${searchTerm}` : ""}`,
-    fetchConnectorById: (id: string) => `connection/setup/${id}`,
+    fetchConnectorById: (id: number) => `connection/setup/${id}`,
     fetchConnectorUsageById: (id: number) => `connection/${id}/usage/`,
     fetchConnectorSettings: (id: number) => `connection/setup/${id}/`,
     toggleStatus: (id: number) => `connection/${id}/toggle/`,
     fetchConnectorTableById: (id: number) => `connection/${id}/tables/`,
+    refreshSchema: (id: number) => `connection/${id}/refresh-schema/`,
   },
   user: {
     createUser: () => "users/",

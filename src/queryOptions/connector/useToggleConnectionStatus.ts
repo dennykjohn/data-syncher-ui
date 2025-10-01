@@ -16,7 +16,7 @@ const useToggleConnectionStatus = ({
     mutationFn: () => toggleConnectionStatus(connectorId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["connector"],
+        queryKey: ["connector", connectorId],
       });
     },
   });

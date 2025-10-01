@@ -36,7 +36,7 @@ const Settings = () => {
           Edit connection
         </Button>
       </Flex>
-      <Form />
+      <Form {...connector} />
     </Flex>
   );
 };

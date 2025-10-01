@@ -1,13 +1,164 @@
-import { Button, Flex } from "@chakra-ui/react";
+import { useReducer } from "react";
+
+import {
+  Button,
+  Field,
+  Flex,
+  Input,
+  NativeSelect,
+  NumberInput,
+  Stack,
+} from "@chakra-ui/react";
 
 import { CiTrash } from "react-icons/ci";
 import { MdRefresh } from "react-icons/md";
 
-const Form = () => {
+import { toaster } from "@/components/ui/toaster";
+import useUpdateConnectionSettings from "@/queryOptions/connector/schema/useUpdateConnectionSettings";
+import { type Connector } from "@/types/connectors";
+
+import {
+  executionOrderOptions,
+  safetyIntervalOptions,
+  syncFrequenciesOptions,
+} from "./helpers";
+import { reducer } from "./reducer";
+
+const Form = (props: Connector) => {
+  const {
+    sync_start_date,
+    time_frequency,
+    safety_interval,
+    execution_order,
+    chunk_count,
+  } = props;
+  const { mutate: updateSettings, isPending: isUpdateOperationPending } =
+    useUpdateConnectionSettings({
+      connectorId: props.connection_id,
+    });
+
+  const initialFormState = {
+    sync_start_date: sync_start_date ?? "",
+    time_frequency: time_frequency ?? "",
+    safety_interval: safety_interval ?? "",
+    execution_order: execution_order ?? "",
+    chunk_count: typeof chunk_count === "number" ? chunk_count : undefined,
+  };
+
+  const [formState, dispatch] = useReducer(reducer, initialFormState);
+
   return (
-    <Flex flexDirection="column" gap={4}>
-      Form
-      <Flex justifyContent={"space-between"}>
+    <Flex direction="column" gap={4}>
+      <Stack gap="8" flexWrap="wrap" direction="row">
+        <Field.Root maxW="sm">
+          <Field.Label>Start date & time (UTC)</Field.Label>
+          <Input
+            placeholder="Choose date and time"
+            type="datetime-local"
+            value={formState.sync_start_date ?? ""}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "sync_start_date",
+                value: new Date(e.currentTarget.value)
+                  .toISOString()
+                  .replace(/\.\d{3}Z$/, "Z"),
+              })
+            }
+          />
+        </Field.Root>
+
+        <Field.Root maxW="sm">
+          <Field.Label>Sync Frequency</Field.Label>
+          <NativeSelect.Root>
+            <NativeSelect.Field
+              value={formState.time_frequency}
+              onChange={(e) =>
+                dispatch({
+                  type: "SET_FIELD",
+                  field: "time_frequency",
+                  value: e.currentTarget.value,
+                })
+              }
+            >
+              {syncFrequenciesOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </NativeSelect.Field>
+            <NativeSelect.Indicator />
+          </NativeSelect.Root>
+        </Field.Root>
+
+        <Field.Root maxW="sm">
+          <Field.Label>Safety Interval</Field.Label>
+          <NativeSelect.Root>
+            <NativeSelect.Field
+              value={formState.safety_interval}
+              onChange={(e) =>
+                dispatch({
+                  type: "SET_FIELD",
+                  field: "safety_interval",
+                  value: e.currentTarget.value,
+                })
+              }
+            >
+              {safetyIntervalOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </NativeSelect.Field>
+            <NativeSelect.Indicator />
+          </NativeSelect.Root>
+        </Field.Root>
+
+        <Field.Root maxW="sm">
+          <Field.Label>Execution Order</Field.Label>
+          <NativeSelect.Root>
+            <NativeSelect.Field
+              value={formState.execution_order}
+              onChange={(e) =>
+                dispatch({
+                  type: "SET_FIELD",
+                  field: "execution_order",
+                  value: e.currentTarget.value,
+                })
+              }
+            >
+              {executionOrderOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </NativeSelect.Field>
+            <NativeSelect.Indicator />
+          </NativeSelect.Root>
+        </Field.Root>
+
+        <Field.Root maxW="sm">
+          <Field.Label>Transfer order count</Field.Label>
+          <NumberInput.Root
+            defaultValue="10"
+            min={10000}
+            max={1000000}
+            step={10000}
+            value={String(formState.chunk_count)}
+            onValueChange={(e) => {
+              dispatch({
+                type: "SET_FIELD",
+                field: "chunk_count",
+                value: e.value,
+              });
+            }}
+          >
+            <NumberInput.Control />
+            <NumberInput.Input />
+          </NumberInput.Root>
+        </Field.Root>
+      </Stack>
+      <Flex justifyContent={"space-between"} mt={4}>
         <Flex>
           <Button variant="ghost" colorPalette="red" color={"red.500"}>
             <MdRefresh />
@@ -19,7 +170,19 @@ const Form = () => {
             <CiTrash />
             Delete
           </Button>
-          <Button colorPalette="brand">
+          <Button
+            colorPalette="brand"
+            onClick={() =>
+              updateSettings(formState, {
+                onSuccess: () => {
+                  toaster.success({
+                    title: "Connector settings updated",
+                  });
+                },
+              })
+            }
+            loading={isUpdateOperationPending}
+          >
             <MdRefresh />
             Update
           </Button>
