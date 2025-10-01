@@ -56,6 +56,7 @@ const ServerRoutes = {
     refreshSchema: (id: number) => `connection/${id}/refresh-schema/`,
     deleteConnection: (id: number) => `connection/${id}/delete/`,
     testStatus: (id: number) => `connection/${id}/test/`,
+    updateSelectedTables: (id: number) => `connection/${id}/update-selection/`,
   },
   user: {
     createUser: () => "users/",

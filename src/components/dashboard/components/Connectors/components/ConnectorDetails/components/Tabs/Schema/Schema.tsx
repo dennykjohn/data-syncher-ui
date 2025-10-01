@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { Box, Checkbox, Flex, Grid, Image, Text } from "@chakra-ui/react";
+import {
+  ActionBar,
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  Grid,
+  Image,
+  Portal,
+  Text,
+} from "@chakra-ui/react";
 
+import { GoPlus } from "react-icons/go";
 import { IoMdPlay } from "react-icons/io";
-import { IoCaretDownSharp } from "react-icons/io5";
-import { IoRefreshSharp } from "react-icons/io5";
+import { IoCaretDownSharp, IoRefreshSharp } from "react-icons/io5";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { SlRefresh } from "react-icons/sl";
 
@@ -14,11 +24,14 @@ import CheckIcon from "@/assets/icons/check-icon.svg";
 import ErrorIcon from "@/assets/icons/error-icon.svg";
 import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import LoadingSpinner from "@/components/shared/Spinner";
+import { toaster } from "@/components/ui/toaster";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
+import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import {
   type Connector,
   type ConnectorSelectedTable,
+  type ConnectorTable,
 } from "@/types/connectors";
 
 import Actions from "./Actions";
@@ -30,11 +43,17 @@ const Schema = () => {
   );
   const { data: SelectedTables, isLoading: isLoadingSelected } =
     useFetchSelectedTables(context.connection_id);
+  const { mutate: updateTables, isPending: isAssigningTables } =
+    useUpdateSelectedTables({
+      connectorId: context.connection_id,
+    });
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selectedTables, setSelectedTables] = useState<
     ConnectorSelectedTable[]
   >([]);
+
+  const [checkedTables, setCheckedTables] = useState<ConnectorTable[]>([]);
 
   useEffect(() => {
     if (SelectedTables) {
@@ -79,7 +98,29 @@ const Schema = () => {
     newList.splice(targetIndex, 0, draggedItem);
 
     setSelectedTables(newList);
+    const tablesToUpdate = newList.map((t) => t.table);
+    updateTables(
+      { selected_tables: tablesToUpdate },
+      {
+        onSuccess: () => {
+          toaster.success({ title: "Table order updated successfully" });
+        },
+      },
+    );
     setDraggedItem(null);
+  };
+
+  const handleAssignTables = () => {
+    const tablesToAdd = checkedTables.map((t) => ({ table: t.table }));
+    updateTables(
+      { selected_tables: tablesToAdd.map((t) => t.table) },
+      {
+        onSuccess: () => {
+          setCheckedTables([]);
+          toaster.success({ title: "Tables assigned successfully" });
+        },
+      },
+    );
   };
 
   if (isLoading || isLoadingSelected) {
@@ -107,7 +148,8 @@ const Schema = () => {
               Select
             </Text>
           </Flex>
-          {unSelectedTables?.map(({ table, table_fields }, index) => {
+          {unSelectedTables?.map((item, index) => {
+            const { table, table_fields } = item;
             const isEven = index % 2 === 0;
             const rowBg = isEven ? "gray.100" : "white";
             const isExpanded = !!expanded[table];
@@ -142,6 +184,15 @@ const Schema = () => {
                     colorPalette="brand"
                     marginLeft="auto"
                     variant="solid"
+                    onCheckedChange={({ checked }) => {
+                      if (checked) {
+                        setCheckedTables((prev) => [...prev, item]);
+                      } else {
+                        setCheckedTables((prev) =>
+                          prev.filter((t) => t.table !== table),
+                        );
+                      }
+                    }}
                   >
                     <Checkbox.HiddenInput />
                     <Checkbox.Control cursor="pointer" />
@@ -227,6 +278,27 @@ const Schema = () => {
           })}
         </Flex>
       </Grid>
+      <ActionBar.Root open={checkedTables.length > 0}>
+        <Portal>
+          <ActionBar.Positioner>
+            <ActionBar.Content>
+              <ActionBar.SelectionTrigger>
+                {checkedTables.length} selected
+              </ActionBar.SelectionTrigger>
+              <ActionBar.Separator />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleAssignTables()}
+                loading={isAssigningTables}
+              >
+                <GoPlus />
+                Add
+              </Button>
+            </ActionBar.Content>
+          </ActionBar.Positioner>
+        </Portal>
+      </ActionBar.Root>
     </Flex>
   );
 };
