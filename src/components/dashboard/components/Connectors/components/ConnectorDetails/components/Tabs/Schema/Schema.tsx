@@ -1,15 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { Box, Checkbox, Flex, Grid, Text } from "@chakra-ui/react";
+import { Box, Checkbox, Flex, Grid, Image, Text } from "@chakra-ui/react";
 
 import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 
 import { useOutletContext } from "react-router";
 
+import CheckIcon from "@/assets/icons/check-icon.svg";
+import ErrorIcon from "@/assets/icons/error-icon.svg";
+import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import LoadingSpinner from "@/components/shared/Spinner";
+import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
-import { type Connector, type ConnectorTable } from "@/types/connectors";
+import {
+  type Connector,
+  type ConnectorSelectedTable,
+} from "@/types/connectors";
 
 import Actions from "./Actions";
 
@@ -18,15 +25,19 @@ const Schema = () => {
   const { data: tables, isLoading } = useFetchConnectorTableById(
     context.connection_id,
   );
+  const { data: SelectedTables, isLoading: isLoadingSelected } =
+    useFetchSelectedTables(context.connection_id);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [selectedTables, setSelectedTables] = useState<ConnectorTable[]>([]);
+  const [selectedTables, setSelectedTables] = useState<
+    ConnectorSelectedTable[]
+  >([]);
 
   useEffect(() => {
-    if (tables) {
-      setSelectedTables(tables.filter((t) => t.selected));
+    if (SelectedTables) {
+      setSelectedTables(SelectedTables);
     }
-  }, [tables]);
+  }, [SelectedTables]);
 
   const unSelectedTables = useMemo(
     () => tables?.filter((t) => !t.selected) || [],
@@ -41,8 +52,10 @@ const Schema = () => {
     }));
 
   // Drag and drop state
-  const [draggedItem, setDraggedItem] = useState<null | ConnectorTable>(null);
-  const handleDragStart = (table: ConnectorTable) => {
+  const [draggedItem, setDraggedItem] = useState<null | ConnectorSelectedTable>(
+    null,
+  );
+  const handleDragStart = (table: ConnectorSelectedTable) => {
     setDraggedItem(table);
   };
 
@@ -50,10 +63,10 @@ const Schema = () => {
     e.preventDefault(); // Allow drop
   };
 
-  const handleDrop = (targetItem: ConnectorTable) => {
+  const handleDrop = (targetItem: ConnectorSelectedTable) => {
     if (!draggedItem || draggedItem.table === targetItem.table) return;
 
-    const newList = [...selectedTables!] as ConnectorTable[];
+    const newList = [...selectedTables!] as ConnectorSelectedTable[];
     const draggedIndex = newList.findIndex(
       (i) => i.table === draggedItem.table,
     );
@@ -66,7 +79,7 @@ const Schema = () => {
     setDraggedItem(null);
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingSelected) {
     return <LoadingSpinner />;
   }
 
@@ -162,6 +175,7 @@ const Schema = () => {
           {selectedTables?.map((table, index) => {
             const isEven = index % 2 === 0;
             const rowBg = isEven ? "gray.100" : "white";
+            const { status } = table;
 
             return (
               <Flex
@@ -176,7 +190,12 @@ const Schema = () => {
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(table)}
               >
-                <Text>{table.table}</Text>
+                <Flex gap={2} alignItems="center">
+                  <Text>{table.table}</Text>
+                  {status === "in_progress" && <Image src={SandtimeIcon} />}
+                  {status === "completed" && <Image src={CheckIcon} />}
+                  {status === "failed" && <Image src={ErrorIcon} />}
+                </Flex>
               </Flex>
             );
           })}

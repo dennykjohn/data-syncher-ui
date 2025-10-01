@@ -47,6 +47,8 @@ const ServerRoutes = {
     fetchConnectorUsage: (id: number) => `connection/${id}/usage/`,
     fetchConnectorSettings: (id: number) => `connection/setup/${id}/`,
     fetchConnectorTable: (id: number) => `connection/${id}/tables/`,
+    fetchConnectorSelectedTable: (id: number) =>
+      `connection/${id}/selected-tables/`,
     fetchConnectionActivity: (id: number) => `connection/${id}/activity/`,
     createConnector: () => "connection/create/",
     updateConnectionSettings: (id: number) => `connection/${id}/update/`,

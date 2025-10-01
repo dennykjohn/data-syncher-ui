@@ -14,7 +14,6 @@ import useFetchCurrentMonthBilling from "@/queryOptions/billing/useFetchCurrentM
 import BillingSelector from "./BillingSelector";
 import { Chart, useChart } from "@chakra-ui/charts";
 
-// PASS COMPANY ID
 const Billing = () => {
   const {
     authState: { user },
@@ -27,7 +26,6 @@ const Billing = () => {
   const { data: MonthlyBillingData, isLoading } = useFetchCurrentMonthBilling({
     companyId: user?.company.cmp_id as number,
   });
-  // REMOVE THE MATH.RANDOM ONCE THE API IS PROVIDING REAL DATA
   const billingDataMonthly = MonthlyBillingData?.current_month_labels.map(
     (label, index) => ({
       day: label,
