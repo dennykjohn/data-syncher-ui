@@ -44,10 +44,13 @@ const ServerRoutes = {
     }) =>
       `home?page=${page}&size=${size}${searchTerm ? `&search=${searchTerm}` : ""}`,
     fetchConnectorById: (id: number) => `connection/setup/${id}`,
-    fetchConnectorUsageById: (id: number) => `connection/${id}/usage/`,
+    fetchConnectorUsage: (id: number) => `connection/${id}/usage/`,
     fetchConnectorSettings: (id: number) => `connection/setup/${id}/`,
+    fetchConnectorTable: (id: number) => `connection/${id}/tables/`,
+    fetchConnectionActivity: (id: number) => `connection/${id}/activity/`,
+    createConnector: () => "connection/create/",
+    updateConnectionSettings: (id: number) => `connection/${id}/update/`,
     toggleStatus: (id: number) => `connection/${id}/toggle/`,
-    fetchConnectorTableById: (id: number) => `connection/${id}/tables/`,
     refreshSchema: (id: number) => `connection/${id}/refresh-schema/`,
     deleteConnection: (id: number) => `connection/${id}/delete/`,
     testStatus: (id: number) => `connection/${id}/test/`,
@@ -71,7 +74,7 @@ const ServerRoutes = {
     updateCurrentUserProfile: () => `user/profile/`,
   },
   billing: {
-    listCurrentMonthBilling: ({ companyId }: { companyId: string }) =>
+    listCurrentMonthBilling: ({ companyId }: { companyId: number }) =>
       `billing/summary/${companyId}`,
     listAnnualBilling: ({ companyId }: { companyId: string }) =>
       `billing/${companyId}/annual-usage/`,

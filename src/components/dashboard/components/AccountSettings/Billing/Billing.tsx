@@ -19,20 +19,19 @@ const Billing = () => {
   const {
     authState: { user },
   } = useAuth();
-  console.log("User info: ", user);
   // Default to current month
   const [selectedRange, setSelectedRange] = useState<string[]>([
     "current-month",
   ]);
 
-  const { data: MonthlyBillingData, isLoading } = useFetchCurrentMonthBilling();
+  const { data: MonthlyBillingData, isLoading } = useFetchCurrentMonthBilling({
+    companyId: user?.company.cmp_id as number,
+  });
   // REMOVE THE MATH.RANDOM ONCE THE API IS PROVIDING REAL DATA
   const billingDataMonthly = MonthlyBillingData?.current_month_labels.map(
     (label, index) => ({
       day: label,
-      usage:
-        MonthlyBillingData.current_month_billing[index] +
-        (Math.floor(Math.random() * 6) + 1),
+      usage: MonthlyBillingData.current_month_billing[index],
     }),
   );
 
@@ -41,9 +40,7 @@ const Billing = () => {
   const billingDataAnnual = AnnualBillingData?.monthly_labels.map(
     (label, index) => ({
       day: label,
-      usage:
-        AnnualBillingData.monthly_total_rec_values[index] +
-        (Math.floor(Math.random() * 6) + 1),
+      usage: AnnualBillingData.monthly_total_rec_values[index],
     }),
   );
 

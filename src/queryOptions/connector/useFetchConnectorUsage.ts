@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 
 const fetchConnectorUsageById = async (id: number) => {
   const { data } = await AxiosInstance.get(
-    ServerRoutes.connector.fetchConnectorUsageById(id),
+    ServerRoutes.connector.fetchConnectorUsage(id),
   );
   return data;
 };

@@ -17,6 +17,7 @@ type User = {
   profile_image: null;
   company: {
     cmp_name: string;
+    cmp_id: number;
   };
 };
 
