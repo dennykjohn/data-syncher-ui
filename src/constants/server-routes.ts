@@ -9,6 +9,7 @@ const ServerRoutes = {
     companyDetails: ({ companyId }: { companyId: string }) =>
       `/company-details/${companyId}`,
     passwordReset: () => "password-reset/",
+    register: () => "authentication/",
   },
   source: {
     listMasterSources: () => "source/all/",

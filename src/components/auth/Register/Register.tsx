@@ -21,9 +21,12 @@ import { useNavigate } from "react-router";
 import Logo from "@/assets/logo.svg";
 import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
+import ServerRoutes from "@/constants/server-routes";
+import AxiosInstance from "@/lib/axios/api-client";
 
 type FormState = {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   company: string;
@@ -31,7 +34,8 @@ type FormState = {
 };
 
 const initialForm: FormState = {
-  fullName: "",
+  firstName: "",
+  lastName: "",
   email: "",
   password: "",
   company: "",
@@ -49,7 +53,8 @@ const Register = () => {
 
   const validate = () => {
     const e: Partial<Record<keyof FormState, string>> = {};
-    if (!form.fullName.trim()) e.fullName = "Full name is required";
+    if (!form.firstName.trim()) e.firstName = "First name is required";
+    if (!form.lastName.trim()) e.lastName = "Last name is required";
     if (!form.email.trim()) e.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(form.email.trim()))
       e.email = "Enter a valid email";
@@ -71,10 +76,17 @@ const Register = () => {
     const eMap = validate();
     setErrors(eMap);
     if (Object.values(eMap).some(Boolean)) return;
-
     setSubmitting(true);
+    const payload = {
+      first_name: form.firstName,
+      last_name: form.lastName,
+      company_email: form.email,
+      password: form.password,
+      company_name: form.company,
+      employee_range: "1-10", // Defaulting for now
+    };
     try {
-      // await AxiosInstance.post(ServerRoutes.auth.register(), { ...form })
+      await AxiosInstance.post(ServerRoutes.auth.register(), { ...payload });
       toaster.success({
         title: "Account created.",
         description: "You can now sign in.",
@@ -91,10 +103,10 @@ const Register = () => {
   };
 
   return (
-    <Flex minH="100vh" direction="column" w="100%">
-      <Stack as="form" gap={5} onSubmit={onSubmit}>
-        <Fieldset.Root size="md" gap={5}>
-          <Stack gap={4} mb={2}>
+    <Flex direction="column" w="100%" h="100%">
+      <Stack as="form" gap={2} onSubmit={onSubmit}>
+        <Fieldset.Root size="md" gap={2}>
+          <Stack gap={2} mb={2}>
             <Image
               src={Logo}
               alt="Logo"
@@ -118,15 +130,26 @@ const Register = () => {
               </Span>
             </Text>
           </Stack>
-          {/* Full name */}
-          <Field.Root required invalid={!!errors.fullName}>
-            <Field.Label>Full name</Field.Label>
+          {/* First name */}
+          <Field.Root required invalid={!!errors.firstName}>
+            <Field.Label>First name</Field.Label>
             <Input
-              placeholder="Enter your full name"
-              value={form.fullName}
-              onChange={(ev) => onChange("fullName")(ev.target.value)}
+              placeholder="Enter your first name"
+              value={form.firstName}
+              onChange={(ev) => onChange("firstName")(ev.target.value)}
             />
-            <Field.ErrorText>{errors.fullName}</Field.ErrorText>
+            <Field.ErrorText>{errors.firstName}</Field.ErrorText>
+          </Field.Root>
+
+          {/* Last name */}
+          <Field.Root required invalid={!!errors.lastName}>
+            <Field.Label>Last name</Field.Label>
+            <Input
+              placeholder="Enter your last name"
+              value={form.lastName}
+              onChange={(ev) => onChange("lastName")(ev.target.value)}
+            />
+            <Field.ErrorText>{errors.lastName}</Field.ErrorText>
           </Field.Root>
 
           {/* Email */}
@@ -178,7 +201,11 @@ const Register = () => {
 
           {/* Terms */}
           <Flex justifyContent="space-between" alignItems="center" mb={2}>
-            <Checkbox.Root colorPalette="brand" size="md">
+            <Checkbox.Root
+              colorPalette="brand"
+              size="md"
+              onCheckedChange={(e) => onChange("terms")(!!e.checked)}
+            >
               <Checkbox.HiddenInput />
               <Checkbox.Control />
               <Checkbox.Label>
