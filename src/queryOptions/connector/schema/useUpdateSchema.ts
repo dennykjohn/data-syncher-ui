@@ -4,12 +4,12 @@ import AxiosInstance from "@/lib/axios/api-client";
 
 import { useMutation } from "@tanstack/react-query";
 
-const refreshSchema = (connectorId: number) =>
-  AxiosInstance.post(ServerRoutes.connector.refreshSchema(connectorId));
+const updateSchema = (connectorId: number) =>
+  AxiosInstance.post(ServerRoutes.connector.updateSchema(connectorId));
 
-const useRefreshSchema = ({ connectorId }: { connectorId: number }) => {
+const useUpdateSchema = ({ connectorId }: { connectorId: number }) => {
   return useMutation({
-    mutationFn: () => refreshSchema(connectorId),
+    mutationFn: () => updateSchema(connectorId),
     onSuccess: (response) => {
       toaster.warning({
         title: response.data.message,
@@ -18,4 +18,4 @@ const useRefreshSchema = ({ connectorId }: { connectorId: number }) => {
   });
 };
 
-export default useRefreshSchema;
+export default useUpdateSchema;

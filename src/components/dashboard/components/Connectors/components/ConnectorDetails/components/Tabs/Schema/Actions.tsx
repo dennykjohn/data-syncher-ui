@@ -2,15 +2,16 @@ import { Button, Flex, Text } from "@chakra-ui/react";
 
 import { MdRefresh } from "react-icons/md";
 
-import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import useRefreshSchema from "@/queryOptions/connector/schema/useRefreshSchema";
+import useUpdateSchema from "@/queryOptions/connector/schema/useUpdateSchema";
 
 const Actions = ({ connection_id }: { connection_id: number }) => {
   const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
     connectorId: connection_id,
   });
-  const { refetch: fetchTables, isLoading } =
-    useFetchConnectorTableById(connection_id);
+  const { mutate: updateSchema, isPending: isUpdating } = useUpdateSchema({
+    connectorId: connection_id,
+  });
 
   return (
     <Flex direction="column" gap={2} mb={2}>
@@ -49,8 +50,8 @@ const Actions = ({ connection_id }: { connection_id: number }) => {
           <Button
             variant="outline"
             colorPalette="brand"
-            loading={isLoading}
-            onClick={() => fetchTables()}
+            loading={isUpdating}
+            onClick={() => updateSchema()}
           >
             <MdRefresh />
             Update schema

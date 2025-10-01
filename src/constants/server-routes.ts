@@ -57,6 +57,7 @@ const ServerRoutes = {
     deleteConnection: (id: number) => `connection/${id}/delete/`,
     testStatus: (id: number) => `connection/${id}/test/`,
     updateSelectedTables: (id: number) => `connection/${id}/update-selection/`,
+    updateSchema: (id: number) => `connection/${id}/fetch-tables/`,
   },
   user: {
     createUser: () => "users/",
