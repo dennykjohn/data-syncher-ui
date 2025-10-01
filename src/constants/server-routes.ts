@@ -50,6 +50,7 @@ const ServerRoutes = {
     fetchConnectorTableById: (id: number) => `connection/${id}/tables/`,
     refreshSchema: (id: number) => `connection/${id}/refresh-schema/`,
     deleteConnection: (id: number) => `connection/${id}/delete/`,
+    testStatus: (id: number) => `connection/${id}/test/`,
   },
   user: {
     createUser: () => "users/",

@@ -15,6 +15,7 @@ import { MdRefresh } from "react-icons/md";
 
 import { toaster } from "@/components/ui/toaster";
 import useUpdateConnectionSettings from "@/queryOptions/connector/schema/useUpdateConnectionSettings";
+import useTestConnection from "@/queryOptions/connector/useTestConnection";
 import { type Connector } from "@/types/connectors";
 
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
@@ -38,6 +39,9 @@ const Form = (props: Connector) => {
     useUpdateConnectionSettings({
       connectorId: props.connection_id,
     });
+
+  const { mutate: testConnection, isPending: isTestOperationPending } =
+    useTestConnection({ connectorId: props.connection_id });
 
   const initialFormState = {
     sync_start_date: sync_start_date ?? "",
@@ -162,7 +166,23 @@ const Form = (props: Connector) => {
       </Stack>
       <Flex justifyContent={"space-between"} mt={4}>
         <Flex>
-          <Button variant="ghost" colorPalette="red" color={"red.500"}>
+          <Button
+            variant="ghost"
+            colorPalette="red"
+            color="red.500"
+            loading={isTestOperationPending}
+            onClick={() =>
+              testConnection(undefined, {
+                onSuccess: () => {
+                  toaster.success({
+                    title: "Connection test initiated",
+                    description:
+                      "The connection test has been initiated. Please check the logs for detailed results.",
+                  });
+                },
+              })
+            }
+          >
             <MdRefresh />
             Test connection
           </Button>
