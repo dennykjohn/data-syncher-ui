@@ -90,11 +90,9 @@ const Destination = () => {
         onCreateClick={() => navigate(ClientRoutes.DESTINATION.ADD)}
       />
       {data?.totalElements === 0 && <NoDestinations />}
-      {!!data?.totalElements && data?.totalElements > 0 && (
-        <TableFilter
-          handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
-        />
-      )}
+      <TableFilter
+        handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
+      />
       <Flex h="100%">
         <Table<DestinationTableItem>
           data={data?.content || []}

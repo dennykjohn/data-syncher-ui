@@ -125,11 +125,9 @@ const Connectors = () => {
         onCreateClick={() => navigate(ClientRoutes.CONNECTORS.ADD)}
       />
       {data?.totalElements === 0 && <NoConnections />}
-      {!!data?.totalElements && data?.totalElements > 0 && (
-        <TableFilter
-          handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
-        />
-      )}
+      <TableFilter
+        handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
+      />
       <Flex h="100%">
         <Table<ConnectorTableItem>
           data={data?.content || []}
