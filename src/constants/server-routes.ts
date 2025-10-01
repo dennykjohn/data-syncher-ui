@@ -74,7 +74,7 @@ const ServerRoutes = {
     }) =>
       `users?page=${page}&size=${size}${searchTerm ? `&search=${searchTerm}` : ""}`,
     fetchUserById: (id: number) => `users/${id}`,
-    updateUser: (id: number) => `users/${id}`,
+    updateUser: (id: number) => `users/${id}/`,
     getCurrentUserProfile: () => "user/profile/",
     updateCurrentUserProfile: () => `user/profile/`,
   },
