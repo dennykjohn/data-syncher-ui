@@ -221,6 +221,7 @@ const Register = () => {
           size="lg"
           mt={2}
           loading={submitting}
+          mb={4}
         >
           Create your account
         </Button>

@@ -21,6 +21,7 @@ export default function AuthContainer({
       alignItems={"center"}
       display={"flex"}
       maxW="600px"
+      overflowY={"auto"}
     >
       {children}
     </GridItem>
