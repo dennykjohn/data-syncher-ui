@@ -52,7 +52,7 @@ const Billing = () => {
 
   if (isLoading || isLoadingAnnual) return <LoadingSpinner />;
   return (
-    <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
+    <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%" minW="3xl">
       <PageHeader
         breadcrumbs={[
           {
