@@ -36,7 +36,11 @@ const ConnectorConfiguration = ({
     source: "source",
   });
 
-  if (isLoading || !formSchema || isFetchConnectorByIdPending) {
+  if (
+    isLoading ||
+    !formSchema ||
+    (mode === "edit" && isFetchConnectorByIdPending)
+  ) {
     return <LoadingSpinner />;
   }
 
