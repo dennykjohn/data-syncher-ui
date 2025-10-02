@@ -61,7 +61,7 @@ const Usage = () => {
   }
 
   return (
-    <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
+    <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} minW="2xl" w="100%">
       <UsageSelector
         selectedRange={selectedRange}
         setSelectedRange={setSelectedRange}

@@ -128,7 +128,7 @@ const Schema = () => {
   }
 
   return (
-    <Flex flexDirection="column" gap={4} pb={8}>
+    <Flex flexDirection="column" gap={4} pb={8} w="100%">
       <Actions {...context} />
       <Grid templateColumns="1fr 1fr" gap={4}>
         <Flex

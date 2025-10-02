@@ -15,7 +15,7 @@ const Overview = () => {
   console.log(data);
 
   return (
-    <Flex flexDirection="column" gap={4}>
+    <Flex flexDirection="column" gap={4} w="100%">
       <Flex>
         <Text fontWeight="semibold">Connector activity</Text>
       </Flex>

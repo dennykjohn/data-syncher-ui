@@ -30,7 +30,9 @@ const ConnectorDetails = () => {
       <Header connector={connector} />
       <Tabs />
       <Suspense fallback={<LoadingSpinner />}>
-        <Outlet context={connector} />
+        <Flex overflowX="auto" flexGrow={1} justifyContent={"center"}>
+          <Outlet context={connector} />
+        </Flex>
       </Suspense>
     </Flex>
   );

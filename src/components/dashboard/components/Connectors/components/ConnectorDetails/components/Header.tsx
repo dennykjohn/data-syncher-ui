@@ -33,6 +33,7 @@ const Header = ({ connector }: { connector: Connector }) => {
         gap={6}
         alignItems="center"
         flexDirection={{ base: "column", md: "row" }}
+        flexWrap="wrap"
       >
         <Flex gap={2} alignItems={"center"}>
           <Box>
@@ -77,36 +78,40 @@ const Header = ({ connector }: { connector: Connector }) => {
             </Flex>
           </Box>
         </Flex>
-      </Flex>
-      <Flex justifyContent="flex-end" gap={2}>
-        {(status === "P" || status === "B") && (
-          <Button
-            colorPalette="yellow"
-            size="xs"
-            variant="solid"
-            loading={isPending}
-            onClick={() =>
-              toggleConnectionStatus(undefined, { onSuccess: onToggleSuccess })
-            }
-          >
-            <CiPause1 />
-            Paused
-          </Button>
-        )}
-        {status === "A" && (
-          <Button
-            colorPalette="green"
-            size="xs"
-            variant="solid"
-            loading={isPending}
-            onClick={() =>
-              toggleConnectionStatus(undefined, { onSuccess: onToggleSuccess })
-            }
-          >
-            <IoMdCheckmark />
-            Active
-          </Button>
-        )}
+        <Flex ml="auto" gap={2}>
+          {(status === "P" || status === "B") && (
+            <Button
+              colorPalette="yellow"
+              size="xs"
+              variant="solid"
+              loading={isPending}
+              onClick={() =>
+                toggleConnectionStatus(undefined, {
+                  onSuccess: onToggleSuccess,
+                })
+              }
+            >
+              <CiPause1 />
+              Paused
+            </Button>
+          )}
+          {status === "A" && (
+            <Button
+              colorPalette="green"
+              size="xs"
+              variant="solid"
+              loading={isPending}
+              onClick={() =>
+                toggleConnectionStatus(undefined, {
+                  onSuccess: onToggleSuccess,
+                })
+              }
+            >
+              <IoMdCheckmark />
+              Active
+            </Button>
+          )}
+        </Flex>
       </Flex>
     </Flex>
   );
