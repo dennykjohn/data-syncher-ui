@@ -21,7 +21,7 @@ import {
   DestinationForm,
   NewDestination,
 } from "./DestinationRoutes";
-import { AuthLayout, DashboardLayout, WebsiteLayout } from "./LayoutRoutes";
+import { AuthLayout, DashboardLayout } from "./LayoutRoutes";
 
 const ProtectedRoute = lazy(() => import("@/components/auth/ProtectedRoute"));
 
@@ -47,13 +47,16 @@ const AccountSettings = lazy(
 );
 
 // Pages
-const HomePage = lazy(() => import("@/pages/website/HomePage"));
+//const HomePage = lazy(() => import("@/pages/website/HomePage"));
 
 export const router = createBrowserRouter([
+  // Setup Website Routes in the below object
   {
     path: ClientRoutes.HOME,
-    element: <WebsiteLayout />,
-    children: [{ index: true, element: <HomePage /> }],
+    element: (
+      <Navigate to={`${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`} replace />
+    ),
+    //children: [{ index: true, element: <HomePage /> }],
   },
   {
     path: ClientRoutes.AUTH,
