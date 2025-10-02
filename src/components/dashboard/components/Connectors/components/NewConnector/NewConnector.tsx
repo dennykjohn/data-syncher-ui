@@ -73,6 +73,7 @@ const NewConnector = () => {
           <ConnectorConfiguration
             state={state}
             handlePrevious={handlePrevious}
+            mode="create"
           />
         );
       default:

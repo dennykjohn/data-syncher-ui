@@ -2,7 +2,9 @@ import { lazy } from "react";
 
 import { Navigate, createBrowserRouter } from "react-router";
 
+import ConnectorConfiguration from "@/components/dashboard/components/Connectors/components/NewConnector/components/ConnectorConfiguration/ConnectorConfiguration";
 import ClientRoutes from "@/constants/client-routes";
+import NotFound from "@/shared/NotFound";
 
 import { ForgotPassword, LoginPage, RegisterPage } from "./AuthRoutes";
 import {
@@ -85,6 +87,10 @@ export const router = createBrowserRouter([
             element: <NewConnector />,
           },
           {
+            path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT_CONFIGURATION}/:connectionId`,
+            element: <ConnectorConfiguration mode="edit" />,
+          },
+          {
             path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/:connectionId`,
             element: <ConnectorDetails />,
             children: [
@@ -154,5 +160,9 @@ export const router = createBrowserRouter([
         ],
       },
     ],
+  },
+  {
+    path: "*",
+    element: <NotFound />,
   },
 ]);

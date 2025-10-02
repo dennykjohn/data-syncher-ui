@@ -18,6 +18,7 @@ const ClientRoutes = {
     SCHEMA: "schema",
     USAGE: "usage",
     SETTINGS: "settings",
+    EDIT_CONFIGURATION: "edit-configuration",
   },
   DESTINATION: {
     ROOT: "destinations",

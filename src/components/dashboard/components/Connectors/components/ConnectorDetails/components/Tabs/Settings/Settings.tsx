@@ -2,14 +2,24 @@ import { Button, Flex, Text } from "@chakra-ui/react";
 
 import { MdOutlineEdit } from "react-icons/md";
 
-import { useOutletContext } from "react-router";
+import { useNavigate, useOutletContext } from "react-router";
 
+import ClientRoutes from "@/constants/client-routes";
 import { type Connector } from "@/types/connectors";
 
 import Form from "./Form";
 
 const Settings = () => {
   const connector = useOutletContext<Connector>();
+  const navigate = useNavigate();
+
+  const handleEditConnectorClick = () => {
+    navigate(
+      `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT_CONFIGURATION}/${
+        connector.connection_id
+      }`,
+    );
+  };
 
   return (
     <Flex flexDirection="column" gap={4}>
@@ -36,7 +46,12 @@ const Settings = () => {
             </Text>
           </Flex>
         </Flex>
-        <Button variant="outline" colorPalette={"brand"} color={"brand.500"}>
+        <Button
+          variant="outline"
+          colorPalette={"brand"}
+          color={"brand.500"}
+          onClick={handleEditConnectorClick}
+        >
           <MdOutlineEdit color="brand.500" />
           Edit connection
         </Button>

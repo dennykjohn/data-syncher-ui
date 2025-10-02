@@ -16,7 +16,7 @@ interface DynamicFormProps {
   onSubmit: (_values: Record<string, string>) => void;
   loading?: boolean;
   defaultValues?: Record<string, string>;
-  hanldeBackButtonClick?: () => void;
+  handleBackButtonClick?: () => void;
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -24,7 +24,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   onSubmit,
   defaultValues,
   loading,
-  hanldeBackButtonClick,
+  handleBackButtonClick,
 }) => {
   const initialValues = config.fields.reduce(
     (acc, field) => ({
@@ -103,8 +103,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     <VStack gap={4} align="stretch" as="form" maxW="lg">
       {config.fields.map((field) => renderInput(field))}
       <Flex justifyContent="space-between">
-        {hanldeBackButtonClick && (
-          <Button variant="outline" onClick={hanldeBackButtonClick}>
+        {handleBackButtonClick && (
+          <Button variant="outline" onClick={handleBackButtonClick}>
             <IoMdArrowBack />
             Back
           </Button>

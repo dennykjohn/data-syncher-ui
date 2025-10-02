@@ -1,10 +1,13 @@
 import { Flex } from "@chakra-ui/react";
 
+import { useParams } from "react-router";
+
 import DynamicForm from "@/components/dashboard/helpers/DynamicForm";
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
+import { useFetchConnectorById } from "@/queryOptions/connector/useFetchConnectorDetailsById";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 
 import { type ConnectorFormState } from "../../type";
@@ -12,20 +15,28 @@ import { type ConnectorFormState } from "../../type";
 const ConnectorConfiguration = ({
   state,
   handlePrevious,
+  mode = "create",
 }: {
-  state: ConnectorFormState;
-  handlePrevious: () => void;
+  state?: ConnectorFormState;
+  handlePrevious?: () => void;
+  mode: "create" | "edit";
 }) => {
+  const { connectionId } = useParams<{ connectionId: string }>();
+  const shouldFetch = mode === "edit" && !!connectionId;
+  const { data: connectorData, isPending: isFetchConnectorByIdPending } =
+    useFetchConnectorById(shouldFetch ? Number(connectionId) : 0);
+  console.log("Fetched Connector Data: ", connectorData);
+
   const handleFormSubmit = (values: Record<string, string>) => {
     console.log(values);
   };
 
   const { data: formSchema, isLoading } = useFetchFormSchema({
-    type: state?.source || "",
+    type: state?.source || connectorData?.source_name || "",
     source: "source",
   });
 
-  if (isLoading || !formSchema) {
+  if (isLoading || !formSchema || isFetchConnectorByIdPending) {
     return <LoadingSpinner />;
   }
 
@@ -37,7 +48,7 @@ const ConnectorConfiguration = ({
             label: "Connector",
             route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
           },
-          { label: "Configure" },
+          { label: mode === "edit" ? "Edit Connector" : "Configure" },
         ]}
         title="Enter authorization details"
         subtitle="Provide the necessary details to authorize the connector"
@@ -48,7 +59,14 @@ const ConnectorConfiguration = ({
           handleFormSubmit(values);
         }}
         loading={false}
-        hanldeBackButtonClick={handlePrevious}
+        handleBackButtonClick={handlePrevious}
+        // defaultValues={
+        //   mode === "edit" && connectorData
+        //     ? {
+        //         ...connectorData,
+        //       }
+        //     : undefined
+        // }
       />
     </Flex>
   );
