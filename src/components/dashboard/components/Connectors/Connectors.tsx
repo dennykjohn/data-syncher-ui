@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 
+import { format } from "date-fns";
 import { useNavigate } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
@@ -66,6 +67,8 @@ const columns: Column<ConnectorTableItem>[] = [
   {
     header: "Last sync",
     accessor: "last_synced_new",
+    render: (_, { last_synced_new }) =>
+      format(new Date(last_synced_new), "hh:mm a, dd MMMM"),
   },
   {
     header: "Status",

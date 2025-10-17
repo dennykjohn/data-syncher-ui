@@ -24,7 +24,6 @@ const Source = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { data: sourceList, isLoading } = useFetchMasterSourceList();
-  console.log("Sources:", sourceList, selectedSource);
 
   const filteredSourceList = sourceList?.filter(({ name }) =>
     name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -52,7 +51,7 @@ const Source = ({
       >
         <InputGroup endElement={<LuSearch />} maxW="md">
           <Input
-            placeholder="Search destination"
+            placeholder="Search sources"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

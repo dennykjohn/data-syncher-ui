@@ -22,7 +22,6 @@ const Destination = ({
   const [searchTerm, setSearchTerm] = useState("");
   const { data: destinationList, isLoading } =
     useFetchAllUserCreatedDestinationList();
-  console.log("Destinations:", destinationList, selectedDestination);
 
   const filteredDestinations = destinationList?.filter(({ name }) =>
     name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -50,7 +49,7 @@ const Destination = ({
       >
         <InputGroup endElement={<LuSearch />} maxW="md">
           <Input
-            placeholder="Search destination"
+            placeholder="Search destinations"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

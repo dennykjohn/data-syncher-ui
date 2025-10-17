@@ -1,5 +1,6 @@
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
+import { type ConnectorActivityResponse } from "@/types/connectors";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -12,7 +13,7 @@ const fetchConnectorActivity = async (
   return data;
 };
 
-export const useFetchConnectorActivity = (id: number) => {
+const useFetchConnectorActivity = (id: number) => {
   return useQuery({
     queryKey: ["connectorActivity", id],
     queryFn: () => fetchConnectorActivity(id),
@@ -20,21 +21,4 @@ export const useFetchConnectorActivity = (id: number) => {
   });
 };
 
-export type ConnectorActivityLog = {
-  message: string;
-  user: string;
-  timestamp: string;
-  status: string;
-};
-
-export type MigrationRecord = {
-  table_name: string;
-  status: string;
-  timestamp: string;
-  job_message: string;
-};
-
-export type ConnectorActivityResponse = {
-  logs: ConnectorActivityLog[];
-  migration_records: MigrationRecord[];
-};
+export default useFetchConnectorActivity;

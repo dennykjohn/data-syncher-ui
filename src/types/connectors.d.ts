@@ -71,3 +71,36 @@ export interface ConnectorSelectedTable {
   sequence: number;
   status: "in_progress" | "completed" | "failed";
 }
+
+// ------------------ Connector Activity Types ------------------
+
+type Status = "S" | "W";
+
+export type ConnectorActivityLog = {
+  message: string;
+  user: string;
+  timestamp: string;
+  status: Status;
+  session_id: number;
+};
+
+export type MigrationRecord = {
+  table_name: string;
+  status: Status;
+  timestamp: string;
+  job_message: string;
+};
+
+export type ConnectorActivityResponse = {
+  logs: ConnectorActivityLog[];
+  migration_records: MigrationRecord[];
+};
+
+export interface ConnectorActivityDetailResponse {
+  logs: {
+    table: string;
+    status: string;
+    timestamp: string;
+    message: string;
+  }[];
+}

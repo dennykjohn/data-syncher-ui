@@ -51,6 +51,13 @@ const ServerRoutes = {
     fetchConnectorSelectedTable: (id: number) =>
       `connection/${id}/selected-tables/`,
     fetchConnectionActivity: (id: number) => `connection/${id}/activity/`,
+    fetchConnectionActivityDetails: ({
+      connectionId,
+      sessionId,
+    }: {
+      connectionId: number;
+      sessionId: number;
+    }) => `connection/${connectionId}/session/${sessionId}/`,
     createConnector: () => "connection/create/",
     updateConnectionSettings: (id: number) => `connection/${id}/update/`,
     toggleStatus: (id: number) => `connection/${id}/toggle/`,
