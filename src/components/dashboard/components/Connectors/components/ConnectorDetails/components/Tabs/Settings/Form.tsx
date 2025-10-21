@@ -21,8 +21,10 @@ import { type Connector } from "@/types/connectors";
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 import {
   executionOrderOptions,
+  fromLocalDateTimeInput,
   safetyIntervalOptions,
   syncFrequenciesOptions,
+  toLocalDateTimeInput,
 } from "./helpers";
 import { reducer } from "./reducer";
 
@@ -53,6 +55,10 @@ const Form = (props: Connector) => {
 
   const [formState, dispatch] = useReducer(reducer, initialFormState);
 
+  const [syncStartLocal, setSyncStartLocal] = useState(
+    toLocalDateTimeInput(formState?.sync_start_date),
+  );
+
   return (
     <Flex direction="column" gap={4} mb={8}>
       <Stack gap="8" flexWrap="wrap" direction="row">
@@ -61,14 +67,15 @@ const Form = (props: Connector) => {
           <Input
             placeholder="Choose date and time"
             type="datetime-local"
-            value={formState.sync_start_date ?? ""}
-            onChange={(e) =>
+            value={syncStartLocal ?? ""}
+            onChange={(e) => {
               dispatch({
                 type: "SET_FIELD",
                 field: "sync_start_date",
                 value: e.currentTarget.value,
-              })
-            }
+              });
+              setSyncStartLocal(e.currentTarget.value);
+            }}
           />
         </Field.Root>
 
@@ -153,7 +160,7 @@ const Form = (props: Connector) => {
               dispatch({
                 type: "SET_FIELD",
                 field: "chunk_count",
-                value: e.value,
+                value: Number(e.value),
               });
             }}
           >
@@ -198,13 +205,19 @@ const Form = (props: Connector) => {
           <Button
             colorPalette="brand"
             onClick={() =>
-              updateSettings(formState, {
-                onSuccess: () => {
-                  toaster.success({
-                    title: "Connector settings updated",
-                  });
+              updateSettings(
+                {
+                  sync_start_date: fromLocalDateTimeInput(syncStartLocal),
+                  ...formState,
                 },
-              })
+                {
+                  onSuccess: () => {
+                    toaster.success({
+                      title: "Connector settings updated",
+                    });
+                  },
+                },
+              )
             }
             loading={isUpdateOperationPending}
           >
