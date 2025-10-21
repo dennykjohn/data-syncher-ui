@@ -42,22 +42,29 @@ const Item = ({
       onClick={onClick}
       direction={{ base: "column", md: "row" }}
     >
-      <Flex>
+      <Flex alignSelf={{ base: "flex-start", md: "center" }} mr={1}>
         {Completed && <FcOk />}
         {InProgress && <MdHourglassTop color="#2684FC" />}
         {Paused && <FaPauseCircle color="#EAAB00" />}
         {Refreshed && <MdRefresh color="#6E2FD5" />}
       </Flex>
-      <Flex direction="column" ml={2} flex={1}>
+      <Flex
+        direction="column"
+        ml={{ base: 0, md: 2 }}
+        flex={1}
+        alignSelf={{ base: "flex-start" }}
+      >
         <Text fontSize="sm" fontWeight="semibold">
           {message}
         </Text>
         <Text fontSize="xs">{user}</Text>
       </Flex>
-      <Flex>
+      <Flex alignSelf={{ base: "flex-start", md: "center" }}>
         <Text fontSize="xs">{format(timestamp, "PPpp")}</Text>
       </Flex>
-      {session_id && <MdArrowRight size={20} />}
+      <Flex alignSelf={{ base: "flex-end", md: "center" }}>
+        {session_id && <MdArrowRight size={20} />}
+      </Flex>
     </Flex>
   );
 };
