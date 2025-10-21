@@ -6,7 +6,7 @@ import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
-import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchconnectorActivityDetails";
+import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
 import { type Connector } from "@/types/connectors";
 
 import Detail from "./Detail";
