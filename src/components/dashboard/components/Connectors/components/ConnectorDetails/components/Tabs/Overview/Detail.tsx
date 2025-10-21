@@ -23,7 +23,9 @@ const Detail = ({
       <Text fontSize="sm" fontWeight="semibold">
         {message}
       </Text>
-      <Text fontSize="xs">{format(new Date(timestamp), "PPpp")}</Text>
+      <Text fontSize="xs" minW="150px">
+        {format(new Date(timestamp), "PPpp")}
+      </Text>
     </Flex>
   );
 };

@@ -26,6 +26,8 @@ export interface Connector {
   source_name: string;
   destination_name: string;
   company_name: string;
+  target_database: string;
+  target_schema: string;
 }
 
 export interface ConnectorSyncStats {

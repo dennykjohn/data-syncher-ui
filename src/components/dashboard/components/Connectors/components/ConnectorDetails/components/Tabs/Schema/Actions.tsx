@@ -5,7 +5,15 @@ import { MdRefresh } from "react-icons/md";
 import useRefreshSchema from "@/queryOptions/connector/schema/useRefreshSchema";
 import useUpdateSchema from "@/queryOptions/connector/schema/useUpdateSchema";
 
-const Actions = ({ connection_id }: { connection_id: number }) => {
+const Actions = ({
+  connection_id,
+  target_database,
+  target_schema,
+}: {
+  connection_id: number;
+  target_database: string;
+  target_schema: string;
+}) => {
   const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
     connectorId: connection_id,
   });
@@ -29,11 +37,11 @@ const Actions = ({ connection_id }: { connection_id: number }) => {
         <Flex gap={4}>
           <Flex gap={2}>
             <Text>Target database:</Text>
-            <Text fontWeight="semibold">AT Denny</Text>
+            <Text fontWeight="semibold">{target_database}</Text>
           </Flex>
           <Flex gap={2}>
             <Text>Target Schema:</Text>
-            <Text fontWeight="semibold">AT Denny</Text>
+            <Text fontWeight="semibold">{target_schema}</Text>
           </Flex>
         </Flex>
         <Flex gap={4}>
