@@ -14,7 +14,13 @@ import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnect
 import { type Connector } from "@/types/connectors";
 
 const Header = ({ connector }: { connector: Connector }) => {
-  const { source_name, destination_name, status, connection_id } = connector;
+  const {
+    source_name,
+    destination_name,
+    status,
+    connection_id,
+    time_frequency,
+  } = connector;
 
   const { mutate: toggleConnectionStatus, isPending } =
     useToggleConnectionStatus({
@@ -69,10 +75,12 @@ const Header = ({ connector }: { connector: Connector }) => {
             </Flex>
             <Flex flexWrap={"wrap"} gap={1} alignItems="center">
               <Text fontSize="sm">Destination</Text>
-              {status === "A" && (
+              {status === "A" && time_frequency !== "None" && (
                 <>
                   <LuDot size={24} />
-                  <Text fontSize="sm">Loads every 5 minutes</Text>
+                  <Text fontSize="sm">
+                    Loads every {time_frequency} minutes
+                  </Text>
                 </>
               )}
             </Flex>

@@ -15,7 +15,7 @@ import Item from "./Item";
 
 const Overview = () => {
   const context = useOutletContext<Connector>();
-  const [filterDays, setFilterDays] = useState<number>(7);
+  const [filterDays, setFilterDays] = useState<number>(30);
   const { data, isLoading } = useFetchConnectorActivity(
     context.connection_id,
     filterDays,

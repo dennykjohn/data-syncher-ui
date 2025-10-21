@@ -8,7 +8,7 @@ const Filter = ({
   setFilterDays: (_days: number) => void;
 }) => {
   return (
-    <NativeSelect.Root size="sm" width="200px" variant={"plain"} mr={2}>
+    <NativeSelect.Root size="sm" width="200px" mr={2}>
       <NativeSelect.Field
         value={String(filterDays)}
         onChange={(e) => setFilterDays(Number(e.currentTarget.value))}
