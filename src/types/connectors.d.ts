@@ -74,14 +74,14 @@ export interface ConnectorSelectedTable {
 
 // ------------------ Connector Activity Types ------------------
 
-type Status = "S" | "W";
+type Status = "S" | "W" | "E";
 
 export type ConnectorActivityLog = {
   message: string;
   user: string;
   timestamp: string;
   status: Status;
-  session_id: number;
+  session_id: number | null;
 };
 
 export type MigrationRecord = {

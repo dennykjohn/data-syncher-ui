@@ -6,18 +6,19 @@ import { useQuery } from "@tanstack/react-query";
 
 const fetchConnectorActivity = async (
   id: number,
+  filterDays: number,
 ): Promise<ConnectorActivityResponse> => {
   const { data } = await AxiosInstance.get<ConnectorActivityResponse>(
-    ServerRoutes.connector.fetchConnectionActivity(id),
+    ServerRoutes.connector.fetchConnectionActivity({ id, filterDays }),
   );
   return data;
 };
 
-const useFetchConnectorActivity = (id: number) => {
+const useFetchConnectorActivity = (id: number, filterDays: number) => {
   return useQuery({
-    queryKey: ["connectorActivity", id],
-    queryFn: () => fetchConnectorActivity(id),
-    enabled: !!id,
+    queryKey: ["connectorActivity", id, filterDays],
+    queryFn: () => fetchConnectorActivity(id, filterDays),
+    enabled: !!id && filterDays > 0,
   });
 };
 

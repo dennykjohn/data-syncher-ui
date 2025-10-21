@@ -50,7 +50,13 @@ const ServerRoutes = {
     fetchConnectorTable: (id: number) => `connection/${id}/tables/`,
     fetchConnectorSelectedTable: (id: number) =>
       `connection/${id}/selected-tables/`,
-    fetchConnectionActivity: (id: number) => `connection/${id}/activity/`,
+    fetchConnectionActivity: ({
+      id,
+      filterDays,
+    }: {
+      id: number;
+      filterDays: number;
+    }) => `connection/${id}/activity/?days=${filterDays}`,
     fetchConnectionActivityDetails: ({
       connectionId,
       sessionId,

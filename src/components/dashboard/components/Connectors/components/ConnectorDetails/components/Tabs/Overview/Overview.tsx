@@ -10,11 +10,16 @@ import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchC
 import { type Connector } from "@/types/connectors";
 
 import Detail from "./Detail";
+import Filter from "./Filter";
 import Item from "./Item";
 
 const Overview = () => {
   const context = useOutletContext<Connector>();
-  const { data, isLoading } = useFetchConnectorActivity(context.connection_id);
+  const [filterDays, setFilterDays] = useState<number>(7);
+  const { data, isLoading } = useFetchConnectorActivity(
+    context.connection_id,
+    filterDays,
+  );
   const [selectedLog, setSelectedLog] = useState<number | null>(null);
   const { data: logDetails, isLoading: isLoadingDetails } =
     useFetchConnectorActivityDetails({
@@ -25,7 +30,11 @@ const Overview = () => {
   // Set selected log to first log when data changes
   useEffect(() => {
     if (data?.logs && data.logs.length > 0) {
-      setSelectedLog(data.logs[0].session_id);
+      //Find elem with session_id not null
+      const firstLogWithSessionId = data.logs.find(
+        (log) => log.session_id !== null,
+      );
+      setSelectedLog(firstLogWithSessionId?.session_id || null);
     }
   }, [data]);
 
@@ -33,8 +42,9 @@ const Overview = () => {
 
   return (
     <Flex flexDirection="column" gap={4} w="100%">
-      <Flex>
+      <Flex justifyContent="space-between" alignItems="center" paddingBlock={2}>
         <Text fontWeight="semibold">Connector activity</Text>
+        <Filter filterDays={filterDays} setFilterDays={setFilterDays} />
       </Flex>
       <Grid templateColumns="repeat(2, 1fr)" gap={4} overflowX="auto">
         <Flex
@@ -47,8 +57,11 @@ const Overview = () => {
             <Item
               key={index}
               log={log}
-              isSelected={log.session_id === selectedLog}
-              onClick={() => setSelectedLog(log.session_id)}
+              onClick={() => {
+                if (log.session_id) setSelectedLog(log.session_id);
+              }}
+              pointerEvent={log.session_id ? "pointer" : "not-allowed"}
+              selectedLog={selectedLog}
             />
           ))}
         </Flex>
