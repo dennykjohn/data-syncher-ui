@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Flex, Grid, Text } from "@chakra-ui/react";
 
@@ -21,22 +21,22 @@ const Overview = () => {
     filterDays,
   );
   const [selectedLog, setSelectedLog] = useState<number | null>(null);
+
+  // derive first log with session id from data
+  const firstLogWithSessionId = useMemo(
+    () => data?.logs?.find((log) => log.session_id !== null),
+    [data],
+  );
+
+  // effective selected log: user selection wins, otherwise first available
+  const effectiveSelectedLog =
+    selectedLog ?? firstLogWithSessionId?.session_id ?? null;
+
   const { data: logDetails, isLoading: isLoadingDetails } =
     useFetchConnectorActivityDetails({
       connectionId: context.connection_id,
-      sessionId: selectedLog || 0,
+      sessionId: effectiveSelectedLog || 0,
     });
-
-  // Set selected log to first log when data changes
-  useEffect(() => {
-    if (data?.logs && data.logs.length > 0) {
-      //Find elem with session_id not null
-      const firstLogWithSessionId = data.logs.find(
-        (log) => log.session_id !== null,
-      );
-      setSelectedLog(firstLogWithSessionId?.session_id || null);
-    }
-  }, [data]);
 
   if (isLoading) return <LoadingSpinner />;
 
@@ -61,7 +61,7 @@ const Overview = () => {
                 if (log.session_id) setSelectedLog(log.session_id);
               }}
               pointerEvent={log.session_id ? "pointer" : "not-allowed"}
-              selectedLog={selectedLog}
+              selectedLog={effectiveSelectedLog}
             />
           ))}
         </Flex>
