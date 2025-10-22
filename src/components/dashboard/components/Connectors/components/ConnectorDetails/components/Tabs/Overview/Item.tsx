@@ -42,11 +42,15 @@ const Item = ({
       onClick={onClick}
       direction={{ base: "column", md: "row" }}
     >
-      <Flex alignSelf={{ base: "flex-start", md: "center" }} mr={1}>
-        {Completed && <FcOk />}
-        {InProgress && <MdHourglassTop color="#2684FC" />}
-        {Paused && <FaPauseCircle color="#EAAB00" />}
-        {Refreshed && <MdRefresh color="#6E2FD5" />}
+      <Flex
+        alignSelf={{ base: "flex-start", md: "center" }}
+        minW="24px"
+        justifyContent="center"
+      >
+        {Completed && <FcOk size={20} />}
+        {InProgress && <MdHourglassTop size={20} color="#2684FC" />}
+        {Paused && <FaPauseCircle size={20} color="#EAAB00" />}
+        {Refreshed && <MdRefresh size={20} color="#6E2FD5" />}
       </Flex>
       <Flex
         direction="column"
@@ -63,7 +67,10 @@ const Item = ({
         <Text fontSize="xs">{format(timestamp, "PPpp")}</Text>
       </Flex>
       <Flex alignSelf={{ base: "flex-end", md: "center" }}>
-        {session_id && <MdArrowRight size={20} />}
+        <MdArrowRight
+          size={20}
+          style={{ visibility: session_id ? "visible" : "hidden" }}
+        />
       </Flex>
     </Flex>
   );
