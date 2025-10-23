@@ -73,6 +73,8 @@ const ServerRoutes = {
     testStatus: (id: number) => `connection/${id}/test/`,
     updateSelectedTables: (id: number) => `connection/${id}/update-selection/`,
     updateSchema: (id: number) => `connection/${id}/fetch-tables/`,
+    reloadSingleTable: () => `reload-single-table/`,
+    refreshDeltaTable: () => `refresh-delta-table/`,
   },
   user: {
     createUser: () => "users/",

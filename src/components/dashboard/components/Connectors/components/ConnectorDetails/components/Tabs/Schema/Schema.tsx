@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 
 import {
@@ -13,8 +14,9 @@ import {
 } from "@chakra-ui/react";
 
 import { GoPlus } from "react-icons/go";
+import { GrRefresh } from "react-icons/gr";
 import { IoMdPlay } from "react-icons/io";
-import { IoCaretDownSharp, IoRefreshSharp } from "react-icons/io5";
+import { IoCaretDownSharp } from "react-icons/io5";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { SlRefresh } from "react-icons/sl";
 
@@ -27,6 +29,8 @@ import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
+import useRefreshDeltaTable from "@/queryOptions/connector/schema/useRefreshDeltaTable";
+import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import {
   type Connector,
@@ -46,6 +50,13 @@ const Schema = () => {
     useUpdateSelectedTables({
       connectorId: context.connection_id,
     });
+  const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
+    useReloadSingleTable();
+  const { mutate: refreshDeltaTable, isPending: isRefreshingDeltaTable } =
+    useRefreshDeltaTable();
+
+  const [refreshingTable, setRefreshingTable] = useState<string | null>(null);
+  const [reloadingTable, setReloadingTable] = useState<string | null>(null);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selectedTables, setSelectedTables] = useState<
@@ -278,26 +289,69 @@ const Schema = () => {
                   {status === "failed" && <Image src={ErrorIcon} />}
                 </Flex>
                 <Flex gap={3}>
-                  <Box
-                    _hover={{
-                      color: "brand.500",
-                      backgroundColor: "gray.300",
-                    }}
-                    p={1}
-                    borderRadius="sm"
-                  >
-                    <IoRefreshSharp cursor="pointer" />
-                  </Box>
-                  <Box
-                    _hover={{
-                      color: "brand.500",
-                      backgroundColor: "gray.300",
-                    }}
-                    p={1}
-                    borderRadius="sm"
-                  >
-                    <SlRefresh cursor="pointer" />
-                  </Box>
+                  <>
+                    <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+                    <Box
+                      _hover={{
+                        color: "brand.500",
+                      }}
+                      p={1}
+                      borderRadius="sm"
+                      onClick={() => {
+                        setReloadingTable(table.table);
+                        reloadSingleTable(
+                          {
+                            connection_id: context.connection_id,
+                            table_name: table.table,
+                          },
+                          {
+                            onSettled: () => setReloadingTable(null), // clear after done
+                          },
+                        );
+                      }}
+                      style={{
+                        animation:
+                          reloadingTable === table.table &&
+                          isReloadingSingleTable
+                            ? "spin 1s linear infinite"
+                            : undefined,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <GrRefresh />
+                    </Box>
+                  </>
+                  <>
+                    <Box
+                      _hover={{
+                        color: "brand.500",
+                      }}
+                      p={1}
+                      borderRadius="sm"
+                      onClick={() => {
+                        setRefreshingTable(table.table);
+                        refreshDeltaTable(
+                          {
+                            connection_id: context.connection_id,
+                            table_name: table.table,
+                          },
+                          {
+                            onSettled: () => setRefreshingTable(null), // clear after done
+                          },
+                        );
+                      }}
+                      style={{
+                        animation:
+                          refreshingTable === table.table &&
+                          isRefreshingDeltaTable
+                            ? "spin 1s linear infinite"
+                            : undefined,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <SlRefresh />
+                    </Box>
+                  </>
                   <Box
                     _hover={{
                       color: "brand.500",
