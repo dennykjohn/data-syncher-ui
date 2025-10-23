@@ -9,6 +9,10 @@ export interface CreateConnectionPayload {
 export interface ConnectorConfigResponse {
   source_schema: Record<string, string>;
   initial_data: Record<string, string>;
+  destination_config: {
+    name: string;
+    dst: string;
+  };
 }
 
 export interface ConnectorTableItem {

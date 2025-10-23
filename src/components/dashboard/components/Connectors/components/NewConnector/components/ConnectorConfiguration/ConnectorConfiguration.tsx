@@ -5,11 +5,13 @@ import { useParams } from "react-router";
 import DynamicForm from "@/components/dashboard/helpers/DynamicForm";
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
+import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
-import useFetchConnectorConfig from "@/queryOptions/connector/schema/useFetchConnectorConfig";
 import useCreateConnection from "@/queryOptions/connector/useCreateConnection";
+import useFetchConnectorConfig from "@/queryOptions/connector/useFetchConnectorConfig";
 import { useFetchConnectorById } from "@/queryOptions/connector/useFetchConnectorDetailsById";
+import useUpdateConnectorConfig from "@/queryOptions/connector/useUpdateConnectorConfig";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 
 import { type ConnectorFormState } from "../../type";
@@ -33,6 +35,14 @@ const ConnectorConfiguration = ({
       id: shouldFetch ? Number(connectionId) : 0,
     });
 
+  const {
+    mutate: updateConnectorConfig,
+    isPending: isUpdateConnectorConfigPending,
+  } = useUpdateConnectorConfig({
+    connectorId: shouldFetch ? Number(connectionId) : 0,
+    type: connectorData?.source_name || "",
+  });
+
   const { mutate: createConnection, isPending: isCreateConnectorPending } =
     useCreateConnection(state?.source || "");
 
@@ -49,6 +59,22 @@ const ConnectorConfiguration = ({
             if (response.auth_url) {
               window.location.href = response.auth_url;
             }
+          },
+        },
+      );
+    } else {
+      updateConnectorConfig(
+        {
+          connection_name: values.connection_name || "Unnamed Connector",
+          destination_schema: connectorConfig?.destination_config.name || "",
+          form_data: values,
+        },
+        {
+          onSuccess: () => {
+            toaster.success({
+              title: "Connector updated successfully",
+              description: `The connector has been updated.`,
+            });
           },
         },
       );
@@ -94,7 +120,7 @@ const ConnectorConfiguration = ({
         onSubmit={(values) => {
           handleFormSubmit(values);
         }}
-        loading={isCreateConnectorPending}
+        loading={isCreateConnectorPending || isUpdateConnectorConfigPending}
         handleBackButtonClick={handlePrevious}
         defaultValues={
           mode === "edit" && connectorConfig

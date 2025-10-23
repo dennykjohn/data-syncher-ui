@@ -47,6 +47,13 @@ const ServerRoutes = {
     fetchConnectorById: (id: number) => `connection/setup/${id}/`,
     fetchConnectorConfig: ({ type, id }: { type: string; id: number }) =>
       `source-config/${type}/${id}/`,
+    updateConnectorConfig: ({
+      connectorId,
+      type,
+    }: {
+      connectorId: number;
+      type: string;
+    }) => `source-config/${type}/${connectorId}/update/`,
     fetchConnectorUsage: (id: number) => `connection/${id}/usage/`,
     fetchConnectorSettings: (id: number) => `connection/setup/${id}/`,
     fetchConnectorTable: (id: number) => `connection/${id}/tables/`,
