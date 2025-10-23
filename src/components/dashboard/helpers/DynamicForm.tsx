@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useState } from "react";
 
 import { Button, Field, Flex, Input, VStack } from "@chakra-ui/react";
@@ -17,6 +18,7 @@ interface DynamicFormProps {
   loading?: boolean;
   defaultValues?: Record<string, string>;
   handleBackButtonClick?: () => void;
+  mode?: "create" | "edit";
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -25,6 +27,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   defaultValues,
   loading,
   handleBackButtonClick,
+  mode,
 }) => {
   const initialValues = config.fields.reduce(
     (acc, field) => ({
@@ -118,7 +121,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           marginLeft="auto"
         >
           <MdOutlineSave />
-          Submit
+          {mode === "create" ? "Create" : "Save"}
         </Button>
       </Flex>
     </VStack>

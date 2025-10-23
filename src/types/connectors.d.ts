@@ -6,6 +6,11 @@ export interface CreateConnectionPayload {
   form_data: Record<string, string>;
 }
 
+export interface ConnectorConfigResponse {
+  source_schema: Record<string, string>;
+  initial_data: Record<string, string>;
+}
+
 export interface ConnectorTableItem {
   connection_id: number;
   connector_name: string;

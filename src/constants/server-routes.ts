@@ -45,6 +45,8 @@ const ServerRoutes = {
     }) =>
       `home?page=${page}&size=${size}${searchTerm ? `&search=${searchTerm}` : ""}`,
     fetchConnectorById: (id: number) => `connection/setup/${id}/`,
+    fetchConnectorConfig: ({ type, id }: { type: string; id: number }) =>
+      `source-config/${type}/${id}/`,
     fetchConnectorUsage: (id: number) => `connection/${id}/usage/`,
     fetchConnectorSettings: (id: number) => `connection/setup/${id}/`,
     fetchConnectorTable: (id: number) => `connection/${id}/tables/`,

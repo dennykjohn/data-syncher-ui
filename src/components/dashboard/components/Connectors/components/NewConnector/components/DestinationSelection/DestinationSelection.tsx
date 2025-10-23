@@ -11,6 +11,7 @@ import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useFetchAllUserCreatedDestinationList from "@/queryOptions/destination/useFetchAllUserCreatedDestinationList";
+import useSelectDestination from "@/queryOptions/destination/useSelectDestination";
 
 const Destination = ({
   selectedDestination,
@@ -23,9 +24,33 @@ const Destination = ({
   const { data: destinationList, isLoading } =
     useFetchAllUserCreatedDestinationList();
 
+  const {
+    mutate: selectDestination,
+    isPending: isSelectingDestinationPending,
+  } = useSelectDestination();
+
   const filteredDestinations = destinationList?.filter(({ name }) =>
     name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const handleDestionationClick = ({
+    dst_config_id,
+    name,
+  }: {
+    dst_config_id: number;
+    name: string;
+  }) => {
+    // Prevent multiple clicks while a destination is being selected
+    if (isSelectingDestinationPending) return;
+    selectDestination(
+      { destination: dst_config_id },
+      {
+        onSuccess: () => {
+          onDestinationSelect(name);
+        },
+      },
+    );
+  };
 
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
@@ -59,13 +84,17 @@ const Destination = ({
           <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
             {filteredDestinations?.map(({ dst, name, dst_config_id }) => {
               const isSelected = name === selectedDestination;
+
               return (
                 <SourceCard
                   key={dst_config_id}
                   title={name}
                   image={getDestinationImage(dst)}
                   isSelected={isSelected}
-                  handleClick={() => onDestinationSelect(name)}
+                  handleClick={() =>
+                    handleDestionationClick({ dst_config_id, name })
+                  }
+                  isLoading={isSelectingDestinationPending && isSelected}
                 />
               );
             })}
