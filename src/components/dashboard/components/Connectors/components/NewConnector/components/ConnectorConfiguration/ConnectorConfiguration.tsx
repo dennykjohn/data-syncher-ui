@@ -7,6 +7,7 @@ import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
+import useCreateConnection from "@/queryOptions/connector/useCreateConnection";
 import { useFetchConnectorById } from "@/queryOptions/connector/useFetchConnectorDetailsById";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 
@@ -27,8 +28,24 @@ const ConnectorConfiguration = ({
     useFetchConnectorById(shouldFetch ? Number(connectionId) : 0);
   console.log("Fetched Connector Data: ", connectorData);
 
+  const { mutate: createConnection, isPending: isCreateConnectorPending } =
+    useCreateConnection(state?.source || "");
+
   const handleFormSubmit = (values: Record<string, string>) => {
-    console.log(values);
+    console.log(values, state);
+    createConnection(
+      {
+        connection_name: values.connection_name || "Unnamed Connector",
+        destination_schema: state?.destination || "",
+        form_data: values,
+      },
+      {
+        onSuccess: (response) => {
+          console.log("Connection created successfully: ", response);
+          // handle success actions here
+        },
+      },
+    );
   };
 
   const { data: formSchema, isLoading } = useFetchFormSchema({
@@ -62,7 +79,7 @@ const ConnectorConfiguration = ({
         onSubmit={(values) => {
           handleFormSubmit(values);
         }}
-        loading={false}
+        loading={isCreateConnectorPending}
         handleBackButtonClick={handlePrevious}
         // defaultValues={
         //   mode === "edit" && connectorData

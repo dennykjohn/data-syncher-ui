@@ -7,7 +7,7 @@ export type ConnectorFormAction =
   | { type: "PREVIOUS_STEP" }
   | { type: "SET_STEP"; step: number }
   | { type: "SET_SOURCE"; source: string }
-  | { type: "SET_DESTINATION"; destination: number }
+  | { type: "SET_DESTINATION"; destination: string }
   | { type: "UPDATE_CONFIGURATION"; field: string; value: string }
   | { type: "SET_CONFIGURATION"; configuration: Record<string, string> };
 

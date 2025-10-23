@@ -1,5 +1,11 @@
 export type ConnectorStatus = "A" | "P" | "B";
 
+export interface CreateConnectionPayload {
+  connection_name: string;
+  destination_schema: string;
+  form_data: Record<string, string>;
+}
+
 export interface ConnectorTableItem {
   connection_id: number;
   connector_name: string;

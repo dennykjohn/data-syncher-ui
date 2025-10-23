@@ -65,7 +65,7 @@ const ServerRoutes = {
       connectionId: number;
       sessionId: number;
     }) => `connection/${connectionId}/session/${sessionId}/`,
-    createConnector: () => "connection/create/",
+    createConnector: (type: string) => `source-config/${type}/create/`,
     updateConnectionSettings: (id: number) => `connection/${id}/update/`,
     toggleStatus: (id: number) => `connection/${id}/toggle/`,
     refreshSchema: (id: number) => `connection/${id}/refresh-schema/`,

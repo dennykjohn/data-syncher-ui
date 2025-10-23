@@ -16,8 +16,8 @@ const Destination = ({
   selectedDestination,
   onDestinationSelect,
 }: {
-  selectedDestination: number | null;
-  onDestinationSelect: (_destination: number) => void;
+  selectedDestination: string | null;
+  onDestinationSelect: (_destination: string) => void;
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { data: destinationList, isLoading } =
@@ -58,14 +58,14 @@ const Destination = ({
         {!isLoading && (
           <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
             {filteredDestinations?.map(({ dst, name, dst_config_id }) => {
-              const isSelected = dst_config_id === selectedDestination;
+              const isSelected = name === selectedDestination;
               return (
                 <SourceCard
                   key={dst_config_id}
                   title={name}
                   image={getDestinationImage(dst)}
                   isSelected={isSelected}
-                  handleClick={() => onDestinationSelect(dst_config_id)}
+                  handleClick={() => onDestinationSelect(name)}
                 />
               );
             })}

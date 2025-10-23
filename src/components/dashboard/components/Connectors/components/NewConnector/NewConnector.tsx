@@ -25,7 +25,7 @@ const NewConnector = () => {
     handleNext();
   };
 
-  const handleDestinationSelect = (destination: number) => {
+  const handleDestinationSelect = (destination: string) => {
     dispatch({ type: "SET_DESTINATION", destination });
     handleNext();
   };
