@@ -36,6 +36,8 @@ const ClientRoutes = {
   },
   ACCOUNT_SETTINGS: {
     ROOT: "account",
+    BILLING: "billing",
+    EMAIL: "communication-support",
   },
 } as const;
 export default ClientRoutes;

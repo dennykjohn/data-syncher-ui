@@ -98,6 +98,10 @@ const ServerRoutes = {
     listAnnualBilling: ({ companyId }: { companyId: string }) =>
       `billing/${companyId}/annual-usage/`,
   },
+  communicationSupport: {
+    getDetails: () => "account/communication-support/",
+    update: () => "account/communication-support/",
+  },
 } as const;
 
 export default ServerRoutes;

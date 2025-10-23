@@ -46,6 +46,10 @@ const AccountSettings = lazy(
     import("@/components/dashboard/components/AccountSettings/Billing/Billing"),
 );
 
+const EmailSettings = lazy(
+  () => import("@/components/dashboard/components/AccountSettings/Email/Email"),
+);
+
 // Pages
 //const HomePage = lazy(() => import("@/pages/website/HomePage"));
 
@@ -157,8 +161,12 @@ export const router = createBrowserRouter([
           },
           /** End User Settings Routes */
           {
-            path: ClientRoutes.ACCOUNT_SETTINGS.ROOT,
+            path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`,
             element: <AccountSettings />,
+          },
+          {
+            path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.EMAIL}`,
+            element: <EmailSettings />,
           },
         ],
       },

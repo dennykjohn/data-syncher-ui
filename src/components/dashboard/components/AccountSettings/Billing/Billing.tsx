@@ -56,7 +56,7 @@ const Billing = () => {
       <PageHeader
         breadcrumbs={[
           {
-            label: "User profile",
+            label: "Account Settings",
             route: "",
           },
         ]}

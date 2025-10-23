@@ -74,6 +74,15 @@ const items = [
     value: "accountSettings",
     title: "Account Settings",
     icon: <MdOutlineSettings size={24} />,
-    links: [{ label: "Billing", path: ClientRoutes.ACCOUNT_SETTINGS.ROOT }],
+    links: [
+      {
+        label: "Billing",
+        path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`,
+      },
+      {
+        label: "Communication Support",
+        path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.EMAIL}`,
+      },
+    ],
   },
 ];
