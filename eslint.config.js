@@ -52,6 +52,9 @@ export default tseslint.config(
           "src/*.{tsx}": "PASCAL_CASE",
           "src/*.{js,ts}": "KEBAB_CASE",
         },
+        {
+          ignoreMiddleExtensions: true,
+        },
       ],
     },
   },
