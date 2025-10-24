@@ -106,7 +106,7 @@ const Register = () => {
     <Flex direction="column" w="100%" h="100%">
       <Stack as="form" gap={2} onSubmit={onSubmit}>
         <Fieldset.Root size="md" gap={2}>
-          <Stack gap={2} mb={2}>
+          <Stack gap={4} mb={2}>
             <Image
               src={Logo}
               alt="Logo"

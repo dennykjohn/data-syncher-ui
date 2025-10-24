@@ -1,7 +1,14 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useState } from "react";
 
-import { Button, Field, Flex, Input, VStack } from "@chakra-ui/react";
+import {
+  Button,
+  Field,
+  Flex,
+  Input,
+  NativeSelect,
+  VStack,
+} from "@chakra-ui/react";
 
 import { IoMdArrowBack } from "react-icons/io";
 import { MdOutlineSave } from "react-icons/md";
@@ -50,8 +57,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
   }, [defaultValues]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target as HTMLInputElement & HTMLSelectElement;
     setValues((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
@@ -73,12 +82,69 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const renderInput = (field: FieldConfig) => {
-    const inputType =
-      field.type === "PasswordInput"
-        ? "password"
-        : field.type === "CharField"
-          ? "text"
-          : "text"; // extend for more types later
+    // Support `ChoiceField` type with `options` on the FieldConfig
+    if (field.type === "ChoiceField") {
+      return (
+        <Field.Root
+          key={field.name}
+          required={field.required}
+          invalid={!!errors[field.name]}
+        >
+          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+          <NativeSelect.Root size="sm">
+            <NativeSelect.Field
+              id={field.name}
+              name={field.name}
+              placeholder="Select option"
+              onChange={handleChange}
+              value={values[field.name]}
+            >
+              {(field.choices ?? []).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.display}
+                </option>
+              ))}
+            </NativeSelect.Field>
+            <NativeSelect.Indicator />
+          </NativeSelect.Root>
+          {errors[field.name] && (
+            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+          )}
+        </Field.Root>
+      );
+    }
+
+    // extend for more types later
+    const inputType = "text";
+
+    // If the value of authentication_type field is "password",
+    // hide private_key & public_key fields
+    if (
+      (field.name === "private_key" || field.name === "public_key") &&
+      values["authentication_type"] === "password"
+    ) {
+      return null;
+    }
+
+    // If the value of authentication_type field is "keypair",
+    // hide password field
+    if (
+      field.name === "password" &&
+      values["authentication_type"] === "key_pair"
+    ) {
+      return null;
+    }
+
+    // If the value of authentication_type field is not selected,
+    // hide private_key, public_key & password fields
+    if (
+      (field.name === "private_key" ||
+        field.name === "public_key" ||
+        field.name === "password") &&
+      !values["authentication_type"]
+    ) {
+      return null;
+    }
 
     return (
       <Field.Root
