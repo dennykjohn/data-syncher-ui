@@ -7,3 +7,7 @@ export const RegisterPage = lazy(
 export const ForgotPassword = lazy(
   () => import("@/components/auth/ForgotPassword/ForgotPassword"),
 );
+
+export const ResetPassword = lazy(
+  () => import("@/components/auth/ResetPassword/ResetPassword"),
+);

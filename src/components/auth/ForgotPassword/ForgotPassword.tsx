@@ -43,7 +43,7 @@ export default function ForgotPassword() {
       setHasError(false);
       await AxiosInstance({
         method: "POST",
-        url: ServerRoutes.auth.passwordReset(),
+        url: ServerRoutes.auth.forgotPassword(),
         data,
       });
       toaster.success({

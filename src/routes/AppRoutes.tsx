@@ -7,7 +7,12 @@ import ClientRoutes from "@/constants/client-routes";
 import NotFound from "@/shared/NotFound";
 import RouteError from "@/shared/RouteError";
 
-import { ForgotPassword, LoginPage, RegisterPage } from "./AuthRoutes";
+import {
+  ForgotPassword,
+  LoginPage,
+  RegisterPage,
+  ResetPassword,
+} from "./AuthRoutes";
 import {
   ConnectorDetails,
   ConnectorOverview,
@@ -74,6 +79,7 @@ export const router = createBrowserRouter([
       { path: ClientRoutes.LOGIN, element: <LoginPage /> },
       { path: ClientRoutes.REGISTER, element: <RegisterPage /> },
       { path: ClientRoutes.FORGOT_PASSWORD, element: <ForgotPassword /> },
+      { path: ClientRoutes.RESET_PASSWORD, element: <ResetPassword /> },
     ],
   },
   // 🌟 PROTECTED ROUTES

@@ -8,8 +8,9 @@ const ServerRoutes = {
     profile: () => "/user/profile/",
     companyDetails: ({ companyId }: { companyId: string }) =>
       `/company-details/${companyId}`,
-    passwordReset: () => "password-reset/",
+    forgotPassword: () => "password-reset/",
     register: () => "authentication/",
+    resetPassword: () => "password-reset-confirm/",
   },
   source: {
     listMasterSources: () => "source/all/",
