@@ -9,6 +9,8 @@ import {
   Flex,
   Grid,
   Image,
+  Input,
+  InputGroup,
   Portal,
   Text,
 } from "@chakra-ui/react";
@@ -17,6 +19,7 @@ import { GoPlus } from "react-icons/go";
 import { GrRefresh } from "react-icons/gr";
 import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
+import { MdSearch } from "react-icons/md";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { SlRefresh } from "react-icons/sl";
 
@@ -67,6 +70,8 @@ const Schema = () => {
   const [copyOfInitialCheckedTables, setCopyOfInitialCheckedTables] = useState<
     ConnectorTable[]
   >([]);
+
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // 1. Store initial checkedTables on first load
   useEffect(() => {
@@ -165,6 +170,18 @@ const Schema = () => {
   return (
     <Flex flexDirection="column" gap={4} pb={8} w="100%">
       <Actions {...context} />
+      <Flex mr="auto">
+        <InputGroup endElement={<MdSearch size={24} />}>
+          <Input
+            placeholder="Search table name"
+            size="md"
+            onChange={(e) => {
+              const query = e.target.value.toLowerCase();
+              setSearchQuery(query);
+            }}
+          />
+        </InputGroup>
+      </Flex>
       <Grid templateColumns="1fr 1fr" gap={4}>
         <Flex
           direction="column"
@@ -185,7 +202,9 @@ const Schema = () => {
           </Flex>
           {(isAssigningTables || isAllTableListLoading) && <LoadingSpinner />}
           {!isAssigningTables &&
-            AllTableList?.map((item, index) => {
+            AllTableList?.filter((item) =>
+              item.table.toLowerCase().includes(searchQuery),
+            ).map((item, index) => {
               const { table, table_fields } = item;
               const isEven = index % 2 === 0;
               const rowBg = isEven ? "gray.100" : "white";
