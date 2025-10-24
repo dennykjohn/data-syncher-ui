@@ -89,7 +89,7 @@ const Destination = () => {
         buttonLabel="Add Destination"
         onCreateClick={() => navigate(ClientRoutes.DESTINATION.ADD)}
       />
-      {data?.totalElements === 0 && <NoDestinations />}
+      {data?.totalElements === 0 && !searchTerm && <NoDestinations />}
       <TableFilter
         handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
       />

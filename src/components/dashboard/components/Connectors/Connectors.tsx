@@ -130,7 +130,7 @@ const Connectors = () => {
         buttonLabel="Add Connector"
         onCreateClick={() => navigate(ClientRoutes.CONNECTORS.ADD)}
       />
-      {data?.totalElements === 0 && <NoConnections />}
+      {data?.totalElements === 0 && !searchTerm && <NoConnections />}
       <TableFilter
         handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
       />
