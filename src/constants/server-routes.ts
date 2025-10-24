@@ -27,7 +27,7 @@ const ServerRoutes = {
       size: number;
       searchTerm?: string;
     }) =>
-      `destinations?page=${page}&size=${size}${searchTerm ? `&search=${searchTerm}` : ""}`,
+      `destinations?page=${page}&size=${size}${searchTerm ? `&name=${searchTerm}` : ""}`,
     fetchDestinationById: (id: string) => `destinations/detail/${id}`,
     // Below API to be corrected
     fetchAllUserCreatedDestinationList: () => "/destinations/?page=1&size=100",
@@ -43,7 +43,7 @@ const ServerRoutes = {
       size: number;
       searchTerm?: string;
     }) =>
-      `home?page=${page}&size=${size}${searchTerm ? `&search=${searchTerm}` : ""}`,
+      `home?page=${page}&size=${size}${searchTerm ? `&name=${searchTerm}` : ""}`,
     fetchConnectorById: (id: number) => `connection/setup/${id}/`,
     fetchConnectorConfig: ({ type, id }: { type: string; id: number }) =>
       `source-config/${type}/${id}/`,

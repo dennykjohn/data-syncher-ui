@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 
 import { Button, Field, Fieldset, Input, Stack } from "@chakra-ui/react";
