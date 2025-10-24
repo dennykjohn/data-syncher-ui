@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Button,
@@ -11,7 +11,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 
 import Logo from "@/assets/logo.svg";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -23,6 +23,21 @@ import AxiosInstance from "@/lib/axios/api-client";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
+  const uid = searchParams.get("uid");
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // if not token present in url, show Invalid URL message
+    if (!token || !uid) {
+      toaster.error({
+        title: "Invalid URL",
+        description: "The password reset link is invalid.",
+      });
+      navigate(`${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`);
+    }
+  }, [token, navigate, uid]);
 
   const [hasError, setHasError] = useState(false);
   const [password, setPassword] = useState("");
@@ -83,8 +98,11 @@ const ResetPassword = () => {
     }
 
     try {
+      setIsLoading(true);
       await AxiosInstance.post(ServerRoutes.auth.resetPassword(), {
         new_password: password,
+        token,
+        uid,
       });
       toaster.success({
         title: "Password Reset Successful",
@@ -97,6 +115,8 @@ const ResetPassword = () => {
         description:
           "There was an error resetting your password. Please try again.",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -164,7 +184,7 @@ const ResetPassword = () => {
             alignSelf="center"
             colorPalette="brand"
             w="70%"
-            loading={false}
+            loading={isLoading}
           >
             Submit
           </Button>
