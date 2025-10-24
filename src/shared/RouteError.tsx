@@ -1,8 +1,10 @@
 import React from "react";
 
-import { Button, Flex, Text } from "@chakra-ui/react";
+import { Button, Flex, Image, Text } from "@chakra-ui/react";
 
 import { useNavigate, useRouteError } from "react-router";
+
+import OopsIllustration from "@/assets/images/opps.svg";
 
 const RouteError: React.FC = () => {
   const navigate = useNavigate();
@@ -25,8 +27,16 @@ const RouteError: React.FC = () => {
       gap={4}
       minH="60vh"
       p={6}
+      h="100vh"
     >
-      <Text fontSize="lg" fontWeight="semibold">
+      .{" "}
+      <Image
+        src={OopsIllustration}
+        alt="Oops illustration"
+        boxSize="300px"
+        mb={4}
+      />
+      <Text fontSize={{ base: "lg", md: "xl" }} fontWeight="semibold">
         Oops — something went wrong
       </Text>
       <Text color="gray.600" textAlign="center" maxW="xl">
