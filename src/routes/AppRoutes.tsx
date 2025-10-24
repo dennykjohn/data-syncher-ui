@@ -5,6 +5,7 @@ import { Navigate, createBrowserRouter } from "react-router";
 import ConnectorConfiguration from "@/components/dashboard/components/Connectors/components/NewConnector/components/ConnectorConfiguration/ConnectorConfiguration";
 import ClientRoutes from "@/constants/client-routes";
 import NotFound from "@/shared/NotFound";
+import RouteError from "@/shared/RouteError";
 
 import { ForgotPassword, LoginPage, RegisterPage } from "./AuthRoutes";
 import {
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
   // 🌟 PROTECTED ROUTES
   {
     element: <ProtectedRoute />,
+    errorElement: <RouteError />,
     children: [
       {
         path: ClientRoutes.DASHBOARD,
