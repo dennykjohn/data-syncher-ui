@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 
 import { Flex, Grid, Text } from "@chakra-ui/react";
 
+import { FcComboChart } from "react-icons/fc";
+
 import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
@@ -82,9 +84,24 @@ const Overview = () => {
           {isLoadingDetails ? (
             <LoadingSpinner />
           ) : (
-            logDetails?.logs.map((detail, index) => (
-              <Detail key={index} detail={detail} />
-            ))
+            <>
+              {logDetails?.logs.length === 0 && (
+                <Flex
+                  direction="column"
+                  alignItems="center"
+                  justifyContent="center"
+                  gap={2}
+                  padding={8}
+                  h="100%"
+                >
+                  <FcComboChart size={48} />
+                  <Text color="brand.500">No logs available</Text>
+                </Flex>
+              )}
+              {logDetails?.logs.map((detail, index) => (
+                <Detail key={index} detail={detail} />
+              ))}
+            </>
           )}
         </Flex>
       </Grid>
