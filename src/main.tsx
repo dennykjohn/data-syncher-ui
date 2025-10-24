@@ -1,10 +1,11 @@
-import { StrictMode } from "react";
+import { StrictMode, Suspense } from "react";
 
 import { ChakraProvider } from "@chakra-ui/react";
 
 import { ErrorBoundary } from "react-error-boundary";
 import { RouterProvider } from "react-router";
 
+import LoadingSpinner from "@/components/shared/Spinner";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/Auth/AuthContext";
 import "@/css/index.scss";
@@ -25,7 +26,9 @@ createRoot(document.getElementById("root")!).render(
         <Toaster />
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
-            <RouterProvider router={router} />
+            <Suspense fallback={<LoadingSpinner />}>
+              <RouterProvider router={router} />
+            </Suspense>
           </QueryClientProvider>
         </AuthProvider>
       </ChakraProvider>
