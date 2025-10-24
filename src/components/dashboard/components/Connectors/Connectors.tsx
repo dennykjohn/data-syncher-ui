@@ -67,8 +67,11 @@ const columns: Column<ConnectorTableItem>[] = [
   {
     header: "Last sync",
     accessor: "last_synced_new",
-    render: (_, { last_synced_new }) =>
-      format(new Date(last_synced_new), "hh:mm a, dd MMMM"),
+    render: (_, { last_synced_new }) => {
+      const d = new Date(last_synced_new as string | number);
+      if (Number.isNaN(d.getTime())) return String(last_synced_new ?? "");
+      return format(d, "hh:mm a, dd MMMM");
+    },
   },
   {
     header: "Status",
