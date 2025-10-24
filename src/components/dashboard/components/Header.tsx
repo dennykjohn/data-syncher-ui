@@ -41,6 +41,7 @@ const Header = ({
     <GridItem
       area="header"
       color="white"
+      backgroundColor="white"
       position="fixed"
       top={0}
       left={sidebarDisplay === "block" ? sidebarWidth : "0"}
