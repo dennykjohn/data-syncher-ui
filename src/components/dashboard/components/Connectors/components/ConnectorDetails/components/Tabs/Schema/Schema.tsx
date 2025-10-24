@@ -308,69 +308,63 @@ const Schema = () => {
                   {status === "failed" && <Image src={ErrorIcon} />}
                 </Flex>
                 <Flex gap={3}>
-                  <>
-                    <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-                    <Box
-                      _hover={{
-                        color: "brand.500",
-                      }}
-                      p={1}
-                      borderRadius="sm"
-                      onClick={() => {
-                        setReloadingTable(table.table);
-                        reloadSingleTable(
-                          {
-                            connection_id: context.connection_id,
-                            table_name: table.table,
-                          },
-                          {
-                            onSettled: () => setReloadingTable(null), // clear after done
-                          },
-                        );
-                      }}
-                      style={{
-                        animation:
-                          reloadingTable === table.table &&
-                          isReloadingSingleTable
-                            ? "spin 1s linear infinite"
-                            : undefined,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <GrRefresh />
-                    </Box>
-                  </>
-                  <>
-                    <Box
-                      _hover={{
-                        color: "brand.500",
-                      }}
-                      p={1}
-                      borderRadius="sm"
-                      onClick={() => {
-                        setRefreshingTable(table.table);
-                        refreshDeltaTable(
-                          {
-                            connection_id: context.connection_id,
-                            table_name: table.table,
-                          },
-                          {
-                            onSettled: () => setRefreshingTable(null), // clear after done
-                          },
-                        );
-                      }}
-                      style={{
-                        animation:
-                          refreshingTable === table.table &&
-                          isRefreshingDeltaTable
-                            ? "spin 1s linear infinite"
-                            : undefined,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <SlRefresh />
-                    </Box>
-                  </>
+                  <Box
+                    _hover={{
+                      color: "brand.500",
+                    }}
+                    p={1}
+                    borderRadius="sm"
+                    onClick={() => {
+                      setReloadingTable(table.table);
+                      reloadSingleTable(
+                        {
+                          connection_id: context.connection_id,
+                          table_name: table.table,
+                        },
+                        {
+                          onSettled: () => setReloadingTable(null), // clear after done
+                        },
+                      );
+                    }}
+                    style={{
+                      animation:
+                        reloadingTable === table.table && isReloadingSingleTable
+                          ? "spin 1s linear infinite"
+                          : undefined,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <GrRefresh />
+                  </Box>
+                  <Box
+                    _hover={{
+                      color: "brand.500",
+                    }}
+                    p={1}
+                    borderRadius="sm"
+                    onClick={() => {
+                      setRefreshingTable(table.table);
+                      refreshDeltaTable(
+                        {
+                          connection_id: context.connection_id,
+                          table_name: table.table,
+                        },
+                        {
+                          onSettled: () => setRefreshingTable(null), // clear after done
+                        },
+                      );
+                    }}
+                    style={{
+                      animation:
+                        refreshingTable === table.table &&
+                        isRefreshingDeltaTable
+                          ? "spin 1s linear infinite"
+                          : undefined,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <SlRefresh />
+                  </Box>
                   <Box
                     _hover={{
                       color: "brand.500",
