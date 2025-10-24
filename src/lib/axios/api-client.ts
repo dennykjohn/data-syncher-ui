@@ -49,7 +49,10 @@ AxiosInstance.interceptors.request.use(
 AxiosInstance.interceptors.response.use(
   (response: AxiosResponse): AxiosResponse => response,
   async (error: AxiosError): Promise<ErrorResponseType> => {
-    if (!error.response) {
+    if (error.response?.status === 401) {
+      Cookies.remove("access_token");
+      window.location.href = `${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`;
+    } else if (!error.response) {
       // Network-level issue (server down, DNS error, CORS, etc.)
       toaster.error({
         title: "Server Unreachable",
@@ -61,9 +64,6 @@ AxiosInstance.interceptors.response.use(
         title: "Request Timeout",
         description: "The server took too long to respond. Try again soon.",
       });
-    } else if (error.response?.status === 401) {
-      Cookies.remove("access_token");
-      window.location.href = `${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`;
     }
     return Promise.reject(error.response?.data);
   },
