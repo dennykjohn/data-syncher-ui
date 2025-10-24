@@ -1,13 +1,13 @@
 # Data Syncher UI
 
-Built in React + TypeScript + Vite.\*
+Built in React + TypeScript + Vite + React Query
 
 ---
 
 ## ✨ Introduction
 
 Welcome to **Data Syncher UI**.  
-Designed with modern tools — React, TypeScript, Vite — this project offers a minimal, efficient foundation upon which your syncing dreams can take flight.
+Designed with modern tools — React, TypeScript, Vite & React Query — this project offers a minimal, efficient foundation upon which your syncing dreams can take flight.
 
 ---
 
