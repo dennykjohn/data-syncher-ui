@@ -46,7 +46,13 @@ const Overview = () => {
         <Text fontWeight="semibold">Connector activity</Text>
         <Filter filterDays={filterDays} setFilterDays={setFilterDays} />
       </Flex>
-      <Grid templateColumns="repeat(2, 1fr)" gap={4} overflowX="auto" h="100%">
+      <Grid
+        minW="2xl"
+        templateColumns="repeat(2, 1fr)"
+        gap={4}
+        overflowX="auto"
+        h="100%"
+      >
         <Flex
           direction="column"
           bgColor="white"
