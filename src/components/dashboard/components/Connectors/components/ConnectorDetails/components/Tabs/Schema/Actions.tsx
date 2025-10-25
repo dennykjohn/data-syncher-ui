@@ -22,7 +22,7 @@ const Actions = ({
   });
 
   return (
-    <Flex direction="column" gap={2} mb={2}>
+    <Flex direction="column" gap={2} mb={2} minW="xl">
       <Flex w="100%">
         <Text fontWeight="semibold" flexGrow={1} w="100%">
           Target Details
@@ -46,7 +46,7 @@ const Actions = ({
         </Flex>
         <Flex gap={4}>
           <Button
-            variant="ghost"
+            variant={{ base: "outline", md: "ghost" }}
             colorPalette="red"
             color="red.500"
             onClick={() => refreshSchema()}

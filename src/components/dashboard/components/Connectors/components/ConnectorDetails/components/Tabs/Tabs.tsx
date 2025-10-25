@@ -55,7 +55,7 @@ const ConnectorTabs = () => {
               key={tab.route}
               value={index.toString()}
               py={4}
-              px={6}
+              px={{ base: 4, md: 6 }}
               fontWeight="medium"
               fontSize="sm"
               color="gray.600"

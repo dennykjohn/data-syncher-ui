@@ -22,7 +22,7 @@ const Settings = () => {
   };
 
   return (
-    <Flex flexDirection="column" gap={4}>
+    <Flex flexDirection="column" gap={4} w="100%">
       <Text fontSize="md" fontWeight="semibold">
         Connection details
       </Text>
