@@ -33,6 +33,21 @@ const Header = ({ connector }: { connector: Connector }) => {
     });
   };
 
+  // Time Freq format. If the time frequency is a number and
+  // greater than 60 mins, convert to hours and minutes. Else show in minutes.
+  const formatTimeFrequency = (freq: string) => {
+    const freqNum = Number(freq);
+    if (isNaN(freqNum) || freqNum <= 0) {
+      return "None";
+    }
+    if (freqNum >= 60) {
+      const hours = Math.floor(freqNum / 60);
+      const minutes = freqNum % 60;
+      return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+    }
+    return `${freqNum}m`;
+  };
+
   return (
     <Flex flexDirection="column" gap={4}>
       <Flex
@@ -79,7 +94,7 @@ const Header = ({ connector }: { connector: Connector }) => {
                 <>
                   <LuDot size={24} />
                   <Text fontSize="sm">
-                    Loads every {time_frequency} minutes
+                    Loads every {formatTimeFrequency(time_frequency)}
                   </Text>
                 </>
               )}
