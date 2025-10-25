@@ -8,7 +8,6 @@ import {
   Checkbox,
   Flex,
   Grid,
-  Image,
   Input,
   InputGroup,
   Portal,
@@ -16,24 +15,16 @@ import {
 } from "@chakra-ui/react";
 
 import { GoPlus } from "react-icons/go";
-import { GrRefresh } from "react-icons/gr";
 import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
-import { RxDragHandleDots2 } from "react-icons/rx";
-import { SlRefresh } from "react-icons/sl";
 
 import { useOutletContext } from "react-router";
 
-import CheckIcon from "@/assets/icons/check-icon.svg";
-import ErrorIcon from "@/assets/icons/error-icon.svg";
-import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
-import useRefreshDeltaTable from "@/queryOptions/connector/schema/useRefreshDeltaTable";
-import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import {
   type Connector,
@@ -42,6 +33,7 @@ import {
 } from "@/types/connectors";
 
 import Actions from "./Actions";
+import SelectedTableList from "./SelectedTable";
 
 const Schema = () => {
   const context = useOutletContext<Connector>();
@@ -53,13 +45,6 @@ const Schema = () => {
     useUpdateSelectedTables({
       connectorId: context.connection_id,
     });
-  const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
-    useReloadSingleTable();
-  const { mutate: refreshDeltaTable, isPending: isRefreshingDeltaTable } =
-    useRefreshDeltaTable();
-
-  const [refreshingTable, setRefreshingTable] = useState<string | null>(null);
-  const [reloadingTable, setReloadingTable] = useState<string | null>(null);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selectedTables, setSelectedTables] = useState<
@@ -112,43 +97,6 @@ const Schema = () => {
       ...prev,
       [table]: !prev[table],
     }));
-
-  // Drag and drop state
-  const [draggedItem, setDraggedItem] = useState<null | ConnectorSelectedTable>(
-    null,
-  );
-  const handleDragStart = (table: ConnectorSelectedTable) => {
-    setDraggedItem(table);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Allow drop
-  };
-
-  const handleDrop = (targetItem: ConnectorSelectedTable) => {
-    if (!draggedItem || draggedItem.table === targetItem.table) return;
-
-    const newList = [...selectedTables!] as ConnectorSelectedTable[];
-    const draggedIndex = newList.findIndex(
-      (i) => i.table === draggedItem.table,
-    );
-    const targetIndex = newList.findIndex((i) => i.table === targetItem.table);
-
-    newList.splice(draggedIndex, 1);
-    newList.splice(targetIndex, 0, draggedItem);
-
-    setSelectedTables(newList);
-    const tablesToUpdate = newList.map((t) => t.table);
-    updateTables(
-      { selected_tables: tablesToUpdate },
-      {
-        onSuccess: () => {
-          toaster.success({ title: "Table order updated successfully" });
-        },
-      },
-    );
-    setDraggedItem(null);
-  };
 
   const handleAssignTables = () => {
     const tablesToAdd = checkedTables.map((t) => ({ table: t.table }));
@@ -269,117 +217,7 @@ const Schema = () => {
               );
             })}
         </Flex>
-        <Flex
-          direction="column"
-          gap={2}
-          borderWidth={1}
-          borderColor="gray.300"
-          borderRadius="lg"
-          padding={4}
-          bgColor="white"
-        >
-          <Flex mb={4}>
-            <Text fontSize="sm" fontWeight="semibold">
-              Selected Tables
-            </Text>
-          </Flex>
-          {selectedTables?.map((table, index) => {
-            const isEven = index % 2 === 0;
-            const rowBg = isEven ? "gray.100" : "white";
-            const { status } = table;
-
-            return (
-              <Flex
-                key={table.table}
-                justifyContent="space-between"
-                backgroundColor={rowBg}
-                alignItems="center"
-                padding={2}
-                borderRadius={4}
-                draggable
-                onDragStart={() => handleDragStart(table)}
-                onDragOver={handleDragOver}
-                onDrop={() => handleDrop(table)}
-              >
-                <Flex gap={2} alignItems="center">
-                  <Text fontSize="sm">{table.table}</Text>
-                  {status === "in_progress" && <Image src={SandtimeIcon} />}
-                  {status === "completed" && <Image src={CheckIcon} />}
-                  {status === "failed" && <Image src={ErrorIcon} />}
-                </Flex>
-                <Flex gap={3}>
-                  <Box
-                    _hover={{
-                      color: "brand.500",
-                    }}
-                    p={1}
-                    borderRadius="sm"
-                    onClick={() => {
-                      setReloadingTable(table.table);
-                      reloadSingleTable(
-                        {
-                          connection_id: context.connection_id,
-                          table_name: table.table,
-                        },
-                        {
-                          onSettled: () => setReloadingTable(null), // clear after done
-                        },
-                      );
-                    }}
-                    style={{
-                      animation:
-                        reloadingTable === table.table && isReloadingSingleTable
-                          ? "spin 1s linear infinite"
-                          : undefined,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <GrRefresh />
-                  </Box>
-                  <Box
-                    _hover={{
-                      color: "brand.500",
-                    }}
-                    p={1}
-                    borderRadius="sm"
-                    onClick={() => {
-                      setRefreshingTable(table.table);
-                      refreshDeltaTable(
-                        {
-                          connection_id: context.connection_id,
-                          table_name: table.table,
-                        },
-                        {
-                          onSettled: () => setRefreshingTable(null), // clear after done
-                        },
-                      );
-                    }}
-                    style={{
-                      animation:
-                        refreshingTable === table.table &&
-                        isRefreshingDeltaTable
-                          ? "spin 1s linear infinite"
-                          : undefined,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <SlRefresh />
-                  </Box>
-                  <Box
-                    _hover={{
-                      color: "brand.500",
-                      backgroundColor: "gray.300",
-                    }}
-                    p={1}
-                    borderRadius="sm"
-                  >
-                    <RxDragHandleDots2 cursor="grab" />
-                  </Box>
-                </Flex>
-              </Flex>
-            );
-          })}
-        </Flex>
+        <SelectedTableList />
       </Grid>
       <ActionBar.Root open={hasCheckedTablesChanged}>
         <Portal>
