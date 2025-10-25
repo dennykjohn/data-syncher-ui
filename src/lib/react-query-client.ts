@@ -18,6 +18,10 @@ export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error: unknown, query) => {
       const err = error as Error;
+
+      // Skip showing toaster for 401 errors
+      if (err.status === "401") return;
+
       toaster.error({
         title: err.message ?? "Could not load content",
         description:
