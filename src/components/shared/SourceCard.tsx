@@ -26,7 +26,6 @@ const SourceCard = ({
       alignItems="center"
       justifyContent={"center"}
       gap={VIEW_CONFIG.pageGap}
-      w="3xs"
       flexWrap={"wrap"}
       cursor={isLoading ? "not-allowed" : "pointer"}
       _hover={!isLoading ? { boxShadow: "lg" } : {}}
@@ -35,8 +34,8 @@ const SourceCard = ({
       opacity={isLoading ? 0.6 : 1}
       border={isSelected ? "2px solid" : "none"}
     >
-      <Image src={image} alt={title} h="86px" />
-      <Text fontSize="md" wordBreak={"break-word"} textAlign="center">
+      <Image src={image} alt={title} h={16} />
+      <Text fontSize="sm" wordBreak={"break-word"} textAlign="center">
         {title}
       </Text>
       {isLoading && <LoadingSpinner position="absolute" />}
