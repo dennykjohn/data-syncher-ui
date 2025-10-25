@@ -1,46 +1,27 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button, Field, Fieldset, Input, Stack } from "@chakra-ui/react";
 
-import { format, parseISO } from "date-fns";
-
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
-import useFetchCurrentUserProfile from "@/queryOptions/user/useFetchCurrentUserProfile";
 import { useUpdateCurrentUserProfile } from "@/queryOptions/user/useUpdateCurrentUserProfile";
 import { type UpdateCurrentUserPayload } from "@/types/user";
 
-import { type FormState, initialState } from "./helper";
+import { type FormState } from "./helper";
 
-const ProfileForm = () => {
-  const [form, setForm] = useState<FormState>(initialState);
+const ProfileForm = ({
+  initialData,
+  isLoading,
+}: {
+  initialData: FormState;
+  isLoading: boolean;
+}) => {
+  const [form, setForm] = useState<FormState>(initialData);
   const [errors, setErrors] = useState<
     Partial<Record<keyof FormState, string>>
   >({});
-  const { data: userProfile, isLoading } = useFetchCurrentUserProfile();
-  const { mutate: updateProfile, isPending } = useUpdateCurrentUserProfile();
 
-  useEffect(() => {
-    if (userProfile) {
-      const regex = /(\.\d{3})\d+Z$/;
-      const cleanedStartDate = parseISO(
-        userProfile.company?.start_date.replace(regex, "$1Z"),
-      );
-      const cleanedEndDate = parseISO(
-        userProfile.company?.end_date.replace(regex, "$1Z"),
-      );
-      setForm((prev) => ({
-        ...prev,
-        firstName: userProfile.first_name,
-        lastName: userProfile.last_name,
-        company_email: userProfile.company_email,
-        cmp_name: userProfile.company?.cmp_name,
-        start_date: format(cleanedStartDate, "yyyy-MM-dd"),
-        end_date: format(cleanedEndDate, "yyyy-MM-dd"),
-      }));
-    }
-  }, [userProfile]);
+  const { mutate: updateProfile, isPending } = useUpdateCurrentUserProfile();
 
   const onChange = (key: keyof FormState) => (value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
