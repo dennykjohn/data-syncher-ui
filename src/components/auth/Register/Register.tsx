@@ -114,7 +114,7 @@ const Register = () => {
               height="48px"
               aspectRatio={1}
             />
-            <Fieldset.Legend fontSize={32} fontWeight="bold">
+            <Fieldset.Legend fontSize={32} fontWeight="semibold">
               Sign Up
             </Fieldset.Legend>
             <Text fontSize="sm" color="gray.500">

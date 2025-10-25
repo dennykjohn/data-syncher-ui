@@ -83,7 +83,7 @@ export default function Form() {
               height="48px"
               aspectRatio={1}
             />
-            <Fieldset.Legend fontSize={32} fontWeight="bold">
+            <Fieldset.Legend fontSize={32} fontWeight="semibold">
               Sign in
             </Fieldset.Legend>
             <Text fontSize="sm" color="gray.500">
