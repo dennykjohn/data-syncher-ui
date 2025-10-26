@@ -43,9 +43,9 @@ const Header = ({ connector }: { connector: Connector }) => {
     if (freqNum >= 60) {
       const hours = Math.floor(freqNum / 60);
       const minutes = freqNum % 60;
-      return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+      return minutes === 0 ? `${hours} hr` : `${hours} hr ${minutes} min`;
     }
-    return `${freqNum}m`;
+    return `${freqNum} minutes`;
   };
 
   return (
