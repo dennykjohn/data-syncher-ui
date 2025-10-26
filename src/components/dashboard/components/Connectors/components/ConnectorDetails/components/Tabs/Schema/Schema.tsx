@@ -6,10 +6,12 @@ import {
   Button,
   Checkbox,
   Flex,
+  For,
   Grid,
   Input,
   InputGroup,
   Portal,
+  Skeleton,
   Text,
 } from "@chakra-ui/react";
 
@@ -138,7 +140,11 @@ const Schema = () => {
               Select
             </Text>
           </Flex>
-          {(isAssigningTables || isAllTableListLoading) && <LoadingSpinner />}
+          {(isAssigningTables || isAllTableListLoading) && (
+            <For each={[...Array(10).keys()]}>
+              {() => <Skeleton gap="4" height={8} />}
+            </For>
+          )}
           {!isAssigningTables &&
             AllTableList?.filter((item) =>
               item.table.toLowerCase().includes(searchQuery),
