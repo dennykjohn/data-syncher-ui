@@ -1,5 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   ActionBar,
@@ -23,73 +22,63 @@ import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
-import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
-import {
-  type Connector,
-  type ConnectorSelectedTable,
-  type ConnectorTable,
-} from "@/types/connectors";
+import { type Connector, type ConnectorTable } from "@/types/connectors";
 
 import Actions from "./Actions";
 import SelectedTableList from "./SelectedTable";
 
 const Schema = () => {
   const context = useOutletContext<Connector>();
+
+  // Fetch data
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
-  const { data: SelectedTables, isLoading: isLoadingSelected } =
-    useFetchSelectedTables(context.connection_id);
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
       connectorId: context.connection_id,
     });
+  // Temp state to trigger re-calculation
+  const [recalculatedCheckedTables, setRecalculatedCheckedTables] =
+    useState<boolean>(false);
 
+  // UI States
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [selectedTables, setSelectedTables] = useState<
-    ConnectorSelectedTable[]
-  >([]);
-
-  const [checkedTables, setCheckedTables] = useState<ConnectorTable[]>([]);
-  const [copyOfInitialCheckedTables, setCopyOfInitialCheckedTables] = useState<
-    ConnectorTable[]
-  >([]);
-
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // 1. Store initial checkedTables on first load
-  useEffect(() => {
-    if (AllTableList && SelectedTables) {
-      const checked = AllTableList.filter((t) => t.selected);
-      setCopyOfInitialCheckedTables(checked);
-    }
-  }, [AllTableList, SelectedTables]);
+  const checkedTables = useMemo<ConnectorTable[]>(() => {
+    if (!AllTableList) return [];
+    return AllTableList.filter((t) => t.selected);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [AllTableList, recalculatedCheckedTables]);
 
-  // Show Action bar when if the contents of
-  // checked table and copyOfInitialCheckedTables changes
-  const hasCheckedTablesChanged =
-    checkedTables.length !== copyOfInitialCheckedTables.length ||
-    checkedTables.some(
-      (table) =>
-        !copyOfInitialCheckedTables.find((t) => t.table === table.table),
+  // Save a Copy on initial checked tables
+  // to compare for changes
+  const copyOfInitialCheckedTables: ConnectorTable[] = useMemo(() => {
+    if (!AllTableList) return [];
+    return AllTableList.filter((t) => t.selected);
+  }, [AllTableList]);
+
+  // Local writable state (only for user interactions)
+  const [userCheckedTables, setUserCheckedTables] = useState<ConnectorTable[]>(
+    () => checkedTables,
+  );
+
+  useEffect(() => {
+    setUserCheckedTables(checkedTables);
+  }, [checkedTables]);
+
+  // Recompute difference when data changes (optional lazy sync)
+  const hasCheckedTablesChanged = useMemo(() => {
+    return (
+      userCheckedTables.length !== copyOfInitialCheckedTables.length ||
+      userCheckedTables.some(
+        (table) =>
+          !copyOfInitialCheckedTables.find((t) => t.table === table.table),
+      )
     );
-
-  useEffect(() => {
-    if (SelectedTables) {
-      setSelectedTables(SelectedTables);
-    }
-  }, [SelectedTables]);
-
-  // Set selected Tables in AllTableList in CheckedTables
-  useEffect(() => {
-    if (AllTableList) {
-      const checked = AllTableList.filter((t) =>
-        selectedTables.some((st) => st.table === t.table),
-      );
-      setCheckedTables(checked);
-    }
-  }, [AllTableList, selectedTables]);
+  }, [userCheckedTables, copyOfInitialCheckedTables]);
 
   // Track expanded tables
   const toggleExpand = (table: string) =>
@@ -98,20 +87,21 @@ const Schema = () => {
       [table]: !prev[table],
     }));
 
+  // Save action
   const handleAssignTables = () => {
-    const tablesToAdd = checkedTables.map((t) => ({ table: t.table }));
+    const tablesToAdd = userCheckedTables.map((t) => t.table);
     updateTables(
-      { selected_tables: tablesToAdd.map((t) => t.table) },
+      { selected_tables: tablesToAdd },
       {
         onSuccess: () => {
-          setCheckedTables([]);
           toaster.success({ title: "Tables assigned successfully" });
+          setRecalculatedCheckedTables((prev) => !prev);
         },
       },
     );
   };
 
-  if (isAllTableListLoading || isLoadingSelected) {
+  if (isAllTableListLoading) {
     return <LoadingSpinner />;
   }
 
@@ -189,15 +179,13 @@ const Schema = () => {
                       marginLeft="auto"
                       variant="solid"
                       onCheckedChange={({ checked }) => {
-                        if (checked) {
-                          setCheckedTables((prev) => [...prev, item]);
-                        } else {
-                          setCheckedTables((prev) =>
-                            prev.filter((t) => t.table !== table),
-                          );
-                        }
+                        setUserCheckedTables((prev) =>
+                          checked
+                            ? [...prev, item]
+                            : prev.filter((t) => t.table !== table),
+                        );
                       }}
-                      checked={checkedTables.some((t) => t.table === table)}
+                      checked={userCheckedTables.some((t) => t.table === table)}
                     >
                       <Checkbox.HiddenInput />
                       <Checkbox.Control cursor="pointer" />
