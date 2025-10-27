@@ -93,8 +93,3 @@ Here’s how the architecture unfolds:
 
 ---
 
-✨ *This structure is built not just for clarity,  
-but for growth — each layer supporting the next,  
-so that features may rise without friction,  
-and ideas may flow from code to creation.*
-
