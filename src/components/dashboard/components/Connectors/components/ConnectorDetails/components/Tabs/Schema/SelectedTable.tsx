@@ -94,6 +94,11 @@ const SelectedTable = () => {
           {() => <Skeleton gap="4" height={8} />}
         </For>
       )}
+      {!selectedTables?.length && !isAssigningTables && (
+        <Flex direction="column" alignItems="center">
+          <Text>No Tables available</Text>
+        </Flex>
+      )}
       {!isAssigningTables &&
         selectedTables?.map((table, index) => {
           const isEven = index % 2 === 0;

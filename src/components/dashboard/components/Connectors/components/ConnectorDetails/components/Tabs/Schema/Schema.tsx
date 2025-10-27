@@ -145,6 +145,11 @@ const Schema = () => {
               {() => <Skeleton gap="4" height={8} />}
             </For>
           )}
+          {!AllTableList?.length && !isAllTableListLoading && (
+            <Flex direction="column" alignItems="center">
+              <Text>No Tables available</Text>
+            </Flex>
+          )}
           {!isAssigningTables &&
             AllTableList?.filter((item) =>
               item.table.toLowerCase().includes(searchQuery),

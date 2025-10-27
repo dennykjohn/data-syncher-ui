@@ -98,7 +98,7 @@ const Overview = () => {
             <LoadingSpinner />
           ) : (
             <>
-              {!selectedLog && (
+              {!effectiveSelectedLog && (
                 <Flex
                   direction="column"
                   alignItems="center"
