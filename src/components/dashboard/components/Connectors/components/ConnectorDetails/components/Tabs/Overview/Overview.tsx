@@ -61,6 +61,19 @@ const Overview = () => {
           overflowX="auto"
           borderRadius="md"
         >
+          {data?.logs.length === 0 && (
+            <Flex
+              direction="column"
+              alignItems="center"
+              justifyContent="center"
+              gap={2}
+              padding={8}
+              h="100%"
+            >
+              <FcComboChart size={48} />
+              <Text color="brand.500">No logs available</Text>
+            </Flex>
+          )}
           {data?.logs.map((log, index) => (
             <Item
               key={index}
@@ -85,6 +98,19 @@ const Overview = () => {
             <LoadingSpinner />
           ) : (
             <>
+              {!selectedLog && (
+                <Flex
+                  direction="column"
+                  alignItems="center"
+                  justifyContent="center"
+                  gap={2}
+                  padding={8}
+                  h="100%"
+                >
+                  <FcComboChart size={48} />
+                  <Text color="brand.500">No log selected</Text>
+                </Flex>
+              )}
               {logDetails?.logs.length === 0 && (
                 <Flex
                   direction="column"
