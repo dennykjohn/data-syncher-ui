@@ -61,8 +61,8 @@ const Header = ({ connector }: { connector: Connector }) => {
             <Image
               src={getSourceImage(source_name)}
               alt={source_name}
-              boxSize="50px"
-              objectFit="cover"
+              h="50px"
+              objectFit="contain"
             />
           </Box>
           <Box>
@@ -80,8 +80,8 @@ const Header = ({ connector }: { connector: Connector }) => {
             <Image
               src={getDestinationImage(destination_name)}
               alt={destination_name}
-              boxSize="50px"
-              objectFit="cover"
+              h="50px"
+              objectFit="contain"
             />
           </Box>
           <Box>
