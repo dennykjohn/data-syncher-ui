@@ -12,11 +12,6 @@ export type MasterDestinationList = {
 export interface NewDestinationFormState {
   dst: string;
   destinationName: string;
-  accountName: string;
-  databaseName: string;
-  warehouseName: string;
-  username: string;
-  password: string;
 }
 
 export interface Destination {
