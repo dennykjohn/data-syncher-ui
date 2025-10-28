@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { useNavigate } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
+import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import { useFetchDestinationListByPage } from "@/queryOptions/destination/useFetchDestinationListByPage";
 import Table, { type Column } from "@/shared/Table";
@@ -36,14 +37,12 @@ const columns: Column<DestinationTableItem>[] = [
   {
     header: "Created At",
     accessor: "created_at",
-    render: (_, { created_at }) =>
-      format(new Date(created_at), "hh:mm a, dd MMMM"),
+    render: (_, { created_at }) => format(new Date(created_at), dateTimeFormat),
   },
   {
     header: "Updated At",
     accessor: "updated_at",
-    render: (_, { updated_at }) =>
-      format(new Date(updated_at), "hh:mm a, dd MMMM"),
+    render: (_, { updated_at }) => format(new Date(updated_at), dateTimeFormat),
   },
   {
     header: "Status",

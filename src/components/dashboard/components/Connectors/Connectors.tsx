@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { useNavigate } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
+import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import { useFetchConnectorsListByPage } from "@/queryOptions/connector/useFetchConnectorsListByPage";
 import Table, { type Column } from "@/shared/Table";
@@ -70,7 +71,7 @@ const columns: Column<ConnectorTableItem>[] = [
     render: (_, { last_synced_new }) => {
       const d = new Date(last_synced_new as string | number);
       if (Number.isNaN(d.getTime())) return String(last_synced_new ?? "");
-      return format(d, "hh:mm a, dd MMMM");
+      return format(d, dateTimeFormat);
     },
   },
   {

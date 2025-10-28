@@ -6,6 +6,7 @@ import { MdArrowRight, MdHourglassTop, MdRefresh } from "react-icons/md";
 
 import { format } from "date-fns";
 
+import { dateTimeFormat } from "@/constants/common";
 import { type ConnectorActivityLog } from "@/types/connectors";
 
 const Item = ({
@@ -64,7 +65,7 @@ const Item = ({
         <Text fontSize="xs">{user}</Text>
       </Flex>
       <Flex alignSelf={{ base: "flex-start", md: "center" }}>
-        <Text fontSize="xs">{format(timestamp, "PPpp")}</Text>
+        <Text fontSize="xs">{format(timestamp, dateTimeFormat)}</Text>
       </Flex>
       <Flex alignSelf={{ base: "flex-end", md: "center" }}>
         <MdArrowRight
