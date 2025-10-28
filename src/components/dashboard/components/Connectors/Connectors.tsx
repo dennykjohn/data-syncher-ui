@@ -5,6 +5,7 @@ import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router";
 
+import TableWrapper from "@/components/dashboard/wrapper/TableWrapper";
 import ClientRoutes from "@/constants/client-routes";
 import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
@@ -135,7 +136,7 @@ const Connectors = () => {
       <TableFilter
         handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
       />
-      <Flex h="100%">
+      <TableWrapper>
         <Table<ConnectorTableItem>
           data={data?.content || []}
           columns={columns}
@@ -146,7 +147,7 @@ const Connectors = () => {
             navigate(`${ClientRoutes.CONNECTORS.EDIT}/${row.connection_id}`)
           }
         />
-      </Flex>
+      </TableWrapper>
     </Flex>
   );
 };

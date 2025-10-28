@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import TableFilter from "@/components/dashboard/wrapper/TableFilter";
+import TableWrapper from "@/components/dashboard/wrapper/TableWrapper";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import { useFetchUsersListByPage } from "@/queryOptions/user/useFetchUsersListByPage";
@@ -66,7 +67,7 @@ const Users = () => {
           setSearchTerm(e.target.value);
         }}
       />
-      <Flex h="100%">
+      <TableWrapper>
         <Table<UserTableItem>
           data={data?.content || []}
           columns={columns}
@@ -77,7 +78,7 @@ const Users = () => {
             navigate(`${ClientRoutes.USER_SETTINGS.USER_EDIT}/${user_id}`)
           }
         />
-      </Flex>
+      </TableWrapper>
     </Flex>
   );
 };
