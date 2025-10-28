@@ -61,48 +61,58 @@ const Usage = () => {
   }
 
   return (
-    <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} minW="2xl" w="100%">
+    <Flex
+      flexDirection="column"
+      gap={VIEW_CONFIG.pageGap}
+      minW="2xl"
+      w="100%"
+      flex="1 1 auto"
+      minH="0"
+    >
       <UsageSelector
         selectedRange={selectedRange}
         setSelectedRange={setSelectedRange}
       />
-      <Chart.Root maxH="md" chart={chart}>
-        <BarChart data={chart.data}>
-          <CartesianGrid
-            stroke={chart.color("border.muted")}
-            vertical={false}
-          />
-          <XAxis
-            axisLine={false}
-            tickLine={false}
-            dataKey={chart.key("month")}
-            tickFormatter={(value) => value.slice(0, 3)}
-          />
-          <YAxis tickLine={false} stroke={chart.color("border")} />
-          <Tooltip
-            cursor={{ fill: chart.color("bg.muted") }}
-            animationDuration={100}
-            content={<Chart.Tooltip />}
-          />
-          <Legend content={<Chart.Legend />} />
-          {chart.series.map((item) => (
-            <Bar
-              isAnimationActive={true}
-              key={item.name}
-              dataKey={chart.key(item.name)}
-              fill={chart.color(item.color)}
-              stroke={chart.color(item.color)}
-              stackId={item.stackId}
-            >
-              <LabelList
+      {/* container that fills remaining space at the bottom of the page */}
+      <Flex flex="1 1 auto" minH="0" overflowY="auto">
+        <Chart.Root chart={chart} h="100%">
+          <BarChart data={chart.data}>
+            <CartesianGrid
+              stroke={chart.color("border.muted")}
+              vertical={false}
+            />
+            <XAxis
+              axisLine={false}
+              tickLine={false}
+              dataKey={chart.key("month")}
+              tickFormatter={(value) => value.slice(0, 3)}
+            />
+            <YAxis tickLine={false} stroke={chart.color("border")} />
+            <Tooltip
+              cursor={{ fill: chart.color("bg.muted") }}
+              animationDuration={100}
+              content={<Chart.Tooltip />}
+            />
+            <Legend content={<Chart.Legend />} />
+            {chart.series.map((item) => (
+              <Bar
+                isAnimationActive={true}
+                key={item.name}
                 dataKey={chart.key(item.name)}
-                position="top"
-                style={{ fontWeight: "600", fill: chart.color("fg") }}
-              />
-            </Bar>
-          ))}
-        </BarChart>
-      </Chart.Root>
+                fill={chart.color(item.color)}
+                stroke={chart.color(item.color)}
+                stackId={item.stackId}
+              >
+                <LabelList
+                  dataKey={chart.key(item.name)}
+                  position="top"
+                  style={{ fontWeight: "600", fill: chart.color("fg") }}
+                />
+              </Bar>
+            ))}
+          </BarChart>
+        </Chart.Root>
+      </Flex>
     </Flex>
   );
 };
