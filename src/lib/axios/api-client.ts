@@ -12,7 +12,7 @@ import { type ErrorResponseType } from "@/types/error";
 let baseURL = "";
 
 if (window.location.hostname === "localhost") {
-  baseURL = "https://dev.datasyncher.com";
+  baseURL = "https://qa.datasyncher.com";
 } else {
   baseURL = window.location.origin;
 }
