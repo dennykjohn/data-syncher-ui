@@ -60,7 +60,7 @@ const Users = () => {
         buttonLabel="Add Member"
         onCreateClick={() => navigate(`${ClientRoutes.USER_SETTINGS.USER_ADD}`)}
       />
-      {data?.totalElements === 0 && <NoUsers />}
+      {data?.totalElements === 0 && !searchTerm && <NoUsers />}
       <TableFilter
         handleSearchInputChange={(e) => {
           setSearchTerm(e.target.value);
