@@ -43,7 +43,8 @@ npm run serve
 | **TypeScript**                   | Adds static typing to JavaScript, ensuring safety and clarity in every line of code.                       | [typescriptlang.org](https://www.typescriptlang.org)                  |
 | **Vite**                         | A next-generation build tool that’s blazingly fast and delightfully simple.                                | [vitejs.dev](https://vitejs.dev)                                      |
 | **React Query (TanStack Query)** | Handles server-state management with grace, making data fetching, caching, and synchronization effortless. | [tanstack.com/query/latest](https://tanstack.com/query/latest)        |
-| **Chakra UI**                    | A simple, accessible, and responsive component library for crafting beautiful interfaces with ease.        | [chakra-ui.com](https://chakra-ui.com)                                |
+| **Chakra UI**                    | A simple, accessible, and responsive component library for crafting beautiful interfaces with ease.        | [chakra-ui.com](https://chakra-ui.com)
+| **React Icons**                    | Include popular icons in your React projects easily with react-icons, which utilizes ES6 imports that allows you to include only the icons that your project is using.        | [react-icons.github.io](https://react-icons.github.io/react-icons/)                                  |
 | **ESLint + Prettier**            | Keeps the codebase clean, consistent, and readable — like music that always stays in tune.                 | [eslint.org](https://eslint.org) / [prettier.io](https://prettier.io) |
 | **GitHub Actions (CI/CD)**       | Automates testing and deployment pipelines for seamless integration and delivery.                          | [github.com/features/actions](https://github.com/features/actions)    |
 
