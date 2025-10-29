@@ -37,13 +37,6 @@ const Form = (props: Connector) => {
     execution_order,
     chunk_count,
   } = props;
-  const { mutate: updateSettings, isPending: isUpdateOperationPending } =
-    useUpdateConnectionSettings({
-      connectorId: props.connection_id,
-    });
-
-  const { mutate: testConnection, isPending: isTestOperationPending } =
-    useTestConnection({ connectorId: props.connection_id });
 
   const initialFormState = {
     sync_start_date: sync_start_date ?? "",
@@ -54,10 +47,17 @@ const Form = (props: Connector) => {
   };
 
   const [formState, dispatch] = useReducer(reducer, initialFormState);
-
   const [syncStartLocal, setSyncStartLocal] = useState(
     toLocalDateTimeInput(formState?.sync_start_date),
   );
+
+  const { mutate: updateSettings, isPending: isUpdateOperationPending } =
+    useUpdateConnectionSettings({
+      connectorId: props.connection_id,
+    });
+
+  const { mutate: testConnection, isPending: isTestOperationPending } =
+    useTestConnection({ connectorId: props.connection_id });
 
   return (
     <Flex direction="column" gap={4} mb={8}>
