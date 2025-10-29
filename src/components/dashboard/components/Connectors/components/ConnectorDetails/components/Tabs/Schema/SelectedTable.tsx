@@ -91,7 +91,7 @@ const SelectedTable = () => {
       </Flex>
       {(isAssigningTables || isLoadingSelected) && (
         <For each={[...Array(10).keys()]}>
-          {() => <Skeleton gap="4" height={8} />}
+          {(_, index) => <Skeleton gap="4" height={8} key={index} />}
         </For>
       )}
       {!selectedTables?.length && !isAssigningTables && (
