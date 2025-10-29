@@ -181,7 +181,7 @@ const Schema = () => {
                     <Text
                       fontSize="sm"
                       onClick={() => toggleExpand(table)}
-                      style={{ cursor: "pointer" }}
+                      cursor="pointer"
                     >
                       {table}
                     </Text>

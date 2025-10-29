@@ -79,6 +79,7 @@ export type ConnectorTable = {
   table: string;
   selected: boolean;
   sequence: null;
+  is_delta: boolean;
   table_fields: Record<string, string>;
 };
 
