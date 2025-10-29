@@ -27,6 +27,8 @@ const ConnectorConfiguration = ({
 }) => {
   const { connectionId } = useParams<{ connectionId: string }>();
   const shouldFetch = mode === "edit" && !!connectionId;
+
+  // Query hooks
   const { data: connectorData, isPending: isFetchConnectorByIdPending } =
     useFetchConnectorById(shouldFetch ? Number(connectionId) : 0);
   const { data: connectorConfig, isPending: isFetchConnectorConfigPending } =
@@ -34,7 +36,12 @@ const ConnectorConfiguration = ({
       type: connectorData?.source_name || "",
       id: shouldFetch ? Number(connectionId) : 0,
     });
+  const { data: formSchema, isLoading } = useFetchFormSchema({
+    type: state?.source || connectorData?.source_name || "",
+    source: "source",
+  });
 
+  // Mutation hooks
   const {
     mutate: updateConnectorConfig,
     isPending: isUpdateConnectorConfigPending,
@@ -42,7 +49,6 @@ const ConnectorConfiguration = ({
     connectorId: shouldFetch ? Number(connectionId) : 0,
     type: connectorData?.source_name || "",
   });
-
   const { mutate: createConnection, isPending: isCreateConnectorPending } =
     useCreateConnection(state?.source || "");
 
@@ -80,11 +86,6 @@ const ConnectorConfiguration = ({
       );
     }
   };
-
-  const { data: formSchema, isLoading } = useFetchFormSchema({
-    type: state?.source || connectorData?.source_name || "",
-    source: "source",
-  });
 
   if (
     isLoading ||
