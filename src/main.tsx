@@ -1,6 +1,6 @@
 import { StrictMode, Suspense } from "react";
 
-import { ChakraProvider } from "@chakra-ui/react";
+import { ChakraProvider, Flex } from "@chakra-ui/react";
 
 import { ErrorBoundary } from "react-error-boundary";
 import { RouterProvider } from "react-router";
@@ -26,7 +26,13 @@ createRoot(document.getElementById("root")!).render(
         <Toaster />
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
-            <Suspense fallback={<LoadingSpinner />}>
+            <Suspense
+              fallback={
+                <Flex justify="center" align="center" height="100vh">
+                  <LoadingSpinner />
+                </Flex>
+              }
+            >
               <RouterProvider router={router} />
             </Suspense>
           </QueryClientProvider>
