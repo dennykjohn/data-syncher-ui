@@ -15,17 +15,7 @@ export const initialState: ConnectorFormState = {
   currentStep: 1,
   source: null,
   destination: null,
-  configuration: {
-    destinationName: "",
-    destinationSchema: "",
-    connectionName: "",
-    accountName: "",
-    databaseName: "",
-    warehouseName: "",
-    schema: "",
-    username: "",
-    password: "",
-  },
+  configuration: {},
 };
 
 export const connectorFormReducer = (
