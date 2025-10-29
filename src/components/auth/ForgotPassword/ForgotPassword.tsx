@@ -7,7 +7,6 @@ import {
   Flex,
   Image,
   Input,
-  Separator,
   Span,
   Stack,
   Text,
@@ -120,7 +119,6 @@ export default function ForgotPassword() {
           >
             Submit
           </Button>
-          <Separator />
         </Fieldset.Root>
       </Flex>
     </form>
