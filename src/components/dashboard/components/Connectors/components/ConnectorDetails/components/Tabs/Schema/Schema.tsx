@@ -16,15 +16,18 @@ import {
 } from "@chakra-ui/react";
 
 import { GoPlus } from "react-icons/go";
+import { GrRefresh } from "react-icons/gr";
 import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
+import { TbDelta, TbKey } from "react-icons/tb";
 
 import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
+import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import { type Connector, type ConnectorTable } from "@/types/connectors";
 
@@ -48,6 +51,10 @@ const Schema = () => {
   // UI States
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [reloadingTable, setReloadingTable] = useState<string | null>(null);
+
+  const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
+    useReloadSingleTable();
 
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
@@ -132,13 +139,21 @@ const Schema = () => {
           padding={4}
           bgColor="white"
         >
-          <Flex mb={4} justifyContent="space-between">
+          <Flex mb={4} justifyContent="space-between" alignItems="center">
             <Text fontSize="sm" fontWeight="semibold">
               Table Names
             </Text>
-            <Text fontSize="sm" fontWeight="semibold">
-              Select
-            </Text>
+            <Flex gap={6} alignItems="center">
+              <Text fontSize="sm" fontWeight="semibold" textAlign="center" minW="40px">
+                Delta
+              </Text>
+              <Text fontSize="sm" fontWeight="semibold" textAlign="center" minW="40px">
+                Reload
+              </Text>
+              <Text fontSize="sm" fontWeight="semibold" textAlign="center" minW="40px">
+                Select
+              </Text>
+            </Flex>
           </Flex>
           {(isAssigningTables || isAllTableListLoading) && (
             <For each={[...Array(10).keys()]}>
@@ -155,6 +170,7 @@ const Schema = () => {
               item.table.toLowerCase().includes(searchQuery),
             ).map((item, index) => {
               const { table, table_fields } = item;
+              console.log(`Table: ${table}, is_delta:`, item.is_delta); // Debug log
               const isEven = index % 2 === 0;
               const rowBg = isEven ? "gray.100" : "white";
               const isExpanded = !!expanded[table];
@@ -169,47 +185,107 @@ const Schema = () => {
                   padding={2}
                   borderRadius={4}
                 >
-                  <Flex alignItems="center" gap={2} width="100%">
-                    <Box
-                      onClick={() => toggleExpand(table)}
-                      style={{ cursor: "pointer" }}
-                      padding={1}
-                      _hover={{ backgroundColor: "brand.200", borderRadius: 4 }}
-                    >
-                      {isExpanded ? <IoCaretDownSharp /> : <IoMdPlay />}
-                    </Box>
-                    <Text
-                      fontSize="sm"
-                      onClick={() => toggleExpand(table)}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {table}
-                    </Text>
-                    <Checkbox.Root
-                      colorPalette="brand"
-                      marginLeft="auto"
-                      variant="solid"
-                      onCheckedChange={({ checked }) => {
-                        setUserCheckedTables((prev) =>
-                          checked
-                            ? [...prev, item]
-                            : prev.filter((t) => t.table !== table),
-                        );
-                      }}
-                      checked={userCheckedTables.some((t) => t.table === table)}
-                    >
-                      <Checkbox.HiddenInput />
-                      <Checkbox.Control cursor="pointer" />
-                    </Checkbox.Root>
+                  <Flex alignItems="center" justifyContent="space-between" gap={2} width="100%">
+                    <Flex alignItems="center" gap={2} flex="1">
+                      <Box
+                        onClick={() => toggleExpand(table)}
+                        style={{ cursor: "pointer" }}
+                        padding={1}
+                        _hover={{ backgroundColor: "brand.200", borderRadius: 4 }}
+                      >
+                        {isExpanded ? <IoCaretDownSharp /> : <IoMdPlay />}
+                      </Box>
+                      <Text
+                        fontSize="sm"
+                        onClick={() => toggleExpand(table)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {table}
+                      </Text>
+                    </Flex>
+                    
+                    <Flex gap={6} alignItems="center">
+                      {/* Delta Symbol */}
+                      <Flex justifyContent="center" minW="40px">
+                        {item.is_delta && (
+                          <TbDelta color="#2563EB" size={18} title="Delta table" />
+                        )}
+                      </Flex>
+                      
+                      {/* Reload Button */}
+                      <Flex justifyContent="center" minW="40px">
+                        <Box
+                          _hover={{
+                            color: "brand.500",
+                          }}
+                          p={1}
+                          borderRadius="sm"
+                          onClick={() => {
+                            setReloadingTable(table);
+                            reloadSingleTable(
+                              {
+                                connection_id: context.connection_id,
+                                table_name: table,
+                              },
+                              {
+                                onSettled: () => setReloadingTable(null),
+                              },
+                            );
+                          }}
+                          style={{
+                            animation:
+                              reloadingTable === table && isReloadingSingleTable
+                                ? "spin 1s linear infinite"
+                                : undefined,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <GrRefresh />
+                        </Box>
+                      </Flex>
+                      
+                      <Flex justifyContent="center" minW="40px">
+                        <Checkbox.Root
+                          colorPalette="brand"
+                          variant="solid"
+                          onCheckedChange={({ checked }) => {
+                            setUserCheckedTables((prev) =>
+                              checked
+                                ? [...prev, item]
+                                : prev.filter((t) => t.table !== table),
+                            );
+                          }}
+                          checked={userCheckedTables.some((t) => t.table === table)}
+                        >
+                          <Checkbox.HiddenInput />
+                          <Checkbox.Control cursor="pointer" />
+                        </Checkbox.Root>
+                      </Flex>
+                    </Flex>
                   </Flex>
                   {isExpanded && (
-                    <Flex direction="column" gap={2} paddingBlock={4}>
+                    <Flex direction="column" gap={2} paddingBlock={4} width="100%">
                       {table_fields &&
-                        Object.entries(table_fields).map(([field, type]) => (
-                          <Text key={field} fontSize="sm">
-                            {field}: {type}
-                          </Text>
-                        ))}
+                        Object.entries(table_fields).map(([field, fieldInfo]) => {
+                          // Handle both old format (string) and new format (object)
+                          const dataType = typeof fieldInfo === 'string' 
+                            ? fieldInfo 
+                            : fieldInfo.data_type;
+                          const isPrimaryKey = typeof fieldInfo === 'object' 
+                            ? fieldInfo.is_primary_key 
+                            : false;
+                          
+                          return (
+                            <Flex key={field} alignItems="center" gap={2}>
+                              <Text fontSize="sm">
+                                {field}: {dataType}
+                              </Text>
+                              {isPrimaryKey && (
+                                <TbKey color="#2563EB" size={14} title="Primary Key" />
+                              )}
+                            </Flex>
+                          );
+                        })}
                     </Flex>
                   )}
                 </Flex>

@@ -46,9 +46,8 @@ const Actions = ({
         </Flex>
         <Flex gap={4}>
           <Button
-            variant={{ base: "outline", md: "ghost" }}
-            colorPalette="red"
-            color="red.500"
+            variant="outline"
+            colorPalette="brand"
             onClick={() => refreshSchema()}
             loading={isRefreshing}
           >

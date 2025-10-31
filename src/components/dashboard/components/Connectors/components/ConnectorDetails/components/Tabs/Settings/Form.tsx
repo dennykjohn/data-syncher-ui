@@ -152,8 +152,8 @@ const Form = (props: Connector) => {
           <Field.Label>Transfer order count</Field.Label>
           <NumberInput.Root
             defaultValue="10"
-            min={10000}
-            max={1000000}
+            min={props.dst_min_count || 10000}
+            max={props.dst_max_count || 1000000}
             step={10000}
             value={String(formState.chunk_count)}
             onValueChange={(e) => {
@@ -167,6 +167,9 @@ const Form = (props: Connector) => {
             <NumberInput.Control />
             <NumberInput.Input />
           </NumberInput.Root>
+          <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+            Min count: {props.dst_min_count?.toLocaleString() || '10,000'} | Max count: {props.dst_max_count?.toLocaleString() || '1,000,000'}
+          </Field.HelperText>
         </Field.Root>
       </Stack>
       <Flex justifyContent={"space-between"} mt={4}>

@@ -89,14 +89,19 @@ const ProfileForm = ({
             <Field.ErrorText>{errors.company_email}</Field.ErrorText>
           </Field.Root>
           {/* Company name */}
-          <Field.Root required invalid={!!errors.cmp_name}>
+          <Field.Root required>
             <Field.Label>Company name</Field.Label>
             <Input
               placeholder="Enter your company name"
               value={form.cmp_name}
-              onChange={(ev) => onChange("cmp_name")(ev.target.value)}
+              readOnly
+              bg="gray.100"
+              cursor="not-allowed"
+              opacity={0.7}
             />
-            <Field.ErrorText>{errors.cmp_name}</Field.ErrorText>
+            <Field.HelperText fontSize="xs" color="gray.600">
+              Company name cannot be changed
+            </Field.HelperText>
           </Field.Root>
           {/* Start date */}
           <Field.Root required invalid={!!errors.start_date}>

@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import { Box, Flex, For, Image, Skeleton, Text } from "@chakra-ui/react";
 
-import { GrRefresh } from "react-icons/gr";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { SlRefresh } from "react-icons/sl";
 
@@ -14,7 +13,6 @@ import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import { toaster } from "@/components/ui/toaster";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useRefreshDeltaTable from "@/queryOptions/connector/schema/useRefreshDeltaTable";
-import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import {
   type Connector,
@@ -25,7 +23,6 @@ const SelectedTable = () => {
   const context = useOutletContext<Connector>();
 
   const [refreshingTable, setRefreshingTable] = useState<string | null>(null);
-  const [reloadingTable, setReloadingTable] = useState<string | null>(null);
 
   const { data: selectedTables, isLoading: isLoadingSelected } =
     useFetchSelectedTables(context.connection_id);
@@ -35,8 +32,6 @@ const SelectedTable = () => {
       connectorId: context.connection_id,
     });
 
-  const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
-    useReloadSingleTable();
   const { mutate: refreshDeltaTable, isPending: isRefreshingDeltaTable } =
     useRefreshDeltaTable();
 
@@ -84,10 +79,19 @@ const SelectedTable = () => {
       padding={4}
       bgColor="white"
     >
-      <Flex mb={4}>
-        <Text fontSize="sm" fontWeight="semibold" mr={2}>
+      <Flex mb={4} justifyContent="space-between" alignItems="center">
+        <Text fontSize="sm" fontWeight="semibold">
           Selected Tables
         </Text>
+        <Flex gap={3} alignItems="center">
+          <Text fontSize="sm" fontWeight="semibold" textAlign="center" minW="40px">
+            Status
+          </Text>
+          <Text fontSize="sm" fontWeight="semibold" textAlign="center" minW="40px">
+            Refresh
+          </Text>
+          <Box minW="40px" />
+        </Flex>
       </Flex>
       {(isAssigningTables || isLoadingSelected) && (
         <For each={[...Array(10).keys()]}>
@@ -118,79 +122,57 @@ const SelectedTable = () => {
               onDragOver={handleDragOver}
               onDrop={() => handleDrop(table)}
             >
-              <Flex gap={2} alignItems="center">
+              <Flex gap={2} alignItems="center" flex="1">
                 <Text fontSize="sm">{table.table}</Text>
-                {status === "in_progress" && <Image src={SandtimeIcon} />}
-                {status === "completed" && <Image src={CheckIcon} />}
-                {status === "failed" && <Image src={ErrorIcon} />}
               </Flex>
-              <Flex gap={3}>
-                <Box
-                  _hover={{
-                    color: "brand.500",
-                  }}
-                  p={1}
-                  borderRadius="sm"
-                  onClick={() => {
-                    setReloadingTable(table.table);
-                    reloadSingleTable(
-                      {
-                        connection_id: context.connection_id,
-                        table_name: table.table,
-                      },
-                      {
-                        onSettled: () => setReloadingTable(null), // clear after done
-                      },
-                    );
-                  }}
-                  style={{
-                    animation:
-                      reloadingTable === table.table && isReloadingSingleTable
-                        ? "spin 1s linear infinite"
-                        : undefined,
-                    cursor: "pointer",
-                  }}
-                >
-                  <GrRefresh />
-                </Box>
-                <Box
-                  _hover={{
-                    color: "brand.500",
-                  }}
-                  p={1}
-                  borderRadius="sm"
-                  onClick={() => {
-                    setRefreshingTable(table.table);
-                    refreshDeltaTable(
-                      {
-                        connection_id: context.connection_id,
-                        table_name: table.table,
-                      },
-                      {
-                        onSettled: () => setRefreshingTable(null), // clear after done
-                      },
-                    );
-                  }}
-                  style={{
-                    animation:
-                      refreshingTable === table.table && isRefreshingDeltaTable
-                        ? "spin 1s linear infinite"
-                        : undefined,
-                    cursor: "pointer",
-                  }}
-                >
-                  <SlRefresh />
-                </Box>
-                <Box
-                  _hover={{
-                    color: "brand.500",
-                    backgroundColor: "gray.300",
-                  }}
-                  p={1}
-                  borderRadius="sm"
-                >
-                  <RxDragHandleDots2 cursor="grab" />
-                </Box>
+              <Flex gap={3} alignItems="center">
+                <Flex justifyContent="center" minW="40px">
+                  {status === "in_progress" && <Image src={SandtimeIcon} />}
+                  {status === "completed" && <Image src={CheckIcon} />}
+                  {status === "failed" && <Image src={ErrorIcon} />}
+                </Flex>
+                <Flex justifyContent="center" minW="40px">
+                  <Box
+                    _hover={{
+                      color: "brand.500",
+                    }}
+                    p={1}
+                    borderRadius="sm"
+                    onClick={() => {
+                      setRefreshingTable(table.table);
+                      refreshDeltaTable(
+                        {
+                          connection_id: context.connection_id,
+                          table_name: table.table,
+                        },
+                        {
+                          onSettled: () => setRefreshingTable(null), // clear after done
+                        },
+                      );
+                    }}
+                    style={{
+                      animation:
+                        refreshingTable === table.table && isRefreshingDeltaTable
+                          ? "spin 1s linear infinite"
+                          : undefined,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <SlRefresh />
+                  </Box>
+                </Flex>
+                <Flex justifyContent="center" minW="40px">
+                  <Box
+                    _hover={{
+                      color: "brand.500",
+                      backgroundColor: "gray.300",
+                    }}
+                    p={1}
+                    borderRadius="sm"
+                  >
+                    <RxDragHandleDots2 cursor="grab" />
+                  </Box>
+                </Flex>
               </Flex>
             </Flex>
           );
