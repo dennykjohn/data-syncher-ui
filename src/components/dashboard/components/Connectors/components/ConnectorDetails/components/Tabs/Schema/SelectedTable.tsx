@@ -146,7 +146,7 @@ const SelectedTable = () => {
                           table_name: table.table,
                         },
                         {
-                          onSettled: () => setRefreshingTable(null), // clear after done
+                          onSettled: () => setRefreshingTable(null),
                         },
                       );
                     }}

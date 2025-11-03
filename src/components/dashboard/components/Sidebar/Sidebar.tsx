@@ -97,7 +97,7 @@ const Sidebar = ({
       <Flex marginBlock={8}>
         <Flex
           borderLeft="3px solid"
-          borderColor="#9370DB" // darker lavender tone
+          borderColor="#9370DB"
           alignItems="center"
           gap={4}
           h="50px"

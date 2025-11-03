@@ -170,7 +170,6 @@ const Schema = () => {
               item.table.toLowerCase().includes(searchQuery),
             ).map((item, index) => {
               const { table, table_fields } = item;
-              console.log(`Table: ${table}, is_delta:`, item.is_delta); // Debug log
               const isEven = index % 2 === 0;
               const rowBg = isEven ? "gray.100" : "white";
               const isExpanded = !!expanded[table];
@@ -203,7 +202,6 @@ const Schema = () => {
                         {table}
                       </Text>
                     </Flex>
-                    
                     <Flex gap={6} alignItems="center">
                       {/* Delta Symbol */}
                       <Flex justifyContent="center" minW="40px">
@@ -268,11 +266,11 @@ const Schema = () => {
                       {table_fields &&
                         Object.entries(table_fields).map(([field, fieldInfo]) => {
                           // Handle both old format (string) and new format (object)
-                          const dataType = typeof fieldInfo === 'string' 
-                            ? fieldInfo 
+                          const dataType = typeof fieldInfo === "string"
+                            ? fieldInfo
                             : fieldInfo.data_type;
-                          const isPrimaryKey = typeof fieldInfo === 'object' 
-                            ? fieldInfo.is_primary_key 
+                          const isPrimaryKey = typeof fieldInfo === "object"
+                            ? fieldInfo.is_primary_key
                             : false;
                           
                           return (
