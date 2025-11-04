@@ -84,10 +84,20 @@ const SelectedTable = () => {
           Selected Tables
         </Text>
         <Flex gap={3} alignItems="center">
-          <Text fontSize="sm" fontWeight="semibold" textAlign="center" minW="40px">
+          <Text
+            fontSize="sm"
+            fontWeight="semibold"
+            textAlign="center"
+            minW="40px"
+          >
             Status
           </Text>
-          <Text fontSize="sm" fontWeight="semibold" textAlign="center" minW="40px">
+          <Text
+            fontSize="sm"
+            fontWeight="semibold"
+            textAlign="center"
+            minW="40px"
+          >
             Refresh
           </Text>
           <Box minW="40px" />
@@ -152,7 +162,8 @@ const SelectedTable = () => {
                     }}
                     style={{
                       animation:
-                        refreshingTable === table.table && isRefreshingDeltaTable
+                        refreshingTable === table.table &&
+                        isRefreshingDeltaTable
                           ? "spin 1s linear infinite"
                           : undefined,
                       cursor: "pointer",

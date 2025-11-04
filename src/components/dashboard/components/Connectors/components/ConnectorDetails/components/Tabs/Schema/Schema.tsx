@@ -144,13 +144,28 @@ const Schema = () => {
               Table Names
             </Text>
             <Flex gap={6} alignItems="center">
-              <Text fontSize="sm" fontWeight="semibold" textAlign="center" minW="40px">
+              <Text
+                fontSize="sm"
+                fontWeight="semibold"
+                textAlign="center"
+                minW="40px"
+              >
                 Delta
               </Text>
-              <Text fontSize="sm" fontWeight="semibold" textAlign="center" minW="40px">
+              <Text
+                fontSize="sm"
+                fontWeight="semibold"
+                textAlign="center"
+                minW="40px"
+              >
                 Reload
               </Text>
-              <Text fontSize="sm" fontWeight="semibold" textAlign="center" minW="40px">
+              <Text
+                fontSize="sm"
+                fontWeight="semibold"
+                textAlign="center"
+                minW="40px"
+              >
                 Select
               </Text>
             </Flex>
@@ -184,13 +199,21 @@ const Schema = () => {
                   padding={2}
                   borderRadius={4}
                 >
-                  <Flex alignItems="center" justifyContent="space-between" gap={2} width="100%">
+                  <Flex
+                    alignItems="center"
+                    justifyContent="space-between"
+                    gap={2}
+                    width="100%"
+                  >
                     <Flex alignItems="center" gap={2} flex="1">
                       <Box
                         onClick={() => toggleExpand(table)}
                         style={{ cursor: "pointer" }}
                         padding={1}
-                        _hover={{ backgroundColor: "brand.200", borderRadius: 4 }}
+                        _hover={{
+                          backgroundColor: "brand.200",
+                          borderRadius: 4,
+                        }}
                       >
                         {isExpanded ? <IoCaretDownSharp /> : <IoMdPlay />}
                       </Box>
@@ -206,10 +229,14 @@ const Schema = () => {
                       {/* Delta Symbol */}
                       <Flex justifyContent="center" minW="40px">
                         {item.is_delta && (
-                          <TbDelta color="#2563EB" size={18} title="Delta table" />
+                          <TbDelta
+                            color="#2563EB"
+                            size={18}
+                            title="Delta table"
+                          />
                         )}
                       </Flex>
-                      
+
                       {/* Reload Button */}
                       <Flex justifyContent="center" minW="40px">
                         <Box
@@ -241,7 +268,7 @@ const Schema = () => {
                           <GrRefresh />
                         </Box>
                       </Flex>
-                      
+
                       <Flex justifyContent="center" minW="40px">
                         <Checkbox.Root
                           colorPalette="brand"
@@ -253,7 +280,9 @@ const Schema = () => {
                                 : prev.filter((t) => t.table !== table),
                             );
                           }}
-                          checked={userCheckedTables.some((t) => t.table === table)}
+                          checked={userCheckedTables.some(
+                            (t) => t.table === table,
+                          )}
                         >
                           <Checkbox.HiddenInput />
                           <Checkbox.Control cursor="pointer" />
@@ -262,28 +291,41 @@ const Schema = () => {
                     </Flex>
                   </Flex>
                   {isExpanded && (
-                    <Flex direction="column" gap={2} paddingBlock={4} width="100%">
+                    <Flex
+                      direction="column"
+                      gap={2}
+                      paddingBlock={4}
+                      width="100%"
+                    >
                       {table_fields &&
-                        Object.entries(table_fields).map(([field, fieldInfo]) => {
-                          // Handle both old format (string) and new format (object)
-                          const dataType = typeof fieldInfo === "string"
-                            ? fieldInfo
-                            : fieldInfo.data_type;
-                          const isPrimaryKey = typeof fieldInfo === "object"
-                            ? fieldInfo.is_primary_key
-                            : false;
-                          
-                          return (
-                            <Flex key={field} alignItems="center" gap={2}>
-                              <Text fontSize="sm">
-                                {field}: {dataType}
-                              </Text>
-                              {isPrimaryKey && (
-                                <TbKey color="#2563EB" size={14} title="Primary Key" />
-                              )}
-                            </Flex>
-                          );
-                        })}
+                        Object.entries(table_fields).map(
+                          ([field, fieldInfo]) => {
+                            // Handle both old format (string) and new format (object)
+                            const dataType =
+                              typeof fieldInfo === "string"
+                                ? fieldInfo
+                                : fieldInfo.data_type;
+                            const isPrimaryKey =
+                              typeof fieldInfo === "object"
+                                ? fieldInfo.is_primary_key
+                                : false;
+
+                            return (
+                              <Flex key={field} alignItems="center" gap={2}>
+                                <Text fontSize="sm">
+                                  {field}: {dataType}
+                                </Text>
+                                {isPrimaryKey && (
+                                  <TbKey
+                                    color="#2563EB"
+                                    size={14}
+                                    title="Primary Key"
+                                  />
+                                )}
+                              </Flex>
+                            );
+                          },
+                        )}
                     </Flex>
                   )}
                 </Flex>

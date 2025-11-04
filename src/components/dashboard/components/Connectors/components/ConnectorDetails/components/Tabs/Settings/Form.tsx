@@ -168,7 +168,8 @@ const Form = (props: Connector) => {
             <NumberInput.Input />
           </NumberInput.Root>
           <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
-            Min count: {props.dst_min_count?.toLocaleString() || "10,000"} | Max count: {props.dst_max_count?.toLocaleString() || "1,000,000"}
+            Min count: {props.dst_min_count?.toLocaleString() || "10,000"} | Max
+            count: {props.dst_max_count?.toLocaleString() || "1,000,000"}
           </Field.HelperText>
         </Field.Root>
       </Stack>

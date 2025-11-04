@@ -6,8 +6,10 @@ import {
   Text,
   useBreakpointValue,
 } from "@chakra-ui/react";
+
 import { FaUsers } from "react-icons/fa6";
 import { MdCategory, MdOutlineArrowRightAlt, MdWrapText } from "react-icons/md";
+
 import { useLocation, useNavigate } from "react-router";
 
 import CustomerIcon from "@/assets/images/customer-icon.svg";

@@ -1,15 +1,19 @@
 module.exports = {
   plugins: ["@trivago/prettier-plugin-sort-imports"],
-  semi: true, // Add a semicolon at the end of every statement
-  trailingComma: "all", // Add a trailing comma where possible
-  printWidth: 80, // Wrap lines at 80 characters
-  tabWidth: 2, // Set the number of spaces per indentation level
-  useTabs: false, // Use spaces instead of tabs for indentation
-  arrowParens: "always", // Always include parentheses around arrow function arguments
-  proseWrap: "never", // Do not wrap markdown text
-  bracketSpacing: true, // Print spaces between brackets in object literals
-  jsxBracketSameLine: false, // Put the closing `>` of a multi-line JSX element at the end of the last line
-  endOfLine: "lf", // Use LF for line endings
+
+  // === General Formatting Rules ===
+  semi: true, // Always add semicolons
+  trailingComma: "all", // Add trailing commas wherever possible
+  printWidth: 80, // Wrap lines that exceed 80 characters
+  tabWidth: 2, // Indent using 2 spaces
+  useTabs: false, // Do not use tabs
+  arrowParens: "always", // Always include parentheses around arrow function args
+  proseWrap: "never", // Don't wrap markdown text
+  bracketSpacing: true, // Add spaces between brackets { like this }
+  bracketSameLine: false, // ✅ New key replacing jsxBracketSameLine
+  endOfLine: "lf", // Use LF for line endings (for consistent cross-OS behavior)
+
+  // === Import Sorting Rules ===
   importOrder: [
     "^react$",
     "@chakra-ui/react",
@@ -20,6 +24,6 @@ module.exports = {
     "^[./].*\\.scss$",
     "[./]",
   ],
-  importOrderSeparation: true,
-  importOrderSortSpecifiers: true,
+  importOrderSeparation: true, // Add newlines between import groups
+  importOrderSortSpecifiers: true, // Sort imported members within braces
 };

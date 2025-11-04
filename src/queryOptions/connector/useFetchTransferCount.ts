@@ -26,6 +26,3 @@ const useFetchTransferCount = (connectionId: number) => {
 };
 
 export default useFetchTransferCount;
-
-
-
