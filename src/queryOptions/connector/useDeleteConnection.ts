@@ -4,7 +4,7 @@ import AxiosInstance from "@/lib/axios/api-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const deleteConnection = (connectorId: number) =>
-  AxiosInstance.post(ServerRoutes.connector.deleteConnection(connectorId));
+  AxiosInstance.delete(ServerRoutes.connector.deleteConnection(connectorId));
 
 const useDeleteConnection = ({ connectorId }: { connectorId: number }) => {
   const queryClient = useQueryClient();

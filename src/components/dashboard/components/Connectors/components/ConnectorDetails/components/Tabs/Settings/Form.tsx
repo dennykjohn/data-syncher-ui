@@ -14,6 +14,7 @@ import { CiTrash } from "react-icons/ci";
 import { MdRefresh } from "react-icons/md";
 
 import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
 import useUpdateConnectionSettings from "@/queryOptions/connector/schema/useUpdateConnectionSettings";
 import useTestConnection from "@/queryOptions/connector/useTestConnection";
 import { type Connector } from "@/types/connectors";
@@ -36,14 +37,8 @@ const Form = (props: Connector) => {
     safety_interval,
     execution_order,
     chunk_count,
+    status,
   } = props;
-  const { mutate: updateSettings, isPending: isUpdateOperationPending } =
-    useUpdateConnectionSettings({
-      connectorId: props.connection_id,
-    });
-
-  const { mutate: testConnection, isPending: isTestOperationPending } =
-    useTestConnection({ connectorId: props.connection_id });
 
   const initialFormState = {
     sync_start_date: sync_start_date ?? "",
@@ -54,10 +49,17 @@ const Form = (props: Connector) => {
   };
 
   const [formState, dispatch] = useReducer(reducer, initialFormState);
-
   const [syncStartLocal, setSyncStartLocal] = useState(
     toLocalDateTimeInput(formState?.sync_start_date),
   );
+
+  const { mutate: updateSettings, isPending: isUpdateOperationPending } =
+    useUpdateConnectionSettings({
+      connectorId: props.connection_id,
+    });
+
+  const { mutate: testConnection, isPending: isTestOperationPending } =
+    useTestConnection({ connectorId: props.connection_id });
 
   return (
     <Flex direction="column" gap={4} mb={8}>
@@ -197,15 +199,30 @@ const Form = (props: Connector) => {
           </Button>
         </Flex>
         <Flex gap={4}>
-          <Button
-            variant="outline"
-            colorPalette="red"
-            color="red.500"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <CiTrash />
-            Delete
-          </Button>
+          {status === "A" ? (
+            <Tooltip content="Cannot delete an active connector">
+              <Button
+                variant="outline"
+                colorPalette="red"
+                color="red.500"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled
+              >
+                <CiTrash />
+                Delete
+              </Button>
+            </Tooltip>
+          ) : (
+            <Button
+              variant="outline"
+              colorPalette="red"
+              color="red.500"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <CiTrash />
+              Delete
+            </Button>
+          )}
           <Button
             colorPalette="brand"
             onClick={() =>

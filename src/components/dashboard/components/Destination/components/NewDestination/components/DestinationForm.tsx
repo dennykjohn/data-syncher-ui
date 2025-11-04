@@ -57,8 +57,8 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
 
   const handleFormSubmit = (values: Record<string, string>) => {
     const payload: Destination = {
-      dst: formState.dst,
-      name: formState.destinationName,
+      dst: mode === "add" ? destinationName : destinationData?.dst,
+      name: values["destination_name"],
       config_data: { ...values },
     };
 

@@ -4,6 +4,7 @@ import { MdCompareArrows } from "react-icons/md";
 
 import { format } from "date-fns";
 
+import { dateTimeFormat } from "@/constants/common";
 import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 
 const Detail = ({
@@ -24,7 +25,7 @@ const Detail = ({
         {message}
       </Text>
       <Text fontSize="xs" minW="150px">
-        {format(new Date(timestamp), "PPpp")}
+        {format(new Date(timestamp), dateTimeFormat)}
       </Text>
     </Flex>
   );
