@@ -6,13 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "lint": "eslint .",
     "preview": "vite preview",
     "prepare": "husky",
-    "chakra:snippet": "chakra-cli snippet add",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "format": "prettier --write .",
-    "clean:code": "npm run lint:fix && npm run format"
+    "chakra:snippet": "chakra-cli snippet add"
   },
   "lint-staged": {
     "*.{ts,tsx,js}": "eslint --fix",
