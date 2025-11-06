@@ -143,28 +143,13 @@ const Schema = () => {
               Table Names
             </Text>
             <Flex gap={6} alignItems="center">
-              <Text
-                fontSize="sm"
-                fontWeight="semibold"
-                textAlign="center"
-                minW="40px"
-              >
+              <Text fontSize="sm" fontWeight="semibold" minW="40px">
                 Delta
               </Text>
-              <Text
-                fontSize="sm"
-                fontWeight="semibold"
-                textAlign="center"
-                minW="40px"
-              >
+              <Text fontSize="sm" fontWeight="semibold" minW="40px">
                 Reload
               </Text>
-              <Text
-                fontSize="sm"
-                fontWeight="semibold"
-                textAlign="center"
-                minW="40px"
-              >
+              <Text fontSize="sm" fontWeight="semibold" minW="40px">
                 Select
               </Text>
             </Flex>
