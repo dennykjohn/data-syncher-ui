@@ -38,6 +38,8 @@ const Form = (props: Connector) => {
     execution_order,
     chunk_count,
     status,
+    dst_min_count, // ✅ destructured here
+    dst_max_count, // ✅ destructured here
   } = props;
 
   const initialFormState = {
@@ -150,12 +152,13 @@ const Form = (props: Connector) => {
           </NativeSelect.Root>
         </Field.Root>
 
+        {/* ✅ Updated section starts here */}
         <Field.Root maxW="sm">
           <Field.Label>Transfer order count</Field.Label>
           <NumberInput.Root
             defaultValue="10"
-            min={props.dst_min_count || 10000}
-            max={props.dst_max_count || 1000000}
+            min={dst_min_count || 10000} // ✅ replaced props.dst_min_count
+            max={dst_max_count || 1000000} // ✅ replaced props.dst_max_count
             step={10000}
             value={String(formState.chunk_count)}
             onValueChange={(e) => {
@@ -170,11 +173,13 @@ const Form = (props: Connector) => {
             <NumberInput.Input />
           </NumberInput.Root>
           <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
-            Min count: {props.dst_min_count?.toLocaleString() || "10,000"} | Max
-            count: {props.dst_max_count?.toLocaleString() || "1,000,000"}
+            Min count: {dst_min_count?.toLocaleString() || "10,000"} | Max
+            count: {dst_max_count?.toLocaleString() || "1,000,000"}
           </Field.HelperText>
         </Field.Root>
+        {/* ✅ Updated section ends here */}
       </Stack>
+
       <Flex justifyContent={"space-between"} mt={4}>
         <Flex>
           <Button
@@ -247,6 +252,7 @@ const Form = (props: Connector) => {
           </Button>
         </Flex>
       </Flex>
+
       {showDeleteDialog && (
         <DeleteConfirmationDialog
           open={showDeleteDialog}

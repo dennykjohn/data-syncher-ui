@@ -20,7 +20,7 @@ import { GrRefresh } from "react-icons/gr";
 import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
-import { TbDelta, TbKey } from "react-icons/tb";
+import { TbDelta } from "react-icons/tb";
 
 import { useOutletContext } from "react-router";
 
@@ -44,6 +44,7 @@ const Schema = () => {
     useUpdateSelectedTables({
       connectorId: context.connection_id,
     });
+
   // Temp state to trigger re-calculation
   const [recalculatedCheckedTables, setRecalculatedCheckedTables] =
     useState<boolean>(false);
@@ -62,14 +63,13 @@ const Schema = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [AllTableList, recalculatedCheckedTables]);
 
-  // Save a Copy on initial checked tables
-  // to compare for changes
+  // Save a copy of initial checked tables
   const copyOfInitialCheckedTables: ConnectorTable[] = useMemo(() => {
     if (!AllTableList) return [];
     return AllTableList.filter((t) => t.selected);
   }, [AllTableList]);
 
-  // Local writable state (only for user interactions)
+  // Local writable state
   const [userCheckedTables, setUserCheckedTables] = useState<ConnectorTable[]>(
     () => checkedTables,
   );
@@ -78,7 +78,6 @@ const Schema = () => {
     setUserCheckedTables(checkedTables);
   }, [checkedTables]);
 
-  // Recompute difference when data changes (optional lazy sync)
   const hasCheckedTablesChanged = useMemo(() => {
     return (
       userCheckedTables.length !== copyOfInitialCheckedTables.length ||
@@ -89,7 +88,7 @@ const Schema = () => {
     );
   }, [userCheckedTables, copyOfInitialCheckedTables]);
 
-  // Track expanded tables
+  // Toggle expand
   const toggleExpand = (table: string) =>
     setExpanded((prev) => ({
       ...prev,
@@ -170,16 +169,19 @@ const Schema = () => {
               </Text>
             </Flex>
           </Flex>
+
           {(isAssigningTables || isAllTableListLoading) && (
             <For each={[...Array(10).keys()]}>
               {() => <Skeleton gap="4" height={8} />}
             </For>
           )}
+
           {!AllTableList?.length && !isAllTableListLoading && (
             <Flex direction="column" alignItems="center">
               <Text>No Tables available</Text>
             </Flex>
           )}
+
           {!isAssigningTables &&
             AllTableList?.filter((item) =>
               item.table.toLowerCase().includes(searchQuery),
@@ -226,7 +228,6 @@ const Schema = () => {
                       </Text>
                     </Flex>
                     <Flex gap={6} alignItems="center">
-                      {/* Delta Symbol */}
                       <Flex justifyContent="center" minW="40px">
                         {item.is_delta && (
                           <TbDelta
@@ -237,12 +238,9 @@ const Schema = () => {
                         )}
                       </Flex>
 
-                      {/* Reload Button */}
                       <Flex justifyContent="center" minW="40px">
                         <Box
-                          _hover={{
-                            color: "brand.500",
-                          }}
+                          _hover={{ color: "brand.500" }}
                           p={1}
                           borderRadius="sm"
                           onClick={() => {
@@ -290,6 +288,7 @@ const Schema = () => {
                       </Flex>
                     </Flex>
                   </Flex>
+
                   {isExpanded && (
                     <Flex
                       direction="column"
@@ -300,28 +299,16 @@ const Schema = () => {
                       {table_fields &&
                         Object.entries(table_fields).map(
                           ([field, fieldInfo]) => {
-                            // Handle both old format (string) and new format (object)
                             const dataType =
                               typeof fieldInfo === "string"
                                 ? fieldInfo
                                 : fieldInfo.data_type;
-                            const isPrimaryKey =
-                              typeof fieldInfo === "object"
-                                ? fieldInfo.is_primary_key
-                                : false;
 
                             return (
                               <Flex key={field} alignItems="center" gap={2}>
                                 <Text fontSize="sm">
                                   {field}: {dataType}
                                 </Text>
-                                {isPrimaryKey && (
-                                  <TbKey
-                                    color="#2563EB"
-                                    size={14}
-                                    title="Primary Key"
-                                  />
-                                )}
                               </Flex>
                             );
                           },
@@ -332,8 +319,10 @@ const Schema = () => {
               );
             })}
         </Flex>
+
         <SelectedTableList />
       </Grid>
+
       <ActionBar.Root open={hasCheckedTablesChanged}>
         <Portal>
           <ActionBar.Positioner>

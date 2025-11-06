@@ -79,11 +79,8 @@ export type ConnectorTable = {
   table: string;
   selected: boolean;
   sequence: null;
-  table_fields: Record<
-    string,
-    string | { data_type: string; is_primary_key: boolean }
-  >;
-  is_delta?: boolean;
+  table_fields: Record<string, string | { data_type: string }>;
+  is_delta: boolean;
 };
 
 export interface ConnectorSelectedTable {
