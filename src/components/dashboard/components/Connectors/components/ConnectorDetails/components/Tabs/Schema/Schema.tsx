@@ -284,10 +284,7 @@ const Schema = () => {
                       {table_fields &&
                         Object.entries(table_fields).map(
                           ([field, fieldInfo]) => {
-                            const dataType =
-                              typeof fieldInfo === "string"
-                                ? fieldInfo
-                                : fieldInfo.data_type;
+                            const dataType = typeof fieldInfo === "string";
 
                             return (
                               <Flex key={field} alignItems="center" gap={2}>
