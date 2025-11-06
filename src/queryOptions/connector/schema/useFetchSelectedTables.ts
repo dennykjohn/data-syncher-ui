@@ -4,7 +4,9 @@ import { type ConnectorSelectedTable } from "@/types/connectors";
 
 import { useQuery } from "@tanstack/react-query";
 
-const fetchSelectedTables = async (id: number) => {
+const fetchSelectedTables = async (
+  id: number,
+): Promise<ConnectorSelectedTable[]> => {
   const { data } = await AxiosInstance.get(
     ServerRoutes.connector.fetchConnectorSelectedTable(id),
   );
