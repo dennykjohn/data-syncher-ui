@@ -33,9 +33,7 @@ export const getSourceImage = (name: string, fallback?: string): string => {
   if (!name) return fallback || DEFAULT_IMAGE;
 
   // Normalize the name: lowercase, remove spaces, underscores, special chars (digits are preserved)
-  const normalizedName = name
-    .toLowerCase()
-    .replace(/[\s\-.]/g, "");
+  const normalizedName = name.toLowerCase().replace(/[\s\-.]/g, "");
 
   // Try exact match first
   if (normalizedName in IMAGE_MAP) {
