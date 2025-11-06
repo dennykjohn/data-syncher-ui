@@ -70,7 +70,7 @@ const Sidebar = ({
     <GridItem
       paddingBlock={4}
       area="sidebar"
-      bg="gray.800"
+      bg="#2A2D3E"
       display={sidebarDisplay}
       position="fixed"
       top={0}
@@ -80,6 +80,7 @@ const Sidebar = ({
       overflowY="auto"
       zIndex="1000"
       color="white"
+      //transition={"width 0.2s ease-in-out"}
     >
       <Flex justifyContent="flex-start" alignItems="center" gap={2} p={2}>
         <Image
@@ -90,16 +91,17 @@ const Sidebar = ({
           cursor="pointer"
           transition="transform 0.2s"
           _hover={{ transform: "scale(1.05)" }}
+          style={{ fill: "white" }}
           onClick={() => navigate(ClientRoutes.CONNECTORS.ROOT)}
         />
-        <Text fontSize="2xl" fontWeight="semibold" color="white">
+        <Text fontSize="2xl" fontWeight="semibold">
           Datasyncher
         </Text>
       </Flex>
       <Flex marginBlock={8}>
         <Flex
           borderLeft="3px solid"
-          borderColor="#9370DB"
+          borderColor="brand.accentOrange"
           alignItems="center"
           gap={4}
           h="50px"
@@ -112,7 +114,7 @@ const Sidebar = ({
             ml={2}
           />
           <Box>
-            <Text fontSize="xl" fontWeight="semibold" color="white">
+            <Text fontSize="xl" fontWeight="semibold">
               {user?.company?.cmp_name}
             </Text>
           </Box>

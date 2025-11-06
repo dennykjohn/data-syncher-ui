@@ -79,7 +79,7 @@ export type ConnectorTable = {
   table: string;
   selected: boolean;
   sequence: null;
-  table_fields: Record<string, string | { data_type: string }>;
+  table_fields: Record<string, string>;
   is_delta: boolean;
 };
 
@@ -88,7 +88,7 @@ export interface ConnectorSelectedTable {
   table: string;
   sequence: number;
   status: "in_progress" | "completed" | "failed";
-  is_delta?: boolean;
+  is_delta: boolean;
 }
 
 // ------------------ Connector Activity Types ------------------
