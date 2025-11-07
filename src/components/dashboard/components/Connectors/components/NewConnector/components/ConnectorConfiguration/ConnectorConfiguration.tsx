@@ -1,6 +1,6 @@
 import { Flex } from "@chakra-ui/react";
 
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 import DynamicForm from "@/components/dashboard/helpers/DynamicForm";
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
@@ -25,6 +25,7 @@ const ConnectorConfiguration = ({
   handlePrevious?: () => void;
   mode: "create" | "edit";
 }) => {
+  const navigate = useNavigate();
   const { connectionId } = useParams<{ connectionId: string }>();
   const shouldFetch = mode === "edit" && !!connectionId;
 
@@ -64,6 +65,10 @@ const ConnectorConfiguration = ({
           onSuccess: (response) => {
             if (response.auth_url) {
               window.location.href = response.auth_url;
+            } else {
+              navigate(
+                `/${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
+              );
             }
           },
         },
@@ -76,11 +81,15 @@ const ConnectorConfiguration = ({
           form_data: values,
         },
         {
-          onSuccess: () => {
-            toaster.success({
-              title: "Connector updated successfully",
-              description: `The connector has been updated.`,
-            });
+          onSuccess: (response) => {
+            if (response.auth_url) {
+              window.location.href = response.auth_url;
+            } else {
+              toaster.success({
+                title: "Connector updated successfully",
+                description: "The connector has been updated.",
+              });
+            }
           },
         },
       );

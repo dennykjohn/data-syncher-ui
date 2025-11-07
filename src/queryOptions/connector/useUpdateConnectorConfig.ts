@@ -4,15 +4,22 @@ import { type CreateConnectionPayload } from "@/types/connectors";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-const updateConnectorConfig = (
+interface UpdateConnectionResponse {
+  message: string;
+  auth_url?: string;
+}
+
+const updateConnectorConfig = async (
   connectorId: number,
   type: string,
   payload: CreateConnectionPayload,
-) =>
-  AxiosInstance.post(
+): Promise<UpdateConnectionResponse> => {
+  const { data } = await AxiosInstance.post(
     ServerRoutes.connector.updateConnectorConfig({ connectorId, type }),
     payload,
   );
+  return data;
+};
 
 const useUpdateConnectorConfig = ({
   connectorId,
@@ -22,7 +29,11 @@ const useUpdateConnectorConfig = ({
   type: string;
 }) => {
   const queryClient = useQueryClient();
-  return useMutation<unknown, unknown, CreateConnectionPayload>({
+  return useMutation<
+    UpdateConnectionResponse,
+    unknown,
+    CreateConnectionPayload
+  >({
     mutationFn: (payload) => updateConnectorConfig(connectorId, type, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
