@@ -32,11 +32,8 @@ const DEFAULT_IMAGE = DataBricksIllustration;
 export const getSourceImage = (name: string, fallback?: string): string => {
   if (!name) return fallback || DEFAULT_IMAGE;
 
-  // Normalize the name: lowercase, remove spaces, underscores, special chars
-  const normalizedName = name
-    .toLowerCase()
-    .replace(/[\s\-.]/g, "")
-    .replace(/365/g, "365"); // Keep numbers
+  // Normalize the name: lowercase, remove spaces, underscores, special chars (digits are preserved)
+  const normalizedName = name.toLowerCase().replace(/[\s\-.]/g, "");
 
   // Try exact match first
   if (normalizedName in IMAGE_MAP) {
