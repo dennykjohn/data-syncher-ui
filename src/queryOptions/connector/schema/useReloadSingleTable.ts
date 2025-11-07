@@ -1,6 +1,7 @@
 import { toaster } from "@/components/ui/toaster";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
+import { queryClient } from "@/lib/react-query-client";
 
 import { useMutation } from "@tanstack/react-query";
 
@@ -15,9 +16,14 @@ const reloadSingleTable = (payload: ReloadSingleTablePayload) =>
 const useReloadSingleTable = () => {
   return useMutation({
     mutationFn: reloadSingleTable,
-    onSuccess: (response) => {
-      toaster.warning({
-        title: response.data.message,
+    onSuccess: (response, variables) => {
+      toaster.warning({ title: response.data.message });
+      // ensure schema lists refresh
+      queryClient.invalidateQueries({
+        queryKey: ["ConnectorTable", variables.connection_id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["SelectedTables", variables.connection_id],
       });
     },
   });
