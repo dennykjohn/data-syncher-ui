@@ -34,6 +34,7 @@
   "devDependencies": {
     "@chakra-ui/cli": "^3.28.1",
     "@eslint/js": "^9.39.1",
+    "@tanstack/react-query-devtools": "^5.90.2",
     "@trivago/prettier-plugin-sort-imports": "^6.0.0",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^24.10.0",
