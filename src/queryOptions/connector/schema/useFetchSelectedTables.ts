@@ -18,7 +18,5 @@ export default function useFetchSelectedTables(id: number) {
     queryKey: ["SelectedTables", id],
     queryFn: () => fetchSelectedTables(id),
     enabled: !!id,
-    staleTime: 0,
-    refetchOnWindowFocus: false,
   });
 }
