@@ -20,6 +20,7 @@ import { useNavigate } from "react-router";
 
 import Logo from "@/assets/logo.svg";
 import { toaster } from "@/components/ui/toaster";
+import passwordPolicy from "@/config/password-policy";
 import ClientRoutes from "@/constants/client-routes";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
@@ -51,24 +52,42 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [error, setError] = useState<{ field: string; message: string } | null>(
+    null,
+  );
+
   const validate = () => {
     const e: Partial<Record<keyof FormState, string>> = {};
+
     if (!form.firstName.trim()) e.firstName = "First name is required";
     if (!form.lastName.trim()) e.lastName = "Last name is required";
+
     if (!form.email.trim()) e.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(form.email.trim()))
       e.email = "Enter a valid email";
-    if (!form.password) e.password = "Password is required";
-    else if (form.password.length < 8)
-      e.password = "Password must be at least 8 characters";
+
+    if (!form.password) {
+      e.password = "Password is required";
+    } else if (!passwordPolicy.passwordRegex.test(form.password)) {
+      setError({
+        message: passwordPolicy.passwordPolicyErrorMessage,
+        field: "password",
+      });
+    } else if (error?.field === "password") {
+      setError(null);
+    }
+
     if (!form.company.trim()) e.company = "Company is required";
     if (!form.terms) e.terms = "You must accept the Terms and Privacy policy";
+
     return e;
   };
 
   const onChange = (key: keyof FormState) => (value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
+
+    if (key === "password" && error?.field === "password") setError(null);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -76,6 +95,7 @@ const Register = () => {
     const eMap = validate();
     setErrors(eMap);
     if (Object.values(eMap).some(Boolean)) return;
+
     setSubmitting(true);
     const payload = {
       first_name: form.firstName,
@@ -83,8 +103,9 @@ const Register = () => {
       company_email: form.email,
       password: form.password,
       company_name: form.company,
-      employee_range: "1-10", // Defaulting for now
+      employee_range: "1-10",
     };
+
     try {
       await AxiosInstance.post(ServerRoutes.auth.register(), { ...payload });
       toaster.success({
@@ -130,6 +151,7 @@ const Register = () => {
               </Span>
             </Text>
           </Stack>
+
           {/* First name */}
           <Field.Root required invalid={!!errors.firstName}>
             <Field.Label>First name</Field.Label>
@@ -165,7 +187,10 @@ const Register = () => {
           </Field.Root>
 
           {/* Password */}
-          <Field.Root required invalid={!!errors.password}>
+          <Field.Root
+            required
+            invalid={!!errors.password || error?.field === "password"}
+          >
             <Field.Label>Password</Field.Label>
             <InputGroup
               endElement={
@@ -185,7 +210,10 @@ const Register = () => {
                 onChange={(ev) => onChange("password")(ev.target.value)}
               />
             </InputGroup>
-            <Field.ErrorText>{errors.password}</Field.ErrorText>
+            <Field.ErrorText>
+              {errors.password ||
+                (error?.field === "password" ? error.message : "")}
+            </Field.ErrorText>
           </Field.Root>
 
           {/* Company */}
