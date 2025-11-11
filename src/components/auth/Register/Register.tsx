@@ -58,26 +58,9 @@ const Register = () => {
     if (!form.email.trim()) e.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(form.email.trim()))
       e.email = "Enter a valid email";
-    if (!form.password) {
-      e.password = "Password is required";
-    } else {
-      const password = form.password;
-      const passwordErrors: string[] = [];
-
-      if (password.length < 6) passwordErrors.push("at least 6 characters");
-      if (password.length > 20)
-        passwordErrors.push("no more than 20 characters");
-      if (!/[A-Z]/.test(password)) passwordErrors.push("1 uppercase letter");
-      if (!/[a-z]/.test(password)) passwordErrors.push("1 lowercase letter");
-      if (!/\d/.test(password)) passwordErrors.push("1 number");
-      if (!/[!@#$%^&*]/.test(password))
-        passwordErrors.push("1 special character (!@#$%^&*)");
-
-      if (passwordErrors.length > 0) {
-        e.password = `Password must include: ${passwordErrors.join(", ")}`;
-      }
-    }
-
+    if (!form.password) e.password = "Password is required";
+    else if (form.password.length < 8)
+      e.password = "Password must be at least 8 characters";
     if (!form.company.trim()) e.company = "Company is required";
     if (!form.terms) e.terms = "You must accept the Terms and Privacy policy";
     return e;

@@ -6,13 +6,11 @@ import {
   Field,
   Flex,
   Input,
-  InputGroup,
   NativeSelect,
   VStack,
 } from "@chakra-ui/react";
 
 import { IoMdArrowBack } from "react-icons/io";
-import { LuEye, LuEyeOff } from "react-icons/lu";
 import { MdOutlineSave } from "react-icons/md";
 
 import { type FieldConfig } from "@/types/form";
@@ -49,10 +47,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [passwordVisibility, setPasswordVisibility] = useState<
-    Record<string, boolean>
-  >({});
-
+  // 👇 when defaultValues changes (edit mode), update state
   useEffect(() => {
     if (defaultValues) {
       setValues((prev) => ({
@@ -87,6 +82,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const renderInput = (field: FieldConfig) => {
+    // Support `ChoiceField` type with `options` on the FieldConfig
     if (field.type === "ChoiceField") {
       return (
         <Field.Root
@@ -118,18 +114,20 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       );
     }
 
-    const inputType = field.widget === "PasswordInput" ? "password" : "text";
+    // extend for more types later
+    const inputType = "text";
 
-    // hide fields based on authentication_type
+    // If the value of authentication_type field is "password",
+    // hide private_key & public_key fields
     if (
-      (field.name === "private_key" ||
-        field.name === "public_key" ||
-        field.name === "passphrase") &&
+      (field.name === "private_key" || field.name === "public_key") &&
       values["authentication_type"] === "password"
     ) {
       return null;
     }
 
+    // If the value of authentication_type field is "keypair",
+    // hide password field
     if (
       field.name === "password" &&
       values["authentication_type"] === "key_pair"
@@ -137,11 +135,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return null;
     }
 
+    // If the value of authentication_type field is not selected,
+    // hide private_key, public_key & password fields
     if (
       (field.name === "private_key" ||
         field.name === "public_key" ||
-        field.name === "password" ||
-        field.name === "passphrase") &&
+        field.name === "password") &&
       !values["authentication_type"]
     ) {
       return null;
@@ -154,44 +153,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         invalid={!!errors[field.name]}
       >
         <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
-
-        {inputType === "password" ? (
-          <InputGroup
-            endElement={
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  setPasswordVisibility((prev) => ({
-                    ...prev,
-                    [field.name]: !prev[field.name],
-                  }))
-                }
-              >
-                {passwordVisibility[field.name] ? <LuEyeOff /> : <LuEye />}
-              </Button>
-            }
-          >
-            <Input
-              id={field.name}
-              name={field.name}
-              type={passwordVisibility[field.name] ? "text" : "password"}
-              value={values[field.name]}
-              onChange={handleChange}
-              placeholder={`Enter ${field.label.toLowerCase()}`}
-            />
-          </InputGroup>
-        ) : (
-          <Input
-            id={field.name}
-            name={field.name}
-            type={inputType}
-            value={values[field.name]}
-            onChange={handleChange}
-            placeholder={`Enter ${field.label.toLowerCase()}`}
-          />
-        )}
-
+        <Input
+          id={field.name}
+          name={field.name}
+          type={inputType}
+          value={values[field.name]}
+          onChange={handleChange}
+          placeholder={`Enter ${field.label.toLowerCase()}`}
+        />
         {errors[field.name] && (
           <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
         )}
