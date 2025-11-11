@@ -94,7 +94,7 @@ const ProfileForm = ({
             <Input
               placeholder="Enter your company name"
               value={form.cmp_name}
-              onChange={(ev) => onChange("cmp_name")(ev.target.value)}
+              readOnly
             />
             <Field.ErrorText>{errors.cmp_name}</Field.ErrorText>
           </Field.Root>
