@@ -13,6 +13,7 @@ import {
 import { IoMdArrowBack } from "react-icons/io";
 import { MdOutlineSave } from "react-icons/md";
 
+import { PasswordInput } from "@/components/ui/password-input";
 import { type FieldConfig } from "@/types/form";
 
 type FormConfig = {
@@ -82,38 +83,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const renderInput = (field: FieldConfig) => {
-    // Support `ChoiceField` type with `options` on the FieldConfig
-    if (field.type === "ChoiceField") {
-      return (
-        <Field.Root
-          key={field.name}
-          required={field.required}
-          invalid={!!errors[field.name]}
-        >
-          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
-          <NativeSelect.Root size="sm">
-            <NativeSelect.Field
-              id={field.name}
-              name={field.name}
-              placeholder="Select option"
-              onChange={handleChange}
-              value={values[field.name]}
-            >
-              {(field.choices ?? []).map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.display}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
-          {errors[field.name] && (
-            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
-          )}
-        </Field.Root>
-      );
-    }
-
     // extend for more types later
     const inputType = "text";
 
@@ -147,6 +116,58 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       !values["authentication_type"]
     ) {
       return null;
+    }
+
+    // Support `ChoiceField` type with `options` on the FieldConfig
+    if (field.type === "ChoiceField") {
+      return (
+        <Field.Root
+          key={field.name}
+          required={field.required}
+          invalid={!!errors[field.name]}
+        >
+          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+          <NativeSelect.Root size="sm">
+            <NativeSelect.Field
+              id={field.name}
+              name={field.name}
+              placeholder="Select option"
+              onChange={handleChange}
+              value={values[field.name]}
+            >
+              {(field.choices ?? []).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.display}
+                </option>
+              ))}
+            </NativeSelect.Field>
+            <NativeSelect.Indicator />
+          </NativeSelect.Root>
+          {errors[field.name] && (
+            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+          )}
+        </Field.Root>
+      );
+    } else if (field.type === "PasswordInput") {
+      return (
+        <Field.Root
+          key={field.name}
+          required={field.required}
+          invalid={!!errors[field.name]}
+        >
+          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+          <PasswordInput
+            id={field.name}
+            name={field.name}
+            value={values[field.name]}
+            onChange={handleChange}
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+          />
+          {errors[field.name] && (
+            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+          )}
+        </Field.Root>
+      );
     }
 
     return (
