@@ -83,6 +83,41 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const renderInput = (field: FieldConfig) => {
+    // extend for more types later
+    const inputType = "text";
+
+    // If the value of authentication_type field is "password",
+    // hide private_key, public_key & passphrase fields
+    if (
+      (field.name === "private_key" ||
+        field.name === "public_key" ||
+        field.name === "passphrase") &&
+      values["authentication_type"] === "password"
+    ) {
+      return null;
+    }
+
+    // If the value of authentication_type field is "keypair",
+    // hide password field
+    if (
+      field.name === "password" &&
+      values["authentication_type"] === "key_pair"
+    ) {
+      return null;
+    }
+
+    // If the value of authentication_type field is not selected,
+    // hide private_key, public_key, passphrase & password fields
+    if (
+      (field.name === "private_key" ||
+        field.name === "public_key" ||
+        field.name === "password" ||
+        field.name === "passphrase") &&
+      !values["authentication_type"]
+    ) {
+      return null;
+    }
+
     // Support `ChoiceField` type with `options` on the FieldConfig
     if (field.type === "ChoiceField") {
       return (
@@ -133,41 +168,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           )}
         </Field.Root>
       );
-    }
-
-    // extend for more types later
-    const inputType = "text";
-
-    // If the value of authentication_type field is "password",
-    // hide private_key, public_key & passphrase fields
-    if (
-      (field.name === "private_key" ||
-        field.name === "public_key" ||
-        field.name === "passphrase") &&
-      values["authentication_type"] === "password"
-    ) {
-      return null;
-    }
-
-    // If the value of authentication_type field is "keypair",
-    // hide password field
-    if (
-      field.name === "password" &&
-      values["authentication_type"] === "key_pair"
-    ) {
-      return null;
-    }
-
-    // If the value of authentication_type field is not selected,
-    // hide private_key, public_key, passphrase & password fields
-    if (
-      (field.name === "private_key" ||
-        field.name === "public_key" ||
-        field.name === "password" ||
-        field.name === "passphrase") &&
-      !values["authentication_type"]
-    ) {
-      return null;
     }
 
     return (
