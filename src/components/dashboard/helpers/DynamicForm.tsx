@@ -6,11 +6,13 @@ import {
   Field,
   Flex,
   Input,
+  InputGroup,
   NativeSelect,
   VStack,
 } from "@chakra-ui/react";
 
 import { IoMdArrowBack } from "react-icons/io";
+import { LuEye, LuEyeOff } from "react-icons/lu";
 import { MdOutlineSave } from "react-icons/md";
 
 import { type FieldConfig } from "@/types/form";
@@ -47,7 +49,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // 👇 when defaultValues changes (edit mode), update state
+  const [passwordVisibility, setPasswordVisibility] = useState<
+    Record<string, boolean>
+  >({});
+
   useEffect(() => {
     if (defaultValues) {
       setValues((prev) => ({
@@ -82,7 +87,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const renderInput = (field: FieldConfig) => {
-    // Support `ChoiceField` type with `options` on the FieldConfig
     if (field.type === "ChoiceField") {
       return (
         <Field.Root
@@ -114,11 +118,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       );
     }
 
-    // extend for more types later
-    const inputType = "text";
+    const inputType = field.widget === "PasswordInput" ? "password" : "text";
 
-    // If the value of authentication_type field is "password",
-    // hide private_key, public_key & passphrase fields
+    // hide fields based on authentication_type
     if (
       (field.name === "private_key" ||
         field.name === "public_key" ||
@@ -128,8 +130,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return null;
     }
 
-    // If the value of authentication_type field is "keypair",
-    // hide password field
     if (
       field.name === "password" &&
       values["authentication_type"] === "key_pair"
@@ -137,8 +137,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return null;
     }
 
-    // If the value of authentication_type field is not selected,
-    // hide private_key, public_key, passphrase & password fields
     if (
       (field.name === "private_key" ||
         field.name === "public_key" ||
@@ -156,14 +154,44 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         invalid={!!errors[field.name]}
       >
         <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
-        <Input
-          id={field.name}
-          name={field.name}
-          type={inputType}
-          value={values[field.name]}
-          onChange={handleChange}
-          placeholder={`Enter ${field.label.toLowerCase()}`}
-        />
+
+        {inputType === "password" ? (
+          <InputGroup
+            endElement={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setPasswordVisibility((prev) => ({
+                    ...prev,
+                    [field.name]: !prev[field.name],
+                  }))
+                }
+              >
+                {passwordVisibility[field.name] ? <LuEyeOff /> : <LuEye />}
+              </Button>
+            }
+          >
+            <Input
+              id={field.name}
+              name={field.name}
+              type={passwordVisibility[field.name] ? "text" : "password"}
+              value={values[field.name]}
+              onChange={handleChange}
+              placeholder={`Enter ${field.label.toLowerCase()}`}
+            />
+          </InputGroup>
+        ) : (
+          <Input
+            id={field.name}
+            name={field.name}
+            type={inputType}
+            value={values[field.name]}
+            onChange={handleChange}
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+          />
+        )}
+
         {errors[field.name] && (
           <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
         )}
