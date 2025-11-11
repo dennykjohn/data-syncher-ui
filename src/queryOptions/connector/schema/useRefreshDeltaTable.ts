@@ -2,7 +2,7 @@ import { toaster } from "@/components/ui/toaster";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface RefreshDeltaTablePayload {
   connection_id: number;
@@ -12,15 +12,17 @@ interface RefreshDeltaTablePayload {
 const refreshDeltaTable = (payload: RefreshDeltaTablePayload) =>
   AxiosInstance.post(ServerRoutes.connector.refreshDeltaTable(), payload);
 
-const useRefreshDeltaTable = () => {
+export default function useRefreshDeltaTable() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: refreshDeltaTable,
-    onSuccess: (response) => {
-      toaster.warning({
-        title: response.data.message,
+    onSuccess: (response, variables) => {
+      toaster.success({ title: response.data.message });
+
+      queryClient.invalidateQueries({
+        queryKey: ["SelectedTables", variables.connection_id],
       });
     },
   });
-};
-
-export default useRefreshDeltaTable;
+}
