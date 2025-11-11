@@ -13,6 +13,7 @@ import {
 import { IoMdArrowBack } from "react-icons/io";
 import { MdOutlineSave } from "react-icons/md";
 
+import { PasswordInput } from "@/components/ui/password-input";
 import { type FieldConfig } from "@/types/form";
 
 type FormConfig = {
@@ -107,6 +108,26 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             </NativeSelect.Field>
             <NativeSelect.Indicator />
           </NativeSelect.Root>
+          {errors[field.name] && (
+            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+          )}
+        </Field.Root>
+      );
+    } else if (field.type === "PasswordInput") {
+      return (
+        <Field.Root
+          key={field.name}
+          required={field.required}
+          invalid={!!errors[field.name]}
+        >
+          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+          <PasswordInput
+            id={field.name}
+            name={field.name}
+            value={values[field.name]}
+            onChange={handleChange}
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+          />
           {errors[field.name] && (
             <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
           )}
