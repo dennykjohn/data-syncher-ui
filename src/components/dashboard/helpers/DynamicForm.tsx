@@ -118,9 +118,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     const inputType = "text";
 
     // If the value of authentication_type field is "password",
-    // hide private_key & public_key fields
+    // hide private_key, public_key & passphrase fields
     if (
-      (field.name === "private_key" || field.name === "public_key") &&
+      (field.name === "private_key" ||
+        field.name === "public_key" ||
+        field.name === "passphrase") &&
       values["authentication_type"] === "password"
     ) {
       return null;
@@ -136,11 +138,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
 
     // If the value of authentication_type field is not selected,
-    // hide private_key, public_key & password fields
+    // hide private_key, public_key, passphrase & password fields
     if (
       (field.name === "private_key" ||
         field.name === "public_key" ||
-        field.name === "password") &&
+        field.name === "password" ||
+        field.name === "passphrase") &&
       !values["authentication_type"]
     ) {
       return null;

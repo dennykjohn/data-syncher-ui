@@ -17,6 +17,7 @@ import "./main.scss";
 import { queryClient } from "./lib/react-query-client";
 import SomethingWentWrong from "./shared/SomethingWentWrong";
 import { QueryClientProvider } from "@tanstack/react-query";
+// import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
@@ -26,6 +27,7 @@ createRoot(document.getElementById("root")!).render(
         <Toaster />
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
+            {/* <ReactQueryDevtools initialIsOpen={false} /> */}
             <Suspense
               fallback={
                 <Flex justify="center" align="center" height="100vh">
