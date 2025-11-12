@@ -52,10 +52,6 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [error, setError] = useState<{ field: string; message: string } | null>(
-    null,
-  );
-
   const validate = () => {
     const e: Partial<Record<keyof FormState, string>> = {};
 
@@ -66,16 +62,9 @@ const Register = () => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(form.email.trim()))
       e.email = "Enter a valid email";
 
-    if (!form.password) {
-      e.password = "Password is required";
-    } else if (!passwordPolicy.passwordRegex.test(form.password)) {
-      setError({
-        message: passwordPolicy.passwordPolicyErrorMessage,
-        field: "password",
-      });
-    } else if (error?.field === "password") {
-      setError(null);
-    }
+    if (!form.password) e.password = "Password is required";
+    else if (!passwordPolicy.passwordRegex.test(form.password))
+      e.password = passwordPolicy.passwordPolicyErrorMessage;
 
     if (!form.company.trim()) e.company = "Company is required";
     if (!form.terms) e.terms = "You must accept the Terms and Privacy policy";
@@ -86,8 +75,6 @@ const Register = () => {
   const onChange = (key: keyof FormState) => (value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
-
-    if (key === "password" && error?.field === "password") setError(null);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -187,10 +174,7 @@ const Register = () => {
           </Field.Root>
 
           {/* Password */}
-          <Field.Root
-            required
-            invalid={!!errors.password || error?.field === "password"}
-          >
+          <Field.Root required invalid={!!errors.password}>
             <Field.Label>Password</Field.Label>
             <InputGroup
               endElement={
@@ -210,10 +194,7 @@ const Register = () => {
                 onChange={(ev) => onChange("password")(ev.target.value)}
               />
             </InputGroup>
-            <Field.ErrorText>
-              {errors.password ||
-                (error?.field === "password" ? error.message : "")}
-            </Field.ErrorText>
+            <Field.ErrorText>{errors.password}</Field.ErrorText>
           </Field.Root>
 
           {/* Company */}
