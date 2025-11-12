@@ -52,6 +52,10 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [error, setError] = useState<{ field: string; message: string } | null>(
+    null,
+  );
+
   const validate = () => {
     const e: Partial<Record<keyof FormState, string>> = {};
 
@@ -75,6 +79,8 @@ const Register = () => {
   const onChange = (key: keyof FormState) => (value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
+
+    if (key === "password" && error?.field === "password") setError(null);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -174,7 +180,10 @@ const Register = () => {
           </Field.Root>
 
           {/* Password */}
-          <Field.Root required invalid={!!errors.password}>
+          <Field.Root
+            required
+            invalid={!!errors.password || error?.field === "password"}
+          >
             <Field.Label>Password</Field.Label>
             <InputGroup
               endElement={
@@ -194,7 +203,10 @@ const Register = () => {
                 onChange={(ev) => onChange("password")(ev.target.value)}
               />
             </InputGroup>
-            <Field.ErrorText>{errors.password}</Field.ErrorText>
+            <Field.ErrorText>
+              {errors.password ||
+                (error?.field === "password" ? error.message : "")}
+            </Field.ErrorText>
           </Field.Root>
 
           {/* Company */}
