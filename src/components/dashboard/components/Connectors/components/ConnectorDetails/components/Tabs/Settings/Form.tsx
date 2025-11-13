@@ -187,11 +187,10 @@ const Form = (props: Connector) => {
             loading={isTestOperationPending}
             onClick={() =>
               testConnection(undefined, {
-                onSuccess: () => {
+                onSuccess: (response) => {
                   toaster.success({
-                    title: "Connection test initiated",
-                    description:
-                      "The connection test has been initiated. Please check the logs for detailed results.",
+                    title:
+                      response.data?.message || "Connection test initiated",
                   });
                 },
               })

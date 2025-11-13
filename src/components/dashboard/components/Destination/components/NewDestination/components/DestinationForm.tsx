@@ -1,6 +1,6 @@
 import { useEffect, useReducer } from "react";
 
-import { Flex } from "@chakra-ui/react";
+import { Button, Flex } from "@chakra-ui/react";
 
 import { useLocation, useNavigate, useParams } from "react-router";
 
@@ -12,6 +12,7 @@ import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useCreateDestination from "@/queryOptions/destination/useCreateDestination";
 import { useFetchDestinationById } from "@/queryOptions/destination/useFetchDestinationById";
+import useTriggerDestination from "@/queryOptions/destination/useTriggerDestination";
 import { useUpdateDestination } from "@/queryOptions/destination/useUpdateDestination";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 import { type Destination } from "@/types/destination";
@@ -27,19 +28,21 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   const location = useLocation();
   const params = useParams<{ destinationId: string }>();
   const { destinationId, destinationName } = location.state || {};
+
   const { mutate: createDestination, isPending } = useCreateDestination();
   const { data: destinationData, isPending: isFetchDestinationByIdPending } =
     useFetchDestinationById(params.destinationId || "");
   const { mutate: updateDestination, isPending: isUpdateDestinationPending } =
-    useUpdateDestination({
-      id: params.destinationId || "",
-    });
+    useUpdateDestination({ id: params.destinationId || "" });
 
   const { data: formSchema, isLoading: isFormSchemaLoading } =
     useFetchFormSchema({
       type: destinationData?.dst || destinationName || "",
       source: "destinations",
     });
+
+  const { mutate: triggerBackend, isPending: isTriggeringBackend } =
+    useTriggerDestination(params.destinationId || "");
 
   useEffect(() => {
     // If the user navigates directly to this form
@@ -61,7 +64,6 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       name: values["destination_name"],
       config_data: { ...values },
     };
-
     // If mode is edit, update the existing destination
     if (mode === "edit") {
       updateDestination(payload, {
@@ -74,7 +76,6 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       });
       return;
     }
-
     // If mode is add, create a new destination
     createDestination(payload, {
       onSuccess: () => {
@@ -110,6 +111,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
         }
         subtitle="Follow guide to setup your destination"
       />
+
       <DynamicForm
         config={{ fields: formSchema }}
         onSubmit={(values) => {
@@ -122,6 +124,25 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
             : undefined
         }
       />
+
+      {mode === "edit" && params.destinationId && (
+        <Flex justify="flex-start" align="center" gap={4} mt="-4.5rem">
+          <Button
+            type="button"
+            colorPalette="brand"
+            variant="outline"
+            loading={isTriggeringBackend}
+            onClick={() =>
+              triggerBackend(undefined, {
+                onSuccess: (message: string) =>
+                  toaster.success({ title: message }),
+              })
+            }
+          >
+            Test Connection
+          </Button>
+        </Flex>
+      )}
     </Flex>
   );
 };

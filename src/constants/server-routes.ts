@@ -33,6 +33,7 @@ const ServerRoutes = {
     // Below API to be corrected
     fetchAllUserCreatedDestinationList: () => "/destinations/?page=1&size=100",
     updateDestination: (id: string) => `destinations/update/${id}/`,
+    testDestination: (id: number) => `/destinations/test/${id}/`,
   },
   connector: {
     listConnectorsByPage: ({
