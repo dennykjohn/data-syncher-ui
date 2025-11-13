@@ -118,37 +118,20 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
         }
       />
 
-      {/* Small fire-and-forget "Test Destination" Button */}
       {mode === "edit" && params.destinationId && (
-        // example test icon (you can change this)
         <Flex justify="flex-start" align="center" gap={4} mt="-4.5rem" ml={2}>
           <Button
-            variant="outline"
+            type="button"
             colorPalette="brand"
-            color="brand.500"
-            borderColor="brand.500"
-            borderWidth="1.8px"
-            fontWeight="500"
-            px={8}
-            h="40px"
-            borderRadius="md"
-            w="120px"
+            alignSelf="flex-end"
             onClick={() =>
               triggerBackend(undefined, {
                 onSuccess: (message: string) =>
                   toaster.success({ title: message }),
-                onError: (error: unknown) =>
-                  toaster.error({
-                    title: "Error",
-                    description:
-                      error instanceof Error
-                        ? error.message
-                        : "Something went wrong",
-                  }),
               })
             }
           >
-            Test Destination
+            Test Connection
           </Button>
         </Flex>
       )}

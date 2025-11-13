@@ -17,6 +17,7 @@ const ClientRoutes = {
     EDIT: "edit",
     OVERVIEW: "overview",
     SCHEMA: "schema",
+    REVERSE_SCHEMA: "reverse-schema",
     USAGE: "usage",
     SETTINGS: "settings",
     EDIT_CONFIGURATION: "edit-configuration",

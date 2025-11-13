@@ -9,7 +9,6 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-// Function to call backend
 const triggerDestination = async (destinationId: string): Promise<string> => {
   if (!destinationId) throw new Error("Destination ID not found");
 
@@ -17,7 +16,7 @@ const triggerDestination = async (destinationId: string): Promise<string> => {
     const response = await AxiosInstance.post(
       ServerRoutes.destination.testDestination(Number(destinationId)), // make sure URL ends with /
     );
-    // Return backend message
+
     return response.data.message;
   } catch (err: unknown) {
     let message = "Something went wrong";
@@ -33,7 +32,6 @@ const triggerDestination = async (destinationId: string): Promise<string> => {
   }
 };
 
-// Hook
 export function useTriggerDestination(
   destinationId: string,
 ): UseMutationResult<string, Error, void, unknown> {
@@ -45,7 +43,6 @@ export function useTriggerDestination(
       queryClient.invalidateQueries({
         queryKey: ["destinations", "allUserCreatedDestinationList"],
       });
-      // return the backend message to the component
       return message;
     },
   });

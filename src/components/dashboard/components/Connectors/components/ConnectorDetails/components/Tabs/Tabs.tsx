@@ -9,6 +9,7 @@ import ClientRoutes from "@/constants/client-routes";
 const TabList = [
   { label: "Overview", route: ClientRoutes.CONNECTORS.OVERVIEW },
   { label: "Schema", route: ClientRoutes.CONNECTORS.SCHEMA },
+  { label: "Reverse Schema", route: ClientRoutes.CONNECTORS.REVERSE_SCHEMA },
   { label: "Usage", route: ClientRoutes.CONNECTORS.USAGE },
   { label: "Settings", route: ClientRoutes.CONNECTORS.SETTINGS },
 ];

@@ -40,6 +40,8 @@ export interface Connector {
   dst_max_count: number;
   source_name: string;
   destination_name: string;
+  source_title: string;
+  destination_title: string;
   company_name: string;
   target_database: string;
   target_schema: string;
@@ -72,6 +74,8 @@ export type ConnectorSettingsApiResponse = {
   dst_max_count: number;
   source_name: string;
   destination_name: string;
+  source_title: string;
+  destination_title: string;
   company_name: string;
 };
 

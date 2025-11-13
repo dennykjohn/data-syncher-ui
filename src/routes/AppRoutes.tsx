@@ -21,6 +21,7 @@ import {
   ConnectorUsage,
   Connectors,
   NewConnector,
+  ReverseSchema,
 } from "./ConnectorRoutes";
 import {
   Destination,
@@ -122,6 +123,10 @@ export const router = createBrowserRouter([
               {
                 path: ClientRoutes.CONNECTORS.SCHEMA,
                 element: <ConnectorSchema />,
+              },
+              {
+                path: ClientRoutes.CONNECTORS.REVERSE_SCHEMA,
+                element: <ReverseSchema />,
               },
               {
                 path: ClientRoutes.CONNECTORS.USAGE,

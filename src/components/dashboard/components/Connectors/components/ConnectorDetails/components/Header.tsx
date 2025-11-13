@@ -9,12 +9,13 @@ import {
   getDestinationImage,
   getSourceImage,
 } from "@/components/dashboard/utils/getImage";
-import { toaster } from "@/components/ui/toaster";
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
 
 const Header = ({ connector }: { connector: Connector }) => {
   const {
+    source_title,
+    destination_title,
     source_name,
     destination_name,
     status,
@@ -26,12 +27,6 @@ const Header = ({ connector }: { connector: Connector }) => {
     useToggleConnectionStatus({
       connectorId: connection_id,
     });
-
-  const onToggleSuccess = () => {
-    toaster.success({
-      title: "Connector status updated",
-    });
-  };
 
   // Time Freq format. If the time frequency is a number and
   // greater than 60 mins, convert to hours and minutes. Else show in minutes.
@@ -56,6 +51,7 @@ const Header = ({ connector }: { connector: Connector }) => {
         flexDirection={{ base: "column", md: "row" }}
         flexWrap="wrap"
       >
+        {/* Source Section */}
         <Flex gap={2} alignItems={"center"}>
           <Box>
             <Image
@@ -67,14 +63,17 @@ const Header = ({ connector }: { connector: Connector }) => {
           </Box>
           <Box>
             <Flex gap={2} alignItems="center">
-              <Text>{source_name}</Text>
+              <Text>{source_title}</Text>
             </Flex>
             <Text fontSize="sm">Source</Text>
           </Box>
         </Flex>
+
         <Flex>
           <Image src={Arrow} alt="arrow" />
         </Flex>
+
+        {/* Destination Section */}
         <Flex gap={2} alignItems={"center"}>
           <Box>
             <Image
@@ -86,7 +85,7 @@ const Header = ({ connector }: { connector: Connector }) => {
           </Box>
           <Box>
             <Flex gap={2} alignItems="center">
-              <Text>{destination_name}</Text>
+              <Text>{destination_title}</Text>
             </Flex>
             <Flex flexWrap={"wrap"} gap={1} alignItems="center">
               <Text fontSize="sm">Destination</Text>
@@ -101,6 +100,8 @@ const Header = ({ connector }: { connector: Connector }) => {
             </Flex>
           </Box>
         </Flex>
+
+        {/* Status Buttons */}
         <Flex ml="auto" gap={2}>
           {(status === "P" || status === "B") && (
             <Button
@@ -108,11 +109,7 @@ const Header = ({ connector }: { connector: Connector }) => {
               size="xs"
               variant="solid"
               loading={isPending}
-              onClick={() =>
-                toggleConnectionStatus(undefined, {
-                  onSuccess: onToggleSuccess,
-                })
-              }
+              onClick={() => toggleConnectionStatus()}
             >
               <CiPause1 />
               Paused
@@ -124,11 +121,7 @@ const Header = ({ connector }: { connector: Connector }) => {
               size="xs"
               variant="solid"
               loading={isPending}
-              onClick={() =>
-                toggleConnectionStatus(undefined, {
-                  onSuccess: onToggleSuccess,
-                })
-              }
+              onClick={() => toggleConnectionStatus()}
             >
               <IoMdCheckmark />
               Active
