@@ -41,12 +41,14 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       source: "destinations",
     });
 
-  // Trigger backend (fire-and-forget)
   const { mutate: triggerBackend } = useTriggerDestination(
     params.destinationId || "",
   );
 
   useEffect(() => {
+    // If the user navigates directly to this form
+    // without choosing a destination on Add Destination, redirect
+    // them back to the Add Destination page.
     if (mode === "add" && (!destinationId || !destinationName)) {
       navigate(
         `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
@@ -63,7 +65,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       name: values["destination_name"],
       config_data: { ...values },
     };
-
+    // If mode is edit, update the existing destination
     if (mode === "edit") {
       updateDestination(payload, {
         onSuccess: () => {
@@ -75,7 +77,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       });
       return;
     }
-
+    // If mode is add, create a new destination
     createDestination(payload, {
       onSuccess: () => {
         toaster.success({
@@ -87,9 +89,13 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
     });
   };
 
-  if (mode === "edit" && isFetchDestinationByIdPending)
+  if (mode === "edit" && isFetchDestinationByIdPending) {
     return <LoadingSpinner />;
-  if (isFormSchemaLoading || !formSchema) return <LoadingSpinner />;
+  }
+
+  if (isFormSchemaLoading || !formSchema) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
@@ -109,7 +115,9 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
 
       <DynamicForm
         config={{ fields: formSchema }}
-        onSubmit={handleFormSubmit}
+        onSubmit={(values) => {
+          handleFormSubmit(values);
+        }}
         loading={isPending || isUpdateDestinationPending}
         defaultValues={
           mode === "edit" && destinationData
