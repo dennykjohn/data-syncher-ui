@@ -27,6 +27,12 @@ export const ConnectorSchema = lazy(
       "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Schema/Schema"
     ),
 );
+export const ReverseSchema = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/ReverseSchema/ReverseSchema"
+    ),
+);
 export const ConnectorUsage = lazy(
   () =>
     import(
