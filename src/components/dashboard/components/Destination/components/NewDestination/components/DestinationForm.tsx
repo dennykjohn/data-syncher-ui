@@ -12,7 +12,7 @@ import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useCreateDestination from "@/queryOptions/destination/useCreateDestination";
 import { useFetchDestinationById } from "@/queryOptions/destination/useFetchDestinationById";
-import { useTriggerDestination } from "@/queryOptions/destination/useTriggerDestination";
+import useTriggerDestination from "@/queryOptions/destination/useTriggerDestination";
 import { useUpdateDestination } from "@/queryOptions/destination/useUpdateDestination";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 import { type Destination } from "@/types/destination";
