@@ -1,6 +1,6 @@
 import { useEffect, useReducer } from "react";
 
-import { Flex } from "@chakra-ui/react";
+import { Button, Flex } from "@chakra-ui/react";
 
 import { useLocation, useNavigate, useParams } from "react-router";
 
@@ -12,6 +12,7 @@ import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useCreateDestination from "@/queryOptions/destination/useCreateDestination";
 import { useFetchDestinationById } from "@/queryOptions/destination/useFetchDestinationById";
+import { useTriggerDestination } from "@/queryOptions/destination/useTriggerDestination";
 import { useUpdateDestination } from "@/queryOptions/destination/useUpdateDestination";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 import { type Destination } from "@/types/destination";
@@ -27,13 +28,12 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   const location = useLocation();
   const params = useParams<{ destinationId: string }>();
   const { destinationId, destinationName } = location.state || {};
+
   const { mutate: createDestination, isPending } = useCreateDestination();
   const { data: destinationData, isPending: isFetchDestinationByIdPending } =
     useFetchDestinationById(params.destinationId || "");
   const { mutate: updateDestination, isPending: isUpdateDestinationPending } =
-    useUpdateDestination({
-      id: params.destinationId || "",
-    });
+    useUpdateDestination({ id: params.destinationId || "" });
 
   const { data: formSchema, isLoading: isFormSchemaLoading } =
     useFetchFormSchema({
@@ -41,10 +41,12 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       source: "destinations",
     });
 
+  // Trigger backend (fire-and-forget)
+  const { mutate: triggerBackend } = useTriggerDestination(
+    params.destinationId || "",
+  );
+
   useEffect(() => {
-    // If the user navigates directly to this form
-    // without choosing a destination on Add Destination, redirect
-    // them back to the Add Destination page.
     if (mode === "add" && (!destinationId || !destinationName)) {
       navigate(
         `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
@@ -62,7 +64,6 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       config_data: { ...values },
     };
 
-    // If mode is edit, update the existing destination
     if (mode === "edit") {
       updateDestination(payload, {
         onSuccess: () => {
@@ -75,7 +76,6 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       return;
     }
 
-    // If mode is add, create a new destination
     createDestination(payload, {
       onSuccess: () => {
         toaster.success({
@@ -87,13 +87,9 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
     });
   };
 
-  if (mode === "edit" && isFetchDestinationByIdPending) {
+  if (mode === "edit" && isFetchDestinationByIdPending)
     return <LoadingSpinner />;
-  }
-
-  if (isFormSchemaLoading || !formSchema) {
-    return <LoadingSpinner />;
-  }
+  if (isFormSchemaLoading || !formSchema) return <LoadingSpinner />;
 
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
@@ -110,11 +106,10 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
         }
         subtitle="Follow guide to setup your destination"
       />
+
       <DynamicForm
         config={{ fields: formSchema }}
-        onSubmit={(values) => {
-          handleFormSubmit(values);
-        }}
+        onSubmit={handleFormSubmit}
         loading={isPending || isUpdateDestinationPending}
         defaultValues={
           mode === "edit" && destinationData
@@ -122,6 +117,41 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
             : undefined
         }
       />
+
+      {/* Small fire-and-forget "Test Destination" Button */}
+      {mode === "edit" && params.destinationId && (
+        // example test icon (you can change this)
+        <Flex justify="flex-start" align="center" gap={4} mt="-4.5rem" ml={2}>
+          <Button
+            variant="outline"
+            colorPalette="brand"
+            color="brand.500"
+            borderColor="brand.500"
+            borderWidth="1.8px"
+            fontWeight="500"
+            px={8}
+            h="40px"
+            borderRadius="md"
+            w="120px"
+            onClick={() =>
+              triggerBackend(undefined, {
+                onSuccess: (message: string) =>
+                  toaster.success({ title: message }),
+                onError: (error: unknown) =>
+                  toaster.error({
+                    title: "Error",
+                    description:
+                      error instanceof Error
+                        ? error.message
+                        : "Something went wrong",
+                  }),
+              })
+            }
+          >
+            Test Destination
+          </Button>
+        </Flex>
+      )}
     </Flex>
   );
 };
