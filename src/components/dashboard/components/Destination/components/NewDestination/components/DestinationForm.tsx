@@ -41,9 +41,8 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       source: "destinations",
     });
 
-  const { mutate: triggerBackend } = useTriggerDestination(
-    params.destinationId || "",
-  );
+  const { mutate: triggerBackend, isPending: isTriggeringBackend } =
+    useTriggerDestination(params.destinationId || "");
 
   useEffect(() => {
     // If the user navigates directly to this form
@@ -127,11 +126,13 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       />
 
       {mode === "edit" && params.destinationId && (
-        <Flex justify="flex-start" align="center" gap={4} mt="-4.5rem" ml={2}>
+        <Flex justify="flex-start" align="center" gap={4} mt="-4.5rem">
           <Button
             type="button"
             colorPalette="brand"
             alignSelf="flex-end"
+            variant="outline"
+            loading={isTriggeringBackend}
             onClick={() =>
               triggerBackend(undefined, {
                 onSuccess: (message: string) =>
