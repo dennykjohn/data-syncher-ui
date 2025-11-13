@@ -130,7 +130,6 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
           <Button
             type="button"
             colorPalette="brand"
-            alignSelf="flex-end"
             variant="outline"
             loading={isTriggeringBackend}
             onClick={() =>
