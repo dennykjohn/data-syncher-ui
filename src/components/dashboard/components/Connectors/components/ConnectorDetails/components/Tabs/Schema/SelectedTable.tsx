@@ -24,8 +24,10 @@ const SelectedTable = () => {
 
   const [refreshingTable, setRefreshingTable] = useState<string | null>(null);
 
-  const { data: selectedTables, isLoading: isLoadingSelected } =
-    useFetchSelectedTables(context.connection_id);
+  const { data, isLoading: isLoadingSelected } = useFetchSelectedTables(
+    context.connection_id,
+  );
+  const selectedTables = data?.tables;
 
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
