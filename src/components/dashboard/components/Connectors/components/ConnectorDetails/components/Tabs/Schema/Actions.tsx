@@ -53,18 +53,17 @@ const Actions = ({
         <Flex gap={4}>
           <Tooltip
             content={
-              shouldShowDisabledState || isUpdating
+              shouldShowDisabledState && !isRefreshing
                 ? "Another migration is in progress. Please wait until it is complete."
                 : ""
             }
-            disabled={!shouldShowDisabledState && !isUpdating}
+            disabled={!shouldShowDisabledState || isRefreshing}
           >
             <Button
               variant="outline"
               colorPalette="brand"
               onClick={() => {
-                // Check if any operation is active (shared state OR other button is pending)
-                if (shouldShowDisabledState || isUpdating) {
+                if (shouldShowDisabledState && !isRefreshing) {
                   toaster.warning({
                     title: "Operation in progress",
                     description:
@@ -72,15 +71,18 @@ const Actions = ({
                   });
                   return;
                 }
-                // Immediately set state to prevent other buttons from being clicked
                 setShouldShowDisabledState(true);
-                refreshSchema(undefined);
+                refreshSchema(undefined, {
+                  onSettled: () => {
+                    setShouldShowDisabledState(false);
+                  },
+                });
               }}
               loading={isRefreshing}
-              disabled={shouldShowDisabledState || isUpdating || isRefreshing}
-              opacity={shouldShowDisabledState || isUpdating ? 0.5 : 1}
+              disabled={shouldShowDisabledState && !isRefreshing}
+              opacity={shouldShowDisabledState && !isRefreshing ? 0.5 : 1}
               cursor={
-                shouldShowDisabledState || isUpdating
+                shouldShowDisabledState && !isRefreshing
                   ? "not-allowed"
                   : "pointer"
               }
@@ -91,19 +93,18 @@ const Actions = ({
           </Tooltip>
           <Tooltip
             content={
-              shouldShowDisabledState || isRefreshing
+              shouldShowDisabledState && !isUpdating
                 ? "Another migration is in progress. Please wait until it is complete."
                 : ""
             }
-            disabled={!shouldShowDisabledState && !isRefreshing}
+            disabled={!shouldShowDisabledState || isUpdating}
           >
             <Button
               variant="outline"
               colorPalette="brand"
               loading={isUpdating}
               onClick={() => {
-                // Check if any operation is active (shared state OR other button is pending)
-                if (shouldShowDisabledState || isRefreshing) {
+                if (shouldShowDisabledState && !isUpdating) {
                   toaster.warning({
                     title: "Operation in progress",
                     description:
@@ -111,14 +112,17 @@ const Actions = ({
                   });
                   return;
                 }
-                // Immediately set state to prevent other buttons from being clicked
                 setShouldShowDisabledState(true);
-                updateSchema(undefined);
+                updateSchema(undefined, {
+                  onSettled: () => {
+                    setShouldShowDisabledState(false);
+                  },
+                });
               }}
-              disabled={shouldShowDisabledState || isRefreshing || isUpdating}
-              opacity={shouldShowDisabledState || isRefreshing ? 0.5 : 1}
+              disabled={shouldShowDisabledState && !isUpdating}
+              opacity={shouldShowDisabledState && !isUpdating ? 0.5 : 1}
               cursor={
-                shouldShowDisabledState || isRefreshing
+                shouldShowDisabledState && !isUpdating
                   ? "not-allowed"
                   : "pointer"
               }

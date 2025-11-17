@@ -153,9 +153,7 @@ const SelectedTable = ({
                 <Flex justifyContent="center" minW="40px">
                   <Tooltip
                     content={
-                      (shouldShowDisabledState ||
-                        (isRefreshingDeltaTable &&
-                          refreshingTable !== table.table)) &&
+                      shouldShowDisabledState &&
                       !(
                         refreshingTable === table.table &&
                         isRefreshingDeltaTable
@@ -164,11 +162,7 @@ const SelectedTable = ({
                         : ""
                     }
                     disabled={
-                      (!shouldShowDisabledState &&
-                        !(
-                          isRefreshingDeltaTable &&
-                          refreshingTable !== table.table
-                        )) ||
+                      !shouldShowDisabledState ||
                       (refreshingTable === table.table &&
                         isRefreshingDeltaTable)
                     }
@@ -176,9 +170,7 @@ const SelectedTable = ({
                     <Box
                       _hover={{
                         color:
-                          (shouldShowDisabledState ||
-                            (isRefreshingDeltaTable &&
-                              refreshingTable !== table.table)) &&
+                          shouldShowDisabledState &&
                           !(
                             refreshingTable === table.table &&
                             isRefreshingDeltaTable
@@ -186,9 +178,7 @@ const SelectedTable = ({
                             ? "gray.400"
                             : "brand.500",
                         cursor:
-                          (shouldShowDisabledState ||
-                            (isRefreshingDeltaTable &&
-                              refreshingTable !== table.table)) &&
+                          shouldShowDisabledState &&
                           !(
                             refreshingTable === table.table &&
                             isRefreshingDeltaTable
@@ -202,11 +192,7 @@ const SelectedTable = ({
                         const isThisTableRefreshing =
                           refreshingTable === table.table &&
                           isRefreshingDeltaTable;
-                        // Check if any operation is active (shared state OR any table is refreshing)
-                        if (
-                          shouldShowDisabledState ||
-                          (isRefreshingDeltaTable && !isThisTableRefreshing)
-                        ) {
+                        if (shouldShowDisabledState && !isThisTableRefreshing) {
                           e.preventDefault();
                           e.stopPropagation();
                           toaster.warning({
@@ -216,7 +202,6 @@ const SelectedTable = ({
                           });
                           return;
                         }
-                        // Immediately set state to prevent other buttons from being clicked
                         setShouldShowDisabledState(true);
                         setRefreshingTable(table.table);
                         refreshDeltaTable(
@@ -227,9 +212,7 @@ const SelectedTable = ({
                           {
                             onSettled: () => {
                               setRefreshingTable(null);
-                              // Don't reset shouldShowDisabledState here
-                              // The useEffect in Schema.tsx will handle it based on hasInProgressStatus
-                              // This ensures buttons stay disabled until all migrations complete
+                              setShouldShowDisabledState(false);
                             },
                           },
                         );
@@ -241,9 +224,7 @@ const SelectedTable = ({
                             ? "spin 1s linear infinite"
                             : undefined,
                         cursor:
-                          (shouldShowDisabledState ||
-                            (isRefreshingDeltaTable &&
-                              refreshingTable !== table.table)) &&
+                          shouldShowDisabledState &&
                           !(
                             refreshingTable === table.table &&
                             isRefreshingDeltaTable
@@ -251,9 +232,7 @@ const SelectedTable = ({
                             ? "not-allowed"
                             : "pointer",
                         opacity:
-                          (shouldShowDisabledState ||
-                            (isRefreshingDeltaTable &&
-                              refreshingTable !== table.table)) &&
+                          shouldShowDisabledState &&
                           !(
                             refreshingTable === table.table &&
                             isRefreshingDeltaTable

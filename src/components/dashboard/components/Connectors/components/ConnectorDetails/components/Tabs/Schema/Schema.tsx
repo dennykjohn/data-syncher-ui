@@ -27,7 +27,6 @@ import { useOutletContext } from "react-router";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
-import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
@@ -48,11 +47,6 @@ const Schema = () => {
       connectorId: context.connection_id,
     });
 
-  // Fetch selected tables to check migration status
-  const { data: selectedTablesData } = useFetchSelectedTables(
-    context.connection_id,
-  );
-
   // Temp state to trigger re-calculation
   const [recalculatedCheckedTables, setRecalculatedCheckedTables] =
     useState<boolean>(false);
@@ -64,36 +58,6 @@ const Schema = () => {
 
   const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
     useReloadSingleTable();
-
-  // Check if any table has "in_progress" status
-  const hasInProgressStatus = useMemo(() => {
-    if (!selectedTablesData?.tables) return false;
-    return selectedTablesData.tables.some(
-      (table) => table.status === "in_progress",
-    );
-  }, [selectedTablesData]);
-
-  // Combined disabled state: either manual disable OR any table is in progress
-  const isAnyOperationActive = shouldShowDisabledState || hasInProgressStatus;
-
-  // Monitor status changes and reset shouldShowDisabledState when all operations complete
-  useEffect(() => {
-    if (hasInProgressStatus) {
-      // If any table is in progress, ensure buttons are disabled
-      // This handles the case when migrations are in progress from backend
-      if (!shouldShowDisabledState) {
-        setShouldShowDisabledState(true);
-      }
-    } else if (!hasInProgressStatus && shouldShowDisabledState) {
-      // All operations completed (no in_progress status), reset after a short delay
-      // This ensures buttons are enabled only after tick symbol appears (status = "completed")
-      const timer = setTimeout(() => {
-        setShouldShowDisabledState(false);
-      }, 1000); // 1 second delay to ensure UI updates
-
-      return () => clearTimeout(timer);
-    }
-  }, [hasInProgressStatus, shouldShowDisabledState]);
 
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
@@ -155,7 +119,7 @@ const Schema = () => {
     <Flex flexDirection="column" gap={4} pb={8} w="100%">
       <Actions
         {...context}
-        shouldShowDisabledState={isAnyOperationActive}
+        shouldShowDisabledState={shouldShowDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
       />
       <Flex mr="auto">
@@ -268,7 +232,7 @@ const Schema = () => {
                       <Flex justifyContent="center" minW="40px">
                         <Tooltip
                           content={
-                            isAnyOperationActive &&
+                            shouldShowDisabledState &&
                             !(
                               reloadingTable === table && isReloadingSingleTable
                             )
@@ -276,14 +240,14 @@ const Schema = () => {
                               : ""
                           }
                           disabled={
-                            !isAnyOperationActive ||
+                            !shouldShowDisabledState ||
                             (reloadingTable === table && isReloadingSingleTable)
                           }
                         >
                           <Box
                             _hover={{
                               color:
-                                isAnyOperationActive &&
+                                shouldShowDisabledState &&
                                 !(
                                   reloadingTable === table &&
                                   isReloadingSingleTable
@@ -291,7 +255,7 @@ const Schema = () => {
                                   ? "gray.400"
                                   : "brand.500",
                               cursor:
-                                isAnyOperationActive &&
+                                shouldShowDisabledState &&
                                 !(
                                   reloadingTable === table &&
                                   isReloadingSingleTable
@@ -306,7 +270,7 @@ const Schema = () => {
                                 reloadingTable === table &&
                                 isReloadingSingleTable;
                               if (
-                                isAnyOperationActive &&
+                                shouldShowDisabledState &&
                                 !isThisTableReloading
                               ) {
                                 e.preventDefault();
@@ -340,7 +304,7 @@ const Schema = () => {
                                   ? "spin 1s linear infinite"
                                   : undefined,
                               cursor:
-                                isAnyOperationActive &&
+                                shouldShowDisabledState &&
                                 !(
                                   reloadingTable === table &&
                                   isReloadingSingleTable
@@ -348,7 +312,7 @@ const Schema = () => {
                                   ? "not-allowed"
                                   : "pointer",
                               opacity:
-                                isAnyOperationActive &&
+                                shouldShowDisabledState &&
                                 !(
                                   reloadingTable === table &&
                                   isReloadingSingleTable
@@ -417,7 +381,7 @@ const Schema = () => {
         </Flex>
 
         <SelectedTableList
-          shouldShowDisabledState={isAnyOperationActive}
+          shouldShowDisabledState={shouldShowDisabledState}
           setShouldShowDisabledState={setShouldShowDisabledState}
         />
       </Grid>
