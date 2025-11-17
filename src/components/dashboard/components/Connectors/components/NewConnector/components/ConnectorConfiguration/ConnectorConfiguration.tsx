@@ -66,7 +66,9 @@ const ConnectorConfiguration = ({
             if (response.auth_url) {
               window.location.href = response.auth_url;
             } else {
-              navigate(ClientRoutes.CONNECTORS.ROOT);
+              navigate(
+                `/${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
+              );
             }
           },
         },

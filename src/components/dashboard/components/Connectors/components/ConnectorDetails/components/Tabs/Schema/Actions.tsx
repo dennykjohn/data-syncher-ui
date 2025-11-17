@@ -13,12 +13,14 @@ const Actions = ({
   target_schema,
   shouldShowDisabledState,
   setShouldShowDisabledState,
+  hasExistingMigrations,
 }: {
   connection_id: number;
   target_database: string;
   target_schema: string;
   shouldShowDisabledState: boolean;
   setShouldShowDisabledState: (_value: boolean) => void;
+  hasExistingMigrations?: boolean;
 }) => {
   const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
     connectorId: connection_id,
@@ -28,7 +30,8 @@ const Actions = ({
   });
 
   const createButtonProps = (isPending: boolean, onAction: () => void) => {
-    const isDisabled = shouldShowDisabledState && !isPending;
+    const isDisabled =
+      (shouldShowDisabledState || hasExistingMigrations) && !isPending;
 
     return {
       onClick: () => {
@@ -45,19 +48,19 @@ const Actions = ({
       },
       loading: isPending,
       disabled: isDisabled,
-      opacity: isDisabled ? 0.5 : 1,
-      cursor: isDisabled ? "not-allowed" : "pointer",
     };
   };
 
   // Helper function to create tooltip props
   const createTooltipProps = (isPending: boolean) => {
-    const isDisabled = shouldShowDisabledState && !isPending;
+    const isDisabled =
+      (shouldShowDisabledState || hasExistingMigrations) && !isPending;
     return {
       content: isDisabled
         ? "Another migration is in progress. Please wait until it is complete."
         : "",
-      disabled: !shouldShowDisabledState || isPending,
+      disabled:
+        !(shouldShowDisabledState || hasExistingMigrations) || isPending,
     };
   };
 

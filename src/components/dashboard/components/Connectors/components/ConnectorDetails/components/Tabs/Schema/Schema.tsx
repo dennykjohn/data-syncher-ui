@@ -27,6 +27,7 @@ import { useOutletContext } from "react-router";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
@@ -42,6 +43,10 @@ const Schema = () => {
   // Fetch data
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
+  const { data: selectedTablesData } = useFetchSelectedTables(
+    context.connection_id,
+  );
+  const selectedTables = selectedTablesData?.tables;
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
       connectorId: context.connection_id,
@@ -90,6 +95,13 @@ const Schema = () => {
     );
   }, [userCheckedTables, copyOfInitialCheckedTables]);
 
+  // Check if any table has in-progress migration
+  const hasExistingMigrations = useMemo(() => {
+    return (
+      selectedTables?.some((table) => table.status === "in_progress") ?? false
+    );
+  }, [selectedTables]);
+
   // Toggle expand
   const toggleExpand = (table: string) =>
     setExpanded((prev) => ({
@@ -121,6 +133,7 @@ const Schema = () => {
         {...context}
         shouldShowDisabledState={shouldShowDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
+        hasExistingMigrations={hasExistingMigrations}
       />
       <Flex mr="auto">
         <InputGroup endElement={<MdSearch size={24} />}>
@@ -232,7 +245,8 @@ const Schema = () => {
                       <Flex justifyContent="center" minW="40px">
                         <Tooltip
                           content={
-                            shouldShowDisabledState &&
+                            (shouldShowDisabledState ||
+                              hasExistingMigrations) &&
                             !(
                               reloadingTable === table && isReloadingSingleTable
                             )
@@ -240,14 +254,17 @@ const Schema = () => {
                               : ""
                           }
                           disabled={
-                            !shouldShowDisabledState ||
+                            !(
+                              shouldShowDisabledState || hasExistingMigrations
+                            ) ||
                             (reloadingTable === table && isReloadingSingleTable)
                           }
                         >
                           <Box
                             _hover={{
                               color:
-                                shouldShowDisabledState &&
+                                (shouldShowDisabledState ||
+                                  hasExistingMigrations) &&
                                 !(
                                   reloadingTable === table &&
                                   isReloadingSingleTable
@@ -255,7 +272,8 @@ const Schema = () => {
                                   ? "gray.400"
                                   : "brand.500",
                               cursor:
-                                shouldShowDisabledState &&
+                                (shouldShowDisabledState ||
+                                  hasExistingMigrations) &&
                                 !(
                                   reloadingTable === table &&
                                   isReloadingSingleTable
@@ -270,7 +288,8 @@ const Schema = () => {
                                 reloadingTable === table &&
                                 isReloadingSingleTable;
                               if (
-                                shouldShowDisabledState &&
+                                (shouldShowDisabledState ||
+                                  hasExistingMigrations) &&
                                 !isThisTableReloading
                               ) {
                                 e.preventDefault();
@@ -304,21 +323,14 @@ const Schema = () => {
                                   ? "spin 1s linear infinite"
                                   : undefined,
                               cursor:
-                                shouldShowDisabledState &&
+                                (shouldShowDisabledState ||
+                                  hasExistingMigrations) &&
                                 !(
                                   reloadingTable === table &&
                                   isReloadingSingleTable
                                 )
                                   ? "not-allowed"
                                   : "pointer",
-                              opacity:
-                                shouldShowDisabledState &&
-                                !(
-                                  reloadingTable === table &&
-                                  isReloadingSingleTable
-                                )
-                                  ? 0.5
-                                  : 1,
                             }}
                           >
                             <GrRefresh />

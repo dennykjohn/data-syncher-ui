@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Box, Flex, For, Image, Skeleton, Text } from "@chakra-ui/react";
 
@@ -43,6 +43,13 @@ const SelectedTable = ({
 
   const { mutate: refreshDeltaTable, isPending: isRefreshingDeltaTable } =
     useRefreshDeltaTable();
+
+  // Check if any table has in-progress migration
+  const hasExistingMigrations = useMemo(() => {
+    return (
+      selectedTables?.some((table) => table.status === "in_progress") ?? false
+    );
+  }, [selectedTables]);
 
   // Drag and drop state
   const [draggedItem, setDraggedItem] = useState<null | ConnectorSelectedTable>(
@@ -153,7 +160,7 @@ const SelectedTable = ({
                 <Flex justifyContent="center" minW="40px">
                   <Tooltip
                     content={
-                      shouldShowDisabledState &&
+                      (shouldShowDisabledState || hasExistingMigrations) &&
                       !(
                         refreshingTable === table.table &&
                         isRefreshingDeltaTable
@@ -162,7 +169,7 @@ const SelectedTable = ({
                         : ""
                     }
                     disabled={
-                      !shouldShowDisabledState ||
+                      !(shouldShowDisabledState || hasExistingMigrations) ||
                       (refreshingTable === table.table &&
                         isRefreshingDeltaTable)
                     }
@@ -170,7 +177,7 @@ const SelectedTable = ({
                     <Box
                       _hover={{
                         color:
-                          shouldShowDisabledState &&
+                          (shouldShowDisabledState || hasExistingMigrations) &&
                           !(
                             refreshingTable === table.table &&
                             isRefreshingDeltaTable
@@ -178,7 +185,7 @@ const SelectedTable = ({
                             ? "gray.400"
                             : "brand.500",
                         cursor:
-                          shouldShowDisabledState &&
+                          (shouldShowDisabledState || hasExistingMigrations) &&
                           !(
                             refreshingTable === table.table &&
                             isRefreshingDeltaTable
@@ -192,7 +199,10 @@ const SelectedTable = ({
                         const isThisTableRefreshing =
                           refreshingTable === table.table &&
                           isRefreshingDeltaTable;
-                        if (shouldShowDisabledState && !isThisTableRefreshing) {
+                        if (
+                          (shouldShowDisabledState || hasExistingMigrations) &&
+                          !isThisTableRefreshing
+                        ) {
                           e.preventDefault();
                           e.stopPropagation();
                           toaster.warning({
@@ -224,21 +234,13 @@ const SelectedTable = ({
                             ? "spin 1s linear infinite"
                             : undefined,
                         cursor:
-                          shouldShowDisabledState &&
+                          (shouldShowDisabledState || hasExistingMigrations) &&
                           !(
                             refreshingTable === table.table &&
                             isRefreshingDeltaTable
                           )
                             ? "not-allowed"
                             : "pointer",
-                        opacity:
-                          shouldShowDisabledState &&
-                          !(
-                            refreshingTable === table.table &&
-                            isRefreshingDeltaTable
-                          )
-                            ? 0.5
-                            : 1,
                       }}
                     >
                       <SlRefresh />
