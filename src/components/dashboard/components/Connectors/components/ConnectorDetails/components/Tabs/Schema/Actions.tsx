@@ -27,7 +27,6 @@ const Actions = ({
     connectorId: connection_id,
   });
 
-  // Helper function to create button props
   const createButtonProps = (isPending: boolean, onAction: () => void) => {
     const isDisabled = shouldShowDisabledState && !isPending;
 
