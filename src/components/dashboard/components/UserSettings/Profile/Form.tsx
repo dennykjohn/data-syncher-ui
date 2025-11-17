@@ -95,6 +95,8 @@ const ProfileForm = ({
               placeholder="Enter your company name"
               value={form.cmp_name}
               readOnly
+              bgColor="gray.50"
+              cursor="default"
             />
             <Field.ErrorText>{errors.cmp_name}</Field.ErrorText>
           </Field.Root>
@@ -106,6 +108,9 @@ const ProfileForm = ({
               placeholder="Enter your start date"
               value={form.start_date}
               onChange={(ev) => onChange("start_date")(ev.target.value)}
+              bgColor="gray.50"
+              cursor="default"
+              readOnly
             />
             <Field.ErrorText>{errors.start_date}</Field.ErrorText>
           </Field.Root>
@@ -117,6 +122,9 @@ const ProfileForm = ({
               placeholder="Enter your end date"
               value={form.end_date}
               onChange={(ev) => onChange("end_date")(ev.target.value)}
+              bgColor="gray.50"
+              cursor="default"
+              readOnly
             />
             <Field.ErrorText>{errors.end_date}</Field.ErrorText>
           </Field.Root>
