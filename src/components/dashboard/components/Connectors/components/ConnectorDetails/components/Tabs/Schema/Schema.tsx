@@ -26,6 +26,8 @@ import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
+import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
@@ -36,6 +38,7 @@ import SelectedTableList from "./SelectedTable";
 
 const Schema = () => {
   const context = useOutletContext<Connector>();
+  const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
 
   // Fetch data
   const { data: AllTableList, isLoading: isAllTableListLoading } =
@@ -44,6 +47,11 @@ const Schema = () => {
     useUpdateSelectedTables({
       connectorId: context.connection_id,
     });
+
+  // Fetch selected tables to check migration status
+  const { data: selectedTablesData } = useFetchSelectedTables(
+    context.connection_id,
+  );
 
   // Temp state to trigger re-calculation
   const [recalculatedCheckedTables, setRecalculatedCheckedTables] =
@@ -56,6 +64,36 @@ const Schema = () => {
 
   const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
     useReloadSingleTable();
+
+  // Check if any table has "in_progress" status
+  const hasInProgressStatus = useMemo(() => {
+    if (!selectedTablesData?.tables) return false;
+    return selectedTablesData.tables.some(
+      (table) => table.status === "in_progress",
+    );
+  }, [selectedTablesData]);
+
+  // Combined disabled state: either manual disable OR any table is in progress
+  const isAnyOperationActive = shouldShowDisabledState || hasInProgressStatus;
+
+  // Monitor status changes and reset shouldShowDisabledState when all operations complete
+  useEffect(() => {
+    if (hasInProgressStatus) {
+      // If any table is in progress, ensure buttons are disabled
+      // This handles the case when migrations are in progress from backend
+      if (!shouldShowDisabledState) {
+        setShouldShowDisabledState(true);
+      }
+    } else if (!hasInProgressStatus && shouldShowDisabledState) {
+      // All operations completed (no in_progress status), reset after a short delay
+      // This ensures buttons are enabled only after tick symbol appears (status = "completed")
+      const timer = setTimeout(() => {
+        setShouldShowDisabledState(false);
+      }, 1000); // 1 second delay to ensure UI updates
+
+      return () => clearTimeout(timer);
+    }
+  }, [hasInProgressStatus, shouldShowDisabledState]);
 
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
@@ -115,7 +153,11 @@ const Schema = () => {
 
   return (
     <Flex flexDirection="column" gap={4} pb={8} w="100%">
-      <Actions {...context} />
+      <Actions
+        {...context}
+        shouldShowDisabledState={isAnyOperationActive}
+        setShouldShowDisabledState={setShouldShowDisabledState}
+      />
       <Flex mr="auto">
         <InputGroup endElement={<MdSearch size={24} />}>
           <Input
@@ -224,32 +266,100 @@ const Schema = () => {
                       </Flex>
 
                       <Flex justifyContent="center" minW="40px">
-                        <Box
-                          _hover={{ color: "brand.500" }}
-                          p={1}
-                          borderRadius="sm"
-                          onClick={() => {
-                            setReloadingTable(table);
-                            reloadSingleTable(
-                              {
-                                connection_id: context.connection_id,
-                                table_name: table,
-                              },
-                              {
-                                onSettled: () => setReloadingTable(null),
-                              },
-                            );
-                          }}
-                          style={{
-                            animation:
+                        <Tooltip
+                          content={
+                            isAnyOperationActive &&
+                            !(
                               reloadingTable === table && isReloadingSingleTable
-                                ? "spin 1s linear infinite"
-                                : undefined,
-                            cursor: "pointer",
-                          }}
+                            )
+                              ? "Another migration is in progress. Please wait until it is complete."
+                              : ""
+                          }
+                          disabled={
+                            !isAnyOperationActive ||
+                            (reloadingTable === table && isReloadingSingleTable)
+                          }
                         >
-                          <GrRefresh />
-                        </Box>
+                          <Box
+                            _hover={{
+                              color:
+                                isAnyOperationActive &&
+                                !(
+                                  reloadingTable === table &&
+                                  isReloadingSingleTable
+                                )
+                                  ? "gray.400"
+                                  : "brand.500",
+                              cursor:
+                                isAnyOperationActive &&
+                                !(
+                                  reloadingTable === table &&
+                                  isReloadingSingleTable
+                                )
+                                  ? "not-allowed"
+                                  : "pointer",
+                            }}
+                            p={1}
+                            borderRadius="sm"
+                            onClick={(e) => {
+                              const isThisTableReloading =
+                                reloadingTable === table &&
+                                isReloadingSingleTable;
+                              if (
+                                isAnyOperationActive &&
+                                !isThisTableReloading
+                              ) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toaster.warning({
+                                  title: "Operation in progress",
+                                  description:
+                                    "Another migration is in progress. Please wait until it is complete.",
+                                });
+                                return;
+                              }
+                              setShouldShowDisabledState(true);
+                              setReloadingTable(table);
+                              reloadSingleTable(
+                                {
+                                  connection_id: context.connection_id,
+                                  table_name: table,
+                                },
+                                {
+                                  onSettled: () => {
+                                    setReloadingTable(null);
+                                    setShouldShowDisabledState(false);
+                                  },
+                                },
+                              );
+                            }}
+                            style={{
+                              animation:
+                                reloadingTable === table &&
+                                isReloadingSingleTable
+                                  ? "spin 1s linear infinite"
+                                  : undefined,
+                              cursor:
+                                isAnyOperationActive &&
+                                !(
+                                  reloadingTable === table &&
+                                  isReloadingSingleTable
+                                )
+                                  ? "not-allowed"
+                                  : "pointer",
+                              opacity:
+                                isAnyOperationActive &&
+                                !(
+                                  reloadingTable === table &&
+                                  isReloadingSingleTable
+                                )
+                                  ? 0.5
+                                  : 1,
+                            }}
+                          >
+                            <GrRefresh />
+                          </Box>
+                        </Tooltip>
                       </Flex>
 
                       <Flex justifyContent="center" minW="40px">
@@ -284,7 +394,11 @@ const Schema = () => {
                       {table_fields &&
                         Object.entries(table_fields).map(
                           ([field, fieldInfo]) => {
-                            const dataType = typeof fieldInfo === "string";
+                            const dataType =
+                              typeof fieldInfo === "string"
+                                ? fieldInfo
+                                : (fieldInfo as { data_type: string })
+                                    .data_type;
 
                             return (
                               <Flex key={field} alignItems="center" gap={2}>
@@ -302,7 +416,10 @@ const Schema = () => {
             })}
         </Flex>
 
-        <SelectedTableList />
+        <SelectedTableList
+          shouldShowDisabledState={isAnyOperationActive}
+          setShouldShowDisabledState={setShouldShowDisabledState}
+        />
       </Grid>
 
       <ActionBar.Root open={hasCheckedTablesChanged}>

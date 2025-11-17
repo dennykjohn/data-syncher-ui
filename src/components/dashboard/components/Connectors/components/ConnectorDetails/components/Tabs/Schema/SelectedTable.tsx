@@ -11,6 +11,7 @@ import CheckIcon from "@/assets/icons/check-icon.svg";
 import ErrorIcon from "@/assets/icons/error-icon.svg";
 import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useRefreshDeltaTable from "@/queryOptions/connector/schema/useRefreshDeltaTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
@@ -19,7 +20,13 @@ import {
   type ConnectorSelectedTable,
 } from "@/types/connectors";
 
-const SelectedTable = () => {
+const SelectedTable = ({
+  shouldShowDisabledState,
+  setShouldShowDisabledState,
+}: {
+  shouldShowDisabledState: boolean;
+  setShouldShowDisabledState: (_value: boolean) => void;
+}) => {
   const context = useOutletContext<Connector>();
 
   const [refreshingTable, setRefreshingTable] = useState<string | null>(null);
@@ -144,35 +151,120 @@ const SelectedTable = () => {
                   {status === "failed" && <Image src={ErrorIcon} />}
                 </Flex>
                 <Flex justifyContent="center" minW="40px">
-                  <Box
-                    _hover={{
-                      color: "brand.500",
-                    }}
-                    p={1}
-                    borderRadius="sm"
-                    onClick={() => {
-                      setRefreshingTable(table.table);
-                      refreshDeltaTable(
-                        {
-                          connection_id: context.connection_id,
-                          table_name: table.table,
-                        },
-                        {
-                          onSettled: () => setRefreshingTable(null),
-                        },
-                      );
-                    }}
-                    style={{
-                      animation:
+                  <Tooltip
+                    content={
+                      (shouldShowDisabledState ||
+                        (isRefreshingDeltaTable &&
+                          refreshingTable !== table.table)) &&
+                      !(
                         refreshingTable === table.table &&
                         isRefreshingDeltaTable
-                          ? "spin 1s linear infinite"
-                          : undefined,
-                      cursor: "pointer",
-                    }}
+                      )
+                        ? "Another migration is in progress. Please wait until it is complete."
+                        : ""
+                    }
+                    disabled={
+                      (!shouldShowDisabledState &&
+                        !(
+                          isRefreshingDeltaTable &&
+                          refreshingTable !== table.table
+                        )) ||
+                      (refreshingTable === table.table &&
+                        isRefreshingDeltaTable)
+                    }
                   >
-                    <SlRefresh />
-                  </Box>
+                    <Box
+                      _hover={{
+                        color:
+                          (shouldShowDisabledState ||
+                            (isRefreshingDeltaTable &&
+                              refreshingTable !== table.table)) &&
+                          !(
+                            refreshingTable === table.table &&
+                            isRefreshingDeltaTable
+                          )
+                            ? "gray.400"
+                            : "brand.500",
+                        cursor:
+                          (shouldShowDisabledState ||
+                            (isRefreshingDeltaTable &&
+                              refreshingTable !== table.table)) &&
+                          !(
+                            refreshingTable === table.table &&
+                            isRefreshingDeltaTable
+                          )
+                            ? "not-allowed"
+                            : "pointer",
+                      }}
+                      p={1}
+                      borderRadius="sm"
+                      onClick={(e) => {
+                        const isThisTableRefreshing =
+                          refreshingTable === table.table &&
+                          isRefreshingDeltaTable;
+                        // Check if any operation is active (shared state OR any table is refreshing)
+                        if (
+                          shouldShowDisabledState ||
+                          (isRefreshingDeltaTable && !isThisTableRefreshing)
+                        ) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toaster.warning({
+                            title: "Operation in progress",
+                            description:
+                              "Another migration is in progress. Please wait until it is complete.",
+                          });
+                          return;
+                        }
+                        // Immediately set state to prevent other buttons from being clicked
+                        setShouldShowDisabledState(true);
+                        setRefreshingTable(table.table);
+                        refreshDeltaTable(
+                          {
+                            connection_id: context.connection_id,
+                            table_name: table.table,
+                          },
+                          {
+                            onSettled: () => {
+                              setRefreshingTable(null);
+                              // Don't reset shouldShowDisabledState here
+                              // The useEffect in Schema.tsx will handle it based on hasInProgressStatus
+                              // This ensures buttons stay disabled until all migrations complete
+                            },
+                          },
+                        );
+                      }}
+                      style={{
+                        animation:
+                          refreshingTable === table.table &&
+                          isRefreshingDeltaTable
+                            ? "spin 1s linear infinite"
+                            : undefined,
+                        cursor:
+                          (shouldShowDisabledState ||
+                            (isRefreshingDeltaTable &&
+                              refreshingTable !== table.table)) &&
+                          !(
+                            refreshingTable === table.table &&
+                            isRefreshingDeltaTable
+                          )
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity:
+                          (shouldShowDisabledState ||
+                            (isRefreshingDeltaTable &&
+                              refreshingTable !== table.table)) &&
+                          !(
+                            refreshingTable === table.table &&
+                            isRefreshingDeltaTable
+                          )
+                            ? 0.5
+                            : 1,
+                      }}
+                    >
+                      <SlRefresh />
+                    </Box>
+                  </Tooltip>
                 </Flex>
                 <Flex justifyContent="center" minW="40px">
                   <Box
