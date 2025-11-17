@@ -27,6 +27,41 @@ const Actions = ({
     connectorId: connection_id,
   });
 
+  // Helper function to create button props
+  const createButtonProps = (isPending: boolean, onAction: () => void) => {
+    const isDisabled = shouldShowDisabledState && !isPending;
+
+    return {
+      onClick: () => {
+        if (isDisabled) {
+          toaster.warning({
+            title: "Operation in progress",
+            description:
+              "Another migration is in progress. Please wait until it is complete.",
+          });
+          return;
+        }
+        setShouldShowDisabledState(true);
+        onAction();
+      },
+      loading: isPending,
+      disabled: isDisabled,
+      opacity: isDisabled ? 0.5 : 1,
+      cursor: isDisabled ? "not-allowed" : "pointer",
+    };
+  };
+
+  // Helper function to create tooltip props
+  const createTooltipProps = (isPending: boolean) => {
+    const isDisabled = shouldShowDisabledState && !isPending;
+    return {
+      content: isDisabled
+        ? "Another migration is in progress. Please wait until it is complete."
+        : "",
+      disabled: !shouldShowDisabledState || isPending,
+    };
+  };
+
   return (
     <Flex direction="column" gap={2} mb={2} minW="xl">
       <Flex w="100%">
@@ -51,81 +86,34 @@ const Actions = ({
           </Flex>
         </Flex>
         <Flex gap={4}>
-          <Tooltip
-            content={
-              shouldShowDisabledState && !isRefreshing
-                ? "Another migration is in progress. Please wait until it is complete."
-                : ""
-            }
-            disabled={!shouldShowDisabledState || isRefreshing}
-          >
+          <Tooltip {...createTooltipProps(isRefreshing)}>
             <Button
               variant="outline"
               colorPalette="brand"
-              onClick={() => {
-                if (shouldShowDisabledState && !isRefreshing) {
-                  toaster.warning({
-                    title: "Operation in progress",
-                    description:
-                      "Another migration is in progress. Please wait until it is complete.",
-                  });
-                  return;
-                }
-                setShouldShowDisabledState(true);
+              {...createButtonProps(isRefreshing, () => {
                 refreshSchema(undefined, {
                   onSettled: () => {
                     setShouldShowDisabledState(false);
                   },
                 });
-              }}
-              loading={isRefreshing}
-              disabled={shouldShowDisabledState && !isRefreshing}
-              opacity={shouldShowDisabledState && !isRefreshing ? 0.5 : 1}
-              cursor={
-                shouldShowDisabledState && !isRefreshing
-                  ? "not-allowed"
-                  : "pointer"
-              }
+              })}
             >
               <MdRefresh />
               Refresh schema
             </Button>
           </Tooltip>
-          <Tooltip
-            content={
-              shouldShowDisabledState && !isUpdating
-                ? "Another migration is in progress. Please wait until it is complete."
-                : ""
-            }
-            disabled={!shouldShowDisabledState || isUpdating}
-          >
+
+          <Tooltip {...createTooltipProps(isUpdating)}>
             <Button
               variant="outline"
               colorPalette="brand"
-              loading={isUpdating}
-              onClick={() => {
-                if (shouldShowDisabledState && !isUpdating) {
-                  toaster.warning({
-                    title: "Operation in progress",
-                    description:
-                      "Another migration is in progress. Please wait until it is complete.",
-                  });
-                  return;
-                }
-                setShouldShowDisabledState(true);
+              {...createButtonProps(isUpdating, () => {
                 updateSchema(undefined, {
                   onSettled: () => {
                     setShouldShowDisabledState(false);
                   },
                 });
-              }}
-              disabled={shouldShowDisabledState && !isUpdating}
-              opacity={shouldShowDisabledState && !isUpdating ? 0.5 : 1}
-              cursor={
-                shouldShowDisabledState && !isUpdating
-                  ? "not-allowed"
-                  : "pointer"
-              }
+              })}
             >
               <MdRefresh />
               Update schema
