@@ -2,26 +2,24 @@ import { Button, Flex, Text } from "@chakra-ui/react";
 
 import { MdRefresh } from "react-icons/md";
 
+import { useOutletContext } from "react-router";
+
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import useRefreshSchema from "@/queryOptions/connector/schema/useRefreshSchema";
 import useUpdateSchema from "@/queryOptions/connector/schema/useUpdateSchema";
+import { type Connector } from "@/types/connectors";
 
 const Actions = ({
-  connection_id,
-  target_database,
-  target_schema,
   shouldShowDisabledState,
   setShouldShowDisabledState,
-  hasExistingMigrations,
 }: {
-  connection_id: number;
-  target_database: string;
-  target_schema: string;
   shouldShowDisabledState: boolean;
   setShouldShowDisabledState: (_value: boolean) => void;
-  hasExistingMigrations?: boolean;
 }) => {
+  const context = useOutletContext<Connector>();
+  const { connection_id, target_database, target_schema } = context;
+
   const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
     connectorId: connection_id,
   });
@@ -30,8 +28,7 @@ const Actions = ({
   });
 
   const createButtonProps = (isPending: boolean, onAction: () => void) => {
-    const isDisabled =
-      (shouldShowDisabledState || hasExistingMigrations) && !isPending;
+    const isDisabled = shouldShowDisabledState && !isPending;
 
     return {
       onClick: () => {
@@ -51,16 +48,13 @@ const Actions = ({
     };
   };
 
-  // Helper function to create tooltip props
   const createTooltipProps = (isPending: boolean) => {
-    const isDisabled =
-      (shouldShowDisabledState || hasExistingMigrations) && !isPending;
+    const isDisabled = shouldShowDisabledState && !isPending;
     return {
       content: isDisabled
         ? "Another migration is in progress. Please wait until it is complete."
         : "",
-      disabled:
-        !(shouldShowDisabledState || hasExistingMigrations) || isPending,
+      disabled: !shouldShowDisabledState || isPending,
     };
   };
 

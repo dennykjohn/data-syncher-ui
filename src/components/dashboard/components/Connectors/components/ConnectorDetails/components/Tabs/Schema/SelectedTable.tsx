@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Box, Flex, For, Image, Skeleton, Text } from "@chakra-ui/react";
 
@@ -50,6 +50,17 @@ const SelectedTable = ({
       selectedTables?.some((table) => table.status === "in_progress") ?? false
     );
   }, [selectedTables]);
+
+  // Set shouldShowDisabledState when there are existing migrations
+  useEffect(() => {
+    if (hasExistingMigrations) {
+      setShouldShowDisabledState(true);
+    } else {
+      if (!refreshingTable) {
+        setShouldShowDisabledState(false);
+      }
+    }
+  }, [hasExistingMigrations, refreshingTable, setShouldShowDisabledState]);
 
   // Drag and drop state
   const [draggedItem, setDraggedItem] = useState<null | ConnectorSelectedTable>(
@@ -195,7 +206,7 @@ const SelectedTable = ({
                       }}
                       p={1}
                       borderRadius="sm"
-                      onClick={(e) => {
+                      onClick={() => {
                         const isThisTableRefreshing =
                           refreshingTable === table.table &&
                           isRefreshingDeltaTable;
@@ -203,8 +214,6 @@ const SelectedTable = ({
                           (shouldShowDisabledState || hasExistingMigrations) &&
                           !isThisTableRefreshing
                         ) {
-                          e.preventDefault();
-                          e.stopPropagation();
                           toaster.warning({
                             title: "Operation in progress",
                             description:

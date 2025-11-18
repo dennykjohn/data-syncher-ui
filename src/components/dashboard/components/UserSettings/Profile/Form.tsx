@@ -4,6 +4,7 @@ import { Button, Field, Fieldset, Input, Stack } from "@chakra-ui/react";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useUpdateCurrentUserProfile } from "@/queryOptions/user/useUpdateCurrentUserProfile";
 import { type UpdateCurrentUserPayload } from "@/types/user";
 
@@ -91,41 +92,42 @@ const ProfileForm = ({
           {/* Company name */}
           <Field.Root required invalid={!!errors.cmp_name}>
             <Field.Label>Company name</Field.Label>
-            <Input
-              placeholder="Enter your company name"
-              value={form.cmp_name}
-              readOnly
-              bgColor="gray.50"
-              cursor="default"
-            />
+            <Tooltip content="This field cannot be updated ">
+              <Input
+                placeholder="Enter your company name"
+                value={form.cmp_name}
+                readOnly
+                cursor="not-allowed"
+              />
+            </Tooltip>
             <Field.ErrorText>{errors.cmp_name}</Field.ErrorText>
           </Field.Root>
           {/* Start date */}
           <Field.Root required invalid={!!errors.start_date}>
             <Field.Label>Start date</Field.Label>
-            <Input
-              type="date"
-              placeholder="Enter your start date"
-              value={form.start_date}
-              onChange={(ev) => onChange("start_date")(ev.target.value)}
-              bgColor="gray.50"
-              cursor="default"
-              readOnly
-            />
+            <Tooltip content="This field cannot be updated ">
+              <Input
+                type="date"
+                placeholder="Enter your start date"
+                value={form.start_date}
+                cursor="not-allowed"
+                readOnly
+              />
+            </Tooltip>
             <Field.ErrorText>{errors.start_date}</Field.ErrorText>
           </Field.Root>
           {/* End date */}
           <Field.Root required invalid={!!errors.end_date}>
             <Field.Label>End date</Field.Label>
-            <Input
-              type="date"
-              placeholder="Enter your end date"
-              value={form.end_date}
-              onChange={(ev) => onChange("end_date")(ev.target.value)}
-              bgColor="gray.50"
-              cursor="default"
-              readOnly
-            />
+            <Tooltip content="This field cannot be updated ">
+              <Input
+                type="date"
+                placeholder="Enter your end date"
+                value={form.end_date}
+                cursor="not-allowed"
+                readOnly
+              />
+            </Tooltip>
             <Field.ErrorText>{errors.end_date}</Field.ErrorText>
           </Field.Root>
         </Fieldset.Content>
