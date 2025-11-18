@@ -26,6 +26,7 @@ import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
@@ -36,6 +37,7 @@ import SelectedTableList from "./SelectedTable";
 
 const Schema = () => {
   const context = useOutletContext<Connector>();
+  const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
 
   // Fetch data
   const { data: AllTableList, isLoading: isAllTableListLoading } =
@@ -115,7 +117,10 @@ const Schema = () => {
 
   return (
     <Flex flexDirection="column" gap={4} pb={8} w="100%">
-      <Actions {...context} />
+      <Actions
+        shouldShowDisabledState={shouldShowDisabledState}
+        setShouldShowDisabledState={setShouldShowDisabledState}
+      />
       <Flex mr="auto">
         <InputGroup endElement={<MdSearch size={24} />}>
           <Input
@@ -224,32 +229,90 @@ const Schema = () => {
                       </Flex>
 
                       <Flex justifyContent="center" minW="40px">
-                        <Box
-                          _hover={{ color: "brand.500" }}
-                          p={1}
-                          borderRadius="sm"
-                          onClick={() => {
-                            setReloadingTable(table);
-                            reloadSingleTable(
-                              {
-                                connection_id: context.connection_id,
-                                table_name: table,
-                              },
-                              {
-                                onSettled: () => setReloadingTable(null),
-                              },
-                            );
-                          }}
-                          style={{
-                            animation:
+                        <Tooltip
+                          content={
+                            shouldShowDisabledState &&
+                            !(
                               reloadingTable === table && isReloadingSingleTable
-                                ? "spin 1s linear infinite"
-                                : undefined,
-                            cursor: "pointer",
-                          }}
+                            )
+                              ? "Another migration is in progress. Please wait until it is complete."
+                              : ""
+                          }
+                          disabled={
+                            !shouldShowDisabledState ||
+                            (reloadingTable === table && isReloadingSingleTable)
+                          }
                         >
-                          <GrRefresh />
-                        </Box>
+                          <Box
+                            _hover={{
+                              color:
+                                shouldShowDisabledState &&
+                                !(
+                                  reloadingTable === table &&
+                                  isReloadingSingleTable
+                                )
+                                  ? "gray.400"
+                                  : "brand.500",
+                              cursor:
+                                shouldShowDisabledState &&
+                                !(
+                                  reloadingTable === table &&
+                                  isReloadingSingleTable
+                                )
+                                  ? "not-allowed"
+                                  : "pointer",
+                            }}
+                            p={1}
+                            borderRadius="sm"
+                            onClick={() => {
+                              const isThisTableReloading =
+                                reloadingTable === table &&
+                                isReloadingSingleTable;
+                              if (
+                                shouldShowDisabledState &&
+                                !isThisTableReloading
+                              ) {
+                                toaster.warning({
+                                  title: "Operation in progress",
+                                  description:
+                                    "Another migration is in progress. Please wait until it is complete.",
+                                });
+                                return;
+                              }
+                              setShouldShowDisabledState(true);
+                              setReloadingTable(table);
+                              reloadSingleTable(
+                                {
+                                  connection_id: context.connection_id,
+                                  table_name: table,
+                                },
+                                {
+                                  onSettled: () => {
+                                    setReloadingTable(null);
+                                    setShouldShowDisabledState(false);
+                                  },
+                                },
+                              );
+                            }}
+                            style={{
+                              animation:
+                                reloadingTable === table &&
+                                isReloadingSingleTable
+                                  ? "spin 1s linear infinite"
+                                  : undefined,
+                              cursor:
+                                shouldShowDisabledState &&
+                                !(
+                                  reloadingTable === table &&
+                                  isReloadingSingleTable
+                                )
+                                  ? "not-allowed"
+                                  : "pointer",
+                            }}
+                          >
+                            <GrRefresh />
+                          </Box>
+                        </Tooltip>
                       </Flex>
 
                       <Flex justifyContent="center" minW="40px">
@@ -284,7 +347,11 @@ const Schema = () => {
                       {table_fields &&
                         Object.entries(table_fields).map(
                           ([field, fieldInfo]) => {
-                            const dataType = typeof fieldInfo === "string";
+                            const dataType =
+                              typeof fieldInfo === "string"
+                                ? fieldInfo
+                                : (fieldInfo as { data_type: string })
+                                    .data_type;
 
                             return (
                               <Flex key={field} alignItems="center" gap={2}>
@@ -302,7 +369,10 @@ const Schema = () => {
             })}
         </Flex>
 
-        <SelectedTableList />
+        <SelectedTableList
+          shouldShowDisabledState={shouldShowDisabledState}
+          setShouldShowDisabledState={setShouldShowDisabledState}
+        />
       </Grid>
 
       <ActionBar.Root open={hasCheckedTablesChanged}>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Box, Flex, For, Image, Skeleton, Text } from "@chakra-ui/react";
 
@@ -11,6 +11,7 @@ import CheckIcon from "@/assets/icons/check-icon.svg";
 import ErrorIcon from "@/assets/icons/error-icon.svg";
 import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useRefreshDeltaTable from "@/queryOptions/connector/schema/useRefreshDeltaTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
@@ -19,7 +20,13 @@ import {
   type ConnectorSelectedTable,
 } from "@/types/connectors";
 
-const SelectedTable = () => {
+const SelectedTable = ({
+  shouldShowDisabledState,
+  setShouldShowDisabledState,
+}: {
+  shouldShowDisabledState: boolean;
+  setShouldShowDisabledState: (_value: boolean) => void;
+}) => {
   const context = useOutletContext<Connector>();
 
   const [refreshingTable, setRefreshingTable] = useState<string | null>(null);
@@ -36,6 +43,24 @@ const SelectedTable = () => {
 
   const { mutate: refreshDeltaTable, isPending: isRefreshingDeltaTable } =
     useRefreshDeltaTable();
+
+  // Check if any table has in-progress migration
+  const hasExistingMigrations = useMemo(() => {
+    return (
+      selectedTables?.some((table) => table.status === "in_progress") ?? false
+    );
+  }, [selectedTables]);
+
+  // Set shouldShowDisabledState when there are existing migrations
+  useEffect(() => {
+    if (hasExistingMigrations) {
+      setShouldShowDisabledState(true);
+    } else {
+      if (!refreshingTable) {
+        setShouldShowDisabledState(false);
+      }
+    }
+  }, [hasExistingMigrations, refreshingTable, setShouldShowDisabledState]);
 
   // Drag and drop state
   const [draggedItem, setDraggedItem] = useState<null | ConnectorSelectedTable>(
@@ -144,35 +169,92 @@ const SelectedTable = () => {
                   {status === "failed" && <Image src={ErrorIcon} />}
                 </Flex>
                 <Flex justifyContent="center" minW="40px">
-                  <Box
-                    _hover={{
-                      color: "brand.500",
-                    }}
-                    p={1}
-                    borderRadius="sm"
-                    onClick={() => {
-                      setRefreshingTable(table.table);
-                      refreshDeltaTable(
-                        {
-                          connection_id: context.connection_id,
-                          table_name: table.table,
-                        },
-                        {
-                          onSettled: () => setRefreshingTable(null),
-                        },
-                      );
-                    }}
-                    style={{
-                      animation:
+                  <Tooltip
+                    content={
+                      (shouldShowDisabledState || hasExistingMigrations) &&
+                      !(
                         refreshingTable === table.table &&
                         isRefreshingDeltaTable
-                          ? "spin 1s linear infinite"
-                          : undefined,
-                      cursor: "pointer",
-                    }}
+                      )
+                        ? "Another migration is in progress. Please wait until it is complete."
+                        : ""
+                    }
+                    disabled={
+                      !(shouldShowDisabledState || hasExistingMigrations) ||
+                      (refreshingTable === table.table &&
+                        isRefreshingDeltaTable)
+                    }
                   >
-                    <SlRefresh />
-                  </Box>
+                    <Box
+                      _hover={{
+                        color:
+                          (shouldShowDisabledState || hasExistingMigrations) &&
+                          !(
+                            refreshingTable === table.table &&
+                            isRefreshingDeltaTable
+                          )
+                            ? "gray.400"
+                            : "brand.500",
+                        cursor:
+                          (shouldShowDisabledState || hasExistingMigrations) &&
+                          !(
+                            refreshingTable === table.table &&
+                            isRefreshingDeltaTable
+                          )
+                            ? "not-allowed"
+                            : "pointer",
+                      }}
+                      p={1}
+                      borderRadius="sm"
+                      onClick={() => {
+                        const isThisTableRefreshing =
+                          refreshingTable === table.table &&
+                          isRefreshingDeltaTable;
+                        if (
+                          (shouldShowDisabledState || hasExistingMigrations) &&
+                          !isThisTableRefreshing
+                        ) {
+                          toaster.warning({
+                            title: "Operation in progress",
+                            description:
+                              "Another migration is in progress. Please wait until it is complete.",
+                          });
+                          return;
+                        }
+                        setShouldShowDisabledState(true);
+                        setRefreshingTable(table.table);
+                        refreshDeltaTable(
+                          {
+                            connection_id: context.connection_id,
+                            table_name: table.table,
+                          },
+                          {
+                            onSettled: () => {
+                              setRefreshingTable(null);
+                              setShouldShowDisabledState(false);
+                            },
+                          },
+                        );
+                      }}
+                      style={{
+                        animation:
+                          refreshingTable === table.table &&
+                          isRefreshingDeltaTable
+                            ? "spin 1s linear infinite"
+                            : undefined,
+                        cursor:
+                          (shouldShowDisabledState || hasExistingMigrations) &&
+                          !(
+                            refreshingTable === table.table &&
+                            isRefreshingDeltaTable
+                          )
+                            ? "not-allowed"
+                            : "pointer",
+                      }}
+                    >
+                      <SlRefresh />
+                    </Box>
+                  </Tooltip>
                 </Flex>
                 <Flex justifyContent="center" minW="40px">
                   <Box
