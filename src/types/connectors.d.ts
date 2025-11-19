@@ -126,24 +126,3 @@ export interface ConnectorActivityDetailResponse {
     message: string;
   }[];
 }
-
-export interface ReverseSchemaTable {
-  table: string;
-  table_fields?: Record<string, string | { data_type: string }>;
-}
-
-export interface ReverseSchemaResponse {
-  source_tables: ReverseSchemaTable[]; // Snowflake tables (from destination)
-  destination_tables: ReverseSchemaTable[]; // Salesforce tables (from source)
-  mappings?: TableMapping[];
-}
-
-export interface TableMapping {
-  source_table: string; // Snowflake table
-  destination_table: string; // Salesforce table
-}
-
-export interface SaveMappingsPayload {
-  connection_id: number;
-  mappings: TableMapping[];
-}

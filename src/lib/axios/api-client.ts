@@ -20,7 +20,6 @@ if (window.location.hostname === "localhost") {
 const AxiosInstance = axios.create({
   baseURL: `${baseURL}/api/v1/`,
   timeout: 30000,
-  withCredentials: true,
 });
 
 // Set Custom Headers

@@ -28,8 +28,6 @@ export default function useFetchSelectedTables(id: number) {
       const hasInProgress = data?.tables?.some(
         (table) => table.status === "in_progress",
       );
-      // If there are in-progress tables, refetch every 2 seconds
-      // If all are completed/failed, stop refetching (return false)
       return hasInProgress ? 2000 : false;
     },
   });
