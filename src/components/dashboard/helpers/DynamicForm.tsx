@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useState } from "react";
 
 import {
@@ -49,16 +50,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   // 👇 when defaultValues changes (edit mode), update state
   useEffect(() => {
-    if (defaultValues && !loading) {
-      const timeoutId = setTimeout(() => {
-        setValues((prev) => ({
-          ...prev,
-          ...defaultValues,
-        }));
-      }, 1000);
-      return () => clearTimeout(timeoutId);
+    if (defaultValues) {
+      setValues((prev) => ({
+        ...prev,
+        ...defaultValues,
+      }));
     }
-  }, [defaultValues, loading]);
+  }, [defaultValues]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
