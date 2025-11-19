@@ -22,5 +22,13 @@ export default function useFetchSelectedTables(id: number) {
     queryKey: ["SelectedTables", id],
     queryFn: () => fetchSelectedTables(id),
     enabled: !!id,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      // Check if any table has "in_progress" status
+      const hasInProgress = data?.tables?.some(
+        (table) => table.status === "in_progress",
+      );
+      return hasInProgress ? 2000 : false;
+    },
   });
 }
