@@ -12,22 +12,13 @@ import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useFetchMasterDestinationList from "@/queryOptions/destination/useFetchMasterDestinationList";
-import useSelectDestination from "@/queryOptions/destination/useSelectDestination";
 
 const DestinationList = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedDestinationId, setSelectedDestinationId] = useState<
-    number | null
-  >(null);
 
   const { data, isLoading: isFetchingDestinationsLoading } =
     useFetchMasterDestinationList();
-
-  const {
-    mutate: selectDestination,
-    isPending: isSelectingDestinationPending,
-  } = useSelectDestination();
 
   if (!data) {
     return (
@@ -43,24 +34,14 @@ const DestinationList = () => {
   }
 
   const handleDestionationClick = ({ dst_id }: { dst_id: number }) => {
-    // Prevent multiple clicks while a destination is being selected
-    if (isSelectingDestinationPending) return;
-    setSelectedDestinationId(dst_id);
-    selectDestination(
-      { destination: dst_id },
+    // Navigate directly without API call
+    navigate(
+      `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.CONFIGURE}`,
       {
-        onSuccess: () => {
-          navigate(
-            `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.CONFIGURE}`,
-            {
-              state: {
-                destinationId: dst_id,
-                destinationName: destinationList.find(
-                  (d) => d.dst_id === dst_id,
-                )?.name,
-              },
-            },
-          );
+        state: {
+          destinationId: dst_id,
+          destinationName: destinationList.find((d) => d.dst_id === dst_id)
+            ?.name,
         },
       },
     );
@@ -93,10 +74,6 @@ const DestinationList = () => {
               title={name}
               image={getDestinationImage(name)}
               handleClick={() => handleDestionationClick({ dst_id })}
-              isLoading={
-                selectedDestinationId === dst_id &&
-                isSelectingDestinationPending
-              }
             />
           );
         })}
