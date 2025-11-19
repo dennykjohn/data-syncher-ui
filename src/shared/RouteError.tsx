@@ -11,7 +11,6 @@ const RouteError: React.FC = () => {
   const error = useRouteError() as unknown;
 
   const message = (() => {
-    // try common shapes, but stay defensive about types
     if (error && typeof error === "object") {
       const e = error as Record<string, unknown>;
       if (typeof e.message === "string") return e.message;
