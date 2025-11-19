@@ -66,8 +66,12 @@ const ConnectorConfiguration = ({
             if (response.auth_url) {
               window.location.href = response.auth_url;
             } else {
+              toaster.success({
+                title: response.message || "Connector created successfully",
+                description: "The connector has been created.",
+              });
               navigate(
-                `/${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
+                `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
               );
             }
           },

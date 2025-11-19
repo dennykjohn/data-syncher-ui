@@ -103,8 +103,13 @@ const Schema = () => {
     updateTables(
       { selected_tables: tablesToAdd },
       {
-        onSuccess: () => {
-          toaster.success({ title: "Tables assigned successfully" });
+        onSuccess: (response) => {
+          const message =
+            response?.data?.message || "Tables updated successfully";
+          toaster.success({
+            title: message,
+            description: response?.data?.description,
+          });
           setRecalculatedCheckedTables((prev) => !prev);
         },
       },

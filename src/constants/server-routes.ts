@@ -86,6 +86,8 @@ const ServerRoutes = {
     updateSchema: (id: number) => `connection/${id}/fetch-tables/`,
     reloadSingleTable: () => `reload-single-table/`,
     refreshDeltaTable: () => `refresh-delta-table/`,
+    fetchReverseSchema: (id: number) => `schema/${id}/`,
+    saveTableMappings: () => `Connection/mappings/save/`,
   },
   user: {
     createUser: () => "users/",
