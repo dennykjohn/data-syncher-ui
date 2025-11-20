@@ -183,7 +183,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           type={inputType}
           value={values[field.name]}
           onChange={handleChange}
-          placeholder={`Enter ${field.label.toLowerCase().replace(/\bpem\b/g, "PEM")}`}
+          placeholder={`Enter ${field.label.toLowerCase()}`}
         />
         {errors[field.name] && (
           <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
