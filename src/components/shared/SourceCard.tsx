@@ -33,6 +33,8 @@ const SourceCard = ({
       position="relative"
       opacity={isLoading ? 0.6 : 1}
       border={isSelected ? "2px solid" : "none"}
+      width="200px"
+      minH="150x"
     >
       <Image src={image} alt={title} h={16} />
       <Text fontSize="sm" wordBreak={"break-word"} textAlign="center">
