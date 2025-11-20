@@ -130,7 +130,6 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
           <Button
             type="button"
             colorPalette="brand"
-            variant="outline"
             loading={isTriggeringBackend}
             onClick={() =>
               triggerBackend(undefined, {
