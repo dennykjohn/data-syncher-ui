@@ -45,7 +45,10 @@ const Form = (props: Connector) => {
   const initialFormState = {
     sync_start_date: sync_start_date ?? "",
     time_frequency: time_frequency ?? "",
-    safety_interval: safety_interval ?? "",
+    safety_interval:
+      safety_interval && safety_interval !== "None"
+        ? String(safety_interval)
+        : "30",
     execution_order: execution_order ?? "",
     chunk_count: typeof chunk_count === "number" ? chunk_count : undefined,
   };
