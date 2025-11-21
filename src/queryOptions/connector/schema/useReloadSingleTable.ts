@@ -15,6 +15,7 @@ const reloadSingleTable = (payload: ReloadSingleTablePayload) =>
 
 const useReloadSingleTable = () => {
   return useMutation({
+    mutationKey: ["reloadSingleTable"],
     mutationFn: reloadSingleTable,
     onSuccess: (response, variables) => {
       toaster.warning({ title: response.data.message });

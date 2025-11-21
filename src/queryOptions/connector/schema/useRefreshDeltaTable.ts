@@ -16,6 +16,7 @@ export default function useRefreshDeltaTable() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: ["refreshDeltaTable"],
     mutationFn: refreshDeltaTable,
     onSuccess: (response, variables) => {
       toaster.success({ title: response.data.message });
