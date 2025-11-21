@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Image, Spinner, Text } from "@chakra-ui/react";
 
 import { CiPause1 } from "react-icons/ci";
 import { IoMdCheckmark } from "react-icons/io";
@@ -9,8 +9,11 @@ import {
   getDestinationImage,
   getSourceImage,
 } from "@/components/dashboard/utils/getImage";
+import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
+
+import { useIsMutating } from "@tanstack/react-query";
 
 const Header = ({ connector }: { connector: Connector }) => {
   const {
@@ -27,6 +30,48 @@ const Header = ({ connector }: { connector: Connector }) => {
     useToggleConnectionStatus({
       connectorId: connection_id,
     });
+
+  // Check if refresh/update schema mutations are in progress for this connector
+  const isRefreshSchemaInProgress = useIsMutating({
+    mutationKey: ["refreshSchema", connection_id],
+  });
+  const isUpdateSchemaInProgress = useIsMutating({
+    mutationKey: ["updateSchema", connection_id],
+  });
+
+  // Check if reload mutations are in progress
+  const isReloadInProgress = useIsMutating({
+    mutationKey: ["reloadSingleTable"],
+  });
+  const isRefreshDeltaTableInProgress = useIsMutating({
+    mutationKey: ["refreshDeltaTable"],
+  });
+
+  // Check if any table has "in_progress" status
+  const { data: selectedTablesData } = useFetchSelectedTables(connection_id);
+  const hasInProgressStatus =
+    selectedTablesData?.tables?.some(
+      (table) => table.status === "in_progress",
+    ) ?? false;
+
+  // Check if any operation is in progress
+  const isAnyOperationInProgress =
+    isRefreshSchemaInProgress > 0 ||
+    isUpdateSchemaInProgress > 0 ||
+    isReloadInProgress > 0 ||
+    isRefreshDeltaTableInProgress > 0 ||
+    hasInProgressStatus;
+
+  // Determine the message to show based on the active operation
+  const getStatusMessage = () => {
+    if (isUpdateSchemaInProgress > 0) {
+      return "Updating schema...";
+    }
+    if (isAnyOperationInProgress) {
+      return "Sync in progress";
+    }
+    return "Next Sync in: None";
+  };
 
   // Time Freq format. If the time frequency is a number and
   // greater than 60 mins, convert to hours and minutes. Else show in minutes.
@@ -86,6 +131,21 @@ const Header = ({ connector }: { connector: Connector }) => {
           <Box>
             <Flex gap={2} alignItems="center">
               <Text>{destination_title}</Text>
+              {/* Next Sync text - shows different messages based on operation */}
+              <Flex gap={2} alignItems="center" ml={2}>
+                {isAnyOperationInProgress ? (
+                  <>
+                    <Spinner size="sm" color="brand.500" />
+                    <Text fontSize="sm" color="gray.600">
+                      {getStatusMessage()}
+                    </Text>
+                  </>
+                ) : (
+                  <Text fontSize="sm" color="gray.600">
+                    {getStatusMessage()}
+                  </Text>
+                )}
+              </Flex>
             </Flex>
             <Flex flexWrap={"wrap"} gap={1} alignItems="center">
               <Text fontSize="sm">Destination</Text>
