@@ -20,9 +20,11 @@ export const formatTimeFrequency = (freq: string) => {
   if (freqNum >= 60) {
     const hours = Math.floor(freqNum / 60);
     const minutes = freqNum % 60;
-    return minutes === 0 ? `${hours} hr` : `${hours} hr ${minutes} min`;
+    return minutes === 0
+      ? `${hours} ${hours === 1 ? 'hr' : 'hrs'}`
+      : `${hours} ${hours === 1 ? 'hr' : 'hrs'} ${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
   }
-  return `${freqNum} minutes`;
+  return `${freqNum} ${freqNum === 1 ? 'minute' : 'minutes'}`;
 };
 
 export const getStatusMessage = ({
