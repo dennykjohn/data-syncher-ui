@@ -119,7 +119,6 @@ const Header = ({ connector }: { connector: Connector }) => {
           <Box>
             <Flex gap={2} alignItems="center">
               <Text>{destination_title}</Text>
-              {/* Next Sync text - shows different messages based on operation */}
               <Flex gap={2} alignItems="center" ml={2}>
                 {isAnyOperationInProgress ? (
                   <>
