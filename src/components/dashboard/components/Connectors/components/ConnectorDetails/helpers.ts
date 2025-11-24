@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 
 import { dateTimeFormat } from "@/constants/common";
 
@@ -21,10 +21,10 @@ export const formatTimeFrequency = (freq: string) => {
     const hours = Math.floor(freqNum / 60);
     const minutes = freqNum % 60;
     return minutes === 0
-      ? `${hours} ${hours === 1 ? 'hr' : 'hrs'}`
-      : `${hours} ${hours === 1 ? 'hr' : 'hrs'} ${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+      ? `${hours} ${hours === 1 ? "hr" : "hrs"}`
+      : `${hours} ${hours === 1 ? "hr" : "hrs"} ${minutes} ${minutes === 1 ? "min" : "mins"}`;
   }
-  return `${freqNum} ${freqNum === 1 ? 'minute' : 'minutes'}`;
+  return `${freqNum} ${freqNum === 1 ? "minute" : "minutes"}`;
 };
 
 export const getStatusMessage = ({
@@ -45,11 +45,13 @@ export const getStatusMessage = ({
     return "Sync in progress";
   }
   if (next_sync_time) {
-    try {
+    const date = new Date(next_sync_time);
+    if (isValid(date)) {
       const fmt = dateTimeFmt ?? dateTimeFormat;
-      const formattedDate = format(new Date(next_sync_time), fmt);
-      return `Next Sync in: ${formattedDate}`;
-    } catch {
+      const formattedDate = format(date, fmt);
+      return `Next Sync at: ${formattedDate}`;
+    } else {
+      console.error("Invalid next_sync_time format:", next_sync_time);
       return `Next Sync in: ${formatTimeFrequency(time_frequency)}`;
     }
   }

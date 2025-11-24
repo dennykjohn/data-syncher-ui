@@ -45,7 +45,7 @@ export interface Connector {
   company_name: string;
   target_database: string;
   target_schema: string;
-  next_sync_time?: string;
+  next_sync_time: string;
 }
 
 export interface ConnectorSyncStats {

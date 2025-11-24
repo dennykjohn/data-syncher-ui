@@ -3,6 +3,7 @@ import { Flex, FlexProps, Spinner, SpinnerProps } from "@chakra-ui/react";
 interface LoadingSpinnerProps {
   containerProps?: FlexProps;
   spinnerProps?: SpinnerProps;
+  size?: SpinnerProps["size"];
 }
 
 const LoadingSpinner = ({
@@ -10,7 +11,7 @@ const LoadingSpinner = ({
   spinnerProps,
   size = "md",
   ...flexProps
-}: LoadingSpinnerProps & FlexProps & { size?: SpinnerProps["size"] }) => (
+}: LoadingSpinnerProps & FlexProps) => (
   <Flex
     justify="center"
     align="center"
