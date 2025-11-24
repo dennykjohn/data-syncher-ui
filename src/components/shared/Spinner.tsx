@@ -22,8 +22,8 @@ const LoadingSpinner = ({
     <Spinner
       color="brand.500"
       animationDuration="0.8s"
-      size={size}
       {...spinnerProps}
+      size={size}
     />
   </Flex>
 );
