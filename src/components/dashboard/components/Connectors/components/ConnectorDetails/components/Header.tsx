@@ -9,8 +9,14 @@ import {
   getDestinationImage,
   getSourceImage,
 } from "@/components/dashboard/utils/getImage";
+import LoadingSpinner from "@/components/shared/Spinner";
+import { dateTimeFormat } from "@/constants/common";
+import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
+
+import { formatTimeFrequency, getStatusMessage } from "../helpers";
+import { useIsMutating } from "@tanstack/react-query";
 
 const Header = ({ connector }: { connector: Connector }) => {
   const {
@@ -21,6 +27,7 @@ const Header = ({ connector }: { connector: Connector }) => {
     status,
     connection_id,
     time_frequency,
+    next_sync_time,
   } = connector;
 
   const { mutate: toggleConnectionStatus, isPending } =
@@ -28,20 +35,46 @@ const Header = ({ connector }: { connector: Connector }) => {
       connectorId: connection_id,
     });
 
-  // Time Freq format. If the time frequency is a number and
-  // greater than 60 mins, convert to hours and minutes. Else show in minutes.
-  const formatTimeFrequency = (freq: string) => {
-    const freqNum = Number(freq);
-    if (isNaN(freqNum) || freqNum <= 0) {
-      return "None";
-    }
-    if (freqNum >= 60) {
-      const hours = Math.floor(freqNum / 60);
-      const minutes = freqNum % 60;
-      return minutes === 0 ? `${hours} hr` : `${hours} hr ${minutes} min`;
-    }
-    return `${freqNum} minutes`;
-  };
+  // Check if refresh/update schema mutations are in progress for this connector
+  const isRefreshSchemaInProgress = useIsMutating({
+    mutationKey: ["refreshSchema", connection_id],
+  });
+  const isUpdateSchemaInProgress = useIsMutating({
+    mutationKey: ["updateSchema", connection_id],
+  });
+
+  // Check if reload mutations are in progress
+  const isReloadInProgress = useIsMutating({
+    mutationKey: ["reloadSingleTable", connection_id],
+  });
+  const isRefreshDeltaTableInProgress = useIsMutating({
+    mutationKey: ["refreshDeltaTable", connection_id],
+  });
+
+  // Check if any table has "in_progress" status
+  const { data: selectedTablesData } = useFetchSelectedTables(connection_id);
+  const hasInProgressStatus =
+    selectedTablesData?.tables?.some(
+      (table) => table.status === "in_progress",
+    ) ?? false;
+
+  // Check if any operation is in progress
+  const isAnyOperationInProgress =
+    isRefreshSchemaInProgress > 0 ||
+    isUpdateSchemaInProgress > 0 ||
+    isReloadInProgress > 0 ||
+    isRefreshDeltaTableInProgress > 0 ||
+    hasInProgressStatus;
+
+  // Determine the message to show based on the active operation
+  const statusMessage = getStatusMessage({
+    isUpdateSchemaInProgress,
+    isRefreshSchemaInProgress,
+    isAnyOperationInProgress,
+    next_sync_time,
+    time_frequency,
+    dateTimeFmt: dateTimeFormat,
+  });
 
   return (
     <Flex flexDirection="column" gap={4}>
@@ -86,6 +119,20 @@ const Header = ({ connector }: { connector: Connector }) => {
           <Box>
             <Flex gap={2} alignItems="center">
               <Text>{destination_title}</Text>
+              <Flex gap={2} alignItems="center" ml={2}>
+                {isAnyOperationInProgress ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    <Text fontSize="sm" color="gray.600">
+                      {statusMessage}
+                    </Text>
+                  </>
+                ) : (
+                  <Text fontSize="sm" color="gray.600">
+                    {statusMessage}
+                  </Text>
+                )}
+              </Flex>
             </Flex>
             <Flex flexWrap={"wrap"} gap={1} alignItems="center">
               <Text fontSize="sm">Destination</Text>

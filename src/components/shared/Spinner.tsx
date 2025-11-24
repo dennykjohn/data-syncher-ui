@@ -3,11 +3,13 @@ import { Flex, FlexProps, Spinner, SpinnerProps } from "@chakra-ui/react";
 interface LoadingSpinnerProps {
   containerProps?: FlexProps;
   spinnerProps?: SpinnerProps;
+  size?: SpinnerProps["size"];
 }
 
 const LoadingSpinner = ({
   containerProps,
   spinnerProps,
+  size = "md",
   ...flexProps
 }: LoadingSpinnerProps & FlexProps) => (
   <Flex
@@ -21,8 +23,8 @@ const LoadingSpinner = ({
     <Spinner
       color="brand.500"
       animationDuration="0.8s"
-      size="md"
       {...spinnerProps}
+      size={size}
     />
   </Flex>
 );

@@ -10,6 +10,7 @@ const updateSchema = (connectorId: number) =>
 
 const useUpdateSchema = ({ connectorId }: { connectorId: number }) => {
   return useMutation({
+    mutationKey: ["updateSchema", connectorId],
     mutationFn: () => updateSchema(connectorId),
     onSuccess: (response) => {
       toaster.success({ title: response.data.message });

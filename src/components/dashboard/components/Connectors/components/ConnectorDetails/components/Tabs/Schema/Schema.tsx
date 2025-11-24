@@ -57,7 +57,7 @@ const Schema = () => {
   const [reloadingTable, setReloadingTable] = useState<string | null>(null);
 
   const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
-    useReloadSingleTable();
+    useReloadSingleTable({ connectionId: context.connection_id });
 
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
