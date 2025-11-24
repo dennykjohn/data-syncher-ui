@@ -13,9 +13,9 @@ interface ReloadSingleTablePayload {
 const reloadSingleTable = (payload: ReloadSingleTablePayload) =>
   AxiosInstance.post(ServerRoutes.connector.reloadSingleTable(), payload);
 
-const useReloadSingleTable = () => {
+const useReloadSingleTable = ({ connectionId }: { connectionId: number }) => {
   return useMutation({
-    mutationKey: ["reloadSingleTable"],
+    mutationKey: ["reloadSingleTable", connectionId],
     mutationFn: reloadSingleTable,
     onSuccess: (response, variables) => {
       toaster.warning({ title: response.data.message });

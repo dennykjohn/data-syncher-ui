@@ -12,11 +12,15 @@ interface RefreshDeltaTablePayload {
 const refreshDeltaTable = (payload: RefreshDeltaTablePayload) =>
   AxiosInstance.post(ServerRoutes.connector.refreshDeltaTable(), payload);
 
-export default function useRefreshDeltaTable() {
+export default function useRefreshDeltaTable({
+  connectionId,
+}: {
+  connectionId: number;
+}) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationKey: ["refreshDeltaTable"],
+    mutationKey: ["refreshDeltaTable", connectionId],
     mutationFn: refreshDeltaTable,
     onSuccess: (response, variables) => {
       toaster.success({ title: response.data.message });

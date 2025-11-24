@@ -4,11 +4,14 @@ import { CiPause1 } from "react-icons/ci";
 import { IoMdCheckmark } from "react-icons/io";
 import { LuDot } from "react-icons/lu";
 
+import { format } from "date-fns";
+
 import Arrow from "@/assets/images/arrow-cool-down.svg";
 import {
   getDestinationImage,
   getSourceImage,
 } from "@/components/dashboard/utils/getImage";
+import { dateTimeFormat } from "@/constants/common";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
@@ -24,6 +27,7 @@ const Header = ({ connector }: { connector: Connector }) => {
     status,
     connection_id,
     time_frequency,
+    next_sync_time,
   } = connector;
 
   const { mutate: toggleConnectionStatus, isPending } =
@@ -41,10 +45,10 @@ const Header = ({ connector }: { connector: Connector }) => {
 
   // Check if reload mutations are in progress
   const isReloadInProgress = useIsMutating({
-    mutationKey: ["reloadSingleTable"],
+    mutationKey: ["reloadSingleTable", connection_id],
   });
   const isRefreshDeltaTableInProgress = useIsMutating({
-    mutationKey: ["refreshDeltaTable"],
+    mutationKey: ["refreshDeltaTable", connection_id],
   });
 
   // Check if any table has "in_progress" status
@@ -67,12 +71,23 @@ const Header = ({ connector }: { connector: Connector }) => {
     if (isUpdateSchemaInProgress > 0) {
       return "Updating schema...";
     }
+    if (isRefreshSchemaInProgress > 0) {
+      return "Refreshing schema...";
+    }
     if (isAnyOperationInProgress) {
       return "Sync in progress";
     }
+    if (next_sync_time) {
+      try {
+        const formattedDate = format(new Date(next_sync_time), dateTimeFormat);
+        return `Next Sync in: ${formattedDate}`;
+      } catch {
+        // If date parsing fails, fallback to time_frequency
+        return `Next Sync in: ${formatTimeFrequency(time_frequency)}`;
+      }
+    }
     return "Next Sync in: None";
   };
-
   // Time Freq format. If the time frequency is a number and
   // greater than 60 mins, convert to hours and minutes. Else show in minutes.
   const formatTimeFrequency = (freq: string) => {

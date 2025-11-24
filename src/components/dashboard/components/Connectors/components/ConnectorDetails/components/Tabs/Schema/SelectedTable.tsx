@@ -42,7 +42,7 @@ const SelectedTable = ({
     });
 
   const { mutate: refreshDeltaTable, isPending: isRefreshingDeltaTable } =
-    useRefreshDeltaTable();
+    useRefreshDeltaTable({ connectionId: context.connection_id });
 
   // Check if any table has in-progress migration
   const hasExistingMigrations = useMemo(() => {
