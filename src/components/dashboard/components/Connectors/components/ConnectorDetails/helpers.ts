@@ -1,0 +1,55 @@
+import { format } from "date-fns";
+
+import { dateTimeFormat } from "@/constants/common";
+
+type StatusParams = {
+  isUpdateSchemaInProgress: number;
+  isRefreshSchemaInProgress: number;
+  isAnyOperationInProgress: boolean;
+  next_sync_time?: string | null;
+  time_frequency: string;
+  // allow passing alternate format but default to project constant
+  dateTimeFmt?: string;
+};
+
+export const formatTimeFrequency = (freq: string) => {
+  const freqNum = Number(freq);
+  if (isNaN(freqNum) || freqNum <= 0) {
+    return "None";
+  }
+  if (freqNum >= 60) {
+    const hours = Math.floor(freqNum / 60);
+    const minutes = freqNum % 60;
+    return minutes === 0 ? `${hours} hr` : `${hours} hr ${minutes} min`;
+  }
+  return `${freqNum} minutes`;
+};
+
+export const getStatusMessage = ({
+  isUpdateSchemaInProgress,
+  isRefreshSchemaInProgress,
+  isAnyOperationInProgress,
+  next_sync_time,
+  time_frequency,
+  dateTimeFmt,
+}: StatusParams) => {
+  if (isUpdateSchemaInProgress > 0) {
+    return "Updating schema...";
+  }
+  if (isRefreshSchemaInProgress > 0) {
+    return "Refreshing schema...";
+  }
+  if (isAnyOperationInProgress) {
+    return "Sync in progress";
+  }
+  if (next_sync_time) {
+    try {
+      const fmt = dateTimeFmt ?? dateTimeFormat;
+      const formattedDate = format(new Date(next_sync_time), fmt);
+      return `Next Sync in: ${formattedDate}`;
+    } catch {
+      return `Next Sync in: ${formatTimeFrequency(time_frequency)}`;
+    }
+  }
+  return "Next Sync in: None";
+};

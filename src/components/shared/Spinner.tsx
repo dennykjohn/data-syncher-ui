@@ -8,8 +8,9 @@ interface LoadingSpinnerProps {
 const LoadingSpinner = ({
   containerProps,
   spinnerProps,
+  size = "md",
   ...flexProps
-}: LoadingSpinnerProps & FlexProps) => (
+}: LoadingSpinnerProps & FlexProps & { size?: SpinnerProps["size"] }) => (
   <Flex
     justify="center"
     align="center"
@@ -21,7 +22,7 @@ const LoadingSpinner = ({
     <Spinner
       color="brand.500"
       animationDuration="0.8s"
-      size="md"
+      size={size}
       {...spinnerProps}
     />
   </Flex>

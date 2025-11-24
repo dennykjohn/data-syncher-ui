@@ -1,21 +1,21 @@
-import { Box, Button, Flex, Image, Spinner, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
 
 import { CiPause1 } from "react-icons/ci";
 import { IoMdCheckmark } from "react-icons/io";
 import { LuDot } from "react-icons/lu";
-
-import { format } from "date-fns";
 
 import Arrow from "@/assets/images/arrow-cool-down.svg";
 import {
   getDestinationImage,
   getSourceImage,
 } from "@/components/dashboard/utils/getImage";
+import LoadingSpinner from "@/components/shared/Spinner";
 import { dateTimeFormat } from "@/constants/common";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
 
+import { formatTimeFrequency, getStatusMessage } from "../helpers";
 import { useIsMutating } from "@tanstack/react-query";
 
 const Header = ({ connector }: { connector: Connector }) => {
@@ -67,41 +67,14 @@ const Header = ({ connector }: { connector: Connector }) => {
     hasInProgressStatus;
 
   // Determine the message to show based on the active operation
-  const getStatusMessage = () => {
-    if (isUpdateSchemaInProgress > 0) {
-      return "Updating schema...";
-    }
-    if (isRefreshSchemaInProgress > 0) {
-      return "Refreshing schema...";
-    }
-    if (isAnyOperationInProgress) {
-      return "Sync in progress";
-    }
-    if (next_sync_time) {
-      try {
-        const formattedDate = format(new Date(next_sync_time), dateTimeFormat);
-        return `Next Sync in: ${formattedDate}`;
-      } catch {
-        // If date parsing fails, fallback to time_frequency
-        return `Next Sync in: ${formatTimeFrequency(time_frequency)}`;
-      }
-    }
-    return "Next Sync in: None";
-  };
-  // Time Freq format. If the time frequency is a number and
-  // greater than 60 mins, convert to hours and minutes. Else show in minutes.
-  const formatTimeFrequency = (freq: string) => {
-    const freqNum = Number(freq);
-    if (isNaN(freqNum) || freqNum <= 0) {
-      return "None";
-    }
-    if (freqNum >= 60) {
-      const hours = Math.floor(freqNum / 60);
-      const minutes = freqNum % 60;
-      return minutes === 0 ? `${hours} hr` : `${hours} hr ${minutes} min`;
-    }
-    return `${freqNum} minutes`;
-  };
+  const statusMessage = getStatusMessage({
+    isUpdateSchemaInProgress,
+    isRefreshSchemaInProgress,
+    isAnyOperationInProgress,
+    next_sync_time,
+    time_frequency,
+    dateTimeFmt: dateTimeFormat,
+  });
 
   return (
     <Flex flexDirection="column" gap={4}>
@@ -150,14 +123,14 @@ const Header = ({ connector }: { connector: Connector }) => {
               <Flex gap={2} alignItems="center" ml={2}>
                 {isAnyOperationInProgress ? (
                   <>
-                    <Spinner size="sm" color="brand.500" />
+                    <LoadingSpinner size="sm" />
                     <Text fontSize="sm" color="gray.600">
-                      {getStatusMessage()}
+                      {statusMessage}
                     </Text>
                   </>
                 ) : (
                   <Text fontSize="sm" color="gray.600">
-                    {getStatusMessage()}
+                    {statusMessage}
                   </Text>
                 )}
               </Flex>
