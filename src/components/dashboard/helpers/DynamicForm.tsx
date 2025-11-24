@@ -48,7 +48,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  //👇 when defaultValues changes (edit mode), update state
+  // 👇 when defaultValues changes (edit mode), update state
   useEffect(() => {
     if (defaultValues) {
       setValues((prev) => ({
