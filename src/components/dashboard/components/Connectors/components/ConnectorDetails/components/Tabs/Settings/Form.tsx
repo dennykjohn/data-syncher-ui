@@ -73,11 +73,14 @@ const Form = (props: Connector) => {
             type="datetime-local"
             value={syncStartLocal ?? ""}
             onChange={(e) => {
+              // Convert local datetime-local value to UTC ISO and store that in formState
+              const iso = fromLocalDateTimeInput(e.currentTarget.value);
               dispatch({
                 type: "SET_FIELD",
                 field: "sync_start_date",
-                value: e.currentTarget.value,
+                value: iso ?? "",
               });
+              // Keep the local representation for the input control
               setSyncStartLocal(e.currentTarget.value);
             }}
           />
@@ -230,7 +233,6 @@ const Form = (props: Connector) => {
             onClick={() =>
               updateSettings(
                 {
-                  sync_start_date: fromLocalDateTimeInput(syncStartLocal),
                   ...formState,
                 },
                 {
