@@ -14,6 +14,11 @@ const useUpdateSchema = ({ connectorId }: { connectorId: number }) => {
     mutationFn: () => updateSchema(connectorId),
     onSuccess: (response) => {
       toaster.success({ title: response.data.message });
+      // Enable and start the status query to begin polling
+      queryClient.setQueryData(["updateSchemaStatus", connectorId], null);
+      queryClient.refetchQueries({
+        queryKey: ["updateSchemaStatus", connectorId],
+      });
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectorId],
       });

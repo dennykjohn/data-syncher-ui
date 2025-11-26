@@ -10,13 +10,15 @@ import {
   getSourceImage,
 } from "@/components/dashboard/utils/getImage";
 import LoadingSpinner from "@/components/shared/Spinner";
+import { Tooltip } from "@/components/ui/tooltip";
 import { dateTimeFormat } from "@/constants/common";
+import AxiosInstance from "@/lib/axios/api-client";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
 
 import { formatTimeFrequency, getStatusMessage } from "../helpers";
-import { useIsMutating } from "@tanstack/react-query";
+import { useIsMutating, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const Header = ({ connector }: { connector: Connector }) => {
   const {
@@ -35,12 +37,79 @@ const Header = ({ connector }: { connector: Connector }) => {
       connectorId: connection_id,
     });
 
+  const queryClient = useQueryClient();
+
   // Check if refresh/update schema mutations are in progress for this connector
   const isRefreshSchemaInProgress = useIsMutating({
     mutationKey: ["refreshSchema", connection_id],
   });
   const isUpdateSchemaInProgress = useIsMutating({
     mutationKey: ["updateSchema", connection_id],
+  });
+
+  // Get cached status data to check if we should keep polling
+  const cachedStatusData = queryClient.getQueryData([
+    "updateSchemaStatus",
+    connection_id,
+  ]) as
+    | {
+        is_in_progress?: boolean;
+        status?: string;
+        current_job?: { status: string };
+      }
+    | undefined;
+
+  // Check if cached data shows migration is still in progress
+  const cachedIsInProgress = Boolean(
+    cachedStatusData?.is_in_progress === true ||
+      cachedStatusData?.status === "Migration started" ||
+      (cachedStatusData?.current_job?.status &&
+        cachedStatusData.current_job.status !== "completed" &&
+        cachedStatusData.current_job.status !== "failed"),
+  );
+
+  // Check schema status from update-schema-status API
+  // Enable when updateSchema mutation is in progress OR when cached data shows migration is active
+  const { data: schemaStatusData } = useQuery<{
+    is_in_progress?: boolean;
+    status?: string;
+    current_job?: {
+      job_name?: string;
+      task_id?: string;
+      status?: string;
+      migration_session_id?: number;
+      connection_name?: string | null;
+      created_at?: string;
+      updated_at?: string;
+    } | null;
+    celery_task_status?: {
+      state?: string;
+      ready?: boolean;
+      successful?: boolean | null;
+      failed?: boolean | null;
+    };
+  }>({
+    queryKey: ["updateSchemaStatus", connection_id],
+    queryFn: async () => {
+      const { data } = await AxiosInstance.get(
+        `connection/${connection_id}/update-schema-status/`,
+      );
+      return data;
+    },
+    enabled: isUpdateSchemaInProgress > 0 || cachedIsInProgress, // Enable when mutation starts or when cached data shows in progress
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      // Check both is_in_progress and status field
+      const isInProgress =
+        data?.is_in_progress === true ||
+        data?.status === "Migration started" ||
+        (data?.current_job?.status &&
+          data.current_job.status !== "completed" &&
+          data.current_job.status !== "failed");
+      // Continue polling if in progress, even after mutation completes
+      // This ensures we keep checking until migration is done
+      return isInProgress ? 2000 : false;
+    },
   });
 
   // Check if reload mutations are in progress
@@ -58,13 +127,23 @@ const Header = ({ connector }: { connector: Connector }) => {
       (table) => table.status === "in_progress",
     ) ?? false;
 
+  // Check if schema status is in progress - check both is_in_progress and status field
+  const isSchemaStatusInProgress =
+    schemaStatusData?.is_in_progress === true ||
+    schemaStatusData?.status === "Migration started" ||
+    (schemaStatusData?.current_job?.status &&
+      schemaStatusData.current_job.status !== "completed" &&
+      schemaStatusData.current_job.status !== "failed");
+
   // Check if any operation is in progress
-  const isAnyOperationInProgress =
+  const isAnyOperationInProgress = Boolean(
     isRefreshSchemaInProgress > 0 ||
-    isUpdateSchemaInProgress > 0 ||
-    isReloadInProgress > 0 ||
-    isRefreshDeltaTableInProgress > 0 ||
-    hasInProgressStatus;
+      isUpdateSchemaInProgress > 0 ||
+      isReloadInProgress > 0 ||
+      isRefreshDeltaTableInProgress > 0 ||
+      hasInProgressStatus ||
+      isSchemaStatusInProgress,
+  );
 
   // Determine the message to show based on the active operation
   const statusMessage = getStatusMessage({
@@ -74,6 +153,28 @@ const Header = ({ connector }: { connector: Connector }) => {
     next_sync_time,
     time_frequency,
     dateTimeFmt: dateTimeFormat,
+    schemaStatusData: schemaStatusData as
+      | {
+          is_in_progress?: boolean;
+          status?: string;
+          current_job?: {
+            job_name: string;
+            task_id: string;
+            status: string;
+            migration_session_id: number;
+            connection_name: string | null;
+            created_at: string;
+            updated_at: string;
+          } | null;
+          celery_task_status?: {
+            state: string;
+            ready: boolean;
+            successful: boolean | null;
+            failed: boolean | null;
+          };
+        }
+      | null
+      | undefined,
   });
 
   return (
@@ -121,16 +222,17 @@ const Header = ({ connector }: { connector: Connector }) => {
               <Text>{destination_title}</Text>
               <Flex gap={2} alignItems="center" ml={2}>
                 {isAnyOperationInProgress ? (
-                  <>
-                    <LoadingSpinner size="sm" />
+                  <Tooltip content={statusMessage}>
+                    <Box>
+                      <LoadingSpinner size="sm" />
+                    </Box>
+                  </Tooltip>
+                ) : (
+                  statusMessage && (
                     <Text fontSize="sm" color="gray.600">
                       {statusMessage}
                     </Text>
-                  </>
-                ) : (
-                  <Text fontSize="sm" color="gray.600">
-                    {statusMessage}
-                  </Text>
+                  )
                 )}
               </Flex>
             </Flex>

@@ -33,37 +33,24 @@ export const executionOrderOptions = [
   { value: "sequential", label: "Sequential" },
 ];
 
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-
 export function toLocalDateTimeInput(isoUtc?: string | null): string {
   if (!isoUtc) return "";
-
-  // Parse UTC date and add IST offset
-  const utcDate = new Date(isoUtc);
-  const istTime = utcDate.getTime() + IST_OFFSET_MS;
-  const istDate = new Date(istTime);
-
-  // Format as YYYY-MM-DDTHH:mm:ss using UTC methods to get IST components
-
+  const d = new Date(isoUtc); // parsed to a Date object
   const pad = (n: number) => String(n).padStart(2, "0");
-  const YYYY = istDate.getUTCFullYear();
-  const MM = pad(istDate.getUTCMonth() + 1);
-  const DD = pad(istDate.getUTCDate());
-  const hh = pad(istDate.getUTCHours());
-  const mm = pad(istDate.getUTCMinutes());
-  const ss = pad(istDate.getUTCSeconds());
-
-  return `${YYYY}-${MM}-${DD}T${hh}:${mm}:${ss}`;
+  const YYYY = d.getFullYear();
+  const MM = pad(d.getMonth() + 1);
+  const DD = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  // include seconds so `datetime-local` can show and edit seconds when step=1
+  return `${YYYY}-${MM}-${DD}T${hh}:${mm}:${ss}`; // "2025-08-11T04:34:27"
 }
 
 export function fromLocalDateTimeInput(localValue: string): string | null {
-  if (!localValue || !localValue.trim()) return null;
-
-  // Parse input as IST
-  const istDate = new Date(localValue + "Z");
-  const utcTime = istDate.getTime() - IST_OFFSET_MS;
-  const utcDate = new Date(utcTime);
-
-  // Format as UTC ISO string without milliseconds
-  return utcDate.toISOString().slice(0, 19) + "Z";
+  if (!localValue) return null;
+  // `new Date(localValue)` treats the string as local time
+  const d = new Date(localValue);
+  // keep the ISO in the format `YYYY-MM-DDTHH:mm:ssZ` (no milliseconds)
+  return d.toISOString();
 }

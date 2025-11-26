@@ -14,6 +14,7 @@ const ServerRoutes = {
   },
   source: {
     listMasterSources: () => "source/all/",
+    checkAndGenerateKeyPair: () => "check-and-generate-keypair/",
   },
   destination: {
     listMasterDestinations: () => "destinations/all/",
@@ -34,6 +35,7 @@ const ServerRoutes = {
     fetchAllUserCreatedDestinationList: () => "/destinations/?page=1&size=100",
     updateDestination: (id: string) => `destinations/update/${id}/`,
     testDestination: (id: number) => `/destinations/test/${id}/`,
+    checkAndGenerateKeyPair: () => "check-and-generate-keypair/",
   },
   connector: {
     listConnectorsByPage: ({
@@ -84,6 +86,8 @@ const ServerRoutes = {
     testStatus: (id: number) => `connection/${id}/test/`,
     updateSelectedTables: (id: number) => `connection/${id}/update-selection/`,
     updateSchema: (id: number) => `connection/${id}/fetch-tables/`,
+    updateSchemaStatus: (id: number) =>
+      `connection/${id}/update-schema-status/`,
     reloadSingleTable: () => `reload-single-table/`,
     refreshDeltaTable: () => `refresh-delta-table/`,
   },

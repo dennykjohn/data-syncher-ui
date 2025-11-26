@@ -10,6 +10,26 @@ type StatusParams = {
   time_frequency: string;
   // allow passing alternate format but default to project constant
   dateTimeFmt?: string;
+  // Schema status from update-schema-status API
+  schemaStatusData?: {
+    is_in_progress?: boolean;
+    status?: string; // e.g., "Migration started"
+    current_job?: {
+      job_name: string;
+      task_id: string;
+      status: string;
+      migration_session_id: number;
+      connection_name: string | null;
+      created_at: string;
+      updated_at: string;
+    } | null;
+    celery_task_status?: {
+      state: string;
+      ready: boolean;
+      successful: boolean | null;
+      failed: boolean | null;
+    };
+  } | null;
 };
 
 export const formatTimeFrequency = (freq: string) => {
@@ -27,6 +47,43 @@ export const formatTimeFrequency = (freq: string) => {
   return `${freqNum} ${freqNum === 1 ? "minute" : "minutes"}`;
 };
 
+/**
+ * Get status message from schema status data
+ * Returns the formatted message if schema is in progress, null otherwise
+ */
+export const getSchemaStatusMessage = (
+  schemaStatusData?: StatusParams["schemaStatusData"],
+): string | null => {
+  const isInProgress =
+    schemaStatusData?.is_in_progress === true ||
+    schemaStatusData?.status === "Migration started" ||
+    (schemaStatusData?.current_job?.status &&
+      schemaStatusData.current_job.status !== "completed" &&
+      schemaStatusData.current_job.status !== "failed");
+
+  if (isInProgress) {
+    return schemaStatusData?.current_job?.job_name
+      ? `Fetching tables... (${schemaStatusData.current_job.job_name})`
+      : schemaStatusData?.status || "Fetching tables...";
+  }
+  return null;
+};
+
+/**
+ * Check if schema status is in progress
+ */
+export const isSchemaStatusInProgress = (
+  schemaStatusData?: StatusParams["schemaStatusData"],
+): boolean => {
+  return (
+    schemaStatusData?.is_in_progress === true ||
+    schemaStatusData?.status === "Migration started" ||
+    (schemaStatusData?.current_job?.status &&
+      schemaStatusData.current_job.status !== "completed" &&
+      schemaStatusData.current_job.status !== "failed")
+  );
+};
+
 export const getStatusMessage = ({
   isUpdateSchemaInProgress,
   isRefreshSchemaInProgress,
@@ -34,7 +91,14 @@ export const getStatusMessage = ({
   next_sync_time,
   time_frequency,
   dateTimeFmt,
+  schemaStatusData,
 }: StatusParams) => {
+  // Check schema status first (highest priority)
+  const schemaStatusMessage = getSchemaStatusMessage(schemaStatusData);
+  if (schemaStatusMessage) {
+    return schemaStatusMessage;
+  }
+
   if (isUpdateSchemaInProgress > 0) {
     return "Updating schema...";
   }
