@@ -227,11 +227,15 @@ const Form = (props: Connector) => {
           )}
           <Button
             colorPalette="brand"
-            onClick={() =>
+            onClick={() => {
+              const utcValue = fromLocalDateTimeInput(syncStartLocal);
+
+              const { sync_start_date: _, ...restFormState } = formState;
+
               updateSettings(
                 {
-                  sync_start_date: fromLocalDateTimeInput(syncStartLocal),
-                  ...formState,
+                  sync_start_date: utcValue,
+                  ...restFormState,
                 },
                 {
                   onSuccess: () => {
@@ -240,8 +244,8 @@ const Form = (props: Connector) => {
                     });
                   },
                 },
-              )
-            }
+              );
+            }}
             loading={isUpdateOperationPending}
           >
             <MdRefresh />
