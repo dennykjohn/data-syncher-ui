@@ -113,6 +113,10 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       />
 
       <DynamicForm
+        mode={mode === "add" ? "create" : "edit"}
+        destinationName={
+          mode === "add" ? destinationName : destinationData?.dst
+        }
         config={{ fields: formSchema }}
         onSubmit={(values) => {
           handleFormSubmit(values);

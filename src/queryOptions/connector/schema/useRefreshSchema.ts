@@ -10,7 +10,6 @@ const refreshSchema = (connectorId: number) =>
 
 const useRefreshSchema = ({ connectorId }: { connectorId: number }) => {
   return useMutation({
-    mutationKey: ["refreshSchema", connectorId],
     mutationFn: () => refreshSchema(connectorId),
     onSuccess: (response) => {
       toaster.warning({ title: response.data.message });

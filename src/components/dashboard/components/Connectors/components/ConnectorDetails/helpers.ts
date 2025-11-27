@@ -75,7 +75,7 @@ export const getSchemaStatusMessage = (
 export const isSchemaStatusInProgress = (
   schemaStatusData?: StatusParams["schemaStatusData"],
 ): boolean => {
-  return (
+  return !!(
     schemaStatusData?.is_in_progress === true ||
     schemaStatusData?.status === "Migration started" ||
     (schemaStatusData?.current_job?.status &&

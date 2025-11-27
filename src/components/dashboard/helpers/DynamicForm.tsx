@@ -1,12 +1,14 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  Box,
   Button,
   Field,
   Flex,
   Input,
   NativeSelect,
+  Text,
+  Textarea,
   VStack,
 } from "@chakra-ui/react";
 
@@ -14,7 +16,10 @@ import { IoMdArrowBack } from "react-icons/io";
 import { MdOutlineSave } from "react-icons/md";
 
 import { PasswordInput } from "@/components/ui/password-input";
+import { toaster } from "@/components/ui/toaster";
 import { type FieldConfig } from "@/types/form";
+
+import { type KeyPair, generateKeyPairFromForm } from "./helpers";
 
 type FormConfig = {
   fields: FieldConfig[];
@@ -27,6 +32,7 @@ interface DynamicFormProps {
   defaultValues?: Record<string, string>;
   handleBackButtonClick?: () => void;
   mode?: "create" | "edit";
+  destinationName?: string;
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -36,6 +42,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   loading,
   handleBackButtonClick,
   mode,
+  destinationName,
 }) => {
   const initialValues = config.fields.reduce(
     (acc, field) => ({
@@ -47,8 +54,53 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedKeys, setGeneratedKeys] = useState<KeyPair | null>(null);
+  const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
 
-  // 👇 when defaultValues changes (edit mode), update state
+  const valuesRef = useRef(values);
+  useEffect(() => {
+    valuesRef.current = values;
+  }, [values]);
+
+  const handleGenerateKeyPair = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      const keys = await generateKeyPairFromForm();
+
+      setGeneratedKeys(keys);
+      setValues((prev) => {
+        const updatedValues: Record<string, string> = {
+          ...prev,
+          public_key: keys.publicKey,
+          private_key: keys.privateKey,
+        };
+
+        if (keys.passphrase) {
+          updatedValues.passphrase = keys.passphrase;
+        }
+
+        return updatedValues;
+      });
+    } catch (error) {
+      toaster.error({
+        title: "Key generation failed",
+        description:
+          error instanceof Error ? error.message : "Failed to generate keys",
+      });
+      setGeneratedKeys(null);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, []);
+
+  const shouldShowKeyGenerator =
+    mode === "create" &&
+    destinationName?.toLowerCase() === "snowflake" &&
+    (values["authentication_type"] === "key_pair" ||
+      values["authentication_type"]?.toLowerCase().includes("key")) &&
+    config.fields.some((field) => field.name === "passphrase");
+
   useEffect(() => {
     if (defaultValues) {
       setValues((prev) => ({
@@ -59,11 +111,26 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   }, [defaultValues]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
-    const { name, value } = e.target as HTMLInputElement & HTMLSelectElement;
-    setValues((prev) => ({ ...prev, [name]: value }));
+    const { name, value } = e.target as
+      | HTMLInputElement
+      | HTMLSelectElement
+      | HTMLTextAreaElement;
+
+    setValues((prev) => {
+      const newValues = { ...prev, [name]: value };
+      valuesRef.current = newValues;
+      return newValues;
+    });
+
     setErrors((prev) => ({ ...prev, [name]: "" }));
+
+    if (name === "passphrase" && keyMode === "generate") {
+      setGeneratedKeys(null);
+    }
   };
 
   const handleSubmit = () => {
@@ -82,12 +149,18 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     onSubmit(values);
   };
 
+  const handleCopy = (text: string, type: "Public" | "Private") => {
+    navigator.clipboard.writeText(text).then(() => {
+      toaster.success({
+        title: `${type} key copied`,
+        description: "Key copied to clipboard",
+      });
+    });
+  };
+
   const renderInput = (field: FieldConfig) => {
-    // extend for more types later
     const inputType = "text";
 
-    // If the value of authentication_type field is "password",
-    // hide private_key, public_key & passphrase fields
     if (
       (field.name === "private_key" ||
         field.name === "public_key" ||
@@ -97,8 +170,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return null;
     }
 
-    // If the value of authentication_type field is "keypair",
-    // hide password field
     if (
       field.name === "password" &&
       values["authentication_type"] === "key_pair"
@@ -106,8 +177,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return null;
     }
 
-    // If the value of authentication_type field is not selected,
-    // hide private_key, public_key, passphrase & password fields
     if (
       (field.name === "private_key" ||
         field.name === "public_key" ||
@@ -118,7 +187,44 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return null;
     }
 
-    // Support `ChoiceField` type with `options` on the FieldConfig
+    if (
+      shouldShowKeyGenerator &&
+      keyMode === "generate" &&
+      (field.name === "private_key" || field.name === "public_key")
+    ) {
+      return null;
+    }
+
+    if (
+      shouldShowKeyGenerator &&
+      keyMode === "manual" &&
+      (field.name === "private_key" || field.name === "public_key")
+    ) {
+      return (
+        <Field.Root
+          key={field.name}
+          required={field.required}
+          invalid={!!errors[field.name]}
+        >
+          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+          <Textarea
+            id={field.name}
+            name={field.name}
+            value={values[field.name] || ""}
+            onChange={handleChange}
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+            rows={10}
+            fontFamily="monospace"
+            fontSize="xs"
+            resize="none"
+          />
+          {errors[field.name] && (
+            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+          )}
+        </Field.Root>
+      );
+    }
+
     if (field.type === "ChoiceField") {
       return (
         <Field.Root
@@ -194,7 +300,130 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   return (
     <VStack gap={4} align="stretch" as="form" maxW="lg">
-      {config.fields.map((field) => renderInput(field))}
+      {config.fields.map((field) => {
+        const input = renderInput(field);
+        if (!input) return null;
+
+        return (
+          <Box key={field.name}>
+            {input}
+            {field.name === "authentication_type" && shouldShowKeyGenerator && (
+              <Flex gap={2} mt={4} mb={4}>
+                <Button
+                  variant={keyMode === "generate" ? "solid" : "outline"}
+                  colorPalette={keyMode === "generate" ? "brand" : "gray"}
+                  onClick={() => {
+                    setKeyMode("generate");
+                    handleGenerateKeyPair();
+                  }}
+                  flex={1}
+                  loading={isGenerating && keyMode === "generate"}
+                >
+                  Generate Keys
+                </Button>
+                <Button
+                  variant={keyMode === "manual" ? "solid" : "outline"}
+                  colorPalette={keyMode === "manual" ? "brand" : "gray"}
+                  onClick={() => {
+                    setKeyMode("manual");
+                    setGeneratedKeys(null);
+                    setValues((prev) => ({
+                      ...prev,
+                      public_key: "",
+                      private_key: "",
+                    }));
+                  }}
+                  flex={1}
+                >
+                  Enter Keys Manually
+                </Button>
+              </Flex>
+            )}
+            {field.name === "passphrase" &&
+              shouldShowKeyGenerator &&
+              keyMode === "generate" && (
+                <Box mt={4}>
+                  {!values["passphrase"]?.trim() && (
+                    <Text fontSize="sm" color="orange.500" mb={2}>
+                      Enter a passphrase above to enable key generation
+                    </Text>
+                  )}
+
+                  {isGenerating && (
+                    <Text fontSize="sm" color="blue.500" mb={2}>
+                      Generating keys...
+                    </Text>
+                  )}
+
+                  {generatedKeys && (
+                    <Flex
+                      gap={4}
+                      direction={{ base: "column", md: "row" }}
+                      mt={4}
+                    >
+                      {/* Public Key Column */}
+                      <Box flex={1}>
+                        <Field.Root>
+                          <Field.Label>Public Key (PEM Format)</Field.Label>
+                          <Textarea
+                            value={generatedKeys.publicKey}
+                            readOnly
+                            rows={10}
+                            fontFamily="monospace"
+                            fontSize="xs"
+                            resize="none"
+                          />
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            mt={2}
+                            onClick={() =>
+                              handleCopy(generatedKeys.publicKey, "Public")
+                            }
+                          >
+                            Copy Public Key
+                          </Button>
+                        </Field.Root>
+                      </Box>
+
+                      <Box flex={1}>
+                        <Field.Root>
+                          <Field.Label>Private Key (PEM Format)</Field.Label>
+                          <Textarea
+                            value={generatedKeys.privateKey}
+                            readOnly
+                            rows={10}
+                            fontFamily="monospace"
+                            fontSize="xs"
+                            resize="none"
+                          />
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            mt={2}
+                            onClick={() =>
+                              handleCopy(generatedKeys.privateKey, "Private")
+                            }
+                          >
+                            Copy Private Key
+                          </Button>
+                        </Field.Root>
+                      </Box>
+                    </Flex>
+                  )}
+                </Box>
+              )}
+            {field.name === "passphrase" &&
+              shouldShowKeyGenerator &&
+              keyMode === "manual" &&
+              !values["passphrase"]?.trim() && (
+                <Text fontSize="sm" color="orange.500" mt={2}>
+                  Enter a passphrase above to enable key generation
+                </Text>
+              )}
+          </Box>
+        );
+      })}
       <Flex justifyContent="space-between">
         {handleBackButtonClick && (
           <Button variant="outline" onClick={handleBackButtonClick}>
