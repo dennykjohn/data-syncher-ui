@@ -25,7 +25,7 @@ const AxiosInstance = axios.create({
 // Set Custom Headers
 AxiosInstance.defaults.headers.common["Expires"] = "0";
 AxiosInstance.defaults.headers.common["Cache-Control"] = "no-cache";
-AxiosInstance.defaults.headers.common["Pragma"] = "no-chache";
+AxiosInstance.defaults.headers.common["Pragma"] = "no-cache";
 
 AxiosInstance.interceptors.request.use(
   (
