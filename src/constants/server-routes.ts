@@ -14,9 +14,6 @@ const ServerRoutes = {
   },
   source: {
     listMasterSources: () => "source/all/",
-    // Remove these two lines - not needed for sources
-    // checkKeyPair: () => "src-check-key-pair/",
-    // checkAndGenerateKeyPair: () => "check-and-generate-keypair/",
   },
   destination: {
     listMasterDestinations: () => "destinations/all/",
