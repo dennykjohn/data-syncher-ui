@@ -7,7 +7,6 @@ import {
   Flex,
   Input,
   NativeSelect,
-  Text,
   Textarea,
   VStack,
 } from "@chakra-ui/react";
@@ -18,11 +17,8 @@ import { MdOutlineSave } from "react-icons/md";
 import { PasswordInput } from "@/components/ui/password-input";
 import { type FieldConfig } from "@/types/form";
 
-import {
-  type KeyPair,
-  copyToClipboard,
-  generateKeyPairFromForm,
-} from "./helpers";
+import KeyPairGenerator from "./KeyPairGenerator";
+import { type KeyPair, generateKeyPairFromForm } from "./helpers";
 
 type FormConfig = {
   fields: FieldConfig[];
@@ -104,6 +100,18 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return updatedValues;
     });
     setIsGenerating(false);
+  }, []);
+
+  const handleModeChange = useCallback((newMode: "generate" | "manual") => {
+    setKeyMode(newMode);
+    if (newMode === "manual") {
+      setGeneratedKeys(null);
+      setValues((prev) => ({
+        ...prev,
+        public_key: "",
+        private_key: "",
+      }));
+    }
   }, []);
 
   const shouldShowKeyGenerator =
@@ -308,121 +316,27 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           <Box key={field.name}>
             {input}
             {field.name === "authentication_type" && shouldShowKeyGenerator && (
-              <Flex gap={2} mt={4} mb={4}>
-                <Button
-                  variant={keyMode === "generate" ? "solid" : "outline"}
-                  colorPalette={keyMode === "generate" ? "brand" : "gray"}
-                  onClick={() => {
-                    setKeyMode("generate");
-                    handleGenerateKeyPair();
-                  }}
-                  flex={1}
-                  loading={isGenerating && keyMode === "generate"}
-                >
-                  Generate Keys
-                </Button>
-                <Button
-                  variant={keyMode === "manual" ? "solid" : "outline"}
-                  colorPalette={keyMode === "manual" ? "brand" : "gray"}
-                  onClick={() => {
-                    setKeyMode("manual");
-                    setGeneratedKeys(null);
-                    setValues((prev) => ({
-                      ...prev,
-                      public_key: "",
-                      private_key: "",
-                    }));
-                  }}
-                  flex={1}
-                >
-                  Enter Keys Manually
-                </Button>
-              </Flex>
+              <KeyPairGenerator
+                passphrase={values["passphrase"] || ""}
+                keyMode={keyMode}
+                generatedKeys={generatedKeys}
+                isGenerating={isGenerating}
+                onModeChange={handleModeChange}
+                onGenerate={handleGenerateKeyPair}
+                showModeToggleOnly={true}
+              />
             )}
-            {field.name === "passphrase" &&
-              shouldShowKeyGenerator &&
-              keyMode === "generate" && (
-                <Box mt={4}>
-                  {!values["passphrase"]?.trim() && (
-                    <Text fontSize="sm" color="orange.500" mb={2}>
-                      Enter a passphrase above to enable key generation
-                    </Text>
-                  )}
-
-                  {isGenerating && (
-                    <Text fontSize="sm" color="blue.500" mb={2}>
-                      Generating keys...
-                    </Text>
-                  )}
-
-                  {generatedKeys && (
-                    <Flex
-                      gap={4}
-                      direction={{ base: "column", md: "row" }}
-                      mt={4}
-                    >
-                      <Box flex={1}>
-                        <Field.Root>
-                          <Field.Label>Public Key (PEM Format)</Field.Label>
-                          <Textarea
-                            value={generatedKeys.publicKey}
-                            readOnly
-                            rows={10}
-                            fontFamily="monospace"
-                            fontSize="xs"
-                            resize="none"
-                          />
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            mt={2}
-                            onClick={() =>
-                              copyToClipboard(generatedKeys.publicKey, "Public")
-                            }
-                          >
-                            Copy Public Key
-                          </Button>
-                        </Field.Root>
-                      </Box>
-
-                      <Box flex={1}>
-                        <Field.Root>
-                          <Field.Label>Private Key (PEM Format)</Field.Label>
-                          <Textarea
-                            value={generatedKeys.privateKey}
-                            readOnly
-                            rows={10}
-                            fontFamily="monospace"
-                            fontSize="xs"
-                            resize="none"
-                          />
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            mt={2}
-                            onClick={() =>
-                              copyToClipboard(
-                                generatedKeys.privateKey,
-                                "Private",
-                              )
-                            }
-                          >
-                            Copy Private Key
-                          </Button>
-                        </Field.Root>
-                      </Box>
-                    </Flex>
-                  )}
-                </Box>
-              )}
-            {field.name === "passphrase" &&
-              shouldShowKeyGenerator &&
-              keyMode === "manual" &&
-              !values["passphrase"]?.trim() && (
-                <Text fontSize="sm" color="orange.500" mt={2}>
-                  Enter a passphrase above to enable key generation
-                </Text>
-              )}
+            {field.name === "passphrase" && shouldShowKeyGenerator && (
+              <KeyPairGenerator
+                passphrase={values["passphrase"] || ""}
+                keyMode={keyMode}
+                generatedKeys={generatedKeys}
+                isGenerating={isGenerating}
+                onModeChange={handleModeChange}
+                onGenerate={handleGenerateKeyPair}
+                showKeyDisplay={true}
+              />
+            )}
           </Box>
         );
       })}
