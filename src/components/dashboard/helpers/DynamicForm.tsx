@@ -153,7 +153,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const renderInput = (field: FieldConfig) => {
-    // extend for more types later
     const inputType = "text";
     // If the value of authentication_type field is "password",
     // hide private_key, public_key & passphrase fields
