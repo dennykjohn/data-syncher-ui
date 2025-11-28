@@ -10,6 +10,7 @@ import {
   getSourceImage,
 } from "@/components/dashboard/utils/getImage";
 import LoadingSpinner from "@/components/shared/Spinner";
+import { Tooltip } from "@/components/ui/tooltip";
 import { dateTimeFormat } from "@/constants/common";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
@@ -121,16 +122,17 @@ const Header = ({ connector }: { connector: Connector }) => {
               <Text>{destination_title}</Text>
               <Flex gap={2} alignItems="center" ml={2}>
                 {isAnyOperationInProgress ? (
-                  <>
-                    <LoadingSpinner size="sm" />
+                  <Tooltip content={statusMessage}>
+                    <Box>
+                      <LoadingSpinner size="sm" />
+                    </Box>
+                  </Tooltip>
+                ) : (
+                  statusMessage && (
                     <Text fontSize="sm" color="gray.600">
                       {statusMessage}
                     </Text>
-                  </>
-                ) : (
-                  <Text fontSize="sm" color="gray.600">
-                    {statusMessage}
-                  </Text>
+                  )
                 )}
               </Flex>
             </Flex>
