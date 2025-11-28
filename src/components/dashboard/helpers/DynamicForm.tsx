@@ -63,7 +63,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const valuesRef = useRef(values);
   const defaultValuesRef = useRef(defaultValues);
-
+  // 👇 when defaultValues changes (edit mode), update state
   useEffect(() => {
     valuesRef.current = values;
   }, [values]);
@@ -153,8 +153,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const renderInput = (field: FieldConfig) => {
+    // extend for more types later
     const inputType = "text";
-
+    // If the value of authentication_type field is "password",
+    // hide private_key, public_key & passphrase fields
     if (
       (field.name === "private_key" ||
         field.name === "public_key" ||
@@ -163,6 +165,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
+    // If the value of authentication_type field is "keypair",
+    // hide password field
 
     if (
       field.name === "password" &&
@@ -170,6 +174,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
+    // If the value of authentication_type field is not selected,
+    // hide private_key, public_key, passphrase & password fields
 
     if (
       (field.name === "private_key" ||
@@ -180,6 +186,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
+    // Support `ChoiceField` type with `options` on the FieldConfig
 
     if (
       shouldShowKeyGenerator &&
