@@ -34,6 +34,7 @@ const ServerRoutes = {
     fetchAllUserCreatedDestinationList: () => "/destinations/?page=1&size=100",
     updateDestination: (id: string) => `destinations/update/${id}/`,
     testDestination: (id: number) => `/destinations/test/${id}/`,
+    checkKeyPair: () => "dest-check-key-pair/",
   },
   connector: {
     listConnectorsByPage: ({
