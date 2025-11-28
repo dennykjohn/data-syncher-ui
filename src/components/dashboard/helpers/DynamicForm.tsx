@@ -16,10 +16,13 @@ import { IoMdArrowBack } from "react-icons/io";
 import { MdOutlineSave } from "react-icons/md";
 
 import { PasswordInput } from "@/components/ui/password-input";
-import { toaster } from "@/components/ui/toaster";
 import { type FieldConfig } from "@/types/form";
 
-import { type KeyPair, generateKeyPairFromForm } from "./helpers";
+import {
+  type KeyPair,
+  copyToClipboard,
+  generateKeyPairFromForm,
+} from "./helpers";
 
 type FormConfig = {
   fields: FieldConfig[];
@@ -147,15 +150,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
 
     onSubmit(values);
-  };
-
-  const handleCopy = (text: string, type: "Public" | "Private") => {
-    navigator.clipboard.writeText(text).then(() => {
-      toaster.success({
-        title: `${type} key copied`,
-        description: "Key copied to clipboard",
-      });
-    });
   };
 
   const renderInput = (field: FieldConfig) => {
@@ -377,7 +371,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                             variant="outline"
                             mt={2}
                             onClick={() =>
-                              handleCopy(generatedKeys.publicKey, "Public")
+                              copyToClipboard(generatedKeys.publicKey, "Public")
                             }
                           >
                             Copy Public Key
@@ -401,7 +395,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                             variant="outline"
                             mt={2}
                             onClick={() =>
-                              handleCopy(generatedKeys.privateKey, "Private")
+                              copyToClipboard(
+                                generatedKeys.privateKey,
+                                "Private",
+                              )
                             }
                           >
                             Copy Private Key

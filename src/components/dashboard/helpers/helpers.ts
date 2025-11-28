@@ -117,7 +117,20 @@ export async function generateKeyPairFromForm(): Promise<KeyPair | null> {
   const form = document.querySelector("form");
 
   const findInput = (possibleNames: string[]): HTMLInputElement | null => {
-    if (!form) return null;
+    if (!form) {
+      for (const name of possibleNames) {
+        const byName = document.querySelector(
+          `input[name="${name}"]`,
+        ) as HTMLInputElement;
+        if (byName) return byName;
+
+        const byId = document.querySelector(
+          `input[id="${name}"]`,
+        ) as HTMLInputElement;
+        if (byId) return byId;
+      }
+      return null;
+    }
 
     for (const name of possibleNames) {
       const byName = form.querySelector(
@@ -228,4 +241,16 @@ export async function generateKeyPairFromForm(): Promise<KeyPair | null> {
     description: `New RSA key pair has been generated for username "${username}" and account "${accountName}"`,
   });
   return newKeys;
+}
+
+export function copyToClipboard(
+  text: string,
+  type: "Public" | "Private",
+): void {
+  navigator.clipboard.writeText(text).then(() => {
+    toaster.success({
+      title: `${type} key copied`,
+      description: "Key copied to clipboard",
+    });
+  });
 }
