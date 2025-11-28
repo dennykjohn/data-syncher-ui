@@ -59,39 +59,48 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
 
   const valuesRef = useRef(values);
+  const defaultValuesRef = useRef(defaultValues);
+
   useEffect(() => {
     valuesRef.current = values;
   }, [values]);
 
+  useEffect(() => {
+    if (defaultValues && defaultValuesRef.current !== defaultValues) {
+      defaultValuesRef.current = defaultValues;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setValues((prev) => ({
+        ...prev,
+        ...defaultValues,
+      }));
+    }
+  }, [defaultValues]);
+
   const handleGenerateKeyPair = useCallback(async () => {
     setIsGenerating(true);
-    try {
-      const keys = await generateKeyPairFromForm();
+    const keys = await generateKeyPairFromForm();
 
-      setGeneratedKeys(keys);
-      setValues((prev) => {
-        const updatedValues: Record<string, string> = {
-          ...prev,
-          public_key: keys.publicKey,
-          private_key: keys.privateKey,
-        };
-
-        if (keys.passphrase) {
-          updatedValues.passphrase = keys.passphrase;
-        }
-
-        return updatedValues;
-      });
-    } catch (error) {
-      toaster.error({
-        title: "Key generation failed",
-        description:
-          error instanceof Error ? error.message : "Failed to generate keys",
-      });
+    if (!keys) {
       setGeneratedKeys(null);
-    } finally {
       setIsGenerating(false);
+      return;
     }
+
+    setGeneratedKeys(keys);
+    setValues((prev) => {
+      const updatedValues: Record<string, string> = {
+        ...prev,
+        public_key: keys.publicKey,
+        private_key: keys.privateKey,
+      };
+
+      if (keys.passphrase) {
+        updatedValues.passphrase = keys.passphrase;
+      }
+
+      return updatedValues;
+    });
+    setIsGenerating(false);
   }, []);
 
   const shouldShowKeyGenerator =
@@ -100,15 +109,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     (values["authentication_type"] === "key_pair" ||
       values["authentication_type"]?.toLowerCase().includes("key")) &&
     config.fields.some((field) => field.name === "passphrase");
-
-  useEffect(() => {
-    if (defaultValues) {
-      setValues((prev) => ({
-        ...prev,
-        ...defaultValues,
-      }));
-    }
-  }, [defaultValues]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -361,7 +361,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                       direction={{ base: "column", md: "row" }}
                       mt={4}
                     >
-                      {/* Public Key Column */}
                       <Box flex={1}>
                         <Field.Root>
                           <Field.Label>Public Key (PEM Format)</Field.Label>

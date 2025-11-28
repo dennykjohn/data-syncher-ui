@@ -77,20 +77,16 @@ export async function checkKeyPairInBackend(
     }
 
     return null;
-  } catch (error) {
-    if (
-      (error as { response?: { status?: number } })?.response?.status === 404
-    ) {
-      return null;
-    }
-    console.error("Error checking key pair in backend:", error);
+  } catch {
     return null;
   }
 }
 
-export async function generateKeyPair(passphrase: string): Promise<KeyPair> {
+export async function generateKeyPair(
+  passphrase: string,
+): Promise<KeyPair | null> {
   if (!passphrase?.trim()) {
-    throw new Error("Passphrase is required");
+    return null;
   }
 
   try {
@@ -112,14 +108,12 @@ export async function generateKeyPair(passphrase: string): Promise<KeyPair> {
       publicKey: publicKeyPem,
       privateKey: privateKeyPem,
     };
-  } catch (error) {
-    throw new Error(
-      error instanceof Error ? error.message : "Failed to generate keys",
-    );
+  } catch {
+    return null;
   }
 }
 
-export async function generateKeyPairFromForm(): Promise<KeyPair> {
+export async function generateKeyPairFromForm(): Promise<KeyPair | null> {
   const form = document.querySelector("form");
 
   const findInput = (possibleNames: string[]): HTMLInputElement | null => {
@@ -170,7 +164,7 @@ export async function generateKeyPairFromForm(): Promise<KeyPair> {
       title: "Missing credentials",
       description: "Username and account name are required to generate keys.",
     });
-    throw new Error("Username and account name are required");
+    return null;
   }
 
   let cmpId: number;
@@ -179,14 +173,18 @@ export async function generateKeyPairFromForm(): Promise<KeyPair> {
     cmpId = user.company?.cmp_id;
 
     if (!cmpId) {
-      throw new Error("Company ID not found");
+      toaster.error({
+        title: "Failed to get company information",
+        description: "Unable to retrieve company ID. Please try again.",
+      });
+      return null;
     }
   } catch {
     toaster.error({
       title: "Failed to get company information",
       description: "Unable to retrieve company ID. Please try again.",
     });
-    throw new Error("Company ID is required");
+    return null;
   }
 
   const existingKeys = await checkKeyPairInBackend(
@@ -209,10 +207,22 @@ export async function generateKeyPairFromForm(): Promise<KeyPair> {
   }
 
   if (!passphrase) {
-    throw new Error("Passphrase is required");
+    toaster.error({
+      title: "Passphrase required",
+      description: "Passphrase is required to generate new keys.",
+    });
+    return null;
   }
 
   const newKeys = await generateKeyPair(passphrase);
+  if (!newKeys) {
+    toaster.error({
+      title: "Key generation failed",
+      description: "Failed to generate keys. Please try again.",
+    });
+    return null;
+  }
+
   toaster.success({
     title: "Keys generated successfully",
     description: `New RSA key pair has been generated for username "${username}" and account "${accountName}"`,
