@@ -35,7 +35,6 @@ const ServerRoutes = {
     updateDestination: (id: string) => `destinations/update/${id}/`,
     testDestination: (id: number) => `/destinations/test/${id}/`,
     checkKeyPair: () => "dest-check-key-pair/",
-    checkAndGenerateKeyPair: () => "dest-check-and-generate-keypair/",
   },
   connector: {
     listConnectorsByPage: ({
