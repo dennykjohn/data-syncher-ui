@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import {
   Box,
@@ -18,7 +18,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { type FieldConfig } from "@/types/form";
 
 import KeyPairGenerator from "./KeyPairGenerator";
-import { type KeyPair, generateKeyPairFromForm } from "./helpers";
+import { type KeyPair } from "./helpers";
 
 type FormConfig = {
   fields: FieldConfig[];
@@ -32,6 +32,7 @@ interface DynamicFormProps {
   handleBackButtonClick?: () => void;
   mode?: "create" | "edit";
   destinationName?: string;
+  sourceName?: string;
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -42,6 +43,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   handleBackButtonClick,
   mode,
   destinationName,
+  sourceName,
 }) => {
   const initialValues = config.fields.reduce(
     (acc, field) => ({
@@ -53,12 +55,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedKeys, setGeneratedKeys] = useState<KeyPair | null>(null);
   const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
 
   const valuesRef = useRef(values);
   const defaultValuesRef = useRef(defaultValues);
+
   // 👇 when defaultValues changes (edit mode), update state
   useEffect(() => {
     valuesRef.current = values;
@@ -75,17 +76,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
   }, [defaultValues]);
 
-  const handleGenerateKeyPair = useCallback(async () => {
-    setIsGenerating(true);
-    const keys = await generateKeyPairFromForm();
-
-    if (!keys) {
-      setGeneratedKeys(null);
-      setIsGenerating(false);
-      return;
-    }
-
-    setGeneratedKeys(keys);
+  // Simple callback to receive generated keys from KeyPairGenerator
+  const handleKeysGenerated = (keys: KeyPair) => {
     setValues((prev) => {
       const updatedValues: Record<string, string> = {
         ...prev,
@@ -99,24 +91,26 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
       return updatedValues;
     });
-    setIsGenerating(false);
-  }, []);
+  };
 
-  const handleModeChange = useCallback((newMode: "generate" | "manual") => {
+  // Simple callback to receive mode change from KeyPairGenerator
+  const handleModeChange = (newMode: "generate" | "manual") => {
     setKeyMode(newMode);
-    if (newMode === "manual") {
-      setGeneratedKeys(null);
-      setValues((prev) => ({
-        ...prev,
-        public_key: "",
-        private_key: "",
-      }));
-    }
-  }, []);
+  };
+
+  // Simple callback to clear keys when switching to manual mode
+  const handleClearKeys = () => {
+    setValues((prev) => ({
+      ...prev,
+      public_key: "",
+      private_key: "",
+    }));
+  };
 
   const shouldShowKeyGenerator =
     mode === "create" &&
-    destinationName?.toLowerCase() === "snowflake" &&
+    (destinationName?.toLowerCase() === "snowflake" ||
+      sourceName?.toLowerCase() === "snowflake") &&
     (values["authentication_type"] === "key_pair" ||
       values["authentication_type"]?.toLowerCase().includes("key")) &&
     config.fields.some((field) => field.name === "passphrase");
@@ -138,10 +132,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     });
 
     setErrors((prev) => ({ ...prev, [name]: "" }));
-
-    if (name === "passphrase" && keyMode === "generate") {
-      setGeneratedKeys(null);
-    }
   };
 
   const handleSubmit = () => {
@@ -195,6 +185,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
     // Support `ChoiceField` type with `options` on the FieldConfig
 
+    // Hide key fields when in generate mode (keys are shown in KeyPairGenerator)
     if (
       shouldShowKeyGenerator &&
       keyMode === "generate" &&
@@ -203,6 +194,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return null;
     }
 
+    // Show key fields when in manual mode
     if (
       shouldShowKeyGenerator &&
       keyMode === "manual" &&
@@ -315,26 +307,29 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         return (
           <Box key={field.name}>
             {input}
-            {field.name === "authentication_type" && shouldShowKeyGenerator && (
-              <KeyPairGenerator
-                passphrase={values["passphrase"] || ""}
-                keyMode={keyMode}
-                generatedKeys={generatedKeys}
-                isGenerating={isGenerating}
-                onModeChange={handleModeChange}
-                onGenerate={handleGenerateKeyPair}
-                showModeToggleOnly={true}
-              />
-            )}
+
             {field.name === "passphrase" && shouldShowKeyGenerator && (
               <KeyPairGenerator
                 passphrase={values["passphrase"] || ""}
                 keyMode={keyMode}
-                generatedKeys={generatedKeys}
-                isGenerating={isGenerating}
+                authenticationType={values["authentication_type"] || ""}
+                username={
+                  values["username"] ||
+                  values["user_name"] ||
+                  values["user"] ||
+                  ""
+                }
+                accountName={
+                  values["account_name"] ||
+                  values["account"] ||
+                  values["accountName"] ||
+                  values["account_identifier"] ||
+                  ""
+                }
+                entityType={sourceName ? "source" : "destination"}
+                onKeysGenerated={handleKeysGenerated}
                 onModeChange={handleModeChange}
-                onGenerate={handleGenerateKeyPair}
-                showKeyDisplay={true}
+                onClearKeys={handleClearKeys}
               />
             )}
           </Box>

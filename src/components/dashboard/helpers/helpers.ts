@@ -23,40 +23,33 @@ interface CheckKeyPairRequest {
   account: string;
 }
 
-async function exportPrivateKey(privateKey: CryptoKey): Promise<string> {
-  const exported = await window.crypto.subtle.exportKey("pkcs8", privateKey);
-  const exportedAsString = arrayBufferToString(exported);
-  const exportedAsBase64 = window.btoa(exportedAsString);
-  return formatAsPem(exportedAsBase64, "PRIVATE KEY");
-}
+const arrayBufferToString = (buffer: ArrayBuffer): string =>
+  String.fromCharCode(...new Uint8Array(buffer));
 
-async function exportPublicKey(publicKey: CryptoKey): Promise<string> {
-  const exported = await window.crypto.subtle.exportKey("spki", publicKey);
-  const exportedAsString = arrayBufferToString(exported);
-  const exportedAsBase64 = window.btoa(exportedAsString);
-  return formatAsPem(exportedAsBase64, "PUBLIC KEY");
-}
+const formatAsPem = (base64: string, label: string): string =>
+  `-----BEGIN ${label}-----\n${base64.match(/.{1,64}/g)?.join("\n")}\n-----END ${label}-----`;
 
-function arrayBufferToString(buffer: ArrayBuffer): string {
-  const byteArray = new Uint8Array(buffer);
-  return String.fromCharCode(...byteArray);
-}
+const exportPrivateKey = async (key: CryptoKey): Promise<string> => {
+  const exported = await window.crypto.subtle.exportKey("pkcs8", key);
+  return formatAsPem(window.btoa(arrayBufferToString(exported)), "PRIVATE KEY");
+};
 
-function formatAsPem(base64String: string, label: string): string {
-  return `-----BEGIN ${label}-----\n${base64String.match(/.{1,64}/g)?.join("\n")}\n-----END ${label}-----`;
-}
+const exportPublicKey = async (key: CryptoKey): Promise<string> => {
+  const exported = await window.crypto.subtle.exportKey("spki", key);
+  return formatAsPem(window.btoa(arrayBufferToString(exported)), "PUBLIC KEY");
+};
 
-export async function checkKeyPairInBackend(
+export const checkKeyPairInBackend = async (
   username: string,
   accountName: string,
   cmpId: number,
   type: "destination" | "source" = "destination",
-): Promise<KeyPair | null> {
+): Promise<KeyPair | null> => {
   try {
     const endpoint =
       type === "destination"
         ? ServerRoutes.destination.checkKeyPair()
-        : "src-check-key-pair/";
+        : ServerRoutes.source.checkKeyPair();
 
     const { data } = await AxiosInstance.post<KeyPairResponse>(endpoint, {
       cmp_id: cmpId,
@@ -64,15 +57,14 @@ export async function checkKeyPairInBackend(
       account: accountName,
     } as CheckKeyPairRequest);
 
-    if (
-      (data.exists || data.public_key || data.publicKey) &&
-      (data.public_key || data.publicKey) &&
-      (data.private_key || data.privateKey)
-    ) {
+    const publicKey = data.public_key || data.publicKey;
+    const privateKey = data.private_key || data.privateKey;
+
+    if ((data.exists || publicKey) && publicKey && privateKey) {
       return {
-        publicKey: data.public_key || data.publicKey || "",
-        privateKey: data.private_key || data.privateKey || "",
-        passphrase: data.passphrase || undefined,
+        publicKey,
+        privateKey,
+        passphrase: data.passphrase,
       };
     }
 
@@ -80,12 +72,16 @@ export async function checkKeyPairInBackend(
   } catch {
     return null;
   }
-}
+};
 
-export async function generateKeyPair(
+export const generateKeyPair = async (
   passphrase: string,
-): Promise<KeyPair | null> {
+): Promise<KeyPair | null> => {
   if (!passphrase?.trim()) {
+    toaster.error({
+      title: "Passphrase required",
+      description: "Enter a passphrase before generating keys.",
+    });
     return null;
   }
 
@@ -101,67 +97,98 @@ export async function generateKeyPair(
       ["encrypt", "decrypt"],
     );
 
-    const privateKeyPem = await exportPrivateKey(keyPair.privateKey);
-    const publicKeyPem = await exportPublicKey(keyPair.publicKey);
+    const [privateKey, publicKey] = await Promise.all([
+      exportPrivateKey(keyPair.privateKey),
+      exportPublicKey(keyPair.publicKey),
+    ]);
 
-    return {
-      publicKey: publicKeyPem,
-      privateKey: privateKeyPem,
-    };
-  } catch {
+    return { publicKey, privateKey };
+  } catch (error) {
+    console.error("[generateKeyPair] failed:", error);
+    toaster.error({
+      title: "Key generation failed",
+      description: "Local key generation failed. Check console for details.",
+    });
     return null;
   }
-}
+};
 
-export async function generateKeyPairFromForm(): Promise<KeyPair | null> {
-  const form = document.querySelector("form");
+export const checkKeysForUser = async (
+  username: string,
+  accountName: string,
+  authenticationType: string,
+  type: "destination" | "source" = "destination",
+): Promise<KeyPair | null> => {
+  const trimmedUser = username?.trim();
+  const trimmedAccount = accountName?.trim();
 
-  const findInput = (possibleNames: string[]): HTMLInputElement | null => {
-    if (!form) {
-      for (const name of possibleNames) {
-        const byName = document.querySelector(
-          `input[name="${name}"]`,
-        ) as HTMLInputElement;
-        if (byName) return byName;
-
-        const byId = document.querySelector(
-          `input[id="${name}"]`,
-        ) as HTMLInputElement;
-        if (byId) return byId;
-      }
-      return null;
-    }
-
-    for (const name of possibleNames) {
-      const byName = form.querySelector(
-        `input[name="${name}"]`,
-      ) as HTMLInputElement;
-      if (byName) return byName;
-
-      const byId = form.querySelector(
-        `input[id="${name}"]`,
-      ) as HTMLInputElement;
-      if (byId) return byId;
-    }
-
-    for (const name of possibleNames) {
-      const byName = document.querySelector(
-        `input[name="${name}"]`,
-      ) as HTMLInputElement;
-      if (byName) return byName;
-
-      const byId = document.querySelector(
-        `input[id="${name}"]`,
-      ) as HTMLInputElement;
-      if (byId) return byId;
-    }
-
+  if (
+    !trimmedUser ||
+    !trimmedAccount ||
+    (authenticationType !== "key_pair" &&
+      !authenticationType?.toLowerCase().includes("key"))
+  ) {
     return null;
-  };
+  }
 
-  const passphraseInput = findInput(["passphrase"]);
-  const usernameInput = findInput(["username", "user_name", "user"]);
-  const accountNameInput = findInput([
+  const cmpId = await getCompanyId();
+  if (!cmpId) return null;
+
+  const existingKeys = await checkKeyPairInBackend(
+    trimmedUser,
+    trimmedAccount,
+    cmpId,
+    type,
+  );
+
+  if (existingKeys) {
+    toaster.info({
+      title: "Keys already exist",
+      description: `Keys found for "${trimmedUser}" and "${trimmedAccount}". Using existing keys.`,
+    });
+    return existingKeys;
+  }
+
+  return null;
+};
+
+const findFormInput = (names: string[]): HTMLInputElement | null => {
+  const form = document.querySelector("form");
+  for (const name of names) {
+    const selector = (el: Element | Document | null) =>
+      el?.querySelector(
+        `input[name="${name}"], input[id="${name}"]`,
+      ) as HTMLInputElement | null;
+    const found = selector(form) || selector(document);
+    if (found) return found;
+  }
+  return null;
+};
+
+const getCompanyId = async (): Promise<number | null> => {
+  try {
+    const { data: user } = await AxiosInstance.get(ServerRoutes.auth.profile());
+    const cmpId = user.company?.cmp_id;
+    if (!cmpId) {
+      toaster.error({
+        title: "Failed to get company information",
+        description: "Unable to retrieve company ID. Please try again.",
+      });
+    }
+    return cmpId || null;
+  } catch {
+    toaster.error({
+      title: "Failed to get company information",
+      description: "Unable to retrieve company ID. Please try again.",
+    });
+    return null;
+  }
+};
+
+export const generateKeyPairFromForm = async (): Promise<KeyPair | null> => {
+  const passphraseInput = findFormInput(["passphrase"]);
+  const usernameInput = findFormInput(["username", "user_name", "user"]);
+  const accountNameInput = findFormInput([
     "account_name",
     "account",
     "accountName",
@@ -175,30 +202,13 @@ export async function generateKeyPairFromForm(): Promise<KeyPair | null> {
   if (!username || !accountName) {
     toaster.error({
       title: "Missing credentials",
-      description: "Username and account name are required to generate keys.",
+      description: "Username and account name are required.",
     });
     return null;
   }
 
-  let cmpId: number;
-  try {
-    const { data: user } = await AxiosInstance.get(ServerRoutes.auth.profile());
-    cmpId = user.company?.cmp_id;
-
-    if (!cmpId) {
-      toaster.error({
-        title: "Failed to get company information",
-        description: "Unable to retrieve company ID. Please try again.",
-      });
-      return null;
-    }
-  } catch {
-    toaster.error({
-      title: "Failed to get company information",
-      description: "Unable to retrieve company ID. Please try again.",
-    });
-    return null;
-  }
+  const cmpId = await getCompanyId();
+  if (!cmpId) return null;
 
   const existingKeys = await checkKeyPairInBackend(
     username,
@@ -211,10 +221,9 @@ export async function generateKeyPairFromForm(): Promise<KeyPair | null> {
     if (existingKeys.passphrase && passphraseInput) {
       passphraseInput.value = existingKeys.passphrase;
     }
-
     toaster.info({
       title: "Keys already exist",
-      description: `Keys found in database for username "${username}" and account "${accountName}". Using existing keys.`,
+      description: `Keys found for "${username}" and "${accountName}". Using existing keys.`,
     });
     return existingKeys;
   }
@@ -238,19 +247,19 @@ export async function generateKeyPairFromForm(): Promise<KeyPair | null> {
 
   toaster.success({
     title: "Keys generated successfully",
-    description: `New RSA key pair has been generated for username "${username}" and account "${accountName}"`,
+    description: `New RSA key pair generated for "${username}" and "${accountName}"`,
   });
   return newKeys;
-}
+};
 
-export function copyToClipboard(
+export const copyToClipboard = (
   text: string,
   type: "Public" | "Private",
-): void {
+): void => {
   navigator.clipboard.writeText(text).then(() => {
     toaster.success({
       title: `${type} key copied`,
       description: "Key copied to clipboard",
     });
   });
-}
+};

@@ -14,6 +14,7 @@ const ServerRoutes = {
   },
   source: {
     listMasterSources: () => "source/all/",
+    checkKeyPair: () => "src-check-key-pair/",
   },
   destination: {
     listMasterDestinations: () => "destinations/all/",

@@ -1,46 +1,226 @@
-import React from "react";
+import React, {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { Box, Button, Field, Flex, Text, Textarea } from "@chakra-ui/react";
 
-import { type KeyPair, copyToClipboard } from "./helpers";
+import {
+  type KeyPair,
+  checkKeysForUser,
+  copyToClipboard,
+  generateKeyPair,
+} from "./helpers";
 
 interface KeyPairGeneratorProps {
   passphrase: string;
-  keyMode: "generate" | "manual";
-  generatedKeys: KeyPair | null;
-  isGenerating: boolean;
-  onModeChange: (_mode: "generate" | "manual") => void;
-  onGenerate: () => void;
-  showModeToggleOnly?: boolean;
-  showKeyDisplay?: boolean;
+  onKeysGenerated?: (_keys: KeyPair) => void;
+  onModeChange?: (_mode: "generate" | "manual") => void;
+  onClearKeys?: () => void;
+  existingKeys?: KeyPair | null;
+  keyMode?: "generate" | "manual";
+  authenticationType?: string;
+  username?: string;
+  accountName?: string;
+  entityType?: "destination" | "source";
 }
 
 const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   passphrase,
-  keyMode,
-  generatedKeys,
-  isGenerating,
+  onKeysGenerated,
   onModeChange,
-  onGenerate,
-  showModeToggleOnly = false,
-  showKeyDisplay = false,
+  onClearKeys,
+  existingKeys,
+  keyMode: externalKeyMode,
+  authenticationType = "",
+  username = "",
+  accountName = "",
+  entityType = "destination",
 }) => {
-  const handleModeChange = (newMode: "generate" | "manual") => {
-    onModeChange(newMode);
-    if (newMode === "generate") {
-      onGenerate();
-    }
-  };
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedKeys, setGeneratedKeys] = useState<KeyPair | null>(null);
+  const [canGenerate, setCanGenerate] = useState(true);
 
-  if (showModeToggleOnly) {
-    return (
-      <Flex gap={2} mt={4} mb={4}>
+  const [internalKeyMode, setInternalKeyMode] = useState<"generate" | "manual">(
+    "generate",
+  );
+  const keyMode = externalKeyMode ?? internalKeyMode;
+
+  const passphraseRef = useRef(passphrase);
+  const hasGeneratedKeysRef = useRef(false);
+  const hasCheckedExistingKeysRef = useRef(false);
+  const lastAuthTypeRef = useRef("");
+  const lastUsernameRef = useRef("");
+  const lastAccountRef = useRef("");
+  const prevIsKeyPairAuthRef = useRef(false);
+
+  const handleGenerateKeyPair = useCallback(async () => {
+    if (keyMode !== "generate" || !passphrase?.trim()) {
+      setIsGenerating(false);
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const keys = await generateKeyPair(passphrase);
+      if (keys && keyMode === "generate") {
+        setGeneratedKeys(keys);
+        hasGeneratedKeysRef.current = true;
+        onKeysGenerated?.(keys);
+      }
+    } catch {
+      // Error handled by generateKeyPair
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [keyMode, passphrase, onKeysGenerated]);
+
+  useEffect(() => {
+    const isKeyPairAuth =
+      authenticationType === "key_pair" ||
+      authenticationType?.toLowerCase().includes("key");
+
+    if (!isKeyPairAuth || keyMode === "manual") {
+      if (!isKeyPairAuth) {
+        lastAuthTypeRef.current = "";
+        lastUsernameRef.current = "";
+        lastAccountRef.current = "";
+        hasCheckedExistingKeysRef.current = false;
+        hasGeneratedKeysRef.current = false;
+      }
+      return;
+    }
+
+    const hasChanged =
+      lastAuthTypeRef.current !== authenticationType ||
+      lastUsernameRef.current !== username ||
+      lastAccountRef.current !== accountName;
+
+    if (
+      username?.trim() &&
+      accountName?.trim() &&
+      (hasChanged || !hasCheckedExistingKeysRef.current)
+    ) {
+      lastAuthTypeRef.current = authenticationType;
+      lastUsernameRef.current = username;
+      lastAccountRef.current = accountName;
+      hasCheckedExistingKeysRef.current = true;
+
+      checkKeysForUser(username, accountName, authenticationType, entityType)
+        .then((keys) => {
+          if (keys) {
+            setGeneratedKeys(keys);
+            hasGeneratedKeysRef.current = true;
+            setCanGenerate(false);
+            onKeysGenerated?.(keys);
+          } else {
+            setGeneratedKeys(null);
+            hasGeneratedKeysRef.current = false;
+            setCanGenerate(true);
+          }
+        })
+        .catch(() => {
+          setGeneratedKeys(null);
+          hasGeneratedKeysRef.current = false;
+          setCanGenerate(true);
+        });
+    }
+  }, [
+    authenticationType,
+    username,
+    accountName,
+    keyMode,
+    onKeysGenerated,
+    entityType,
+  ]);
+
+  useEffect(() => {
+    const isKeyPairAuth =
+      authenticationType === "key_pair" ||
+      authenticationType?.toLowerCase().includes("key");
+
+    if (prevIsKeyPairAuthRef.current && !isKeyPairAuth) {
+      startTransition(() => {
+        setGeneratedKeys(null);
+        setCanGenerate(true);
+      });
+    }
+    prevIsKeyPairAuthRef.current = isKeyPairAuth;
+  }, [authenticationType]);
+
+  useEffect(() => {
+    if (keyMode === "manual") {
+      hasGeneratedKeysRef.current = false;
+      startTransition(() => setGeneratedKeys(null));
+      return;
+    }
+
+    if (
+      keyMode === "generate" &&
+      existingKeys &&
+      !hasGeneratedKeysRef.current
+    ) {
+      hasGeneratedKeysRef.current = true;
+      startTransition(() => {
+        setCanGenerate(false);
+        setGeneratedKeys(existingKeys);
+        onKeysGenerated?.(existingKeys);
+      });
+    }
+  }, [existingKeys, onKeysGenerated, keyMode]);
+
+  const handleModeChange = useCallback(
+    (newMode: "generate" | "manual") => {
+      if (newMode === "manual") {
+        setGeneratedKeys(null);
+        hasGeneratedKeysRef.current = false;
+        hasCheckedExistingKeysRef.current = false;
+        setIsGenerating(false);
+        setCanGenerate(true);
+        onClearKeys?.();
+      }
+
+      if (!externalKeyMode) {
+        setInternalKeyMode(newMode);
+      }
+
+      onModeChange?.(newMode);
+    },
+    [onModeChange, onClearKeys, externalKeyMode],
+  );
+
+  useEffect(() => {
+    if (
+      keyMode === "generate" &&
+      passphrase &&
+      passphraseRef.current !== passphrase &&
+      !hasGeneratedKeysRef.current
+    ) {
+      hasCheckedExistingKeysRef.current = false;
+      startTransition(() => setGeneratedKeys(null));
+    }
+    passphraseRef.current = passphrase;
+  }, [passphrase, keyMode]);
+
+  return (
+    <Box mt={4}>
+      <Flex gap={2} mb={4}>
         <Button
           variant={keyMode === "generate" ? "solid" : "outline"}
           colorPalette={keyMode === "generate" ? "brand" : "gray"}
-          onClick={() => handleModeChange("generate")}
+          onClick={() => {
+            if (keyMode !== "generate") {
+              handleModeChange("generate");
+            } else {
+              handleGenerateKeyPair();
+            }
+          }}
           flex={1}
           loading={isGenerating && keyMode === "generate"}
+          disabled={keyMode === "generate" && !canGenerate}
         >
           Generate Keys
         </Button>
@@ -53,17 +233,9 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
           Enter Keys Manually
         </Button>
       </Flex>
-    );
-  }
 
-  if (!showKeyDisplay) {
-    return null;
-  }
-
-  return (
-    <>
       {keyMode === "generate" && (
-        <Box mt={4}>
+        <>
           {!passphrase?.trim() && (
             <Text fontSize="sm" color="orange.500" mb={2}>
               Enter a passphrase above to enable key generation
@@ -127,15 +299,15 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
               </Box>
             </Flex>
           )}
-        </Box>
+        </>
       )}
 
-      {keyMode === "manual" && !passphrase?.trim() && (
+      {keyMode === "manual" && (
         <Text fontSize="sm" color="orange.500" mt={2}>
-          Enter a passphrase above to enable key generation
+          Enter your keys manually in the form fields above.
         </Text>
       )}
-    </>
+    </Box>
   );
 };
 

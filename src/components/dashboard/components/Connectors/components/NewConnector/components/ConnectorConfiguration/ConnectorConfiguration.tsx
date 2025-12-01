@@ -131,6 +131,7 @@ const ConnectorConfiguration = ({
       <DynamicForm
         mode={mode}
         config={{ fields: formSchema }}
+        sourceName={state?.source || connectorData?.source_name || ""}
         onSubmit={(values) => {
           handleFormSubmit(values);
         }}
