@@ -16,38 +16,55 @@ import {
 } from "./helpers";
 
 interface KeyPairGeneratorProps {
-  passphrase: string;
+  formValues: Record<string, string>;
+  mode?: "create" | "edit";
+  destinationName?: string;
+  sourceName?: string;
+  hasPassphraseField?: boolean;
   onKeysGenerated?: (_keys: KeyPair) => void;
-  onModeChange?: (_mode: "generate" | "manual") => void;
   onClearKeys?: () => void;
+  onModeChange?: (_mode: "generate" | "manual") => void;
   existingKeys?: KeyPair | null;
-  keyMode?: "generate" | "manual";
-  authenticationType?: string;
-  username?: string;
-  accountName?: string;
-  entityType?: "destination" | "source";
 }
 
 const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
-  passphrase,
+  formValues,
+  mode = "create",
+  destinationName,
+  sourceName,
+  hasPassphraseField = false,
   onKeysGenerated,
-  onModeChange,
   onClearKeys,
+  onModeChange: externalOnModeChange,
   existingKeys,
-  keyMode: externalKeyMode,
-  authenticationType = "",
-  username = "",
-  accountName = "",
-  entityType = "destination",
 }) => {
+  const getFieldValue = (names: string[]): string =>
+    names.map((name) => formValues?.[name]).find(Boolean) || "";
+
+  const passphrase = formValues?.["passphrase"] || "";
+  const authenticationType = formValues?.["authentication_type"] || "";
+  const username = getFieldValue(["username", "user_name", "user"]) || "";
+  const accountName =
+    getFieldValue([
+      "account_name",
+      "account",
+      "accountName",
+      "account_identifier",
+    ]) || "";
+  const entityType = sourceName ? "source" : "destination";
+
+  const shouldShow =
+    mode === "create" &&
+    (destinationName?.toLowerCase() === "snowflake" ||
+      sourceName?.toLowerCase() === "snowflake") &&
+    (authenticationType === "key_pair" ||
+      authenticationType?.toLowerCase().includes("key")) &&
+    hasPassphraseField;
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedKeys, setGeneratedKeys] = useState<KeyPair | null>(null);
   const [canGenerate, setCanGenerate] = useState(true);
-
-  const [internalKeyMode, setInternalKeyMode] = useState<"generate" | "manual">(
-    "generate",
-  );
-  const keyMode = externalKeyMode ?? internalKeyMode;
+  const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
 
   const passphraseRef = useRef(passphrase);
   const hasGeneratedKeysRef = useRef(false);
@@ -182,14 +199,10 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
         setCanGenerate(true);
         onClearKeys?.();
       }
-
-      if (!externalKeyMode) {
-        setInternalKeyMode(newMode);
-      }
-
-      onModeChange?.(newMode);
+      setKeyMode(newMode);
+      externalOnModeChange?.(newMode);
     },
-    [onModeChange, onClearKeys, externalKeyMode],
+    [onClearKeys, externalOnModeChange],
   );
 
   useEffect(() => {
@@ -204,6 +217,8 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
     }
     passphraseRef.current = passphrase;
   }, [passphrase, keyMode]);
+
+  if (!shouldShow) return null;
 
   return (
     <Box mt={4}>
@@ -252,31 +267,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
             <Flex gap={4} direction={{ base: "column", md: "row" }} mt={4}>
               <Box flex={1}>
                 <Field.Root>
-                  <Field.Label>Public Key (PEM Format)</Field.Label>
-                  <Textarea
-                    value={generatedKeys.publicKey}
-                    readOnly
-                    rows={10}
-                    fontFamily="monospace"
-                    fontSize="xs"
-                    resize="none"
-                  />
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    mt={2}
-                    onClick={() =>
-                      copyToClipboard(generatedKeys.publicKey, "Public")
-                    }
-                  >
-                    Copy Public Key
-                  </Button>
-                </Field.Root>
-              </Box>
-
-              <Box flex={1}>
-                <Field.Root>
-                  <Field.Label>Private Key (PEM Format)</Field.Label>
+                  <Field.Label>Private Key (PEM format)</Field.Label>
                   <Textarea
                     value={generatedKeys.privateKey}
                     readOnly
@@ -294,6 +285,30 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
                     }
                   >
                     Copy Private Key
+                  </Button>
+                </Field.Root>
+              </Box>
+
+              <Box flex={1}>
+                <Field.Root>
+                  <Field.Label>Public Key (PEM format)</Field.Label>
+                  <Textarea
+                    value={generatedKeys.publicKey}
+                    readOnly
+                    rows={10}
+                    fontFamily="monospace"
+                    fontSize="xs"
+                    resize="none"
+                  />
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    mt={2}
+                    onClick={() =>
+                      copyToClipboard(generatedKeys.publicKey, "Public")
+                    }
+                  >
+                    Copy Public Key
                   </Button>
                 </Field.Root>
               </Box>

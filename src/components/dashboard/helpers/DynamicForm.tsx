@@ -73,59 +73,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
   }, [defaultValues]);
 
-  const handleKeysGenerated = (keys: KeyPair) => {
-    setValues((prev) => ({
-      ...prev,
-      public_key: keys.publicKey,
-      private_key: keys.privateKey,
-      ...(keys.passphrase && { passphrase: keys.passphrase }),
-    }));
-  };
-
-  const handleModeChange = (newMode: "generate" | "manual") => {
-    setKeyMode(newMode);
-  };
-
-  const handleClearKeys = () => {
-    setValues((prev) => ({
-      ...prev,
-      public_key: "",
-      private_key: "",
-    }));
-  };
-
-  const shouldShowKeyGenerator =
-    mode === "create" &&
-    (destinationName?.toLowerCase() === "snowflake" ||
-      sourceName?.toLowerCase() === "snowflake") &&
-    (values["authentication_type"] === "key_pair" ||
-      values["authentication_type"]?.toLowerCase().includes("key")) &&
-    config.fields.some((field) => field.name === "passphrase");
-
-  const getFieldValue = (names: string[]): string =>
-    names.map((name) => values[name]).find(Boolean) || "";
-
-  const keyPairGeneratorProps = shouldShowKeyGenerator
-    ? {
-        passphrase: values["passphrase"] || "",
-        keyMode,
-        authenticationType: values["authentication_type"] || "",
-        username: getFieldValue(["username", "user_name", "user"]),
-        accountName: getFieldValue([
-          "account_name",
-          "account",
-          "accountName",
-          "account_identifier",
-        ]),
-        entityType: (sourceName ? "source" : "destination") as
-          | "source"
-          | "destination",
-        onKeysGenerated: handleKeysGenerated,
-        onModeChange: handleModeChange,
-        onClearKeys: handleClearKeys,
-      }
-    : null;
-
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -158,8 +105,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const renderInput = (field: FieldConfig) => {
     const inputType = "text";
-    // If the value of authentication_type field is "password",
-    // hide private_key, public_key & passphrase fields
+
     if (
       (field.name === "private_key" ||
         field.name === "public_key" ||
@@ -168,8 +114,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
-    // If the value of authentication_type field is "keypair",
-    // hide password field
 
     if (
       field.name === "password" &&
@@ -177,8 +121,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
-    // If the value of authentication_type field is not selected,
-    // hide private_key, public_key, passphrase & password fields
 
     if (
       (field.name === "private_key" ||
@@ -189,18 +131,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
-    // Support `ChoiceField` type with `options` on the FieldConfig
 
-    // Hide key fields when in generate mode (keys are shown in KeyPairGenerator)
-    if (
-      shouldShowKeyGenerator &&
-      keyMode === "generate" &&
-      (field.name === "private_key" || field.name === "public_key")
-    ) {
-      return null;
-    }
+    const shouldShowKeyGenerator =
+      mode === "create" &&
+      (destinationName?.toLowerCase() === "snowflake" ||
+        sourceName?.toLowerCase() === "snowflake") &&
+      (values["authentication_type"] === "key_pair" ||
+        values["authentication_type"]?.toLowerCase().includes("key")) &&
+      config.fields.some((f) => f.name === "passphrase");
 
-    // Show key fields when in manual mode
     if (
       shouldShowKeyGenerator &&
       keyMode === "manual" &&
@@ -229,6 +168,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           )}
         </Field.Root>
       );
+    }
+
+    if (
+      shouldShowKeyGenerator &&
+      keyMode === "generate" &&
+      (field.name === "private_key" || field.name === "public_key")
+    ) {
+      return null;
     }
 
     if (field.type === "ChoiceField") {
@@ -313,8 +260,33 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         return (
           <Box key={field.name}>
             {input}
-            {field.name === "passphrase" && keyPairGeneratorProps && (
-              <KeyPairGenerator {...keyPairGeneratorProps} />
+            {(field.name === "authentication_type" ||
+              field.name === "authenticationType") && (
+              <KeyPairGenerator
+                formValues={values}
+                mode={mode}
+                destinationName={destinationName}
+                sourceName={sourceName}
+                hasPassphraseField={config.fields.some(
+                  (f) => f.name === "passphrase",
+                )}
+                onKeysGenerated={(keys: KeyPair) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    public_key: keys.publicKey,
+                    private_key: keys.privateKey,
+                    ...(keys.passphrase && { passphrase: keys.passphrase }),
+                  }))
+                }
+                onClearKeys={() =>
+                  setValues((prev) => ({
+                    ...prev,
+                    public_key: "",
+                    private_key: "",
+                  }))
+                }
+                onModeChange={setKeyMode}
+              />
             )}
           </Box>
         );
