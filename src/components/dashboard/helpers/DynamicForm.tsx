@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { startTransition, useEffect, useRef, useState } from "react";
 
 import {
   Box,
@@ -60,7 +60,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const valuesRef = useRef(values);
   const defaultValuesRef = useRef(defaultValues);
 
-  // 👇 when defaultValues changes (edit mode), update state
   useEffect(() => {
     valuesRef.current = values;
   }, [values]);
@@ -68,37 +67,25 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   useEffect(() => {
     if (defaultValues && defaultValuesRef.current !== defaultValues) {
       defaultValuesRef.current = defaultValues;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setValues((prev) => ({
-        ...prev,
-        ...defaultValues,
-      }));
+      startTransition(() => {
+        setValues((prev) => ({ ...prev, ...defaultValues }));
+      });
     }
   }, [defaultValues]);
 
-  // Simple callback to receive generated keys from KeyPairGenerator
   const handleKeysGenerated = (keys: KeyPair) => {
-    setValues((prev) => {
-      const updatedValues: Record<string, string> = {
-        ...prev,
-        public_key: keys.publicKey,
-        private_key: keys.privateKey,
-      };
-
-      if (keys.passphrase) {
-        updatedValues.passphrase = keys.passphrase;
-      }
-
-      return updatedValues;
-    });
+    setValues((prev) => ({
+      ...prev,
+      public_key: keys.publicKey,
+      private_key: keys.privateKey,
+      ...(keys.passphrase && { passphrase: keys.passphrase }),
+    }));
   };
 
-  // Simple callback to receive mode change from KeyPairGenerator
   const handleModeChange = (newMode: "generate" | "manual") => {
     setKeyMode(newMode);
   };
 
-  // Simple callback to clear keys when switching to manual mode
   const handleClearKeys = () => {
     setValues((prev) => ({
       ...prev,
@@ -115,22 +102,41 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       values["authentication_type"]?.toLowerCase().includes("key")) &&
     config.fields.some((field) => field.name === "passphrase");
 
+  const getFieldValue = (names: string[]): string =>
+    names.map((name) => values[name]).find(Boolean) || "";
+
+  const keyPairGeneratorProps = shouldShowKeyGenerator
+    ? {
+        passphrase: values["passphrase"] || "",
+        keyMode,
+        authenticationType: values["authentication_type"] || "",
+        username: getFieldValue(["username", "user_name", "user"]),
+        accountName: getFieldValue([
+          "account_name",
+          "account",
+          "accountName",
+          "account_identifier",
+        ]),
+        entityType: (sourceName ? "source" : "destination") as
+          | "source"
+          | "destination",
+        onKeysGenerated: handleKeysGenerated,
+        onModeChange: handleModeChange,
+        onClearKeys: handleClearKeys,
+      }
+    : null;
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >,
   ) => {
-    const { name, value } = e.target as
-      | HTMLInputElement
-      | HTMLSelectElement
-      | HTMLTextAreaElement;
-
+    const { name, value } = e.target;
     setValues((prev) => {
       const newValues = { ...prev, [name]: value };
       valuesRef.current = newValues;
       return newValues;
     });
-
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -307,30 +313,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         return (
           <Box key={field.name}>
             {input}
-
-            {field.name === "passphrase" && shouldShowKeyGenerator && (
-              <KeyPairGenerator
-                passphrase={values["passphrase"] || ""}
-                keyMode={keyMode}
-                authenticationType={values["authentication_type"] || ""}
-                username={
-                  values["username"] ||
-                  values["user_name"] ||
-                  values["user"] ||
-                  ""
-                }
-                accountName={
-                  values["account_name"] ||
-                  values["account"] ||
-                  values["accountName"] ||
-                  values["account_identifier"] ||
-                  ""
-                }
-                entityType={sourceName ? "source" : "destination"}
-                onKeysGenerated={handleKeysGenerated}
-                onModeChange={handleModeChange}
-                onClearKeys={handleClearKeys}
-              />
+            {field.name === "passphrase" && keyPairGeneratorProps && (
+              <KeyPairGenerator {...keyPairGeneratorProps} />
             )}
           </Box>
         );
