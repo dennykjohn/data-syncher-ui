@@ -8,6 +8,8 @@ import React, {
 
 import { Box, Button, Field, Flex, Text, Textarea } from "@chakra-ui/react";
 
+import { toaster } from "@/components/ui/toaster";
+
 import {
   type KeyPair,
   checkKeysForUser,
@@ -230,6 +232,15 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
             if (keyMode !== "generate") {
               handleModeChange("generate");
             } else {
+              // Check for passphrase before generating
+              if (!passphrase?.trim()) {
+                toaster.error({
+                  title: "Passphrase required",
+                  description:
+                    "Please enter a passphrase before generating keys.",
+                });
+                return;
+              }
               handleGenerateKeyPair();
             }
           }}

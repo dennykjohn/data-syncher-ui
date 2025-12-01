@@ -7,6 +7,7 @@ import {
   Flex,
   Input,
   NativeSelect,
+  Textarea,
   VStack,
 } from "@chakra-ui/react";
 
@@ -54,6 +55,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
 
   const valuesRef = useRef(values);
   const defaultValuesRef = useRef(defaultValues);
@@ -135,7 +137,32 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       (values["authentication_type"] === "key_pair" ||
         values["authentication_type"]?.toLowerCase().includes("key"))
     ) {
-      return null;
+      if (keyMode === "manual") {
+        return (
+          <Field.Root
+            key={field.name}
+            required={field.required}
+            invalid={!!errors[field.name]}
+          >
+            <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+            <Textarea
+              id={field.name}
+              name={field.name}
+              value={values[field.name] || ""}
+              onChange={handleChange}
+              placeholder={`Enter ${field.label.toLowerCase()}`}
+              rows={10}
+              fontFamily="monospace"
+              fontSize="xs"
+              resize="none"
+            />
+            {errors[field.name] && (
+              <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+            )}
+          </Field.Root>
+        );
+      }
+      return null; // Hide in generate mode
     }
 
     if (field.type === "ChoiceField") {
@@ -245,6 +272,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                     private_key: "",
                   }))
                 }
+                onModeChange={setKeyMode}
               />
             )}
           </Box>
