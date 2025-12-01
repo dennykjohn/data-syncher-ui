@@ -7,7 +7,6 @@ import {
   Flex,
   Input,
   NativeSelect,
-  Textarea,
   VStack,
 } from "@chakra-ui/react";
 
@@ -18,7 +17,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { type FieldConfig } from "@/types/form";
 
 import KeyPairGenerator from "./KeyPairGenerator";
-import { type KeyPair, shouldShowKeyGenerator } from "./helpers";
+import { type KeyPair } from "./helpers";
 
 type FormConfig = {
   fields: FieldConfig[];
@@ -55,7 +54,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
 
   const valuesRef = useRef(values);
   const defaultValuesRef = useRef(defaultValues);
@@ -132,48 +130,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return null;
     }
 
-    const showKeyGenerator = shouldShowKeyGenerator(
-      mode,
-      destinationName,
-      sourceName,
-      values["authentication_type"] || "",
-      config.fields.some((f) => f.name === "passphrase"),
-    );
-
     if (
-      showKeyGenerator &&
-      keyMode === "manual" &&
-      (field.name === "private_key" || field.name === "public_key")
-    ) {
-      return (
-        <Field.Root
-          key={field.name}
-          required={field.required}
-          invalid={!!errors[field.name]}
-        >
-          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
-          <Textarea
-            id={field.name}
-            name={field.name}
-            value={values[field.name] || ""}
-            onChange={handleChange}
-            placeholder={`Enter ${field.label.toLowerCase()}`}
-            rows={10}
-            fontFamily="monospace"
-            fontSize="xs"
-            resize="none"
-          />
-          {errors[field.name] && (
-            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
-          )}
-        </Field.Root>
-      );
-    }
-
-    if (
-      showKeyGenerator &&
-      keyMode === "generate" &&
-      (field.name === "private_key" || field.name === "public_key")
+      (field.name === "private_key" || field.name === "public_key") &&
+      (values["authentication_type"] === "key_pair" ||
+        values["authentication_type"]?.toLowerCase().includes("key"))
     ) {
       return null;
     }
@@ -285,7 +245,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                     private_key: "",
                   }))
                 }
-                onModeChange={setKeyMode}
               />
             )}
           </Box>
