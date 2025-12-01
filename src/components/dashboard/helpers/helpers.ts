@@ -1,27 +1,11 @@
 import { toaster } from "@/components/ui/toaster";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
-
-export interface KeyPair {
-  publicKey: string;
-  privateKey: string;
-  passphrase?: string;
-}
-
-interface KeyPairResponse {
-  public_key?: string;
-  private_key?: string;
-  passphrase?: string;
-  exists?: boolean;
-  publicKey?: string;
-  privateKey?: string;
-}
-
-interface CheckKeyPairRequest {
-  cmp_id: number;
-  username: string;
-  account: string;
-}
+import type {
+  CheckKeyPairRequest,
+  KeyPair,
+  KeyPairResponse,
+} from "@/types/form";
 
 const arrayBufferToString = (buffer: ArrayBuffer): string =>
   String.fromCharCode(...new Uint8Array(buffer));

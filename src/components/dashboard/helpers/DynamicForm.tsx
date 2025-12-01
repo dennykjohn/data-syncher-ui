@@ -15,10 +15,9 @@ import { IoMdArrowBack } from "react-icons/io";
 import { MdOutlineSave } from "react-icons/md";
 
 import { PasswordInput } from "@/components/ui/password-input";
-import { type FieldConfig } from "@/types/form";
+import { type FieldConfig, type KeyPair } from "@/types/form";
 
 import KeyPairGenerator from "./KeyPairGenerator";
-import { type KeyPair } from "./helpers";
 
 type FormConfig = {
   fields: FieldConfig[];
@@ -63,7 +62,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   useEffect(() => {
     valuesRef.current = values;
   }, [values]);
-
+  // 👇 when defaultValues changes (edit mode), update state
   useEffect(() => {
     if (defaultValues && defaultValuesRef.current !== defaultValues) {
       defaultValuesRef.current = defaultValues;
@@ -105,7 +104,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const renderInput = (field: FieldConfig) => {
     const inputType = "text";
-
+    // If the value of authentication_type field is "password",
+    // hide private_key, public_key & passphrase fields
     if (
       (field.name === "private_key" ||
         field.name === "public_key" ||
@@ -114,14 +114,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
-
+    // If the value of authentication_type field is "keypair",
+    // hide password field
     if (
       field.name === "password" &&
       values["authentication_type"] === "key_pair"
     ) {
       return null;
     }
-
+    // If the value of authentication_type field is not selected,
+    // hide private_key, public_key, passphrase & password fields
     if (
       (field.name === "private_key" ||
         field.name === "public_key" ||
@@ -131,6 +133,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
+    // Support `ChoiceField` type with `options` on the FieldConfig
 
     if (
       (field.name === "private_key" || field.name === "public_key") &&

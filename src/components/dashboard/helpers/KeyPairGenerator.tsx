@@ -9,13 +9,9 @@ import React, {
 import { Box, Button, Field, Flex, Text, Textarea } from "@chakra-ui/react";
 
 import { toaster } from "@/components/ui/toaster";
+import type { KeyPair } from "@/types/form";
 
-import {
-  type KeyPair,
-  checkKeysForUser,
-  copyToClipboard,
-  generateKeyPair,
-} from "./helpers";
+import { checkKeysForUser, copyToClipboard, generateKeyPair } from "./helpers";
 
 interface KeyPairGeneratorProps {
   formValues: Record<string, string>;
