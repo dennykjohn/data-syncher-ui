@@ -263,3 +263,20 @@ export const copyToClipboard = (
     });
   });
 };
+
+export const shouldShowKeyGenerator = (
+  mode: "create" | "edit" | undefined,
+  destinationName: string | undefined,
+  sourceName: string | undefined,
+  authenticationType: string,
+  hasPassphraseField: boolean,
+): boolean => {
+  return (
+    mode === "create" &&
+    (destinationName?.toLowerCase() === "snowflake" ||
+      sourceName?.toLowerCase() === "snowflake") &&
+    (authenticationType === "key_pair" ||
+      authenticationType?.toLowerCase().includes("key")) &&
+    hasPassphraseField
+  );
+};

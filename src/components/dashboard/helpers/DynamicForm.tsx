@@ -18,7 +18,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { type FieldConfig } from "@/types/form";
 
 import KeyPairGenerator from "./KeyPairGenerator";
-import { type KeyPair } from "./helpers";
+import { type KeyPair, shouldShowKeyGenerator } from "./helpers";
 
 type FormConfig = {
   fields: FieldConfig[];
@@ -132,16 +132,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return null;
     }
 
-    const shouldShowKeyGenerator =
-      mode === "create" &&
-      (destinationName?.toLowerCase() === "snowflake" ||
-        sourceName?.toLowerCase() === "snowflake") &&
-      (values["authentication_type"] === "key_pair" ||
-        values["authentication_type"]?.toLowerCase().includes("key")) &&
-      config.fields.some((f) => f.name === "passphrase");
+    const showKeyGenerator = shouldShowKeyGenerator(
+      mode,
+      destinationName,
+      sourceName,
+      values["authentication_type"] || "",
+      config.fields.some((f) => f.name === "passphrase"),
+    );
 
     if (
-      shouldShowKeyGenerator &&
+      showKeyGenerator &&
       keyMode === "manual" &&
       (field.name === "private_key" || field.name === "public_key")
     ) {
@@ -171,7 +171,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
 
     if (
-      shouldShowKeyGenerator &&
+      showKeyGenerator &&
       keyMode === "generate" &&
       (field.name === "private_key" || field.name === "public_key")
     ) {
