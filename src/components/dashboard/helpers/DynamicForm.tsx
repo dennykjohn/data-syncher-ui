@@ -1,12 +1,13 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-import React, { useEffect, useState } from "react";
+import React, { startTransition, useEffect, useRef, useState } from "react";
 
 import {
+  Box,
   Button,
   Field,
   Flex,
   Input,
   NativeSelect,
+  Textarea,
   VStack,
 } from "@chakra-ui/react";
 
@@ -14,7 +15,9 @@ import { IoMdArrowBack } from "react-icons/io";
 import { MdOutlineSave } from "react-icons/md";
 
 import { PasswordInput } from "@/components/ui/password-input";
-import { type FieldConfig } from "@/types/form";
+import { type FieldConfig, type KeyPair } from "@/types/form";
+
+import KeyPairGenerator from "./KeyPairGenerator";
 
 type FormConfig = {
   fields: FieldConfig[];
@@ -27,6 +30,8 @@ interface DynamicFormProps {
   defaultValues?: Record<string, string>;
   handleBackButtonClick?: () => void;
   mode?: "create" | "edit";
+  destinationName?: string;
+  sourceName?: string;
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -36,6 +41,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   loading,
   handleBackButtonClick,
   mode,
+  destinationName,
+  sourceName,
 }) => {
   const initialValues = config.fields.reduce(
     (acc, field) => ({
@@ -47,22 +54,35 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
 
+  const valuesRef = useRef(values);
+  const defaultValuesRef = useRef(defaultValues);
+
+  useEffect(() => {
+    valuesRef.current = values;
+  }, [values]);
   // 👇 when defaultValues changes (edit mode), update state
   useEffect(() => {
-    if (defaultValues) {
-      setValues((prev) => ({
-        ...prev,
-        ...defaultValues,
-      }));
+    if (defaultValues && defaultValuesRef.current !== defaultValues) {
+      defaultValuesRef.current = defaultValues;
+      startTransition(() => {
+        setValues((prev) => ({ ...prev, ...defaultValues }));
+      });
     }
   }, [defaultValues]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
-    const { name, value } = e.target as HTMLInputElement & HTMLSelectElement;
-    setValues((prev) => ({ ...prev, [name]: value }));
+    const { name, value } = e.target;
+    setValues((prev) => {
+      const newValues = { ...prev, [name]: value };
+      valuesRef.current = newValues;
+      return newValues;
+    });
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -83,9 +103,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const renderInput = (field: FieldConfig) => {
-    // extend for more types later
     const inputType = "text";
-
     // If the value of authentication_type field is "password",
     // hide private_key, public_key & passphrase fields
     if (
@@ -96,7 +114,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
-
     // If the value of authentication_type field is "keypair",
     // hide password field
     if (
@@ -105,7 +122,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
-
     // If the value of authentication_type field is not selected,
     // hide private_key, public_key, passphrase & password fields
     if (
@@ -117,8 +133,41 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     ) {
       return null;
     }
-
     // Support `ChoiceField` type with `options` on the FieldConfig
+
+    if (
+      (field.name === "private_key" || field.name === "public_key") &&
+      (values["authentication_type"] === "key_pair" ||
+        values["authentication_type"]?.toLowerCase().includes("key"))
+    ) {
+      if (keyMode === "manual") {
+        return (
+          <Field.Root
+            key={field.name}
+            required={field.required}
+            invalid={!!errors[field.name]}
+          >
+            <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+            <Textarea
+              id={field.name}
+              name={field.name}
+              value={values[field.name] || ""}
+              onChange={handleChange}
+              placeholder={`Enter ${field.label.toLowerCase()}`}
+              rows={10}
+              fontFamily="monospace"
+              fontSize="xs"
+              resize="none"
+            />
+            {errors[field.name] && (
+              <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+            )}
+          </Field.Root>
+        );
+      }
+      return null; // Hide in generate mode
+    }
+
     if (field.type === "ChoiceField") {
       return (
         <Field.Root
@@ -194,7 +243,44 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   return (
     <VStack gap={4} align="stretch" as="form" maxW="lg">
-      {config.fields.map((field) => renderInput(field))}
+      {config.fields.map((field) => {
+        const input = renderInput(field);
+        if (!input) return null;
+
+        return (
+          <Box key={field.name}>
+            {input}
+            {(field.name === "authentication_type" ||
+              field.name === "authenticationType") && (
+              <KeyPairGenerator
+                formValues={values}
+                mode={mode}
+                destinationName={destinationName}
+                sourceName={sourceName}
+                hasPassphraseField={config.fields.some(
+                  (f) => f.name === "passphrase",
+                )}
+                onKeysGenerated={(keys: KeyPair) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    public_key: keys.publicKey,
+                    private_key: keys.privateKey,
+                    ...(keys.passphrase && { passphrase: keys.passphrase }),
+                  }))
+                }
+                onClearKeys={() =>
+                  setValues((prev) => ({
+                    ...prev,
+                    public_key: "",
+                    private_key: "",
+                  }))
+                }
+                onModeChange={setKeyMode}
+              />
+            )}
+          </Box>
+        );
+      })}
       <Flex justifyContent="space-between">
         {handleBackButtonClick && (
           <Button variant="outline" onClick={handleBackButtonClick}>
