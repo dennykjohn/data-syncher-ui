@@ -87,11 +87,10 @@ export const generateKeyPair = async (
     ]);
 
     return { publicKey, privateKey };
-  } catch (error) {
-    console.error("[generateKeyPair] failed:", error);
+  } catch {
     toaster.error({
       title: "Key generation failed",
-      description: "Local key generation failed. Check console for details.",
+      description: "Local key generation failed. Please try again.",
     });
     return null;
   }

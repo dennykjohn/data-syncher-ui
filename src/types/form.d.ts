@@ -14,7 +14,7 @@ export type FieldConfig = {
 export interface KeyPair {
   publicKey: string;
   privateKey: string;
-  passphrase: string;
+  passphrase?: string;
 }
 
 export interface KeyPairResponse {
