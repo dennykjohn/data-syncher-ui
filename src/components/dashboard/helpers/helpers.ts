@@ -101,6 +101,7 @@ export const checkKeysForUser = async (
   accountName: string,
   authenticationType: string,
   type: "destination" | "source" = "destination",
+  suppressMessage: boolean = false,
 ): Promise<KeyPair | null> => {
   const trimmedUser = username?.trim();
   const trimmedAccount = accountName?.trim();
@@ -125,10 +126,13 @@ export const checkKeysForUser = async (
   );
 
   if (existingKeys) {
-    toaster.info({
-      title: "Keys already exist",
-      description: `Keys found for "${trimmedUser}" and "${trimmedAccount}". Using existing keys.`,
-    });
+    // Only show message if suppressMessage is false
+    if (!suppressMessage) {
+      toaster.info({
+        title: "Keys already exist",
+        description: `Keys found for "${trimmedUser}" and "${trimmedAccount}". Using existing keys.`,
+      });
+    }
     return existingKeys;
   }
 

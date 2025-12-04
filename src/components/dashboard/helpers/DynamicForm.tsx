@@ -1,4 +1,10 @@
-import React, { startTransition, useEffect, useRef, useState } from "react";
+import React, {
+  startTransition,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   Box,
@@ -101,6 +107,18 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
     onSubmit(values);
   };
+
+  // Compute existingKeys from form values for edit mode
+  const existingKeys = useMemo(() => {
+    if (mode === "edit" && values.public_key && values.private_key) {
+      return {
+        publicKey: values.public_key,
+        privateKey: values.private_key,
+        passphrase: values.passphrase || "",
+      };
+    }
+    return null;
+  }, [mode, values.public_key, values.private_key, values.passphrase]);
 
   const renderInput = (field: FieldConfig) => {
     const inputType = "text";
@@ -260,6 +278,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 hasPassphraseField={config.fields.some(
                   (f) => f.name === "passphrase",
                 )}
+                existingKeys={existingKeys}
                 onKeysGenerated={(keys: KeyPair) =>
                   setValues((prev) => ({
                     ...prev,
