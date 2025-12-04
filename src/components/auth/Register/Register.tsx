@@ -106,10 +106,89 @@ const Register = () => {
         description: "You can now sign in.",
       });
       navigate(`${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`);
-    } catch {
+    } catch (err: unknown) {
+      // Extract error message from backend response
+      // The axios interceptor returns error.response?.data
+      const error = err as {
+        message?: string;
+        error?: string;
+        description?: string;
+        non_field_errors?: string | string[];
+        [key: string]: unknown;
+      };
+
+      // Handle non_field_errors (general validation errors)
+      let errorMessage = "Registration failed";
+      if (error?.non_field_errors) {
+        const nonFieldErrors = Array.isArray(error.non_field_errors)
+          ? error.non_field_errors[0]
+          : error.non_field_errors;
+        errorMessage = String(nonFieldErrors);
+
+        // If it's a password-related non-field error, show it on the password field
+        if (
+          errorMessage.toLowerCase().includes("password") ||
+          errorMessage.toLowerCase().includes("similar")
+        ) {
+          setError({ field: "password", message: errorMessage });
+          setErrors((prev) => ({ ...prev, password: errorMessage }));
+        }
+      } else {
+        errorMessage =
+          error?.message || error?.error || error?.description || errorMessage;
+      }
+
+      // Check if there are field-specific errors
+      const fieldErrors: Partial<Record<keyof FormState, string>> = {};
+
+      // Common field error patterns from backend (could be arrays or strings)
+      if (error?.email) {
+        const emailError = Array.isArray(error.email)
+          ? error.email[0]
+          : error.email;
+        fieldErrors.email = String(emailError);
+      }
+      if (error?.company_email) {
+        const emailError = Array.isArray(error.company_email)
+          ? error.company_email[0]
+          : error.company_email;
+        fieldErrors.email = String(emailError);
+      }
+      if (error?.password) {
+        const passwordError = Array.isArray(error.password)
+          ? error.password[0]
+          : error.password;
+        fieldErrors.password = String(passwordError);
+        setError({ field: "password", message: String(passwordError) });
+      }
+      if (error?.first_name) {
+        const firstNameError = Array.isArray(error.first_name)
+          ? error.first_name[0]
+          : error.first_name;
+        fieldErrors.firstName = String(firstNameError);
+      }
+      if (error?.last_name) {
+        const lastNameError = Array.isArray(error.last_name)
+          ? error.last_name[0]
+          : error.last_name;
+        fieldErrors.lastName = String(lastNameError);
+      }
+      if (error?.company_name) {
+        const companyError = Array.isArray(error.company_name)
+          ? error.company_name[0]
+          : error.company_name;
+        fieldErrors.company = String(companyError);
+      }
+
+      // If there are field-specific errors, show them in the fields
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }));
+      }
+
+      // Show toast with error message
       toaster.error({
         title: "Registration failed",
-        description: "Please try again.",
+        description: errorMessage,
       });
     } finally {
       setSubmitting(false);
