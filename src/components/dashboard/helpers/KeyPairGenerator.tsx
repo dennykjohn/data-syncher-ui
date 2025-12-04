@@ -41,6 +41,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
 
   const passphrase = formValues?.["passphrase"] || "";
   const authenticationType = formValues?.["authentication_type"] || "";
+
   const username = getFieldValue(["username", "user_name", "user"]) || "";
   const accountName =
     getFieldValue([
@@ -52,7 +53,6 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   const entityType = sourceName ? "source" : "destination";
 
   const shouldShow =
-    mode === "create" &&
     (destinationName?.toLowerCase() === "snowflake" ||
       sourceName?.toLowerCase() === "snowflake") &&
     (authenticationType === "key_pair" ||
@@ -63,6 +63,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   const [generatedKeys, setGeneratedKeys] = useState<KeyPair | null>(null);
   const [canGenerate, setCanGenerate] = useState(true);
   const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
+  const [isNewlyGenerated, setIsNewlyGenerated] = useState(false);
 
   const passphraseRef = useRef(passphrase);
   const hasGeneratedKeysRef = useRef(false);
@@ -84,14 +85,23 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       if (keys && keyMode === "generate") {
         setGeneratedKeys(keys);
         hasGeneratedKeysRef.current = true;
+        setIsNewlyGenerated(true);
         onKeysGenerated?.(keys);
+
+        toaster.success({
+          title: "Keys generated successfully",
+          description:
+            mode === "edit"
+              ? "New keys have been generated. Click 'Save' to update them in the database."
+              : "New RSA key pair has been generated.",
+        });
       }
     } catch {
       // Error handled by generateKeyPair
     } finally {
       setIsGenerating(false);
     }
-  }, [keyMode, passphrase, onKeysGenerated]);
+  }, [keyMode, passphrase, onKeysGenerated, mode]);
 
   useEffect(() => {
     const isKeyPairAuth =
@@ -106,6 +116,9 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
         hasCheckedExistingKeysRef.current = false;
         hasGeneratedKeysRef.current = false;
       }
+      return;
+    }
+    if (mode === "edit") {
       return;
     }
 
@@ -127,19 +140,25 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       checkKeysForUser(username, accountName, authenticationType, entityType)
         .then((keys) => {
           if (keys) {
-            setGeneratedKeys(keys);
             hasGeneratedKeysRef.current = true;
+            hasCheckedExistingKeysRef.current = true;
+
+            setGeneratedKeys(keys);
+
             setCanGenerate(false);
+            setIsNewlyGenerated(false);
             onKeysGenerated?.(keys);
           } else {
             setGeneratedKeys(null);
             hasGeneratedKeysRef.current = false;
+            hasCheckedExistingKeysRef.current = true;
             setCanGenerate(true);
           }
         })
         .catch(() => {
           setGeneratedKeys(null);
           hasGeneratedKeysRef.current = false;
+          hasCheckedExistingKeysRef.current = true; // Mark as checked even on error
           setCanGenerate(true);
         });
     }
@@ -150,6 +169,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
     keyMode,
     onKeysGenerated,
     entityType,
+    mode,
   ]);
 
   useEffect(() => {
@@ -179,13 +199,14 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       !hasGeneratedKeysRef.current
     ) {
       hasGeneratedKeysRef.current = true;
+      setIsNewlyGenerated(false);
       startTransition(() => {
-        setCanGenerate(false);
+        setCanGenerate(mode === "edit");
         setGeneratedKeys(existingKeys);
         onKeysGenerated?.(existingKeys);
       });
     }
-  }, [existingKeys, onKeysGenerated, keyMode]);
+  }, [existingKeys, onKeysGenerated, keyMode, mode]);
 
   const handleModeChange = useCallback(
     (newMode: "generate" | "manual") => {
@@ -195,6 +216,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
         hasCheckedExistingKeysRef.current = false;
         setIsGenerating(false);
         setCanGenerate(true);
+        setIsNewlyGenerated(false); // Reset flag
         onClearKeys?.();
       }
       setKeyMode(newMode);
@@ -208,9 +230,9 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       keyMode === "generate" &&
       passphrase &&
       passphraseRef.current !== passphrase &&
-      !hasGeneratedKeysRef.current
+      !hasGeneratedKeysRef.current &&
+      !hasCheckedExistingKeysRef.current
     ) {
-      hasCheckedExistingKeysRef.current = false;
       startTransition(() => setGeneratedKeys(null));
     }
     passphraseRef.current = passphrase;
@@ -269,6 +291,24 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
               Generating keys...
             </Text>
           )}
+
+          {/* Message for newly generated keys */}
+          {isNewlyGenerated && generatedKeys && (
+            <Text fontSize="sm" color="orange.500" mb={2}>
+              New keys have been generated. Make sure to update them in your
+              Snowflake account.
+            </Text>
+          )}
+
+          {/* Message for existing keys from API (create mode) */}
+          {!isNewlyGenerated &&
+            generatedKeys &&
+            mode === "create" &&
+            hasGeneratedKeysRef.current && (
+              <Text fontSize="sm" color="green.500" mb={2}>
+                Existing keys found for this user and account.
+              </Text>
+            )}
 
           {generatedKeys && (
             <Flex gap={4} direction={{ base: "column", md: "row" }} mt={4}>

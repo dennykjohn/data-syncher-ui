@@ -5,7 +5,8 @@ import { type Destination } from "@/types/destination";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface CreateDestinationResponse {
-  message: string;
+  message?: string;
+  auth_url?: string;
 }
 
 const createDestination = async (
