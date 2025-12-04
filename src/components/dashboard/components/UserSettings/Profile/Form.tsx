@@ -26,6 +26,7 @@ const ProfileForm = ({
               placeholder="Enter your first name"
               value={initialData.firstName}
               readOnly
+              color="gray.500"
             />
           </Field.Root>
           {/* Last name */}
@@ -35,6 +36,7 @@ const ProfileForm = ({
               placeholder="Enter your last name"
               value={initialData.lastName}
               readOnly
+              color="gray.500"
             />
           </Field.Root>
           {/* Email */}
@@ -44,6 +46,7 @@ const ProfileForm = ({
               placeholder="Enter your email"
               value={initialData.company_email}
               readOnly
+              color="gray.500"
             />
           </Field.Root>
           {/* Company name */}
@@ -53,6 +56,7 @@ const ProfileForm = ({
               placeholder="Enter your company name"
               value={initialData.cmp_name}
               readOnly
+              color="gray.500"
             />
           </Field.Root>
           {/* Start date */}
@@ -63,6 +67,7 @@ const ProfileForm = ({
               placeholder="Enter your start date"
               value={initialData.start_date}
               readOnly
+              color="gray.500"
             />
           </Field.Root>
           {/* End date */}
@@ -73,6 +78,7 @@ const ProfileForm = ({
               placeholder="Enter your end date"
               value={initialData.end_date}
               readOnly
+              color="gray.500"
             />
           </Field.Root>
         </Fieldset.Content>
