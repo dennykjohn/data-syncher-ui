@@ -2,7 +2,6 @@ import React, {
   startTransition,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -23,6 +22,7 @@ interface KeyPairGeneratorProps {
   onKeysGenerated?: (_keys: KeyPair) => void;
   onClearKeys?: () => void;
   onModeChange?: (_mode: "generate" | "manual") => void;
+  existingKeys?: KeyPair | null;
 }
 
 const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
@@ -34,29 +34,13 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   onKeysGenerated,
   onClearKeys,
   onModeChange: externalOnModeChange,
+  existingKeys,
 }) => {
   const getFieldValue = (names: string[]): string =>
     names.map((name) => formValues?.[name]).find(Boolean) || "";
 
   const passphrase = formValues?.["passphrase"] || "";
   const authenticationType = formValues?.["authentication_type"] || "";
-
-  // Compute existingKeys from form values for edit mode
-  const existingKeys = useMemo(() => {
-    if (mode === "edit" && formValues.public_key && formValues.private_key) {
-      return {
-        publicKey: formValues.public_key,
-        privateKey: formValues.private_key,
-        passphrase: formValues.passphrase || "",
-      };
-    }
-    return null;
-  }, [
-    mode,
-    formValues.public_key,
-    formValues.private_key,
-    formValues.passphrase,
-  ]);
 
   const username = getFieldValue(["username", "user_name", "user"]) || "";
   const accountName =
@@ -101,10 +85,9 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       if (keys && keyMode === "generate") {
         setGeneratedKeys(keys);
         hasGeneratedKeysRef.current = true;
-        setIsNewlyGenerated(true); // Mark as newly generated
+        setIsNewlyGenerated(true);
         onKeysGenerated?.(keys);
 
-        // Show success message
         toaster.success({
           title: "Keys generated successfully",
           description:
@@ -216,9 +199,8 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       !hasGeneratedKeysRef.current
     ) {
       hasGeneratedKeysRef.current = true;
-      setIsNewlyGenerated(false); // Mark as existing keys, not newly generated
+      setIsNewlyGenerated(false);
       startTransition(() => {
-        // In edit mode, always allow regeneration
         setCanGenerate(mode === "edit");
         setGeneratedKeys(existingKeys);
         onKeysGenerated?.(existingKeys);
