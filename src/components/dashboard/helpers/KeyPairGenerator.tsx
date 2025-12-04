@@ -2,6 +2,7 @@ import React, {
   startTransition,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -22,7 +23,6 @@ interface KeyPairGeneratorProps {
   onKeysGenerated?: (_keys: KeyPair) => void;
   onClearKeys?: () => void;
   onModeChange?: (_mode: "generate" | "manual") => void;
-  existingKeys?: KeyPair | null;
 }
 
 const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
@@ -34,13 +34,29 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   onKeysGenerated,
   onClearKeys,
   onModeChange: externalOnModeChange,
-  existingKeys,
 }) => {
   const getFieldValue = (names: string[]): string =>
     names.map((name) => formValues?.[name]).find(Boolean) || "";
 
   const passphrase = formValues?.["passphrase"] || "";
   const authenticationType = formValues?.["authentication_type"] || "";
+
+  // Compute existingKeys from form values for edit mode
+  const existingKeys = useMemo(() => {
+    if (mode === "edit" && formValues.public_key && formValues.private_key) {
+      return {
+        publicKey: formValues.public_key,
+        privateKey: formValues.private_key,
+        passphrase: formValues.passphrase || "",
+      };
+    }
+    return null;
+  }, [
+    mode,
+    formValues.public_key,
+    formValues.private_key,
+    formValues.passphrase,
+  ]);
 
   const username = getFieldValue(["username", "user_name", "user"]) || "";
   const accountName =
@@ -141,19 +157,18 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       checkKeysForUser(username, accountName, authenticationType, entityType)
         .then((keys) => {
           if (keys) {
-            // Set refs BEFORE setting state to prevent passphrase effect from clearing
             hasGeneratedKeysRef.current = true;
             hasCheckedExistingKeysRef.current = true;
-            // Set keys immediately (not in startTransition) so they display right away
+
             setGeneratedKeys(keys);
-            // In create mode, disable generation when existing keys are found
+
             setCanGenerate(false);
-            setIsNewlyGenerated(false); // Mark as existing keys, not newly generated
+            setIsNewlyGenerated(false);
             onKeysGenerated?.(keys);
           } else {
             setGeneratedKeys(null);
             hasGeneratedKeysRef.current = false;
-            hasCheckedExistingKeysRef.current = true; // Mark as checked even if no keys
+            hasCheckedExistingKeysRef.current = true;
             setCanGenerate(true);
           }
         })
@@ -229,8 +244,6 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   );
 
   useEffect(() => {
-    // Only clear keys if passphrase changes AND we haven't checked for existing keys yet
-    // Don't clear keys that came from the API (hasGeneratedKeysRef.current === true)
     if (
       keyMode === "generate" &&
       passphrase &&
