@@ -1,12 +1,6 @@
-import { useState } from "react";
-
-import { Button, Field, Fieldset, Input, Stack } from "@chakra-ui/react";
+import { Field, Fieldset, Input, Stack } from "@chakra-ui/react";
 
 import LoadingSpinner from "@/components/shared/Spinner";
-import { toaster } from "@/components/ui/toaster";
-import { Tooltip } from "@/components/ui/tooltip";
-import { useUpdateCurrentUserProfile } from "@/queryOptions/user/useUpdateCurrentUserProfile";
-import { type UpdateCurrentUserPayload } from "@/types/user";
 
 import { type FormState } from "./helper";
 
@@ -17,131 +11,72 @@ const ProfileForm = ({
   initialData: FormState;
   isLoading: boolean;
 }) => {
-  const [form, setForm] = useState<FormState>(initialData);
-  const [errors, setErrors] = useState<
-    Partial<Record<keyof FormState, string>>
-  >({});
-
-  const { mutate: updateProfile, isPending } = useUpdateCurrentUserProfile();
-
-  const onChange = (key: keyof FormState) => (value: string | boolean) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    setErrors((prev) => ({ ...prev, [key]: undefined }));
-  };
-
-  const onSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    const payload: UpdateCurrentUserPayload = {
-      first_name: form.firstName,
-      last_name: form.lastName,
-      ...form,
-    };
-    updateProfile(payload, {
-      onSuccess: () => {
-        toaster.success({
-          title: "Profile updated successfully",
-          description: `Your profile has been updated.`,
-        });
-      },
-    });
-  };
-
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
   return (
-    <Stack
-      as="form"
-      gap={4}
-      onSubmit={onSubmit}
-      maxW={{ base: "100%", md: "500px" }}
-    >
+    <Stack gap={4} maxW={{ base: "100%", md: "500px" }}>
       <Fieldset.Root size="md" gap={4}>
         <Fieldset.Content>
           {/* First name */}
-          <Field.Root required invalid={!!errors.firstName}>
+          <Field.Root required>
             <Field.Label>First name</Field.Label>
             <Input
               placeholder="Enter your first name"
-              value={form.firstName}
-              onChange={(ev) => onChange("firstName")(ev.target.value)}
+              value={initialData.firstName}
+              readOnly
             />
-            <Field.ErrorText>{errors.firstName}</Field.ErrorText>
           </Field.Root>
           {/* Last name */}
-          <Field.Root required invalid={!!errors.lastName}>
+          <Field.Root required>
             <Field.Label>Last name</Field.Label>
             <Input
               placeholder="Enter your last name"
-              value={form.lastName}
-              onChange={(ev) => onChange("lastName")(ev.target.value)}
+              value={initialData.lastName}
+              readOnly
             />
-            <Field.ErrorText>{errors.lastName}</Field.ErrorText>
           </Field.Root>
           {/* Email */}
-          <Field.Root required invalid={!!errors.company_email}>
+          <Field.Root required>
             <Field.Label>Email</Field.Label>
             <Input
               placeholder="Enter your email"
-              value={form.company_email}
-              onChange={(ev) => onChange("company_email")(ev.target.value)}
+              value={initialData.company_email}
+              readOnly
             />
-            <Field.ErrorText>{errors.company_email}</Field.ErrorText>
           </Field.Root>
           {/* Company name */}
-          <Field.Root required invalid={!!errors.cmp_name}>
+          <Field.Root required>
             <Field.Label>Company name</Field.Label>
-            <Tooltip content="This field cannot be updated ">
-              <Input
-                placeholder="Enter your company name"
-                value={form.cmp_name}
-                readOnly
-                cursor="not-allowed"
-              />
-            </Tooltip>
-            <Field.ErrorText>{errors.cmp_name}</Field.ErrorText>
+            <Input
+              placeholder="Enter your company name"
+              value={initialData.cmp_name}
+              readOnly
+            />
           </Field.Root>
           {/* Start date */}
-          <Field.Root required invalid={!!errors.start_date}>
+          <Field.Root required>
             <Field.Label>Start date</Field.Label>
-            <Tooltip content="This field cannot be updated ">
-              <Input
-                type="date"
-                placeholder="Enter your start date"
-                value={form.start_date}
-                cursor="not-allowed"
-                readOnly
-              />
-            </Tooltip>
-            <Field.ErrorText>{errors.start_date}</Field.ErrorText>
+            <Input
+              type="date"
+              placeholder="Enter your start date"
+              value={initialData.start_date}
+              readOnly
+            />
           </Field.Root>
           {/* End date */}
-          <Field.Root required invalid={!!errors.end_date}>
+          <Field.Root required>
             <Field.Label>End date</Field.Label>
-            <Tooltip content="This field cannot be updated ">
-              <Input
-                type="date"
-                placeholder="Enter your end date"
-                value={form.end_date}
-                cursor="not-allowed"
-                readOnly
-              />
-            </Tooltip>
-            <Field.ErrorText>{errors.end_date}</Field.ErrorText>
+            <Input
+              type="date"
+              placeholder="Enter your end date"
+              value={initialData.end_date}
+              readOnly
+            />
           </Field.Root>
         </Fieldset.Content>
       </Fieldset.Root>
-      <Button
-        type="submit"
-        colorPalette="brand"
-        size="md"
-        alignSelf="flex-end"
-        mt={2}
-        loading={isLoading || isPending}
-      >
-        Update profile
-      </Button>
     </Stack>
   );
 };
