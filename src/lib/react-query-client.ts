@@ -6,6 +6,7 @@ type Error = {
   status: string;
   message?: string;
   description?: string;
+  trial_expired?: boolean;
 };
 
 export const queryClient = new QueryClient({
@@ -19,8 +20,8 @@ export const queryClient = new QueryClient({
     onError: (error: unknown, query) => {
       const err = error as Error;
 
-      // Skip showing toaster for 401 errors
-      if (err.status === "401") return;
+      // Skip showing toaster for 401 errors and trial expiration (handled by axios interceptor)
+      if (err.status === "401" || err.trial_expired) return;
 
       toaster.error({
         title: err.message ?? "Could not load content",
@@ -33,6 +34,9 @@ export const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (error: unknown, _variables, _context, mutation) => {
       const err = error as Error;
+
+      if (err.trial_expired) return;
+
       toaster.error({
         title: err.message ?? "Could not complete action",
         description:
