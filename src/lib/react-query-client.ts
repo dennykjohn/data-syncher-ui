@@ -24,11 +24,13 @@ export const queryClient = new QueryClient({
 
       if (err.trial_expired) return;
 
-      toaster.error({
-        title: err.message ?? "Could not load content",
-        description:
-          err.description ?? "Something went wrong while fetching data.",
-      });
+      // Only show toast if there's a specific error message
+      if (err.message || err.description) {
+        toaster.error({
+          title: err.message ?? "Could not load content",
+          description: err.description,
+        });
+      }
       console.error("Query Error:", err, "Query:", query);
     },
   }),
@@ -38,11 +40,13 @@ export const queryClient = new QueryClient({
 
       if (err.trial_expired) return;
 
-      toaster.error({
-        title: err.message ?? "Could not complete action",
-        description:
-          err.description ?? "Something went wrong while saving changes.",
-      });
+      // Only show toast if there's a specific error message
+      if (err.message || err.description) {
+        toaster.error({
+          title: err.message ?? "Could not complete action",
+          description: err.description,
+        });
+      }
       console.error("Mutation Error:", err, "Mutation:", mutation);
     },
   }),

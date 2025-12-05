@@ -13,9 +13,11 @@ import { type Connector } from "@/types/connectors";
 const Actions = ({
   shouldShowDisabledState,
   setShouldShowDisabledState,
+  onUpdateSchemaStart,
 }: {
   shouldShowDisabledState: boolean;
   setShouldShowDisabledState: (_value: boolean) => void;
+  onUpdateSchemaStart?: () => void;
 }) => {
   const context = useOutletContext<Connector>();
   const { connection_id, target_database, target_schema } = context;
@@ -104,6 +106,7 @@ const Actions = ({
               variant="outline"
               colorPalette="brand"
               {...createButtonProps(isUpdating, () => {
+                onUpdateSchemaStart?.();
                 updateSchema(undefined, {
                   onSettled: () => {
                     setShouldShowDisabledState(false);

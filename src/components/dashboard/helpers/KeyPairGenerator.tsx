@@ -74,20 +74,21 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   const prevIsKeyPairAuthRef = useRef(false);
 
   const handleGenerateKeyPair = useCallback(async () => {
-    if (keyMode !== "generate" || !passphrase?.trim()) {
+    if (keyMode !== "generate") {
       setIsGenerating(false);
       return;
     }
 
     setIsGenerating(true);
     try {
-      const keys = await generateKeyPair(passphrase);
+      const keys = await generateKeyPair(passphrase?.trim() || undefined);
       if (keys && keyMode === "generate") {
         setGeneratedKeys(keys);
         hasGeneratedKeysRef.current = true;
-        setIsNewlyGenerated(true);
+        setIsNewlyGenerated(true); // Mark as newly generated
         onKeysGenerated?.(keys);
 
+        // Show success message
         toaster.success({
           title: "Keys generated successfully",
           description:
@@ -158,7 +159,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
         .catch(() => {
           setGeneratedKeys(null);
           hasGeneratedKeysRef.current = false;
-          hasCheckedExistingKeysRef.current = true; // Mark as checked even on error
+          hasCheckedExistingKeysRef.current = true;
           setCanGenerate(true);
         });
     }
@@ -199,8 +200,9 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       !hasGeneratedKeysRef.current
     ) {
       hasGeneratedKeysRef.current = true;
-      setIsNewlyGenerated(false);
+      setIsNewlyGenerated(false); // Mark as existing keys, not newly generated
       startTransition(() => {
+        // In edit mode, always allow regeneration
         setCanGenerate(mode === "edit");
         setGeneratedKeys(existingKeys);
         onKeysGenerated?.(existingKeys);
@@ -250,15 +252,6 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
             if (keyMode !== "generate") {
               handleModeChange("generate");
             } else {
-              // Check for passphrase before generating
-              if (!passphrase?.trim()) {
-                toaster.error({
-                  title: "Passphrase required",
-                  description:
-                    "Please enter a passphrase before generating keys.",
-                });
-                return;
-              }
               handleGenerateKeyPair();
             }
           }}
@@ -280,12 +273,6 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
 
       {keyMode === "generate" && (
         <>
-          {!passphrase?.trim() && (
-            <Text fontSize="sm" color="orange.500" mb={2}>
-              Enter a passphrase above to enable key generation
-            </Text>
-          )}
-
           {isGenerating && (
             <Text fontSize="sm" color="blue.500" mb={2}>
               Generating keys...
