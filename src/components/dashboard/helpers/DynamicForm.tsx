@@ -108,17 +108,37 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     onSubmit(values);
   };
 
-  // Compute existingKeys from form values for edit mode
   const existingKeys = useMemo(() => {
-    if (mode === "edit" && values.public_key && values.private_key) {
+    if (mode !== "edit" || !defaultValues) return null;
+
+    const publicKey =
+      defaultValues.public_key ||
+      defaultValues.publicKey ||
+      values.public_key ||
+      values.publicKey;
+    const privateKey =
+      defaultValues.private_key ||
+      defaultValues.privateKey ||
+      values.private_key ||
+      values.privateKey;
+
+    if (publicKey && privateKey) {
       return {
-        publicKey: values.public_key,
-        privateKey: values.private_key,
-        passphrase: values.passphrase || "",
+        publicKey,
+        privateKey,
+        passphrase: defaultValues.passphrase || values.passphrase || "",
       };
     }
     return null;
-  }, [mode, values.public_key, values.private_key, values.passphrase]);
+  }, [
+    mode,
+    defaultValues,
+    values.public_key,
+    values.publicKey,
+    values.private_key,
+    values.privateKey,
+    values.passphrase,
+  ]);
 
   const renderInput = (field: FieldConfig) => {
     const inputType = "text";

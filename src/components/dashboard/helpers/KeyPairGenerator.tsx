@@ -81,7 +81,6 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
 
     setIsGenerating(true);
     try {
-      // Pass passphrase if provided, otherwise pass undefined (optional)
       const keys = await generateKeyPair(passphrase?.trim() || undefined);
       if (keys && keyMode === "generate") {
         setGeneratedKeys(keys);
@@ -142,26 +141,25 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       checkKeysForUser(username, accountName, authenticationType, entityType)
         .then((keys) => {
           if (keys) {
-            // Set refs BEFORE setting state to prevent passphrase effect from clearing
             hasGeneratedKeysRef.current = true;
             hasCheckedExistingKeysRef.current = true;
-            // Set keys immediately (not in startTransition) so they display right away
+
             setGeneratedKeys(keys);
-            // In create mode, disable generation when existing keys are found
+
             setCanGenerate(false);
-            setIsNewlyGenerated(false); // Mark as existing keys, not newly generated
+            setIsNewlyGenerated(false);
             onKeysGenerated?.(keys);
           } else {
             setGeneratedKeys(null);
             hasGeneratedKeysRef.current = false;
-            hasCheckedExistingKeysRef.current = true; // Mark as checked even if no keys
+            hasCheckedExistingKeysRef.current = true;
             setCanGenerate(true);
           }
         })
         .catch(() => {
           setGeneratedKeys(null);
           hasGeneratedKeysRef.current = false;
-          hasCheckedExistingKeysRef.current = true; // Mark as checked even on error
+          hasCheckedExistingKeysRef.current = true;
           setCanGenerate(true);
         });
     }
@@ -230,8 +228,6 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   );
 
   useEffect(() => {
-    // Only clear keys if passphrase changes AND we haven't checked for existing keys yet
-    // Don't clear keys that came from the API (hasGeneratedKeysRef.current === true)
     if (
       keyMode === "generate" &&
       passphrase &&
@@ -256,7 +252,6 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
             if (keyMode !== "generate") {
               handleModeChange("generate");
             } else {
-              // Passphrase is optional - generate keys with or without it
               handleGenerateKeyPair();
             }
           }}
