@@ -78,12 +78,19 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
     }
     // If mode is add, create a new destination
     createDestination(payload, {
-      onSuccess: () => {
-        toaster.success({
-          title: "Destination created successfully",
-          description: `Your ${destinationName} destination has been created.`,
-        });
-        navigate(`${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`);
+      onSuccess: (response) => {
+        if (response.auth_url) {
+          // Redirect to OAuth URL for destinations like Salesforce
+          window.location.href = response.auth_url;
+        } else {
+          toaster.success({
+            title: "Destination created successfully",
+            description: `Your ${destinationName} destination has been created.`,
+          });
+          navigate(
+            `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
+          );
+        }
       },
     });
   };
