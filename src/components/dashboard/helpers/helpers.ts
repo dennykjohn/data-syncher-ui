@@ -7,14 +7,94 @@ import type {
   KeyPairResponse,
 } from "@/types/form";
 
-const arrayBufferToString = (buffer: ArrayBuffer): string =>
-  String.fromCharCode(...new Uint8Array(buffer));
+const arrayBufferToString = (buffer: ArrayBuffer): string => {
+  const uint8Array = new Uint8Array(buffer);
+  let binaryString = "";
+  for (let i = 0; i < uint8Array.length; i++) {
+    binaryString += String.fromCharCode(uint8Array[i]);
+  }
+  return binaryString;
+};
 
 const formatAsPem = (base64: string, label: string): string =>
   `-----BEGIN ${label}-----\n${base64.match(/.{1,64}/g)?.join("\n")}\n-----END ${label}-----`;
 
-const exportPrivateKey = async (key: CryptoKey): Promise<string> => {
+const exportPrivateKey = async (
+  key: CryptoKey,
+  passphrase?: string,
+): Promise<string> => {
   const exported = await window.crypto.subtle.exportKey("pkcs8", key);
+  const privateKeyBytes = new Uint8Array(exported);
+
+  if (passphrase && passphrase.trim()) {
+    try {
+      const passphraseBytes = new TextEncoder().encode(passphrase);
+      const passphraseBuffer = passphraseBytes.buffer;
+
+      const saltArray = window.crypto.getRandomValues(new Uint8Array(16)); // 128-bit salt
+      const salt = saltArray.buffer;
+      const baseKey = await window.crypto.subtle.importKey(
+        "raw",
+        passphraseBuffer,
+        "PBKDF2",
+        false,
+        ["deriveBits", "deriveKey"],
+      );
+
+      const derivedKey = await window.crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt: salt,
+          iterations: 100000,
+          hash: "SHA-256",
+        },
+        baseKey,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt"],
+      );
+
+      // Generate IV for AES-GCM
+      const ivArray = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
+
+      // Encrypt the private key
+      const encrypted = await window.crypto.subtle.encrypt(
+        {
+          name: "AES-GCM",
+          iv: ivArray,
+        },
+        derivedKey,
+        privateKeyBytes.buffer,
+      );
+
+      // Combine salt + iv + encrypted data and encode as base64
+      const combined = new Uint8Array(
+        saltArray.length + ivArray.length + encrypted.byteLength,
+      );
+      combined.set(saltArray, 0);
+      combined.set(ivArray, saltArray.length);
+      combined.set(
+        new Uint8Array(encrypted),
+        saltArray.length + ivArray.length,
+      );
+
+      const encryptedBase64 = window.btoa(arrayBufferToString(combined.buffer));
+      return formatAsPem(encryptedBase64, "ENCRYPTED PRIVATE KEY");
+    } catch (error) {
+      console.error("Error encrypting private key:", error);
+      toaster.error({
+        title: "Encryption failed",
+        description: "Failed to encrypt private key with passphrase.",
+      });
+
+      return formatAsPem(
+        window.btoa(arrayBufferToString(exported)),
+        "PRIVATE KEY",
+      );
+    }
+  }
+
+  // Return unencrypted private key
   return formatAsPem(window.btoa(arrayBufferToString(exported)), "PRIVATE KEY");
 };
 
@@ -59,16 +139,8 @@ export const checkKeyPairInBackend = async (
 };
 
 export const generateKeyPair = async (
-  passphrase: string,
+  passphrase?: string,
 ): Promise<KeyPair | null> => {
-  if (!passphrase?.trim()) {
-    toaster.error({
-      title: "Passphrase required",
-      description: "Enter a passphrase before generating keys.",
-    });
-    return null;
-  }
-
   try {
     const keyPair = await window.crypto.subtle.generateKey(
       {
@@ -82,11 +154,11 @@ export const generateKeyPair = async (
     );
 
     const [privateKey, publicKey] = await Promise.all([
-      exportPrivateKey(keyPair.privateKey),
+      exportPrivateKey(keyPair.privateKey, passphrase),
       exportPublicKey(keyPair.publicKey),
     ]);
 
-    return { publicKey, privateKey };
+    return { publicKey, privateKey, passphrase: passphrase || "" };
   } catch {
     toaster.error({
       title: "Key generation failed",
@@ -126,7 +198,6 @@ export const checkKeysForUser = async (
   );
 
   if (existingKeys) {
-    // Only show message if suppressMessage is false
     if (!suppressMessage) {
       toaster.info({
         title: "Keys already exist",
@@ -215,15 +286,7 @@ export const generateKeyPairFromForm = async (): Promise<KeyPair | null> => {
     return existingKeys;
   }
 
-  if (!passphrase) {
-    toaster.error({
-      title: "Passphrase required",
-      description: "Passphrase is required to generate new keys.",
-    });
-    return null;
-  }
-
-  const newKeys = await generateKeyPair(passphrase);
+  const newKeys = await generateKeyPair(passphrase || undefined);
   if (!newKeys) {
     toaster.error({
       title: "Key generation failed",

@@ -106,10 +106,20 @@ const Register = () => {
         description: "You can now sign in.",
       });
       navigate(`${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`);
-    } catch {
+    } catch (err: unknown) {
+      const error = err as Record<string, unknown>;
+      const msg =
+        (Array.isArray(error?.non_field_errors)
+          ? error.non_field_errors[0]
+          : error?.non_field_errors) ||
+        error?.message ||
+        error?.error ||
+        error?.description ||
+        "Registration failed";
+
       toaster.error({
         title: "Registration failed",
-        description: "Please try again.",
+        description: String(msg),
       });
     } finally {
       setSubmitting(false);
