@@ -6,6 +6,7 @@ type Error = {
   status: string;
   message?: string;
   description?: string;
+  trial_expired?: boolean;
 };
 
 export const queryClient = new QueryClient({
@@ -19,25 +20,33 @@ export const queryClient = new QueryClient({
     onError: (error: unknown, query) => {
       const err = error as Error;
 
-      // Skip showing toaster for 401 errors
       if (err.status === "401") return;
 
-      toaster.error({
-        title: err.message ?? "Could not load content",
-        description:
-          err.description ?? "Something went wrong while fetching data.",
-      });
+      if (err.trial_expired) return;
+
+      // Only show toast if there's a specific error message
+      if (err.message || err.description) {
+        toaster.error({
+          title: err.message ?? "Could not load content",
+          description: err.description,
+        });
+      }
       console.error("Query Error:", err, "Query:", query);
     },
   }),
   mutationCache: new MutationCache({
     onError: (error: unknown, _variables, _context, mutation) => {
       const err = error as Error;
-      toaster.error({
-        title: err.message ?? "Could not complete action",
-        description:
-          err.description ?? "Something went wrong while saving changes.",
-      });
+
+      if (err.trial_expired) return;
+
+      // Only show toast if there's a specific error message
+      if (err.message || err.description) {
+        toaster.error({
+          title: err.message ?? "Could not complete action",
+          description: err.description,
+        });
+      }
       console.error("Mutation Error:", err, "Mutation:", mutation);
     },
   }),
