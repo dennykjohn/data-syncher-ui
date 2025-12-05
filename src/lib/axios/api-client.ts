@@ -52,6 +52,8 @@ AxiosInstance.interceptors.response.use(
     const errorData = error.response?.data as ErrorResponseType | undefined;
 
     if (errorData?.trial_expired && errorData?.redirect_to) {
+      const redirectTo = errorData.redirect_to;
+
       toaster.error({
         title: "Trial Period Expired",
         description:
@@ -61,7 +63,7 @@ AxiosInstance.interceptors.response.use(
       });
 
       setTimeout(() => {
-        window.location.replace(errorData.redirect_to);
+        window.location.replace(redirectTo);
       }, 1000);
 
       return Promise.reject(errorData);
