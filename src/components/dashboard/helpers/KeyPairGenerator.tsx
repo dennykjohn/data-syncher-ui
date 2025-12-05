@@ -74,14 +74,15 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   const prevIsKeyPairAuthRef = useRef(false);
 
   const handleGenerateKeyPair = useCallback(async () => {
-    if (keyMode !== "generate" || !passphrase?.trim()) {
+    if (keyMode !== "generate") {
       setIsGenerating(false);
       return;
     }
 
     setIsGenerating(true);
     try {
-      const keys = await generateKeyPair(passphrase);
+      // Pass passphrase if provided, otherwise pass undefined (optional)
+      const keys = await generateKeyPair(passphrase?.trim() || undefined);
       if (keys && keyMode === "generate") {
         setGeneratedKeys(keys);
         hasGeneratedKeysRef.current = true;
@@ -255,15 +256,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
             if (keyMode !== "generate") {
               handleModeChange("generate");
             } else {
-              // Check for passphrase before generating
-              if (!passphrase?.trim()) {
-                toaster.error({
-                  title: "Passphrase required",
-                  description:
-                    "Please enter a passphrase before generating keys.",
-                });
-                return;
-              }
+              // Passphrase is optional - generate keys with or without it
               handleGenerateKeyPair();
             }
           }}
@@ -285,12 +278,6 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
 
       {keyMode === "generate" && (
         <>
-          {!passphrase?.trim() && (
-            <Text fontSize="sm" color="orange.500" mb={2}>
-              Enter a passphrase above to enable key generation
-            </Text>
-          )}
-
           {isGenerating && (
             <Text fontSize="sm" color="blue.500" mb={2}>
               Generating keys...
