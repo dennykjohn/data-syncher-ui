@@ -20,8 +20,9 @@ export const queryClient = new QueryClient({
     onError: (error: unknown, query) => {
       const err = error as Error;
 
-      // Skip showing toaster for 401 errors and trial expiration (handled by axios interceptor)
-      if (err.status === "401" || err.trial_expired) return;
+      if (err.status === "401") return;
+
+      if (err.trial_expired) return;
 
       toaster.error({
         title: err.message ?? "Could not load content",
