@@ -1,3 +1,5 @@
+import { startTransition, useEffect, useRef, useState } from "react";
+
 import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
 
 import { CiPause1 } from "react-icons/ci";
@@ -13,6 +15,7 @@ import LoadingSpinner from "@/components/shared/Spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { dateTimeFormat } from "@/constants/common";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
+import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
 
@@ -52,6 +55,45 @@ const Header = ({ connector }: { connector: Connector }) => {
     mutationKey: ["refreshDeltaTable", connection_id],
   });
 
+  // Track when to enable schema status polling
+  // Start polling when mutation starts, keep polling until backend job completes
+  const [shouldPollSchemaStatus, setShouldPollSchemaStatus] = useState(false);
+  const prevIsUpdateSchemaInProgress = useRef(0);
+
+  // Start polling when update schema mutation begins
+  useEffect(() => {
+    const wasInProgress = prevIsUpdateSchemaInProgress.current > 0;
+    const isInProgress = isUpdateSchemaInProgress > 0;
+
+    // If mutation just started, enable polling
+    if (!wasInProgress && isInProgress) {
+      startTransition(() => {
+        setShouldPollSchemaStatus(true);
+      });
+    }
+
+    prevIsUpdateSchemaInProgress.current = isUpdateSchemaInProgress;
+  }, [isUpdateSchemaInProgress]);
+
+  // Check schema status to see if backend job is still in progress
+  const { status: schemaStatus } = useUpdateSchemaStatus(
+    connection_id,
+    shouldPollSchemaStatus,
+  );
+
+  // Stop polling when backend job completes
+  useEffect(() => {
+    if (
+      schemaStatus &&
+      !schemaStatus.is_in_progress &&
+      shouldPollSchemaStatus
+    ) {
+      startTransition(() => {
+        setShouldPollSchemaStatus(false);
+      });
+    }
+  }, [schemaStatus, shouldPollSchemaStatus]);
+
   // Check if any table has "in_progress" status
   const { data: selectedTablesData } = useFetchSelectedTables(connection_id);
   const hasInProgressStatus =
@@ -60,12 +102,14 @@ const Header = ({ connector }: { connector: Connector }) => {
     ) ?? false;
 
   // Check if any operation is in progress
+  // Include schemaStatus.is_in_progress to keep spinner until all tables are fetched
   const isAnyOperationInProgress =
     isRefreshSchemaInProgress > 0 ||
     isUpdateSchemaInProgress > 0 ||
     isReloadInProgress > 0 ||
     isRefreshDeltaTableInProgress > 0 ||
-    hasInProgressStatus;
+    hasInProgressStatus ||
+    schemaStatus?.is_in_progress === true;
 
   // Determine the message to show based on the active operation
   const statusMessage = getStatusMessage({
@@ -75,6 +119,7 @@ const Header = ({ connector }: { connector: Connector }) => {
     next_sync_time,
     time_frequency,
     dateTimeFmt: dateTimeFormat,
+    schemaStatus,
   });
 
   return (

@@ -29,6 +29,7 @@ import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
+import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import { type Connector, type ConnectorTable } from "@/types/connectors";
 
@@ -38,10 +39,30 @@ import SelectedTableList from "./SelectedTable";
 const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
+  const [isCheckingSchemaStatus, setIsCheckingSchemaStatus] = useState(false);
 
   // Fetch data
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
+
+  // Check schema status when update schema is triggered.
+  // We use this only for toasts, not for showing an extra spinner in this tab.
+  const { status: schemaStatus } = useUpdateSchemaStatus(
+    context.connection_id,
+    isCheckingSchemaStatus,
+  );
+
+  // Stop checking when backend reports no job in progress
+  useEffect(() => {
+    if (schemaStatus && !schemaStatus.is_in_progress) {
+      setIsCheckingSchemaStatus(false);
+      toaster.success({
+        title: "Schema update completed",
+        description:
+          schemaStatus.message || "All tables have been fetched successfully.",
+      });
+    }
+  }, [schemaStatus]);
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
       connectorId: context.connection_id,
@@ -116,6 +137,7 @@ const Schema = () => {
     );
   };
 
+  // Show spinner while loading tables (header spinner covers schema status)
   if (isAllTableListLoading) {
     return <LoadingSpinner />;
   }
@@ -125,6 +147,7 @@ const Schema = () => {
       <Actions
         shouldShowDisabledState={shouldShowDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
+        onUpdateSchemaStart={() => setIsCheckingSchemaStatus(true)}
       />
       <Flex mr="auto">
         <InputGroup endElement={<MdSearch size={24} />}>

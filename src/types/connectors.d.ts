@@ -127,3 +127,11 @@ export interface ConnectorActivityDetailResponse {
     message: string;
   }[];
 }
+
+export type SchemaStatusResponse = {
+  is_in_progress: boolean;
+  current_job: string | null;
+  message?: string;
+  tables_fetched?: number;
+  total_tables?: number;
+};
