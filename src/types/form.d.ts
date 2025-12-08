@@ -9,6 +9,7 @@ export type FieldConfig = {
    */
   choices?: Array<{ value: string; display: string }>;
   required: boolean;
+  read_only?: boolean; // If true, field will be read-only in edit mode
 };
 
 export interface KeyPair {
