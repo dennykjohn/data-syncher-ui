@@ -5,7 +5,7 @@ const ServerRoutes = {
   },
   auth: {
     login: () => "/authentication/",
-    profile: () => "/user/profile/",
+    profile: () => "user/profile/",
     companyDetails: ({ companyId }: { companyId: string }) =>
       `/company-details/${companyId}`,
     forgotPassword: () => "password-reset/",
@@ -35,6 +35,7 @@ const ServerRoutes = {
     fetchAllUserCreatedDestinationList: () => "/destinations/?page=1&size=100",
     updateDestination: (id: string) => `destinations/update/${id}/`,
     testDestination: (id: number) => `/destinations/test/${id}/`,
+    deleteDestination: (id: number) => `destinations/delete/${id}/`,
     checkKeyPair: () => "dest-check-key-pair/",
   },
   connector: {
@@ -90,6 +91,9 @@ const ServerRoutes = {
       `connection/${id}/update-schema-status/`,
     reloadSingleTable: () => `reload-single-table/`,
     refreshDeltaTable: () => `refresh-delta-table/`,
+    fetchReverseSchema: (id: number) => `schema/${id}/`,
+    fetchConnectionMappings: (id: number) => `connection/${id}/mappings/`,
+    saveConnectionMappings: () => `connection/mappings/save/`,
   },
   user: {
     createUser: () => "users/",
