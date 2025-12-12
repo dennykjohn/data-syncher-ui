@@ -64,7 +64,7 @@ const Actions = ({
     <Flex direction="column" gap={2} mb={2} minW="xl">
       <Flex w="100%">
         <Text fontWeight="semibold" flexGrow={1} w="100%">
-          Target Details
+          Destination Details
         </Text>
       </Flex>
       <Flex
@@ -75,11 +75,11 @@ const Actions = ({
       >
         <Flex gap={4}>
           <Flex gap={2}>
-            <Text>Target database:</Text>
+            <Text>Destination database:</Text>
             <Text fontWeight="semibold">{target_database}</Text>
           </Flex>
           <Flex gap={2}>
-            <Text>Target Schema:</Text>
+            <Text>Destination schema:</Text>
             <Text fontWeight="semibold">{target_schema}</Text>
           </Flex>
         </Flex>
