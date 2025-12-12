@@ -5,19 +5,40 @@ import { Flex, Tabs } from "@chakra-ui/react";
 import { useLocation, useNavigate, useParams } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
+import { type Connector } from "@/types/connectors";
 
-const TabList = [
+// Base tab list without Schema/Reverse Schema
+const BaseTabList = [
   { label: "Overview", route: ClientRoutes.CONNECTORS.OVERVIEW },
-  { label: "Schema", route: ClientRoutes.CONNECTORS.SCHEMA },
-  { label: "Reverse Schema", route: ClientRoutes.CONNECTORS.REVERSE_SCHEMA },
   { label: "Usage", route: ClientRoutes.CONNECTORS.USAGE },
   { label: "Settings", route: ClientRoutes.CONNECTORS.SETTINGS },
 ];
 
-const ConnectorTabs = () => {
+// Schema tabs
+const SchemaTab = { label: "Schema", route: ClientRoutes.CONNECTORS.SCHEMA };
+const ReverseSchemaTab = {
+  label: "Schema",
+  route: ClientRoutes.CONNECTORS.REVERSE_SCHEMA,
+};
+
+interface ConnectorTabsProps {
+  connector?: Connector;
+}
+
+const ConnectorTabs = ({ connector }: ConnectorTabsProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { connectionId } = useParams();
+
+  // Determine which schema tab to show based on is_reverse_etl
+  const schemaTab = connector?.is_reverse_etl ? ReverseSchemaTab : SchemaTab;
+
+  // Build the tab list with the appropriate schema tab
+  const TabList = [
+    BaseTabList[0], // Overview
+    schemaTab, // Schema or Reverse Schema based on is_reverse_etl
+    ...BaseTabList.slice(1), // Usage and Settings
+  ];
 
   // Get current active tab from URL
   const currentPath = location.pathname.split("/").pop();
