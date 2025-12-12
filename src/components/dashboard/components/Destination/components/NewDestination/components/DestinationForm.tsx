@@ -99,7 +99,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
     };
     if (mode === "edit") {
       updateDestination(payload, {
-        onSuccess: (response) => {
+        onSuccess: (response: { auth_url?: string }) => {
           if (response.auth_url) {
             window.location.href = response.auth_url;
           } else {
@@ -113,7 +113,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       return;
     }
     createDestination(payload, {
-      onSuccess: (response) => {
+      onSuccess: (response: { auth_url?: string; message?: string }) => {
         if (response.auth_url) {
           window.location.href = response.auth_url;
         } else {
@@ -195,7 +195,10 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
               loading={isTriggeringBackend}
               onClick={() =>
                 triggerBackend(undefined, {
-                  onSuccess: (response) => {
+                  onSuccess: (response: {
+                    auth_url?: string;
+                    message?: string;
+                  }) => {
                     if (response.auth_url) {
                       window.location.href = response.auth_url;
                     } else if (response.message) {
