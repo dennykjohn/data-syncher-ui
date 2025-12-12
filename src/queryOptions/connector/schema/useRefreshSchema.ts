@@ -13,7 +13,7 @@ const useRefreshSchema = ({ connectorId }: { connectorId: number }) => {
     mutationKey: ["refreshSchema", connectorId],
     mutationFn: () => refreshSchema(connectorId),
     onSuccess: (response) => {
-      toaster.warning({ title: response.data.message });
+      toaster.success({ title: response.data.message });
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectorId],
       });

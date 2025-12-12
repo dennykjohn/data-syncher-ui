@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ActionBar,
@@ -40,6 +40,8 @@ const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
   const [isCheckingSchemaStatus, setIsCheckingSchemaStatus] = useState(false);
+  const hasCheckedInitialStatus = useRef(false);
+  const prevIsInProgress = useRef<boolean | null>(null);
 
   // Fetch data
   const { data: AllTableList, isLoading: isAllTableListLoading } =
@@ -52,9 +54,34 @@ const Schema = () => {
     isCheckingSchemaStatus,
   );
 
-  // Stop checking when backend reports no job in progress
+  // Check on mount if a job is already in progress
   useEffect(() => {
-    if (schemaStatus && !schemaStatus.is_in_progress) {
+    if (!hasCheckedInitialStatus.current && schemaStatus) {
+      hasCheckedInitialStatus.current = true;
+      prevIsInProgress.current = schemaStatus.is_in_progress;
+      if (schemaStatus.is_in_progress) {
+        setIsCheckingSchemaStatus(true);
+      }
+    }
+  }, [schemaStatus]);
+
+  // Stop checking when backend reports no job in progress
+  // Only show success message when status transitions from in_progress to completed
+  // This prevents the toast from showing when just navigating to the tab or before update completes
+  useEffect(() => {
+    if (!schemaStatus) return;
+
+    const wasInProgress = prevIsInProgress.current === true;
+    const isNowCompleted = !schemaStatus.is_in_progress;
+
+    // Update the previous state
+    prevIsInProgress.current = schemaStatus.is_in_progress;
+
+    // Only show message if:
+    // 1. We were checking the status
+    // 2. Status transitioned from in_progress (true) to completed (false)
+    // 3. We're currently not in progress
+    if (isCheckingSchemaStatus && wasInProgress && isNowCompleted) {
       setIsCheckingSchemaStatus(false);
       toaster.success({
         title: "Schema update completed",
@@ -62,7 +89,7 @@ const Schema = () => {
           schemaStatus.message || "All tables have been fetched successfully.",
       });
     }
-  }, [schemaStatus]);
+  }, [schemaStatus, isCheckingSchemaStatus]);
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
       connectorId: context.connection_id,

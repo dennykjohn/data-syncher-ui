@@ -59,6 +59,25 @@ const Header = ({ connector }: { connector: Connector }) => {
   // Start polling when mutation starts, keep polling until backend job completes
   const [shouldPollSchemaStatus, setShouldPollSchemaStatus] = useState(false);
   const prevIsUpdateSchemaInProgress = useRef(0);
+  const hasCheckedInitialStatus = useRef(false);
+
+  // Check schema status to see if backend job is still in progress
+  const { status: schemaStatus } = useUpdateSchemaStatus(
+    connection_id,
+    shouldPollSchemaStatus,
+  );
+
+  // Check on mount if a job is already in progress
+  useEffect(() => {
+    if (!hasCheckedInitialStatus.current && schemaStatus) {
+      hasCheckedInitialStatus.current = true;
+      if (schemaStatus.is_in_progress) {
+        startTransition(() => {
+          setShouldPollSchemaStatus(true);
+        });
+      }
+    }
+  }, [schemaStatus]);
 
   // Start polling when update schema mutation begins
   useEffect(() => {
@@ -74,12 +93,6 @@ const Header = ({ connector }: { connector: Connector }) => {
 
     prevIsUpdateSchemaInProgress.current = isUpdateSchemaInProgress;
   }, [isUpdateSchemaInProgress]);
-
-  // Check schema status to see if backend job is still in progress
-  const { status: schemaStatus } = useUpdateSchemaStatus(
-    connection_id,
-    shouldPollSchemaStatus,
-  );
 
   // Stop polling when backend job completes
   useEffect(() => {
@@ -121,6 +134,8 @@ const Header = ({ connector }: { connector: Connector }) => {
     dateTimeFmt: dateTimeFormat,
     schemaStatus,
   });
+
+  const displayMessage = statusMessage;
 
   return (
     <Flex flexDirection="column" gap={4}>
@@ -165,17 +180,17 @@ const Header = ({ connector }: { connector: Connector }) => {
           <Box>
             <Flex gap={2} alignItems="center">
               <Text>{destination_title}</Text>
-              <Flex gap={2} alignItems="center" ml={2}>
+              <Flex gap={2} alignItems="center">
                 {isAnyOperationInProgress ? (
-                  <Tooltip content={statusMessage}>
+                  <Tooltip content={displayMessage}>
                     <Box>
                       <LoadingSpinner size="sm" />
                     </Box>
                   </Tooltip>
                 ) : (
-                  statusMessage && (
+                  displayMessage && (
                     <Text fontSize="sm" color="gray.600">
-                      {statusMessage}
+                      {displayMessage}
                     </Text>
                   )
                 )}

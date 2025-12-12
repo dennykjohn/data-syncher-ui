@@ -181,8 +181,11 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
                 type="email"
                 placeholder="Enter your company email"
                 value={formState.companyEmail}
-                readOnly
-                cursor="not-allowed"
+                readOnly={mode === "edit"}
+                cursor={mode === "edit" ? "not-allowed" : "text"}
+                onChange={
+                  mode === "add" ? handleInputChange("companyEmail") : undefined
+                }
               />
             </Field.Root>
             {/** First Name */}

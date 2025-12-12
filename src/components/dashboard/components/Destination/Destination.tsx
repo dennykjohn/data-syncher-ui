@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
 import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 
@@ -73,9 +73,14 @@ const Destination = () => {
   });
 
   useEffect(() => {
-    refetch();
-  }, [searchTerm, refetch]);
+    startTransition(() => {
+      setCurrentPage(1);
+    });
+  }, [searchTerm]);
 
+  useEffect(() => {
+    refetch();
+  }, [currentPage, refetch]);
   const totalNumberOfPages = data ? Math.ceil(data.totalElements / SIZE) : 0;
   const updateCurrentPage = (page: number) => {
     setCurrentPage(page);
