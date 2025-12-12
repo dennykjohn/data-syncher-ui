@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer } from "react";
 
 import { Button, Flex } from "@chakra-ui/react";
 
@@ -12,7 +12,9 @@ import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
+import ServerRoutes from "@/constants/server-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
+import AxiosInstance from "@/lib/axios/api-client";
 import useCreateDestination from "@/queryOptions/destination/useCreateDestination";
 import { useFetchDestinationById } from "@/queryOptions/destination/useFetchDestinationById";
 import useTriggerDestination from "@/queryOptions/destination/useTriggerDestination";
@@ -20,7 +22,6 @@ import { useUpdateDestination } from "@/queryOptions/destination/useUpdateDestin
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 import { type Destination } from "@/types/destination";
 
-import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 import {
   BreadcrumbsForEditDestination,
   BreadcrumbsForNewDestination,
@@ -48,8 +49,6 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   const { mutate: triggerBackend, isPending: isTriggeringBackend } =
     useTriggerDestination(params.destinationId || "");
 
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
   useEffect(() => {
     // If the user navigates directly to this form
     // without choosing a destination on Add Destination, redirect
@@ -64,18 +63,44 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
 
   const [formState] = useReducer(newDestinationFormReducer, initialState);
 
+  const handleDelete = async () => {
+    if (!params.destinationId) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this destination? Note: This action is irreversible",
+    );
+    if (!confirmed) return;
+
+    try {
+      await AxiosInstance.delete(
+        ServerRoutes.destination.deleteDestination(
+          Number(params.destinationId),
+        ),
+      );
+      toaster.success({
+        title: "Destination deleted successfully",
+        description: "The destination has been deleted.",
+      });
+      navigate(`${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`);
+    } catch (error) {
+      console.error("Failed to delete destination:", error);
+      toaster.error({
+        title: "Failed to delete destination",
+        description: "An error occurred while deleting the destination.",
+      });
+    }
+  };
+
   const handleFormSubmit = (values: Record<string, string>) => {
     const payload: Destination = {
       dst: mode === "add" ? destinationName : destinationData?.dst,
       name: values["destination_name"],
       config_data: { ...values },
     };
-    // If mode is edit, update the existing destination
     if (mode === "edit") {
       updateDestination(payload, {
         onSuccess: (response) => {
           if (response.auth_url) {
-            // Redirect to OAuth URL for destinations like Salesforce
             window.location.href = response.auth_url;
           } else {
             toaster.success({
@@ -87,11 +112,9 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       });
       return;
     }
-    // If mode is add, create a new destination
     createDestination(payload, {
       onSuccess: (response) => {
         if (response.auth_url) {
-          // Redirect to OAuth URL for destinations like Salesforce
           window.location.href = response.auth_url;
         } else {
           toaster.success({
@@ -156,7 +179,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
               variant="outline"
               colorPalette="red"
               color="red.500"
-              onClick={() => setShowDeleteDialog(true)}
+              onClick={handleDelete}
             >
               <CiTrash />
               Delete
@@ -174,10 +197,11 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
                 triggerBackend(undefined, {
                   onSuccess: (response) => {
                     if (response.auth_url) {
-                      // Redirect to OAuth URL for destinations like Salesforce
                       window.location.href = response.auth_url;
                     } else if (response.message) {
-                      toaster.success({ title: response.message });
+                      toaster.success({
+                        title: response.message,
+                      });
                     }
                   },
                 })
@@ -189,14 +213,6 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
           ) : undefined
         }
       />
-
-      {showDeleteDialog && params.destinationId && (
-        <DeleteConfirmationDialog
-          open={showDeleteDialog}
-          setShowDeleteDialog={setShowDeleteDialog}
-          destinationId={Number(params.destinationId)}
-        />
-      )}
     </Flex>
   );
 };
