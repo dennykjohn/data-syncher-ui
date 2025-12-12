@@ -1,4 +1,4 @@
-import { useReducer, useState } from "react";
+import { startTransition, useEffect, useReducer, useState } from "react";
 
 import {
   Button,
@@ -54,6 +54,21 @@ const Form = (props: Connector) => {
   const [syncStartLocal, setSyncStartLocal] = useState(
     toLocalDateTimeInput(formState?.sync_start_date),
   );
+
+  // Update syncStartLocal when sync_start_date prop changes
+  useEffect(() => {
+    if (sync_start_date) {
+      const localValue = toLocalDateTimeInput(sync_start_date);
+      startTransition(() => {
+        setSyncStartLocal(localValue);
+      });
+      dispatch({
+        type: "SET_FIELD",
+        field: "sync_start_date",
+        value: sync_start_date,
+      });
+    }
+  }, [sync_start_date]);
 
   const { mutate: updateSettings, isPending: isUpdateOperationPending } =
     useUpdateConnectionSettings({
@@ -182,27 +197,6 @@ const Form = (props: Connector) => {
       </Stack>
 
       <Flex justifyContent={"space-between"} mt={4}>
-        <Flex>
-          <Button
-            variant="ghost"
-            colorPalette="red"
-            color="red.500"
-            loading={isTestOperationPending}
-            onClick={() =>
-              testConnection(undefined, {
-                onSuccess: (response) => {
-                  toaster.success({
-                    title:
-                      response.data?.message || "Connection test initiated",
-                  });
-                },
-              })
-            }
-          >
-            <MdRefresh />
-            Test connection
-          </Button>
-        </Flex>
         <Flex gap={4}>
           {status === "A" ? (
             <Tooltip content="Cannot delete an active connector">
@@ -228,6 +222,27 @@ const Form = (props: Connector) => {
               Delete
             </Button>
           )}
+        </Flex>
+        <Flex gap={4}>
+          <Button
+            variant="ghost"
+            colorPalette="red"
+            color="red.500"
+            loading={isTestOperationPending}
+            onClick={() =>
+              testConnection(undefined, {
+                onSuccess: (response) => {
+                  toaster.success({
+                    title:
+                      response.data?.message || "Connection test initiated",
+                  });
+                },
+              })
+            }
+          >
+            <MdRefresh />
+            Test connection
+          </Button>
           <Button
             colorPalette="brand"
             onClick={() =>

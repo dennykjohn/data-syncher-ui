@@ -1,6 +1,9 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 
 import { Button, Flex } from "@chakra-ui/react";
+
+import { CiTrash } from "react-icons/ci";
+import { MdRefresh } from "react-icons/md";
 
 import { useLocation, useNavigate, useParams } from "react-router";
 
@@ -17,6 +20,7 @@ import { useUpdateDestination } from "@/queryOptions/destination/useUpdateDestin
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 import { type Destination } from "@/types/destination";
 
+import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 import {
   BreadcrumbsForEditDestination,
   BreadcrumbsForNewDestination,
@@ -44,6 +48,8 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   const { mutate: triggerBackend, isPending: isTriggeringBackend } =
     useTriggerDestination(params.destinationId || "");
 
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   useEffect(() => {
     // If the user navigates directly to this form
     // without choosing a destination on Add Destination, redirect
@@ -67,11 +73,16 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
     // If mode is edit, update the existing destination
     if (mode === "edit") {
       updateDestination(payload, {
-        onSuccess: () => {
-          toaster.success({
-            title: "Destination updated successfully",
-            description: `Your ${formState.destinationName} destination has been updated.`,
-          });
+        onSuccess: (response) => {
+          if (response.auth_url) {
+            // Redirect to OAuth URL for destinations like Salesforce
+            window.location.href = response.auth_url;
+          } else {
+            toaster.success({
+              title: "Destination updated successfully",
+              description: `Your ${formState.destinationName} destination has been updated.`,
+            });
+          }
         },
       });
       return;
@@ -139,24 +150,52 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
             ? destinationData.config_data
             : undefined
         }
+        leftButtons={
+          mode === "edit" && params.destinationId ? (
+            <Button
+              variant="outline"
+              colorPalette="red"
+              color="red.500"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <CiTrash />
+              Delete
+            </Button>
+          ) : undefined
+        }
+        rightButtons={
+          mode === "edit" && params.destinationId ? (
+            <Button
+              variant="ghost"
+              colorPalette="red"
+              color="red.500"
+              loading={isTriggeringBackend}
+              onClick={() =>
+                triggerBackend(undefined, {
+                  onSuccess: (response) => {
+                    if (response.auth_url) {
+                      // Redirect to OAuth URL for destinations like Salesforce
+                      window.location.href = response.auth_url;
+                    } else if (response.message) {
+                      toaster.success({ title: response.message });
+                    }
+                  },
+                })
+              }
+            >
+              <MdRefresh />
+              Test destination
+            </Button>
+          ) : undefined
+        }
       />
 
-      {mode === "edit" && params.destinationId && (
-        <Flex justify="flex-start" align="center" gap={4} mt="-4.5rem">
-          <Button
-            type="button"
-            colorPalette="brand"
-            loading={isTriggeringBackend}
-            onClick={() =>
-              triggerBackend(undefined, {
-                onSuccess: (message: string) =>
-                  toaster.success({ title: message }),
-              })
-            }
-          >
-            Test Connection
-          </Button>
-        </Flex>
+      {showDeleteDialog && params.destinationId && (
+        <DeleteConfirmationDialog
+          open={showDeleteDialog}
+          setShowDeleteDialog={setShowDeleteDialog}
+          destinationId={Number(params.destinationId)}
+        />
       )}
     </Flex>
   );
