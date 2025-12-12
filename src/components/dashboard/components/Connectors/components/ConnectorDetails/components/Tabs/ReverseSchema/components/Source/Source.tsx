@@ -188,11 +188,18 @@ const Source = (props: SourceProps) => {
                       const isPK = isPrimaryKey(field, fieldInfo);
 
                       return (
-                        <Flex key={field} alignItems="center" gap={2}>
-                          {isPK && <Text>🔑</Text>}
-                          <Text fontSize="sm">
-                            {field}: {dataType}
-                          </Text>
+                        <Flex
+                          key={field}
+                          direction="column"
+                          gap={1}
+                          width="100%"
+                        >
+                          <Flex alignItems="center" gap={2}>
+                            {isPK && <Text>🔑</Text>}
+                            <Text fontSize="sm">
+                              {field}: {dataType}
+                            </Text>
+                          </Flex>
                         </Flex>
                       );
                     })}

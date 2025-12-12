@@ -246,8 +246,9 @@ const Destination = (props: DestinationProps) => {
                         return (
                           <Flex
                             key={field}
-                            alignItems="center"
-                            gap={2}
+                            direction="column"
+                            gap={1}
+                            width="100%"
                             py={1}
                             px={2}
                             borderRadius="sm"
@@ -255,28 +256,30 @@ const Destination = (props: DestinationProps) => {
                               bgColor: "gray.50",
                             }}
                           >
-                            {isPK && (
-                              <Text fontSize="sm" color="yellow.600">
-                                🔑
+                            <Flex alignItems="center" gap={2}>
+                              {isPK && (
+                                <Text fontSize="sm" color="yellow.600">
+                                  🔑
+                                </Text>
+                              )}
+                              <Text
+                                fontSize="sm"
+                                fontWeight="medium"
+                                color="gray.700"
+                              >
+                                {field}
                               </Text>
-                            )}
-                            <Text
-                              fontSize="sm"
-                              fontWeight="medium"
-                              color="gray.700"
-                            >
-                              {field}
-                            </Text>
-                            <Text fontSize="sm" color="gray.500">
-                              :
-                            </Text>
-                            <Text
-                              fontSize="sm"
-                              color="gray.600"
-                              fontStyle="italic"
-                            >
-                              {dataType}
-                            </Text>
+                              <Text fontSize="sm" color="gray.500">
+                                :
+                              </Text>
+                              <Text
+                                fontSize="sm"
+                                color="gray.600"
+                                fontStyle="italic"
+                              >
+                                {dataType}
+                              </Text>
+                            </Flex>
                           </Flex>
                         );
                       })

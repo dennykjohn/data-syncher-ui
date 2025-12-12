@@ -32,7 +32,7 @@ const ReverseSchema = () => {
   }
 
   return (
-    <Flex flexDirection="column" gap={4} pb={8} w="100%">
+    <Flex flexDirection="column" gap={0} pb={8} w="100%">
       <Actions
         shouldShowDisabledState={shouldShowDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
