@@ -49,6 +49,11 @@ export interface Connector {
   target_database: string;
   target_schema: string;
   next_sync_time: string;
+  is_reverse_etl: boolean;
+}
+
+export interface ConnectorTabsProps {
+  connector?: Connector;
 }
 
 export interface ConnectorSyncStats {
@@ -137,4 +142,10 @@ export type SchemaStatusResponse = {
   message?: string;
   tables_fetched?: number;
   total_tables?: number;
+};
+
+export type ReverseSchemaResponse = {
+  source_tables?: ConnectorTable[];
+  destination_tables?: ConnectorTable[];
+  tables?: ConnectorTable[];
 };
