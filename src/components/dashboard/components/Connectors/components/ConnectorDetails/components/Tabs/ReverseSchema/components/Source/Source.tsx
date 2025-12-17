@@ -6,17 +6,15 @@ import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
 
-import { type ReverseSchemaResponse } from "@/queryOptions/connector/reverseSchema/useFetchReverseSchema";
+import { type ReverseSchemaResponse } from "@/types/connectors";
 
 import { isPrimaryKey } from "../../utils/validation";
 
-interface SourceProps {
+const Source = ({
+  reverseSchemaData,
+}: {
   reverseSchemaData: ReverseSchemaResponse | null;
-}
-
-const Source = (props: SourceProps) => {
-  const { reverseSchemaData } = props;
-
+}) => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedTable, setSelectedTable] = useState<string | null>(null);

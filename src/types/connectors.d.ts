@@ -52,6 +52,10 @@ export interface Connector {
   is_reverse_etl?: boolean;
 }
 
+export interface ConnectorTabsProps {
+  connector?: Connector;
+}
+
 export interface ConnectorSyncStats {
   daily_labels: string[];
   new_rec_values_daily: number[];
@@ -89,7 +93,15 @@ export type ConnectorTable = {
   selected: boolean;
   sequence: null;
   is_delta: boolean;
-  table_fields: Record<string, string>;
+  primary_keys?: string[];
+  table_fields: Record<
+    string,
+    | string
+    | {
+        data_type?: string;
+        is_primary_key?: boolean;
+      }
+  >;
 };
 
 export interface ConnectorSelectedTable {
@@ -138,4 +150,10 @@ export type SchemaStatusResponse = {
   message?: string;
   tables_fetched?: number;
   total_tables?: number;
+};
+
+export type ReverseSchemaResponse = {
+  source_tables?: ConnectorTable[];
+  destination_tables?: ConnectorTable[];
+  tables?: ConnectorTable[];
 };
