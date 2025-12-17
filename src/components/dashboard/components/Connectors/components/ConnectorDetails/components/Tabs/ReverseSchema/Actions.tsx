@@ -66,7 +66,6 @@ const Actions = ({
       alignItems="center"
       flexWrap="wrap"
       gap={4}
-      mt={-6}
       mb={2}
       w="100%"
     >
