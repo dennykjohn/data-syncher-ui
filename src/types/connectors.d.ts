@@ -49,7 +49,7 @@ export interface Connector {
   target_database: string;
   target_schema: string;
   next_sync_time: string;
-  is_reverse_etl?: boolean;
+  is_reverse_etl: boolean;
 }
 
 export interface ConnectorTabsProps {
