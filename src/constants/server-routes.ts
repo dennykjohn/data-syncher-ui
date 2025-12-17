@@ -93,7 +93,7 @@ const ServerRoutes = {
     refreshDeltaTable: () => `refresh-delta-table/`,
     fetchReverseSchema: (id: number) => `schema/${id}/`,
     fetchConnectionMappings: (id: number) => `connection/${id}/mappings/`,
-    saveConnectionMappings: () => `connection/mappings/save/`,
+    saveConnectionMappings: () => "connection/mappings/save/",
   },
   user: {
     createUser: () => "users/",
@@ -111,7 +111,7 @@ const ServerRoutes = {
     fetchUserById: (id: number) => `users/${id}`,
     updateUser: (id: number) => `users/${id}/`,
     getCurrentUserProfile: () => "user/profile/",
-    updateCurrentUserProfile: () => `user/profile/`,
+    updateCurrentUserProfile: () => "user/profile/",
   },
   billing: {
     listCurrentMonthBilling: ({ companyId }: { companyId: number }) =>
