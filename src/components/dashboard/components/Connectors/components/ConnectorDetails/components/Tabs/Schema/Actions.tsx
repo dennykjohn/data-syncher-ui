@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { Button, Flex, Text } from "@chakra-ui/react";
 
 import { MdRefresh } from "react-icons/md";
@@ -6,6 +8,7 @@ import { useOutletContext } from "react-router";
 
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useRefreshSchema from "@/queryOptions/connector/schema/useRefreshSchema";
 import useUpdateSchema from "@/queryOptions/connector/schema/useUpdateSchema";
 import { type Connector } from "@/types/connectors";
@@ -22,6 +25,16 @@ const Actions = ({
   const context = useOutletContext<Connector>();
   const { connection_id, target_database, target_schema } = context;
 
+  const { data: selectedTablesData } = useFetchSelectedTables(connection_id);
+
+  const hasAnyTableInProgress = useMemo(() => {
+    return (
+      selectedTablesData?.tables?.some(
+        (table) => table.status === "in_progress",
+      ) ?? false
+    );
+  }, [selectedTablesData]);
+
   const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
     connectorId: connection_id,
   });
@@ -30,7 +43,8 @@ const Actions = ({
   });
 
   const createButtonProps = (isPending: boolean, onAction: () => void) => {
-    const isDisabled = shouldShowDisabledState && !isPending;
+    const isDisabled =
+      (shouldShowDisabledState || hasAnyTableInProgress) && !isPending;
 
     return {
       onClick: () => {
@@ -51,12 +65,14 @@ const Actions = ({
   };
 
   const createTooltipProps = (isPending: boolean) => {
-    const isDisabled = shouldShowDisabledState && !isPending;
+    const isDisabled =
+      (shouldShowDisabledState || hasAnyTableInProgress) && !isPending;
     return {
       content: isDisabled
         ? "Another migration is in progress. Please wait until it is complete."
         : "",
-      disabled: !shouldShowDisabledState || isPending,
+      disabled:
+        (!shouldShowDisabledState && !hasAnyTableInProgress) || isPending,
     };
   };
 
@@ -64,7 +80,7 @@ const Actions = ({
     <Flex direction="column" gap={2} mb={2} minW="xl">
       <Flex w="100%">
         <Text fontWeight="semibold" flexGrow={1} w="100%">
-          Target Details
+          Destination Details
         </Text>
       </Flex>
       <Flex
@@ -75,11 +91,11 @@ const Actions = ({
       >
         <Flex gap={4}>
           <Flex gap={2}>
-            <Text>Target database:</Text>
+            <Text>Destination database:</Text>
             <Text fontWeight="semibold">{target_database}</Text>
           </Flex>
           <Flex gap={2}>
-            <Text>Target Schema:</Text>
+            <Text>Destination Schema:</Text>
             <Text fontWeight="semibold">{target_schema}</Text>
           </Flex>
         </Flex>

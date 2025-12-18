@@ -8,7 +8,10 @@ import React, {
 
 import { Box, Button, Field, Flex, Text, Textarea } from "@chakra-ui/react";
 
+import { MdContentCopy } from "react-icons/md";
+
 import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
 import type { KeyPair } from "@/types/form";
 
 import { checkKeysForUser, copyToClipboard, generateKeyPair } from "./helpers";
@@ -146,7 +149,8 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
 
             setGeneratedKeys(keys);
 
-            setCanGenerate(false);
+            // Allow generation in create mode even when existing keys are found
+            setCanGenerate(mode === "create");
             setIsNewlyGenerated(false);
             onKeysGenerated?.(keys);
           } else {
@@ -202,8 +206,8 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       hasGeneratedKeysRef.current = true;
       setIsNewlyGenerated(false); // Mark as existing keys, not newly generated
       startTransition(() => {
-        // In edit mode, always allow regeneration
-        setCanGenerate(mode === "edit");
+        // Allow generation in both create and edit modes
+        setCanGenerate(true);
         setGeneratedKeys(existingKeys);
         onKeysGenerated?.(existingKeys);
       });
@@ -298,10 +302,27 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
             )}
 
           {generatedKeys && (
-            <Flex gap={4} direction={{ base: "column", md: "row" }} mt={4}>
+            <Flex gap={4} direction="column" mt={4}>
               <Box flex={1}>
                 <Field.Root>
-                  <Field.Label>Private Key (PEM format)</Field.Label>
+                  <Flex
+                    justifyContent="space-between"
+                    alignItems="center"
+                    mb={2}
+                  >
+                    <Field.Label>Private Key (PEM format)</Field.Label>
+                    <Tooltip content="Copy private key">
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() =>
+                          copyToClipboard(generatedKeys.privateKey, "Private")
+                        }
+                      >
+                        <MdContentCopy size={14} />
+                      </Button>
+                    </Tooltip>
+                  </Flex>
                   <Textarea
                     value={generatedKeys.privateKey}
                     readOnly
@@ -310,22 +331,29 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
                     fontSize="xs"
                     resize="none"
                   />
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    mt={2}
-                    onClick={() =>
-                      copyToClipboard(generatedKeys.privateKey, "Private")
-                    }
-                  >
-                    Copy Private Key
-                  </Button>
                 </Field.Root>
               </Box>
 
               <Box flex={1}>
                 <Field.Root>
-                  <Field.Label>Public Key (PEM format)</Field.Label>
+                  <Flex
+                    justifyContent="space-between"
+                    alignItems="center"
+                    mb={2}
+                  >
+                    <Field.Label>Public Key (PEM format)</Field.Label>
+                    <Tooltip content="Copy public key">
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() =>
+                          copyToClipboard(generatedKeys.publicKey, "Public")
+                        }
+                      >
+                        <MdContentCopy size={14} />
+                      </Button>
+                    </Tooltip>
+                  </Flex>
                   <Textarea
                     value={generatedKeys.publicKey}
                     readOnly
@@ -334,16 +362,6 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
                     fontSize="xs"
                     resize="none"
                   />
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    mt={2}
-                    onClick={() =>
-                      copyToClipboard(generatedKeys.publicKey, "Public")
-                    }
-                  >
-                    Copy Public Key
-                  </Button>
                 </Field.Root>
               </Box>
             </Flex>

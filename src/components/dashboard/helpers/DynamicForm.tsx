@@ -38,6 +38,10 @@ interface DynamicFormProps {
   mode?: "create" | "edit";
   destinationName?: string;
   sourceName?: string;
+  hideSubmitButton?: boolean;
+  leftButtons?: React.ReactNode;
+  rightButtons?: React.ReactNode;
+  onValuesChange?: (_values: Record<string, string>) => void;
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -49,6 +53,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   mode,
   destinationName,
   sourceName,
+  hideSubmitButton = false,
+  leftButtons,
+  rightButtons,
+  onValuesChange,
 }) => {
   const initialValues = config.fields.reduce(
     (acc, field) => ({
@@ -67,7 +75,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   useEffect(() => {
     valuesRef.current = values;
-  }, [values]);
+    onValuesChange?.(values);
+  }, [values, onValuesChange]);
   // 👇 when defaultValues changes (edit mode), update state
   useEffect(() => {
     if (defaultValues && defaultValuesRef.current !== defaultValues) {
@@ -115,14 +124,21 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     onSubmit(values);
   };
 
-  // Sort fields to show passphrase before authentication_type
-  const sortedFields = useMemo(() => {
-    const fields = [...config.fields];
-    const passphraseIndex = fields.findIndex((f) => f.name === "passphrase");
-    const authTypeIndex = fields.findIndex(
-      (f) =>
-        f.name === "authentication_type" || f.name === "authenticationType",
-    );
+  // Filter out passphrase from sorted fields - it will be rendered separately below KeyPairGenerator
+  // Note: sortedFields is kept for potential future use but currently not used
+  const _sortedFields = useMemo(() => {
+    return config.fields.filter((f) => f.name !== "passphrase");
+  }, [config.fields]);
+
+  // Get passphrase field separately
+  const passphraseField = useMemo(() => {
+    return config.fields.find((f) => f.name === "passphrase");
+  }, [config.fields]);
+
+  // Extract existing keys from defaultValues for edit mode
+  // Handle both snake_case (public_key) and camelCase (publicKey) naming
+  const existingKeys = useMemo(() => {
+    if (mode !== "edit" || !defaultValues) return null;
 
     // If both fields exist and passphrase comes after authentication_type, reorder
     if (
@@ -152,8 +168,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     mode,
     defaultValues,
     values.public_key,
-    values.publicKey,
     values.private_key,
+    values.publicKey,
     values.privateKey,
     values.passphrase,
   ]);
@@ -176,9 +192,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return null;
     }
     // If the value of authentication_type field is "keypair",
-    // hide password field
+    // hide password field and passphrase (passphrase will be rendered separately)
     if (
       field.name === "password" &&
+      values["authentication_type"] === "key_pair"
+    ) {
+      return null;
+    }
+    // Hide passphrase in normal rendering when key_pair is selected (it's rendered separately)
+    if (
+      field.name === "passphrase" &&
       values["authentication_type"] === "key_pair"
     ) {
       return null;
@@ -331,54 +354,97 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             {input}
             {(field.name === "authentication_type" ||
               field.name === "authenticationType") && (
-              <KeyPairGenerator
-                formValues={values}
-                mode={mode}
-                destinationName={destinationName}
-                sourceName={sourceName}
-                hasPassphraseField={config.fields.some(
-                  (f) => f.name === "passphrase",
-                )}
-                existingKeys={existingKeys}
-                onKeysGenerated={(keys: KeyPair) =>
-                  setValues((prev) => ({
-                    ...prev,
-                    public_key: keys.publicKey,
-                    private_key: keys.privateKey,
-                    ...(keys.passphrase && { passphrase: keys.passphrase }),
-                  }))
-                }
-                onClearKeys={() =>
-                  setValues((prev) => ({
-                    ...prev,
-                    public_key: "",
-                    private_key: "",
-                  }))
-                }
-                onModeChange={setKeyMode}
-              />
+              <>
+                {passphraseField &&
+                  values.authentication_type === "key_pair" && (
+                    <Field.Root
+                      key={passphraseField.name}
+                      required={passphraseField.required}
+                      invalid={!!errors[passphraseField.name]}
+                    >
+                      <Field.Label htmlFor={passphraseField.name}>
+                        {passphraseField.label}
+                      </Field.Label>
+                      {passphraseField.type === "PasswordInput" ? (
+                        <PasswordInput
+                          id={passphraseField.name}
+                          name={passphraseField.name}
+                          value={values[passphraseField.name] || ""}
+                          onChange={handleChange}
+                          placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
+                        />
+                      ) : (
+                        <Input
+                          id={passphraseField.name}
+                          name={passphraseField.name}
+                          type="text"
+                          value={values[passphraseField.name] || ""}
+                          onChange={handleChange}
+                          placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
+                        />
+                      )}
+                      {errors[passphraseField.name] && (
+                        <Field.ErrorText>
+                          {errors[passphraseField.name]}
+                        </Field.ErrorText>
+                      )}
+                    </Field.Root>
+                  )}
+                <KeyPairGenerator
+                  formValues={values}
+                  mode={mode}
+                  destinationName={destinationName}
+                  sourceName={sourceName}
+                  hasPassphraseField={config.fields.some(
+                    (f) => f.name === "passphrase",
+                  )}
+                  existingKeys={existingKeys}
+                  onKeysGenerated={(keys: KeyPair) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      public_key: keys.publicKey,
+                      private_key: keys.privateKey,
+                      ...(keys.passphrase && { passphrase: keys.passphrase }),
+                    }))
+                  }
+                  onClearKeys={() =>
+                    setValues((prev) => ({
+                      ...prev,
+                      public_key: "",
+                      private_key: "",
+                    }))
+                  }
+                  onModeChange={setKeyMode}
+                />
+              </>
             )}
           </Box>
         );
       })}
       <Flex justifyContent="space-between">
-        {handleBackButtonClick && (
-          <Button variant="outline" onClick={handleBackButtonClick}>
-            <IoMdArrowBack />
-            Back
-          </Button>
-        )}
-        <Button
-          colorPalette="brand"
-          onClick={handleSubmit}
-          alignSelf="flex-end"
-          loading={loading}
-          disabled={loading}
-          marginLeft="auto"
-        >
-          <MdOutlineSave />
-          {mode === "create" ? "Create" : "Save"}
-        </Button>
+        <Flex gap={4}>
+          {handleBackButtonClick && (
+            <Button variant="outline" onClick={handleBackButtonClick}>
+              <IoMdArrowBack />
+              Back
+            </Button>
+          )}
+          {leftButtons}
+        </Flex>
+        <Flex gap={4}>
+          {rightButtons}
+          {!hideSubmitButton && (
+            <Button
+              colorPalette="brand"
+              onClick={handleSubmit}
+              loading={loading}
+              disabled={loading}
+            >
+              <MdOutlineSave />
+              {mode === "create" ? "Create" : "Save"}
+            </Button>
+          )}
+        </Flex>
       </Flex>
     </VStack>
   );

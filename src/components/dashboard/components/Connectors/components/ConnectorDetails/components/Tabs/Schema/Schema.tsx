@@ -1,425 +1,300 @@
-import { useEffect, useMemo, useState } from "react";
-
 import {
-  ActionBar,
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  For,
-  Grid,
-  Input,
-  InputGroup,
-  Portal,
-  Skeleton,
-  Text,
-} from "@chakra-ui/react";
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { GoPlus } from "react-icons/go";
-import { GrRefresh } from "react-icons/gr";
-import { IoMdPlay } from "react-icons/io";
-import { IoCaretDownSharp } from "react-icons/io5";
-import { MdSearch } from "react-icons/md";
-import { TbDelta } from "react-icons/tb";
+import { Box, Flex, Image, Skeleton, Text } from "@chakra-ui/react";
+
+import { MdExpandLess, MdExpandMore } from "react-icons/md";
+import { SlRefresh } from "react-icons/sl";
 
 import { useOutletContext } from "react-router";
 
+import CheckIcon from "@/assets/icons/check-icon.svg";
+import ErrorIcon from "@/assets/icons/error-icon.svg";
+import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
+import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
-import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
-import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import { type Connector, type ConnectorTable } from "@/types/connectors";
 
 import Actions from "./Actions";
-import SelectedTableList from "./SelectedTable";
 
-const Schema = () => {
-  const context = useOutletContext<Connector>();
-  const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
-  const [isCheckingSchemaStatus, setIsCheckingSchemaStatus] = useState(false);
+interface TableRowProps {
+  item: ConnectorTable;
+  connectionId: number;
+  isTableInProgress: (_tableName: string) => boolean;
+  hasAnyTableInProgress: boolean;
+  shouldShowDisabledState: boolean;
+  setShouldShowDisabledState: (_value: boolean) => void;
+}
 
-  // Fetch data
-  const { data: AllTableList, isLoading: isAllTableListLoading } =
-    useFetchConnectorTableById(context.connection_id);
+const TableRow = ({
+  item,
+  connectionId,
+  isTableInProgress,
+  hasAnyTableInProgress,
+  shouldShowDisabledState,
+  setShouldShowDisabledState,
+}: TableRowProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { table, primary_keys = [] } = item;
 
-  // Check schema status when update schema is triggered.
-  // We use this only for toasts, not for showing an extra spinner in this tab.
-  const { status: schemaStatus } = useUpdateSchemaStatus(
-    context.connection_id,
-    isCheckingSchemaStatus,
-  );
+  const { data: tableFieldsData, isLoading: isLoadingFields } =
+    useFetchTableFields(connectionId, table, isExpanded);
 
-  // Stop checking when backend reports no job in progress
-  useEffect(() => {
-    if (schemaStatus && !schemaStatus.is_in_progress) {
-      setIsCheckingSchemaStatus(false);
-      toaster.success({
-        title: "Schema update completed",
+  const { mutate: reloadTable, isPending: isReloading } = useReloadSingleTable({
+    connectionId,
+  });
+
+  const isInProgress = isTableInProgress(table);
+
+  const handleReload = () => {
+    if ((shouldShowDisabledState || hasAnyTableInProgress) && !isReloading) {
+      toaster.warning({
+        title: "Operation in progress",
         description:
-          schemaStatus.message || "All tables have been fetched successfully.",
+          "Another migration is in progress. Please wait until it is complete.",
       });
+      return;
     }
-  }, [schemaStatus]);
-  const { mutate: updateTables, isPending: isAssigningTables } =
-    useUpdateSelectedTables({
-      connectorId: context.connection_id,
-    });
 
-  // Temp state to trigger re-calculation
-  const [recalculatedCheckedTables, setRecalculatedCheckedTables] =
-    useState<boolean>(false);
-
-  // UI States
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [reloadingTable, setReloadingTable] = useState<string | null>(null);
-
-  const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
-    useReloadSingleTable({ connectionId: context.connection_id });
-
-  const checkedTables = useMemo<ConnectorTable[]>(() => {
-    if (!AllTableList) return [];
-    return AllTableList.filter((t) => t.selected);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [AllTableList, recalculatedCheckedTables]);
-
-  // Save a copy of initial checked tables
-  const copyOfInitialCheckedTables: ConnectorTable[] = useMemo(() => {
-    if (!AllTableList) return [];
-    return AllTableList.filter((t) => t.selected);
-  }, [AllTableList]);
-
-  // Local writable state
-  const [userCheckedTables, setUserCheckedTables] = useState<ConnectorTable[]>(
-    () => checkedTables,
-  );
-
-  useEffect(() => {
-    setUserCheckedTables(checkedTables);
-  }, [checkedTables]);
-
-  const hasCheckedTablesChanged = useMemo(() => {
-    return (
-      userCheckedTables.length !== copyOfInitialCheckedTables.length ||
-      userCheckedTables.some(
-        (table) =>
-          !copyOfInitialCheckedTables.find((t) => t.table === table.table),
-      )
-    );
-  }, [userCheckedTables, copyOfInitialCheckedTables]);
-
-  // Toggle expand
-  const toggleExpand = (table: string) =>
-    setExpanded((prev) => ({
-      ...prev,
-      [table]: !prev[table],
-    }));
-
-  // Save action
-  const handleAssignTables = () => {
-    const tablesToAdd = userCheckedTables.map((t) => t.table);
-    updateTables(
-      { selected_tables: tablesToAdd },
+    setShouldShowDisabledState(true);
+    reloadTable(
       {
-        onSuccess: (response) => {
-          const message =
-            response?.data?.message || "Tables updated successfully";
-          toaster.success({
-            title: message,
-            description: response?.data?.description,
-          });
-          setRecalculatedCheckedTables((prev) => !prev);
+        connection_id: connectionId,
+        table_name: table,
+      },
+      {
+        onSettled: () => {
+          setShouldShowDisabledState(false);
         },
       },
     );
   };
 
-  // Show spinner while loading tables (header spinner covers schema status)
-  if (isAllTableListLoading) {
+  return (
+    <Box
+      borderWidth={1}
+      borderColor="gray.300"
+      borderRadius="md"
+      p={3}
+      mb={2}
+      bg="white"
+    >
+      <Flex
+        justifyContent="space-between"
+        alignItems="center"
+        cursor="pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <Flex alignItems="center" gap={2} flex={1}>
+          {isExpanded ? <MdExpandLess /> : <MdExpandMore />}
+          <Text fontSize="sm" fontWeight="medium">
+            {table}
+          </Text>
+        </Flex>
+        <Flex gap={3} alignItems="center">
+          <Flex justifyContent="center" minW="40px">
+            {isInProgress && <Image src={SandtimeIcon} />}
+            {!isInProgress && item.selected && <Image src={CheckIcon} />}
+            {!isInProgress && !item.selected && item.is_delta && (
+              <Image src={ErrorIcon} />
+            )}
+          </Flex>
+          <Tooltip
+            content={
+              (shouldShowDisabledState || hasAnyTableInProgress) && !isReloading
+                ? "Another migration is in progress. Please wait until it is complete."
+                : ""
+            }
+            disabled={
+              !(shouldShowDisabledState || hasAnyTableInProgress) || isReloading
+            }
+          >
+            <Box
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReload();
+              }}
+              _hover={{
+                color:
+                  (shouldShowDisabledState || hasAnyTableInProgress) &&
+                  !isReloading
+                    ? "gray.400"
+                    : "brand.500",
+                cursor:
+                  (shouldShowDisabledState || hasAnyTableInProgress) &&
+                  !isReloading
+                    ? "not-allowed"
+                    : "pointer",
+              }}
+              p={1}
+              borderRadius="sm"
+              style={{
+                animation: isReloading ? "spin 1s linear infinite" : undefined,
+                cursor:
+                  (shouldShowDisabledState || hasAnyTableInProgress) &&
+                  !isReloading
+                    ? "not-allowed"
+                    : "pointer",
+              }}
+            >
+              <SlRefresh />
+            </Box>
+          </Tooltip>
+        </Flex>
+      </Flex>
+
+      {isExpanded && (
+        <Box mt={3} pl={6} onClick={(e) => e.stopPropagation()}>
+          {isLoadingFields ? (
+            <Skeleton height={4} mb={2} />
+          ) : (
+            <>
+              {(tableFieldsData?.primary_keys || primary_keys).length > 0 && (
+                <Flex direction="column" gap={1} mb={2}>
+                  <Text fontSize="sm" color="gray.700" fontWeight="semibold">
+                    Primary keys
+                  </Text>
+                  <Flex gap={2} wrap="wrap">
+                    {(tableFieldsData?.primary_keys || primary_keys).map(
+                      (pk: string) => (
+                        <Flex
+                          key={pk}
+                          alignItems="center"
+                          gap={1}
+                          px={2}
+                          py={1}
+                          borderRadius="md"
+                          bg="yellow.50"
+                          border="1px solid"
+                          borderColor="yellow.200"
+                        >
+                          <Text fontSize="sm" color="yellow.700">
+                            🔑
+                          </Text>
+                          <Text fontSize="sm" color="gray.800">
+                            {pk}
+                          </Text>
+                        </Flex>
+                      ),
+                    )}
+                  </Flex>
+                </Flex>
+              )}
+
+              {tableFieldsData?.table_fields &&
+                Object.entries(tableFieldsData.table_fields).map(
+                  ([field, fieldInfo]) => {
+                    const dataType =
+                      typeof fieldInfo === "string"
+                        ? fieldInfo
+                        : (fieldInfo as { data_type?: string }).data_type ||
+                          "unknown";
+
+                    return (
+                      <Flex key={field} alignItems="center" gap={2} mb={1}>
+                        <Text fontSize="sm" fontWeight="medium">
+                          {field}
+                        </Text>
+                        <Text fontSize="sm" color="gray.500">
+                          :
+                        </Text>
+                        <Text fontSize="sm" color="gray.600" fontStyle="italic">
+                          {dataType}
+                        </Text>
+                      </Flex>
+                    );
+                  },
+                )}
+            </>
+          )}
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+const Schema = () => {
+  const context = useOutletContext<Connector>();
+  const { connection_id } = context;
+
+  const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
+
+  const { data: tablesData, isLoading: isLoadingTables } =
+    useFetchConnectorTableById(connection_id);
+  const { data: selectedTablesData } = useFetchSelectedTables(connection_id);
+
+  const isTableInProgress = useCallback(
+    (tableName: string) => {
+      return (
+        selectedTablesData?.tables?.some(
+          (table) =>
+            table.table === tableName && table.status === "in_progress",
+        ) ?? false
+      );
+    },
+    [selectedTablesData],
+  );
+
+  const hasAnyTableInProgress = useMemo(() => {
+    return (
+      selectedTablesData?.tables?.some(
+        (table) => table.status === "in_progress",
+      ) ?? false
+    );
+  }, [selectedTablesData]);
+
+  useEffect(() => {
+    if (!hasAnyTableInProgress) {
+      startTransition(() => {
+        setShouldShowDisabledState(false);
+      });
+    }
+  }, [hasAnyTableInProgress]);
+
+  if (isLoadingTables) {
     return <LoadingSpinner />;
   }
+
+  const tables = tablesData || [];
 
   return (
     <Flex flexDirection="column" gap={4} pb={8} w="100%">
       <Actions
         shouldShowDisabledState={shouldShowDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
-        onUpdateSchemaStart={() => setIsCheckingSchemaStatus(true)}
+        onUpdateSchemaStart={() => setShouldShowDisabledState(true)}
       />
-      <Flex mr="auto">
-        <InputGroup endElement={<MdSearch size={24} />}>
-          <Input
-            placeholder="Search table name"
-            size="md"
-            onChange={(e) => {
-              const query = e.target.value.toLowerCase();
-              setSearchQuery(query);
-            }}
-          />
-        </InputGroup>
+
+      <Flex direction="column" gap={2}>
+        <Text fontSize="md" fontWeight="semibold" mb={2}>
+          Tables
+        </Text>
+        {tables.length === 0 ? (
+          <Text>No tables available</Text>
+        ) : (
+          tables.map((item) => (
+            <TableRow
+              key={item.table}
+              item={item}
+              connectionId={connection_id}
+              isTableInProgress={isTableInProgress}
+              hasAnyTableInProgress={hasAnyTableInProgress}
+              shouldShowDisabledState={shouldShowDisabledState}
+              setShouldShowDisabledState={setShouldShowDisabledState}
+            />
+          ))
+        )}
       </Flex>
-      <Grid templateColumns="1fr 1fr" gap={4}>
-        <Flex
-          direction="column"
-          gap={2}
-          borderWidth={1}
-          borderColor="gray.300"
-          borderRadius="lg"
-          padding={4}
-          bgColor="white"
-        >
-          <Flex mb={4} justifyContent="space-between" alignItems="center">
-            <Text fontSize="sm" fontWeight="semibold">
-              Table Names
-            </Text>
-            <Flex gap={6} alignItems="center">
-              <Text fontSize="sm" fontWeight="semibold" minW="40px">
-                Delta
-              </Text>
-              <Text fontSize="sm" fontWeight="semibold" minW="40px">
-                Reload
-              </Text>
-              <Text fontSize="sm" fontWeight="semibold" minW="40px">
-                Select
-              </Text>
-            </Flex>
-          </Flex>
-
-          {(isAssigningTables || isAllTableListLoading) && (
-            <For each={[...Array(10).keys()]}>
-              {() => <Skeleton gap="4" height={8} />}
-            </For>
-          )}
-
-          {!AllTableList?.length && !isAllTableListLoading && (
-            <Flex direction="column" alignItems="center">
-              <Text>No Tables available</Text>
-            </Flex>
-          )}
-
-          {!isAssigningTables &&
-            AllTableList?.filter((item) =>
-              item.table.toLowerCase().includes(searchQuery),
-            ).map((item, index) => {
-              const { table, table_fields } = item;
-              const isEven = index % 2 === 0;
-              const rowBg = isEven ? "gray.100" : "white";
-              const isExpanded = !!expanded[table];
-
-              return (
-                <Flex
-                  key={table}
-                  justifyContent="space-between"
-                  backgroundColor={rowBg}
-                  alignItems="center"
-                  direction={isExpanded ? "column" : "row"}
-                  padding={2}
-                  borderRadius={4}
-                >
-                  <Flex
-                    alignItems="center"
-                    justifyContent="space-between"
-                    gap={2}
-                    width="100%"
-                  >
-                    <Flex alignItems="center" gap={2} flex="1">
-                      <Box
-                        onClick={() => toggleExpand(table)}
-                        style={{ cursor: "pointer" }}
-                        padding={1}
-                        _hover={{
-                          backgroundColor: "brand.200",
-                          borderRadius: 4,
-                        }}
-                      >
-                        {isExpanded ? <IoCaretDownSharp /> : <IoMdPlay />}
-                      </Box>
-                      <Text
-                        fontSize="sm"
-                        onClick={() => toggleExpand(table)}
-                        style={{ cursor: "pointer" }}
-                      >
-                        {table}
-                      </Text>
-                    </Flex>
-                    <Flex gap={6} alignItems="center">
-                      <Flex justifyContent="center" minW="40px">
-                        {item.is_delta && (
-                          <TbDelta
-                            color="#2563EB"
-                            size={18}
-                            title="Delta table"
-                          />
-                        )}
-                      </Flex>
-
-                      <Flex justifyContent="center" minW="40px">
-                        <Tooltip
-                          content={
-                            shouldShowDisabledState &&
-                            !(
-                              reloadingTable === table && isReloadingSingleTable
-                            )
-                              ? "Another migration is in progress. Please wait until it is complete."
-                              : ""
-                          }
-                          disabled={
-                            !shouldShowDisabledState ||
-                            (reloadingTable === table && isReloadingSingleTable)
-                          }
-                        >
-                          <Box
-                            _hover={{
-                              color:
-                                shouldShowDisabledState &&
-                                !(
-                                  reloadingTable === table &&
-                                  isReloadingSingleTable
-                                )
-                                  ? "gray.400"
-                                  : "brand.500",
-                              cursor:
-                                shouldShowDisabledState &&
-                                !(
-                                  reloadingTable === table &&
-                                  isReloadingSingleTable
-                                )
-                                  ? "not-allowed"
-                                  : "pointer",
-                            }}
-                            p={1}
-                            borderRadius="sm"
-                            onClick={() => {
-                              const isThisTableReloading =
-                                reloadingTable === table &&
-                                isReloadingSingleTable;
-                              if (
-                                shouldShowDisabledState &&
-                                !isThisTableReloading
-                              ) {
-                                toaster.warning({
-                                  title: "Operation in progress",
-                                  description:
-                                    "Another migration is in progress. Please wait until it is complete.",
-                                });
-                                return;
-                              }
-                              setShouldShowDisabledState(true);
-                              setReloadingTable(table);
-                              reloadSingleTable(
-                                {
-                                  connection_id: context.connection_id,
-                                  table_name: table,
-                                },
-                                {
-                                  onSettled: () => {
-                                    setReloadingTable(null);
-                                    setShouldShowDisabledState(false);
-                                  },
-                                },
-                              );
-                            }}
-                            style={{
-                              animation:
-                                reloadingTable === table &&
-                                isReloadingSingleTable
-                                  ? "spin 1s linear infinite"
-                                  : undefined,
-                              cursor:
-                                shouldShowDisabledState &&
-                                !(
-                                  reloadingTable === table &&
-                                  isReloadingSingleTable
-                                )
-                                  ? "not-allowed"
-                                  : "pointer",
-                            }}
-                          >
-                            <GrRefresh />
-                          </Box>
-                        </Tooltip>
-                      </Flex>
-
-                      <Flex justifyContent="center" minW="40px">
-                        <Checkbox.Root
-                          colorPalette="brand"
-                          variant="solid"
-                          onCheckedChange={({ checked }) => {
-                            setUserCheckedTables((prev) =>
-                              checked
-                                ? [...prev, item]
-                                : prev.filter((t) => t.table !== table),
-                            );
-                          }}
-                          checked={userCheckedTables.some(
-                            (t) => t.table === table,
-                          )}
-                        >
-                          <Checkbox.HiddenInput />
-                          <Checkbox.Control cursor="pointer" />
-                        </Checkbox.Root>
-                      </Flex>
-                    </Flex>
-                  </Flex>
-
-                  {isExpanded && (
-                    <Flex
-                      direction="column"
-                      gap={2}
-                      paddingBlock={4}
-                      width="100%"
-                    >
-                      {table_fields &&
-                        Object.entries(table_fields).map(
-                          ([field, fieldInfo]) => {
-                            const dataType =
-                              typeof fieldInfo === "string"
-                                ? fieldInfo
-                                : (fieldInfo as { data_type: string })
-                                    .data_type;
-
-                            return (
-                              <Flex key={field} alignItems="center" gap={2}>
-                                <Text fontSize="sm">
-                                  {field}: {dataType}
-                                </Text>
-                              </Flex>
-                            );
-                          },
-                        )}
-                    </Flex>
-                  )}
-                </Flex>
-              );
-            })}
-        </Flex>
-
-        <SelectedTableList
-          shouldShowDisabledState={shouldShowDisabledState}
-          setShouldShowDisabledState={setShouldShowDisabledState}
-        />
-      </Grid>
-
-      <ActionBar.Root open={hasCheckedTablesChanged}>
-        <Portal>
-          <ActionBar.Positioner>
-            <ActionBar.Content>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleAssignTables()}
-                loading={isAssigningTables}
-              >
-                <GoPlus />
-                Save
-              </Button>
-            </ActionBar.Content>
-          </ActionBar.Positioner>
-        </Portal>
-      </ActionBar.Root>
     </Flex>
   );
 };

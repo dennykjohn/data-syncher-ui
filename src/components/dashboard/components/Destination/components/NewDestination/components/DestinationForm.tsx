@@ -1,6 +1,9 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 
 import { Button, Flex } from "@chakra-ui/react";
+
+import { CiTrash } from "react-icons/ci";
+import { MdRefresh } from "react-icons/md";
 
 import { useLocation, useNavigate, useParams } from "react-router";
 
@@ -17,6 +20,7 @@ import { useUpdateDestination } from "@/queryOptions/destination/useUpdateDestin
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 import { type Destination } from "@/types/destination";
 
+import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
 import {
   BreadcrumbsForEditDestination,
   BreadcrumbsForNewDestination,
@@ -57,6 +61,10 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   }, [destinationId, destinationName, mode, navigate]);
 
   const [formState] = useReducer(newDestinationFormReducer, initialState);
+  const [currentFormValues, setCurrentFormValues] = useState<
+    Record<string, string>
+  >({});
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleFormSubmit = (values: Record<string, string>) => {
     const payload: Destination = {
@@ -64,23 +72,27 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       name: values["destination_name"],
       config_data: { ...values },
     };
-    // If mode is edit, update the existing destination
     if (mode === "edit") {
       updateDestination(payload, {
-        onSuccess: () => {
-          toaster.success({
-            title: "Destination updated successfully",
-            description: `Your ${formState.destinationName} destination has been updated.`,
-          });
+        onSuccess: (response) => {
+          const responseWithAuth = response as unknown as {
+            auth_url?: string;
+          };
+          if (responseWithAuth.auth_url) {
+            window.location.href = responseWithAuth.auth_url;
+          } else {
+            toaster.success({
+              title: "Destination updated successfully",
+              description: `Your ${formState.destinationName} destination has been updated.`,
+            });
+          }
         },
       });
       return;
     }
-    // If mode is add, create a new destination
     createDestination(payload, {
-      onSuccess: (response) => {
+      onSuccess: (response: { auth_url?: string; message?: string }) => {
         if (response.auth_url) {
-          // Redirect to OAuth URL for destinations like Salesforce
           window.location.href = response.auth_url;
         } else {
           toaster.success({
@@ -139,24 +151,71 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
             ? destinationData.config_data
             : undefined
         }
+        onValuesChange={setCurrentFormValues}
+        leftButtons={
+          mode === "edit" && params.destinationId ? (
+            <Button
+              variant="outline"
+              colorPalette="red"
+              color="red.500"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <CiTrash />
+              Delete
+            </Button>
+          ) : undefined
+        }
+        rightButtons={
+          mode === "edit" && params.destinationId ? (
+            <Button
+              variant="ghost"
+              colorPalette="red"
+              color="red.500"
+              loading={isTriggeringBackend}
+              onClick={() =>
+                triggerBackend(
+                  {
+                    // send current edited form values to backend for testing
+                    config_data:
+                      Object.keys(currentFormValues).length > 0
+                        ? currentFormValues
+                        : (destinationData?.config_data ?? {}),
+                  },
+                  {
+                    onSuccess: (response: {
+                      auth_url?: string;
+                      message?: string;
+                    }) => {
+                      if (response.auth_url) {
+                        window.location.href = response.auth_url;
+                      } else if (response.message) {
+                        toaster.success({
+                          title: response.message,
+                        });
+                      }
+                    },
+                  },
+                )
+              }
+            >
+              <MdRefresh />
+              Test destination
+            </Button>
+          ) : undefined
+        }
       />
 
-      {mode === "edit" && params.destinationId && (
-        <Flex justify="flex-start" align="center" gap={4} mt="-4.5rem">
-          <Button
-            type="button"
-            colorPalette="brand"
-            loading={isTriggeringBackend}
-            onClick={() =>
-              triggerBackend(undefined, {
-                onSuccess: (message: string) =>
-                  toaster.success({ title: message }),
-              })
-            }
-          >
-            Test Connection
-          </Button>
-        </Flex>
+      {showDeleteDialog && params.destinationId && (
+        <DeleteConfirmationDialog
+          open={showDeleteDialog}
+          setShowDeleteDialog={setShowDeleteDialog}
+          destinationId={Number(params.destinationId)}
+          onSuccess={() => {
+            navigate(
+              `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
+            );
+          }}
+        />
       )}
     </Flex>
   );
