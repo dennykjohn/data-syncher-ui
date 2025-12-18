@@ -1,3 +1,5 @@
+import { type FieldConfig } from "./form";
+
 export type ConnectorStatus = "A" | "P" | "B";
 
 export interface CreateConnectionPayload {
@@ -7,12 +9,13 @@ export interface CreateConnectionPayload {
 }
 
 export interface ConnectorConfigResponse {
-  source_schema: Record<string, string>;
+  source_schema: FieldConfig[]; // Array of fields with read_only property from backend in edit mode
   initial_data: Record<string, string>;
   destination_config: {
     name: string;
     dst: string;
   };
+  fields?: FieldConfig[]; // Alias for source_schema (for backward compatibility)
 }
 
 export interface ConnectorTableItem {
@@ -46,6 +49,11 @@ export interface Connector {
   target_database: string;
   target_schema: string;
   next_sync_time: string;
+  is_reverse_etl: boolean;
+}
+
+export interface ConnectorTabsProps {
+  connector?: Connector;
 }
 
 export interface ConnectorSyncStats {
@@ -127,3 +135,17 @@ export interface ConnectorActivityDetailResponse {
     message: string;
   }[];
 }
+
+export type SchemaStatusResponse = {
+  is_in_progress: boolean;
+  current_job: string | null;
+  message?: string;
+  tables_fetched?: number;
+  total_tables?: number;
+};
+
+export type ReverseSchemaResponse = {
+  source_tables?: ConnectorTable[];
+  destination_tables?: ConnectorTable[];
+  tables?: ConnectorTable[];
+};

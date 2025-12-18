@@ -49,6 +49,26 @@ AxiosInstance.interceptors.request.use(
 AxiosInstance.interceptors.response.use(
   (response: AxiosResponse): AxiosResponse => response,
   async (error: AxiosError): Promise<ErrorResponseType> => {
+    const errorData = error.response?.data as ErrorResponseType | undefined;
+
+    if (errorData?.trial_expired && errorData?.redirect_to) {
+      const redirectTo = errorData.redirect_to;
+
+      toaster.error({
+        title: "Trial Period Expired",
+        description:
+          errorData.message ||
+          errorData.error ||
+          "Your trial period has expired. Please select a subscription plan.",
+      });
+
+      setTimeout(() => {
+        window.location.replace(redirectTo);
+      }, 1000);
+
+      return Promise.reject(errorData);
+    }
+
     if (error.response?.status === 401) {
       Cookies.remove("access_token");
       window.location.href = `${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`;

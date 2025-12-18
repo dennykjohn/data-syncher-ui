@@ -1,6 +1,7 @@
 import { format, isValid } from "date-fns";
 
 import { dateTimeFormat } from "@/constants/common";
+import { type SchemaStatusResponse } from "@/types/connectors";
 
 type StatusParams = {
   isUpdateSchemaInProgress: number;
@@ -10,6 +11,7 @@ type StatusParams = {
   time_frequency: string;
   // allow passing alternate format but default to project constant
   dateTimeFmt?: string;
+  schemaStatus?: SchemaStatusResponse | null;
 };
 
 export const formatTimeFrequency = (freq: string) => {
@@ -34,7 +36,18 @@ export const getStatusMessage = ({
   next_sync_time,
   time_frequency,
   dateTimeFmt,
+  schemaStatus,
 }: StatusParams) => {
+  // Show progress if schema update is in progress with table counts
+  if (schemaStatus?.is_in_progress) {
+    if (
+      schemaStatus.tables_fetched !== undefined &&
+      schemaStatus.total_tables !== undefined
+    ) {
+      return `Fetching tables (${schemaStatus.tables_fetched}/${schemaStatus.total_tables})...`;
+    }
+    return "Updating schema...";
+  }
   if (isUpdateSchemaInProgress > 0) {
     return "Updating schema...";
   }

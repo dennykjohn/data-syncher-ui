@@ -93,6 +93,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     >,
   ) => {
     const { name, value } = e.target;
+
+    const field = config.fields.find((f) => f.name === name);
+    if (field && mode === "edit" && field.read_only === true) {
+      console.warn(`Attempted to change read-only field: ${name}`);
+      return;
+    }
+
     setValues((prev) => {
       const newValues = { ...prev, [name]: value };
       valuesRef.current = newValues;
@@ -133,22 +140,27 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const existingKeys = useMemo(() => {
     if (mode !== "edit" || !defaultValues) return null;
 
-    const publicKey =
-      defaultValues.public_key ||
-      defaultValues.publicKey ||
-      values.public_key ||
-      values.publicKey;
-    const privateKey =
-      defaultValues.private_key ||
-      defaultValues.privateKey ||
-      values.private_key ||
-      values.privateKey;
+    // If both fields exist and passphrase comes after authentication_type, reorder
+    if (
+      passphraseIndex !== -1 &&
+      authTypeIndex !== -1 &&
+      passphraseIndex > authTypeIndex
+    ) {
+      const passphraseField = fields.splice(passphraseIndex, 1)[0];
+      fields.splice(authTypeIndex, 0, passphraseField);
+    }
 
-    if (publicKey && privateKey) {
+    return fields;
+  }, [config.fields]);
+
+  // Extract existing keys from defaultValues for edit mode
+  // Handle both snake_case (public_key) and camelCase (publicKey) naming
+  const existingKeys = useMemo(() => {
+    if (mode === "edit" && values.public_key && values.private_key) {
       return {
-        publicKey,
-        privateKey,
-        passphrase: defaultValues.passphrase || values.passphrase || "",
+        publicKey: values.public_key,
+        privateKey: values.private_key,
+        passphrase: values.passphrase || "",
       };
     }
     return null;
@@ -164,6 +176,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const renderInput = (field: FieldConfig) => {
     const inputType = "text";
+
+    // Check if field should be read-only in edit mode
+    // read_only: true means non-editable in edit mode
+    const isReadOnly = mode === "edit" && field.read_only === true;
+
     // If the value of authentication_type field is "password",
     // hide private_key, public_key & passphrase fields
     if (
@@ -225,6 +242,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               fontFamily="monospace"
               fontSize="xs"
               resize="none"
+              readOnly={isReadOnly}
+              bg={isReadOnly ? "gray.200" : undefined}
+              color={isReadOnly ? "gray.400" : undefined}
+              borderColor={isReadOnly ? "gray.300" : undefined}
             />
             {errors[field.name] && (
               <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
@@ -232,7 +253,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           </Field.Root>
         );
       }
-      return null; // Hide in generate mode
+      return null;
     }
 
     if (field.type === "ChoiceField") {
@@ -243,7 +264,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           invalid={!!errors[field.name]}
         >
           <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
-          <NativeSelect.Root size="sm">
+          <NativeSelect.Root size="sm" disabled={isReadOnly}>
             <NativeSelect.Field
               id={field.name}
               name={field.name}
@@ -278,6 +299,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             value={values[field.name]}
             onChange={handleChange}
             placeholder={`Enter ${field.label.toLowerCase()}`}
+            readOnly={isReadOnly}
+            bg={isReadOnly ? "gray.200" : undefined}
+            color={isReadOnly ? "gray.400" : undefined}
+            borderColor={isReadOnly ? "gray.300" : undefined}
           />
           {errors[field.name] && (
             <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
@@ -300,7 +325,17 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           value={values[field.name]}
           onChange={handleChange}
           placeholder={`Enter ${field.label.toLowerCase()}`}
+          readOnly={isReadOnly}
+          bg={isReadOnly ? "gray.200" : undefined}
+          color={isReadOnly ? "gray.400" : undefined}
+          borderColor={isReadOnly ? "gray.300" : undefined}
         />
+        {field.name === "passphrase" && (
+          <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+            If a passphrase is provided, the key pair will be generated in
+            encrypted form.
+          </Field.HelperText>
+        )}
         {errors[field.name] && (
           <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
         )}
@@ -310,7 +345,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   return (
     <VStack gap={4} align="stretch" as="form" maxW="lg">
-      {config.fields.map((field) => {
+      {sortedFields.map((field) => {
         const input = renderInput(field);
         if (!input) return null;
 

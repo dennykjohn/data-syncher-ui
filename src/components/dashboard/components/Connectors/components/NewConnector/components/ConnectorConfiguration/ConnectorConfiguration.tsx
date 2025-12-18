@@ -101,14 +101,14 @@ const ConnectorConfiguration = ({
   };
 
   if (
-    isLoading ||
-    !formSchema ||
+    (mode === "create" && (isLoading || !formSchema)) ||
     (mode === "edit" &&
-      (isFetchConnectorByIdPending || isFetchConnectorConfigPending))
+      (isFetchConnectorByIdPending ||
+        isFetchConnectorConfigPending ||
+        (!connectorConfig?.source_schema && (isLoading || !formSchema))))
   ) {
     return <LoadingSpinner />;
   }
-
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
       <PageHeader
@@ -130,7 +130,15 @@ const ConnectorConfiguration = ({
       />
       <DynamicForm
         mode={mode}
-        config={{ fields: formSchema }}
+        config={{
+          fields:
+            mode === "edit" &&
+            connectorConfig?.source_schema &&
+            Array.isArray(connectorConfig.source_schema) &&
+            connectorConfig.source_schema.length > 0
+              ? connectorConfig.source_schema
+              : formSchema || [],
+        }}
         sourceName={state?.source || connectorData?.source_name || ""}
         onSubmit={(values) => {
           handleFormSubmit(values);

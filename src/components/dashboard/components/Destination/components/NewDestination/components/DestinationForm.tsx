@@ -136,7 +136,12 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
         destinationName={
           mode === "add" ? destinationName : destinationData?.dst
         }
-        config={{ fields: formSchema }}
+        config={{
+          fields:
+            mode === "edit" && destinationData?.fields
+              ? destinationData.fields
+              : formSchema || [],
+        }}
         onSubmit={(values) => {
           handleFormSubmit(values);
         }}
