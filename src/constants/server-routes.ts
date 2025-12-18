@@ -61,8 +61,11 @@ const ServerRoutes = {
     fetchConnectorUsage: (id: number) => `connection/${id}/usage/`,
     fetchConnectorSettings: (id: number) => `connection/setup/${id}/`,
     fetchConnectorTable: (id: number) => `connection/${id}/tables/`,
+    fetchTableFields: (id: number, tableName: string) =>
+      `connection/${id}/tables/${tableName}/fields/`,
     fetchConnectorSelectedTable: (id: number) =>
       `connection/${id}/selected-tables/`,
+    getTableStatus: (id: number) => `get_table_status/?connection_id=${id}`,
     fetchConnectionActivity: ({
       id,
       filterDays,

@@ -8,13 +8,29 @@ type FetchSelectedTablesResponse = {
   tables: ConnectorSelectedTable[];
 };
 
+type GetTableStatusResponse = {
+  table_statuses: Array<{
+    table_name: string;
+    status: string;
+  }>;
+};
+
 const fetchSelectedTables = async (
   id: number,
 ): Promise<FetchSelectedTablesResponse> => {
-  const { data } = await AxiosInstance.get(
-    ServerRoutes.connector.fetchConnectorSelectedTable(id),
+  const { data } = await AxiosInstance.get<GetTableStatusResponse>(
+    ServerRoutes.connector.getTableStatus(id),
   );
-  return data as FetchSelectedTablesResponse;
+
+  const tables: ConnectorSelectedTable[] =
+    data.table_statuses?.map((item, index) => ({
+      tbl_id: index,
+      table: item.table_name,
+      sequence: index,
+      status: item.status as "in_progress" | "completed" | "failed",
+    })) || [];
+
+  return { tables };
 };
 
 export default function useFetchSelectedTables(id: number) {
