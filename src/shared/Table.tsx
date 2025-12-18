@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Box,
@@ -28,7 +28,6 @@ type TableProps<T> = {
   columns: Column<T>[];
   pageSize?: number;
   totalNumberOfPages: number;
-  totalElements?: number;
   updateCurrentPage: (_currentPage: number) => void;
   isLoading?: boolean;
   onRowClick?: (_row: T, _index: number) => void;
@@ -40,8 +39,6 @@ const Table = <T,>({
   data,
   columns,
   totalNumberOfPages,
-  totalElements,
-  pageSize = 10,
   updateCurrentPage,
   isLoading = false,
   onRowClick,
@@ -51,25 +48,10 @@ const Table = <T,>({
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = totalNumberOfPages;
-  const paginationCount = totalElements ?? totalPages * pageSize;
 
   useEffect(() => {
     updateCurrentPage(currentPage);
   }, [updateCurrentPage, currentPage]);
-
-  useEffect(() => {
-    if (totalNumberOfPages > 0) {
-      if (currentPage > totalNumberOfPages) {
-        startTransition(() => {
-          setCurrentPage(1);
-        });
-      }
-    } else if (totalNumberOfPages === 0 && currentPage > 1) {
-      startTransition(() => {
-        setCurrentPage(1);
-      });
-    }
-  }, [totalNumberOfPages, currentPage]);
 
   const handleRowClick = (item: T, index: number) => {
     if (onRowClick) {
@@ -158,8 +140,8 @@ const Table = <T,>({
       {!hidePagination && (
         <Flex justifyContent={"flex-end"} mt={4}>
           <Pagination.Root
-            count={paginationCount}
-            pageSize={pageSize}
+            count={totalPages}
+            pageSize={5}
             page={currentPage}
             onPageChange={(e) => setCurrentPage(e.page)}
           >
