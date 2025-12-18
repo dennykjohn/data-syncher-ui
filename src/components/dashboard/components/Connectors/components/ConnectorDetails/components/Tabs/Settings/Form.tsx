@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useReducer, useState } from "react";
+import { useReducer, useState } from "react";
 
 import {
   Button,
@@ -54,21 +54,6 @@ const Form = (props: Connector) => {
   const [syncStartLocal, setSyncStartLocal] = useState(
     toLocalDateTimeInput(formState?.sync_start_date),
   );
-
-  // Update syncStartLocal when sync_start_date prop changes
-  useEffect(() => {
-    if (sync_start_date) {
-      const localValue = toLocalDateTimeInput(sync_start_date);
-      startTransition(() => {
-        setSyncStartLocal(localValue);
-      });
-      dispatch({
-        type: "SET_FIELD",
-        field: "sync_start_date",
-        value: sync_start_date,
-      });
-    }
-  }, [sync_start_date]);
 
   const { mutate: updateSettings, isPending: isUpdateOperationPending } =
     useUpdateConnectionSettings({
