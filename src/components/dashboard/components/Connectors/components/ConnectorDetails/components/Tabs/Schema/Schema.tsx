@@ -72,21 +72,16 @@ const TableRow = ({
   const isEven = index % 2 === 0;
   const rowBg = isEven ? "gray.100" : "white";
 
-  // Fetch table fields when expanded
   const { data: tableFieldsData, isLoading: isLoadingFields } =
     useFetchTableFields(connectionId, table, isExpanded);
 
   const isChecked = userCheckedTables.some((t) => t.table === table);
 
-  // Check if table is in progress from get_table_status API
   const tableStatus = tableStatusData?.tables?.find(
     (t) => t.table === table,
   )?.status;
   const isTableInProgressFromAPI = tableStatus === "in_progress";
 
-  // Reload button spinner should be active if:
-  // 1. Mutation is pending (API call in progress), OR
-  // 2. Table status from get_table_status API is "in_progress"
   const isThisTableReloading =
     (reloadingTable === table && isReloadingSingleTable) ||
     (reloadingTable === table && isTableInProgressFromAPI);
@@ -263,7 +258,6 @@ const Schema = () => {
   const [isCheckingSchemaStatus, setIsCheckingSchemaStatus] = useState(false);
   const hasCheckedInitialStatus = useRef(false);
 
-  // Fetch data
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
 
@@ -307,11 +301,9 @@ const Schema = () => {
       connectorId: context.connection_id,
     });
 
-  // Temp state to trigger re-calculation
   const [recalculatedCheckedTables, setRecalculatedCheckedTables] =
     useState<boolean>(false);
 
-  // UI States
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [reloadingTable, setReloadingTable] = useState<string | null>(null);
@@ -319,18 +311,15 @@ const Schema = () => {
   const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
     useReloadSingleTable({ connectionId: context.connection_id });
 
-  // Track refresh delta table mutation status (to disable reload buttons)
   const isRefreshDeltaTableInProgress = useIsMutating({
     mutationKey: ["refreshDeltaTable", context.connection_id],
   });
 
-  // Fetch table status to track reload progress - always enabled to check for any in-progress tables
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
-    true, // Always enabled to check for in-progress tables (including refresh delta table)
+    true,
   );
 
-  // Check if any table has "in_progress" status OR refresh delta table is in progress OR reload single table is in progress
   const hasAnyTableInProgress = useMemo(() => {
     const hasTableInProgress =
       tableStatusData?.tables?.some(
@@ -341,7 +330,6 @@ const Schema = () => {
     return hasTableInProgress || isDeltaTableRefreshing || isReloading;
   }, [tableStatusData, isRefreshDeltaTableInProgress, isReloadingSingleTable]);
 
-  // Update shouldShowDisabledState when any table is in progress
   useEffect(() => {
     if (hasAnyTableInProgress || isReloadingSingleTable) {
       setShouldShowDisabledState(true);
@@ -350,7 +338,6 @@ const Schema = () => {
     }
   }, [hasAnyTableInProgress, isReloadingSingleTable, reloadingTable]);
 
-  // Clear reloadingTable when table status becomes "completed" or "failed"
   useEffect(() => {
     if (!reloadingTable || !tableStatusData?.tables) return;
 
@@ -362,7 +349,6 @@ const Schema = () => {
       tableStatus &&
       (tableStatus.status === "completed" || tableStatus.status === "failed")
     ) {
-      // Clear after a short delay to allow success message to be visible
       setTimeout(() => {
         setReloadingTable(null);
         setShouldShowDisabledState(false);
@@ -410,14 +396,12 @@ const Schema = () => {
     );
   }, [userCheckedTables, copyOfInitialCheckedTables]);
 
-  // Toggle expand
   const toggleExpand = (table: string) =>
     setExpanded((prev) => ({
       ...prev,
       [table]: !prev[table],
     }));
 
-  // Save action
   const handleAssignTables = () => {
     const tablesToAdd = userCheckedTables.map((t) => t.table);
     const savedTables = [...userCheckedTables];
@@ -443,7 +427,6 @@ const Schema = () => {
     );
   };
 
-  // Show spinner while loading tables (header spinner covers schema status)
   if (isAllTableListLoading) {
     return <LoadingSpinner />;
   }
@@ -550,7 +533,6 @@ const Schema = () => {
                       connection_id: context.connection_id,
                       table_name: table,
                     });
-                    // State will be cleared when get_table_status shows table is completed
                   }}
                 />
               );
