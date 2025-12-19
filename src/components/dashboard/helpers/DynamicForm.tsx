@@ -125,8 +125,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   // Filter out passphrase from sorted fields - it will be rendered separately below KeyPairGenerator
-  // Note: sortedFields is kept for potential future use but currently not used
-  const _sortedFields = useMemo(() => {
+  const sortedFields = useMemo(() => {
     return config.fields.filter((f) => f.name !== "passphrase");
   }, [config.fields]);
 
@@ -140,29 +139,25 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const existingKeys = useMemo(() => {
     if (mode !== "edit" || !defaultValues) return null;
 
-    // If both fields exist and passphrase comes after authentication_type, reorder
-    if (
-      passphraseIndex !== -1 &&
-      authTypeIndex !== -1 &&
-      passphraseIndex > authTypeIndex
-    ) {
-      const passphraseField = fields.splice(passphraseIndex, 1)[0];
-      fields.splice(authTypeIndex, 0, passphraseField);
-    }
+    const publicKey =
+      defaultValues.public_key ||
+      defaultValues.publicKey ||
+      values.public_key ||
+      values.publicKey;
+    const privateKey =
+      defaultValues.private_key ||
+      defaultValues.privateKey ||
+      values.private_key ||
+      values.privateKey;
 
-    return fields;
-  }, [config.fields]);
-
-  // Extract existing keys from defaultValues for edit mode
-  // Handle both snake_case (public_key) and camelCase (publicKey) naming
-  const existingKeys = useMemo(() => {
-    if (mode === "edit" && values.public_key && values.private_key) {
+    if (publicKey && privateKey) {
       return {
-        publicKey: values.public_key,
-        privateKey: values.private_key,
-        passphrase: values.passphrase || "",
+        publicKey,
+        privateKey,
+        passphrase: defaultValues.passphrase || values.passphrase || "",
       };
     }
+
     return null;
   }, [
     mode,
