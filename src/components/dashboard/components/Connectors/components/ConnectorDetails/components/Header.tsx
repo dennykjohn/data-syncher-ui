@@ -121,7 +121,7 @@ const Header = ({ connector }: { connector: Connector }) => {
       });
     }
 
-    prevIsUpdateSchemaInProgress.current = isInProgress;
+    prevIsUpdateSchemaInProgress.current = isInProgress ? 1 : 0;
   }, [isUpdateSchemaInProgress]);
 
   useEffect(() => {
