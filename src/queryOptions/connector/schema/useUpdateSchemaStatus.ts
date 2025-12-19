@@ -16,14 +16,10 @@ const checkSchemaStatus = async (
 const useUpdateSchemaStatus = (connectionId: number, enabled: boolean) => {
   const [status, setStatus] = useState<SchemaStatusResponse | null>(null);
   const prevConnectionIdRef = useRef(connectionId);
-  const prevEnabledRef = useRef(enabled);
 
   useEffect(() => {
-    // Track previous values for cleanup
     const prevConnectionId = prevConnectionIdRef.current;
-    const prevEnabled = prevEnabledRef.current;
     prevConnectionIdRef.current = connectionId;
-    prevEnabledRef.current = enabled;
 
     if (!enabled || !connectionId) {
       return;
@@ -133,8 +129,9 @@ const useUpdateSchemaStatus = (connectionId: number, enabled: boolean) => {
       isMounted = false;
       stopPolling();
       stopCheckInterval();
-      // Reset status in cleanup when effect is disabled or connectionId changes
-      if (!prevEnabled || connectionId !== prevConnectionId) {
+      // Only reset status when connectionId changes (not when just navigating away)
+      // This allows status to persist across navigation
+      if (connectionId !== prevConnectionId) {
         setStatus(null);
       }
     };

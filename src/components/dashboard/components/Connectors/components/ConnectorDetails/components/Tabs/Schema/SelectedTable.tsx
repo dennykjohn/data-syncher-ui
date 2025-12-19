@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { Box, Flex, For, Image, Skeleton, Text } from "@chakra-ui/react";
 
@@ -13,12 +20,15 @@ import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
+import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useRefreshDeltaTable from "@/queryOptions/connector/schema/useRefreshDeltaTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import {
   type Connector,
   type ConnectorSelectedTable,
 } from "@/types/connectors";
+
+import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 
 const SelectedTable = ({
   shouldShowDisabledState,
@@ -28,13 +38,9 @@ const SelectedTable = ({
   setShouldShowDisabledState: (_value: boolean) => void;
 }) => {
   const context = useOutletContext<Connector>();
+  const queryClient = useQueryClient();
 
   const [refreshingTable, setRefreshingTable] = useState<string | null>(null);
-
-  const { data, isLoading: isLoadingSelected } = useFetchSelectedTables(
-    context.connection_id,
-  );
-  const selectedTables = data?.tables;
 
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
@@ -44,12 +50,97 @@ const SelectedTable = ({
   const { mutate: refreshDeltaTable, isPending: isRefreshingDeltaTable } =
     useRefreshDeltaTable({ connectionId: context.connection_id });
 
-  // Check if any table has in-progress migration
+  // Track refresh delta table mutation status
+  const isRefreshDeltaTableInProgress = useIsMutating({
+    mutationKey: ["refreshDeltaTable", context.connection_id],
+  });
+
+  // Track when to poll table status for refresh delta table button
+  const [shouldPollDeltaTableStatus, setShouldPollDeltaTableStatus] =
+    useState(false);
+  const prevIsRefreshDeltaInProgress = useRef(0);
+
+  // Start polling table status when refresh delta table mutation begins
+  useEffect(() => {
+    const wasInProgress = prevIsRefreshDeltaInProgress.current > 0;
+    const isInProgress =
+      isRefreshDeltaTableInProgress > 0 || isRefreshingDeltaTable;
+
+    // If refresh mutation just started, enable polling
+    if (!wasInProgress && isInProgress) {
+      startTransition(() => {
+        setShouldPollDeltaTableStatus(true);
+      });
+    }
+
+    prevIsRefreshDeltaInProgress.current = isInProgress ? 1 : 0;
+  }, [isRefreshDeltaTableInProgress, isRefreshingDeltaTable]);
+
+  // Fetch selected tables list (for display) - always enabled
+  const { data: selectedTablesData, isLoading: isLoadingSelectedTables } =
+    useFetchSelectedTables(context.connection_id);
+
+  // Poll get_table_status API - ONLY enabled when shouldPollDeltaTableStatus is true (after button click)
+  // This API is called AFTER the refresh delta table button is clicked and polls until completion
+  const { data: tableStatusData } = useFetchTableStatus(
+    context.connection_id,
+    shouldPollDeltaTableStatus, // Only enabled when polling is needed (after button click)
+    shouldPollDeltaTableStatus, // Force polling when refresh delta table is active
+  );
+
+  const selectedTables = useMemo(() => {
+    const baseTables = selectedTablesData?.tables || [];
+    if (!tableStatusData?.tables) return baseTables;
+
+    return baseTables.map((table) => {
+      const statusFromAPI = tableStatusData.tables.find(
+        (t) => t.table === table.table,
+      );
+      return statusFromAPI ? { ...table, status: statusFromAPI.status } : table;
+    });
+  }, [selectedTablesData, tableStatusData]);
+
   const hasExistingMigrations = useMemo(() => {
-    return (
-      selectedTables?.some((table) => table.status === "in_progress") ?? false
+    if (!tableStatusData?.tables) return false;
+    return tableStatusData.tables.some(
+      (table) => table.status === "in_progress",
     );
-  }, [selectedTables]);
+  }, [tableStatusData]);
+
+  const getTableStatus = useCallback(
+    (tableName: string) => {
+      return tableStatusData?.tables?.find((t) => t.table === tableName)
+        ?.status;
+    },
+    [tableStatusData],
+  );
+
+  useEffect(() => {
+    if (
+      !refreshingTable ||
+      !shouldPollDeltaTableStatus ||
+      !tableStatusData?.tables
+    ) {
+      return;
+    }
+
+    const tableStatus = tableStatusData.tables.find(
+      (t) => t.table === refreshingTable,
+    )?.status;
+
+    if (tableStatus && tableStatus !== "in_progress") {
+      startTransition(() => {
+        setShouldPollDeltaTableStatus(false);
+        setRefreshingTable(null);
+        setShouldShowDisabledState(false);
+      });
+    }
+  }, [
+    refreshingTable,
+    tableStatusData,
+    shouldPollDeltaTableStatus,
+    setShouldShowDisabledState,
+  ]);
 
   // Set shouldShowDisabledState when there are existing migrations
   useEffect(() => {
@@ -130,7 +221,7 @@ const SelectedTable = ({
           <Box minW="40px" />
         </Flex>
       </Flex>
-      {(isAssigningTables || isLoadingSelected) && (
+      {(isAssigningTables || isLoadingSelectedTables) && (
         <For each={[...Array(10).keys()]}>
           {(_, index) => <Skeleton gap="4" height={8} key={index} />}
         </For>
@@ -174,7 +265,8 @@ const SelectedTable = ({
                       (shouldShowDisabledState || hasExistingMigrations) &&
                       !(
                         refreshingTable === table.table &&
-                        isRefreshingDeltaTable
+                        (isRefreshingDeltaTable ||
+                          getTableStatus(table.table) === "in_progress")
                       )
                         ? "Another migration is in progress. Please wait until it is complete."
                         : ""
@@ -182,7 +274,8 @@ const SelectedTable = ({
                     disabled={
                       !(shouldShowDisabledState || hasExistingMigrations) ||
                       (refreshingTable === table.table &&
-                        isRefreshingDeltaTable)
+                        (isRefreshingDeltaTable ||
+                          getTableStatus(table.table) === "in_progress"))
                     }
                   >
                     <Box
@@ -191,7 +284,8 @@ const SelectedTable = ({
                           (shouldShowDisabledState || hasExistingMigrations) &&
                           !(
                             refreshingTable === table.table &&
-                            isRefreshingDeltaTable
+                            (isRefreshingDeltaTable ||
+                              getTableStatus(table.table) === "in_progress")
                           )
                             ? "gray.400"
                             : "brand.500",
@@ -199,7 +293,8 @@ const SelectedTable = ({
                           (shouldShowDisabledState || hasExistingMigrations) &&
                           !(
                             refreshingTable === table.table &&
-                            isRefreshingDeltaTable
+                            (isRefreshingDeltaTable ||
+                              getTableStatus(table.table) === "in_progress")
                           )
                             ? "not-allowed"
                             : "pointer",
@@ -208,8 +303,10 @@ const SelectedTable = ({
                       borderRadius="sm"
                       onClick={() => {
                         const isThisTableRefreshing =
-                          refreshingTable === table.table &&
-                          isRefreshingDeltaTable;
+                          (refreshingTable === table.table &&
+                            isRefreshingDeltaTable) ||
+                          (refreshingTable === table.table &&
+                            getTableStatus(table.table) === "in_progress");
                         if (
                           (shouldShowDisabledState || hasExistingMigrations) &&
                           !isThisTableRefreshing
@@ -223,30 +320,31 @@ const SelectedTable = ({
                         }
                         setShouldShowDisabledState(true);
                         setRefreshingTable(table.table);
-                        refreshDeltaTable(
-                          {
-                            connection_id: context.connection_id,
-                            table_name: table.table,
-                          },
-                          {
-                            onSettled: () => {
-                              setRefreshingTable(null);
-                              setShouldShowDisabledState(false);
-                            },
-                          },
-                        );
+                        setShouldPollDeltaTableStatus(true); // Start polling immediately
+                        // Trigger immediate refetch of get_table_status API
+                        queryClient.invalidateQueries({
+                          queryKey: ["TableStatus", context.connection_id],
+                        });
+                        refreshDeltaTable({
+                          connection_id: context.connection_id,
+                          table_name: table.table,
+                        });
+                        // State will be cleared when get_table_status shows table is completed
                       }}
                       style={{
                         animation:
-                          refreshingTable === table.table &&
-                          isRefreshingDeltaTable
+                          (refreshingTable === table.table &&
+                            isRefreshingDeltaTable) ||
+                          (refreshingTable === table.table &&
+                            getTableStatus(table.table) === "in_progress")
                             ? "spin 1s linear infinite"
                             : undefined,
                         cursor:
                           (shouldShowDisabledState || hasExistingMigrations) &&
                           !(
                             refreshingTable === table.table &&
-                            isRefreshingDeltaTable
+                            (isRefreshingDeltaTable ||
+                              getTableStatus(table.table) === "in_progress")
                           )
                             ? "not-allowed"
                             : "pointer",

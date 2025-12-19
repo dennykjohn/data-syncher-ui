@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, Flex, Text } from "@chakra-ui/react";
 
@@ -8,10 +8,12 @@ import { useOutletContext } from "react-router";
 
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
-import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
+import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useRefreshSchema from "@/queryOptions/connector/schema/useRefreshSchema";
 import useUpdateSchema from "@/queryOptions/connector/schema/useUpdateSchema";
 import { type Connector } from "@/types/connectors";
+
+import { useIsMutating } from "@tanstack/react-query";
 
 const Actions = ({
   shouldShowDisabledState,
@@ -25,16 +27,6 @@ const Actions = ({
   const context = useOutletContext<Connector>();
   const { connection_id, target_database, target_schema } = context;
 
-  const { data: selectedTablesData } = useFetchSelectedTables(connection_id);
-
-  const hasAnyTableInProgress = useMemo(() => {
-    return (
-      selectedTablesData?.tables?.some(
-        (table) => table.status === "in_progress",
-      ) ?? false
-    );
-  }, [selectedTablesData]);
-
   const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
     connectorId: connection_id,
   });
@@ -42,9 +34,89 @@ const Actions = ({
     connectorId: connection_id,
   });
 
-  const createButtonProps = (isPending: boolean, onAction: () => void) => {
+  // Track refresh schema mutation status
+  const isRefreshSchemaInProgress = useIsMutating({
+    mutationKey: ["refreshSchema", connection_id],
+  });
+
+  // Track refresh delta table mutation status (to disable other buttons)
+  const isRefreshDeltaTableInProgress = useIsMutating({
+    mutationKey: ["refreshDeltaTable", connection_id],
+  });
+
+  // Track reload single table mutation status (to disable other buttons)
+  const isReloadSingleTableInProgress = useIsMutating({
+    mutationKey: ["reloadSingleTable", connection_id],
+  });
+
+  // Track when to poll table status for refresh schema button
+  const [shouldPollRefreshStatus, setShouldPollRefreshStatus] = useState(false);
+  const prevIsRefreshInProgress = useRef(0);
+
+  // Start polling table status when refresh schema mutation begins
+  useEffect(() => {
+    const wasInProgress = prevIsRefreshInProgress.current > 0;
+    const isInProgress = isRefreshSchemaInProgress > 0 || isRefreshing;
+
+    // If refresh mutation just started, enable polling
+    if (!wasInProgress && isInProgress) {
+      startTransition(() => {
+        setShouldPollRefreshStatus(true);
+      });
+    }
+
+    prevIsRefreshInProgress.current = isInProgress ? 1 : 0;
+  }, [isRefreshSchemaInProgress, isRefreshing]);
+
+  // Poll get_table_status API - always enabled to check for any in-progress tables
+  const { data: tableStatusData } = useFetchTableStatus(
+    connection_id,
+    true, // Always enabled to check table status (for both refresh schema and refresh delta table)
+  );
+
+  // Check if any table has "in_progress" status from get_table_status API
+  // OR if refresh delta table mutation is in progress OR reload single table is in progress
+  const hasAnyTableInProgress = useMemo(() => {
+    const hasTableInProgress =
+      tableStatusData?.tables?.some(
+        (table) => table.status === "in_progress",
+      ) ?? false;
+    const isDeltaTableRefreshing = isRefreshDeltaTableInProgress > 0;
+    const isReloading = isReloadSingleTableInProgress > 0;
+    return hasTableInProgress || isDeltaTableRefreshing || isReloading;
+  }, [
+    tableStatusData,
+    isRefreshDeltaTableInProgress,
+    isReloadSingleTableInProgress,
+  ]);
+
+  // Stop polling when no tables are in progress (keep polling until all tables complete)
+  useEffect(() => {
+    if (!hasAnyTableInProgress && shouldPollRefreshStatus && tableStatusData) {
+      // Only stop if we have data and no tables are in progress
+      startTransition(() => {
+        setShouldPollRefreshStatus(false);
+        setShouldShowDisabledState(false);
+      });
+    }
+  }, [
+    hasAnyTableInProgress,
+    shouldPollRefreshStatus,
+    tableStatusData,
+    setShouldShowDisabledState,
+  ]);
+
+  // Refresh button should show loading if mutation is pending OR tables are in progress
+  // Same logic as reload button: check both mutation state and table status from API
+  const isRefreshButtonLoading =
+    isRefreshing || (shouldPollRefreshStatus && hasAnyTableInProgress);
+
+  const createButtonProps = (
+    isButtonLoading: boolean,
+    onAction: () => void,
+  ) => {
     const isDisabled =
-      (shouldShowDisabledState || hasAnyTableInProgress) && !isPending;
+      (shouldShowDisabledState || hasAnyTableInProgress) && !isButtonLoading;
 
     return {
       onClick: () => {
@@ -59,20 +131,20 @@ const Actions = ({
         setShouldShowDisabledState(true);
         onAction();
       },
-      loading: isPending,
+      loading: isButtonLoading,
       disabled: isDisabled,
     };
   };
 
-  const createTooltipProps = (isPending: boolean) => {
+  const createTooltipProps = (isButtonLoading: boolean) => {
     const isDisabled =
-      (shouldShowDisabledState || hasAnyTableInProgress) && !isPending;
+      (shouldShowDisabledState || hasAnyTableInProgress) && !isButtonLoading;
     return {
       content: isDisabled
         ? "Another migration is in progress. Please wait until it is complete."
         : "",
       disabled:
-        (!shouldShowDisabledState && !hasAnyTableInProgress) || isPending,
+        (!shouldShowDisabledState && !hasAnyTableInProgress) || isButtonLoading,
     };
   };
 
@@ -100,16 +172,14 @@ const Actions = ({
           </Flex>
         </Flex>
         <Flex gap={4}>
-          <Tooltip {...createTooltipProps(isRefreshing)}>
+          <Tooltip {...createTooltipProps(isRefreshButtonLoading)}>
             <Button
               variant="outline"
               colorPalette="brand"
-              {...createButtonProps(isRefreshing, () => {
-                refreshSchema(undefined, {
-                  onSettled: () => {
-                    setShouldShowDisabledState(false);
-                  },
-                });
+              {...createButtonProps(isRefreshButtonLoading, () => {
+                setShouldPollRefreshStatus(true); // Start polling immediately
+                refreshSchema(undefined);
+                // State will be cleared when get_table_status shows all tables are completed
               })}
             >
               <MdRefresh />
