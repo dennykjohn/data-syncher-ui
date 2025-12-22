@@ -23,9 +23,6 @@ const useUpdateSelectedTables = ({ connectorId }: { connectorId: number }) => {
       updateSelectedTables(connectorId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["SelectedTables", connectorId],
-      });
-      queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectorId],
       });
     },

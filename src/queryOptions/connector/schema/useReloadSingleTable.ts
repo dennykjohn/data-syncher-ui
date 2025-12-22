@@ -19,12 +19,17 @@ const useReloadSingleTable = ({ connectionId }: { connectionId: number }) => {
     mutationFn: reloadSingleTable,
     onSuccess: (response, variables) => {
       toaster.success({ title: response.data.message });
-      // ensure schema lists refresh
+      // Invalidate and refetch queries to ensure UI updates
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", variables.connection_id],
       });
+      // Also invalidate table status to ensure it continues polling
       queryClient.invalidateQueries({
-        queryKey: ["SelectedTables", variables.connection_id],
+        queryKey: ["TableStatus", variables.connection_id],
+      });
+      // Explicitly refetch to update UI immediately
+      queryClient.refetchQueries({
+        queryKey: ["ConnectorTable", variables.connection_id],
       });
     },
   });

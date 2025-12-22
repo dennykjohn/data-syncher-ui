@@ -27,6 +27,7 @@ import { useOutletContext } from "react-router";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import { queryClient } from "@/lib/react-query-client";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
@@ -35,6 +36,7 @@ import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSche
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import { type Connector, type ConnectorTable } from "@/types/connectors";
 
+import { isPrimaryKey } from "../ReverseSchema/utils/validation";
 import Actions from "./Actions";
 import SelectedTableList from "./SelectedTable";
 import { useIsMutating } from "@tanstack/react-query";
@@ -50,6 +52,8 @@ interface TableRowProps {
   shouldShowDisabledState: boolean;
   reloadingTable: string | null;
   isReloadingSingleTable: boolean;
+  isRefreshDeltaTableInProgress: number;
+  isRefreshSchemaInProgress: number;
   tableStatusData?: { tables: Array<{ table: string; status: string }> };
   onReload: () => void;
 }
@@ -65,6 +69,8 @@ const TableRow = ({
   shouldShowDisabledState,
   reloadingTable,
   isReloadingSingleTable,
+  isRefreshDeltaTableInProgress,
+  isRefreshSchemaInProgress,
   tableStatusData,
   onReload,
 }: TableRowProps) => {
@@ -72,8 +78,11 @@ const TableRow = ({
   const isEven = index % 2 === 0;
   const rowBg = isEven ? "gray.100" : "white";
 
-  const { data: tableFieldsData, isLoading: isLoadingFields } =
-    useFetchTableFields(connectionId, table, isExpanded);
+  const { data: tableFieldsData } = useFetchTableFields(
+    connectionId,
+    table,
+    isExpanded,
+  );
 
   const isChecked = userCheckedTables.some((t) => t.table === table);
 
@@ -85,6 +94,23 @@ const TableRow = ({
   const isThisTableReloading =
     (reloadingTable === table && isReloadingSingleTable) ||
     (reloadingTable === table && isTableInProgressFromAPI);
+
+  const isRefreshDeltaInProgress = isRefreshDeltaTableInProgress > 0;
+  const isSchemaRefreshing = isRefreshSchemaInProgress > 0;
+
+  // Check if ANY table is in progress (not just this one)
+  const hasAnyOtherTableInProgress =
+    tableStatusData?.tables?.some(
+      (t) => t.status === "in_progress" && t.table !== table,
+    ) ?? false;
+
+  const isReloadButtonDisabled =
+    (shouldShowDisabledState ||
+      isRefreshDeltaInProgress ||
+      isSchemaRefreshing ||
+      hasAnyOtherTableInProgress ||
+      (isReloadingSingleTable && reloadingTable !== table)) &&
+    !isThisTableReloading;
 
   return (
     <Flex
@@ -132,22 +158,16 @@ const TableRow = ({
           <Flex justifyContent="center" minW="40px">
             <Tooltip
               content={
-                shouldShowDisabledState && !isThisTableReloading
+                isReloadButtonDisabled
                   ? "Another migration is in progress. Please wait until it is complete."
                   : ""
               }
-              disabled={!shouldShowDisabledState || isThisTableReloading}
+              disabled={!isReloadButtonDisabled}
             >
               <Box
                 _hover={{
-                  color:
-                    shouldShowDisabledState && !isThisTableReloading
-                      ? "gray.400"
-                      : "brand.500",
-                  cursor:
-                    shouldShowDisabledState && !isThisTableReloading
-                      ? "not-allowed"
-                      : "pointer",
+                  color: isReloadButtonDisabled ? "gray.400" : "brand.500",
+                  cursor: isReloadButtonDisabled ? "not-allowed" : "pointer",
                 }}
                 p={1}
                 borderRadius="sm"
@@ -156,10 +176,7 @@ const TableRow = ({
                   animation: isThisTableReloading
                     ? "spin 1s linear infinite"
                     : undefined,
-                  cursor:
-                    shouldShowDisabledState && !isThisTableReloading
-                      ? "not-allowed"
-                      : "pointer",
+                  cursor: isReloadButtonDisabled ? "not-allowed" : "pointer",
                 }}
               >
                 <GrRefresh />
@@ -184,68 +201,37 @@ const TableRow = ({
       </Flex>
 
       {isExpanded && (
-        <Flex direction="column" gap={2} paddingBlock={4} width="100%">
-          {isLoadingFields ? (
-            <Skeleton height={4} mb={2} />
-          ) : (
-            <>
-              {tableFieldsData?.primary_keys &&
-                tableFieldsData.primary_keys.length > 0 && (
-                  <Flex direction="column" gap={1} mb={2}>
-                    <Text fontSize="sm" color="gray.700" fontWeight="semibold">
-                      Primary keys
+        <Flex direction="column" gap={2} mt={2} pl={8}>
+          {tableFieldsData?.table_fields &&
+            Object.entries(tableFieldsData.table_fields).map(
+              ([field, fieldInfo]) => {
+                const dataType =
+                  typeof fieldInfo === "string"
+                    ? fieldInfo
+                    : (fieldInfo as { data_type?: string }).data_type ||
+                      "unknown";
+                const isPK = isPrimaryKey(field, fieldInfo);
+
+                return (
+                  <Flex key={field} alignItems="center" gap={2}>
+                    {isPK && (
+                      <Text fontSize="sm" color="yellow.600">
+                        🔑
+                      </Text>
+                    )}
+                    <Text fontSize="sm" fontWeight="medium">
+                      {field}
                     </Text>
-                    <Flex gap={2} wrap="wrap">
-                      {tableFieldsData.primary_keys.map((pk: string) => (
-                        <Flex
-                          key={pk}
-                          alignItems="center"
-                          gap={1}
-                          px={2}
-                          py={1}
-                          borderRadius="md"
-                          bg="yellow.50"
-                          border="1px solid"
-                          borderColor="yellow.200"
-                        >
-                          <Text fontSize="sm" color="yellow.700">
-                            🔑
-                          </Text>
-                          <Text fontSize="sm" color="gray.800">
-                            {pk}
-                          </Text>
-                        </Flex>
-                      ))}
-                    </Flex>
+                    <Text fontSize="sm" color="gray.500">
+                      :
+                    </Text>
+                    <Text fontSize="sm" color="gray.600" fontStyle="italic">
+                      {dataType}
+                    </Text>
                   </Flex>
-                )}
-
-              {tableFieldsData?.table_fields &&
-                Object.entries(tableFieldsData.table_fields).map(
-                  ([field, fieldInfo]) => {
-                    const dataType =
-                      typeof fieldInfo === "string"
-                        ? fieldInfo
-                        : (fieldInfo as { data_type?: string }).data_type ||
-                          "unknown";
-
-                    return (
-                      <Flex key={field} alignItems="center" gap={2}>
-                        <Text fontSize="sm" fontWeight="medium">
-                          {field}
-                        </Text>
-                        <Text fontSize="sm" color="gray.500">
-                          :
-                        </Text>
-                        <Text fontSize="sm" color="gray.600" fontStyle="italic">
-                          {dataType}
-                        </Text>
-                      </Flex>
-                    );
-                  },
-                )}
-            </>
-          )}
+                );
+              },
+            )}
         </Flex>
       )}
     </Flex>
@@ -261,9 +247,11 @@ const Schema = () => {
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
 
+  // Only enable status checking when we're actively checking schema status
+  // Don't check automatically on page load
   const { status: schemaStatus } = useUpdateSchemaStatus(
     context.connection_id,
-    true,
+    isCheckingSchemaStatus,
   );
 
   useEffect(() => {
@@ -279,7 +267,21 @@ const Schema = () => {
     if (schemaStatus?.is_in_progress && !isCheckingSchemaStatus) {
       setIsCheckingSchemaStatus(true);
     }
+    // Also check if update schema mutation is in progress
+    // This ensures we start checking even if status hasn't updated yet
   }, [schemaStatus, isCheckingSchemaStatus]);
+
+  // Start checking when update schema mutation begins (from Actions component)
+  // This is triggered via onUpdateSchemaStart callback
+  const prevIsCheckingRef = useRef(false);
+  useEffect(() => {
+    if (isCheckingSchemaStatus && !prevIsCheckingRef.current) {
+      // Just started checking, status hook is already enabled via isCheckingSchemaStatus
+      prevIsCheckingRef.current = true;
+    } else if (!isCheckingSchemaStatus) {
+      prevIsCheckingRef.current = false;
+    }
+  }, [isCheckingSchemaStatus]);
 
   useEffect(() => {
     if (
@@ -288,14 +290,13 @@ const Schema = () => {
       isCheckingSchemaStatus
     ) {
       setIsCheckingSchemaStatus(false);
-      toaster.success({
-        title: "Schema update completed",
-
-        description:
-          schemaStatus.message || "All tables have been fetched successfully.",
+      // Success message is shown in Actions component to avoid duplicates
+      // Explicitly refetch the table list when schema update completes
+      queryClient.refetchQueries({
+        queryKey: ["ConnectorTable", context.connection_id],
       });
     }
-  }, [schemaStatus, isCheckingSchemaStatus]);
+  }, [schemaStatus, isCheckingSchemaStatus, context.connection_id]);
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
       connectorId: context.connection_id,
@@ -315,9 +316,18 @@ const Schema = () => {
     mutationKey: ["refreshDeltaTable", context.connection_id],
   });
 
+  const isRefreshSchemaInProgress = useIsMutating({
+    mutationKey: ["refreshSchema", context.connection_id],
+  });
+
+  // Keep table status polling enabled while reload is in progress
+  const shouldPollTableStatus =
+    reloadingTable !== null || isReloadingSingleTable;
+
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
     true,
+    shouldPollTableStatus, // Force polling when reload is in progress
   );
 
   const hasAnyTableInProgress = useMemo(() => {
@@ -326,35 +336,73 @@ const Schema = () => {
         (table) => table.status === "in_progress",
       ) ?? false;
     const isDeltaTableRefreshing = isRefreshDeltaTableInProgress > 0;
+    const isSchemaRefreshing = isRefreshSchemaInProgress > 0;
     const isReloading = isReloadingSingleTable;
-    return hasTableInProgress || isDeltaTableRefreshing || isReloading;
-  }, [tableStatusData, isRefreshDeltaTableInProgress, isReloadingSingleTable]);
+    return (
+      hasTableInProgress ||
+      isDeltaTableRefreshing ||
+      isSchemaRefreshing ||
+      isReloading
+    );
+  }, [
+    tableStatusData,
+    isRefreshDeltaTableInProgress,
+    isRefreshSchemaInProgress,
+    isReloadingSingleTable,
+  ]);
 
   useEffect(() => {
     if (hasAnyTableInProgress || isReloadingSingleTable) {
       setShouldShowDisabledState(true);
-    } else if (!reloadingTable) {
+    } else if (!reloadingTable && !hasAnyTableInProgress) {
+      // Only disable buttons if no table is in progress and no reload is happening
       setShouldShowDisabledState(false);
     }
   }, [hasAnyTableInProgress, isReloadingSingleTable, reloadingTable]);
 
   useEffect(() => {
-    if (!reloadingTable || !tableStatusData?.tables) return;
+    if (!reloadingTable) return;
 
-    const tableStatus = tableStatusData.tables.find(
+    // Check if mutation has completed
+    const mutationCompleted = !isReloadingSingleTable;
+
+    // Check table status from API
+    const tableStatus = tableStatusData?.tables?.find(
       (t) => t.table === reloadingTable,
     );
-
-    if (
+    const statusCompleted =
       tableStatus &&
-      (tableStatus.status === "completed" || tableStatus.status === "failed")
-    ) {
-      setTimeout(() => {
-        setReloadingTable(null);
-        setShouldShowDisabledState(false);
-      }, 500);
+      (tableStatus.status === "completed" || tableStatus.status === "failed");
+
+    // Reload has completed when both mutation is done AND status shows completed/failed
+    if (mutationCompleted && statusCompleted) {
+      // Reload has completed - reset state and refetch data
+      setReloadingTable(null);
+      setShouldShowDisabledState(false);
+
+      // Refetch table list to get updated data immediately
+      queryClient.refetchQueries({
+        queryKey: ["ConnectorTable", context.connection_id],
+      });
+
+      // Refetch table status to ensure we have latest data
+      queryClient.refetchQueries({
+        queryKey: ["TableStatus", context.connection_id],
+      });
     }
-  }, [reloadingTable, tableStatusData]);
+    // If mutation completed but status not yet available, wait a bit and check again
+    else if (mutationCompleted && !tableStatusData) {
+      // Mutation completed but status not loaded yet - refetch status
+      queryClient.refetchQueries({
+        queryKey: ["TableStatus", context.connection_id],
+      });
+    }
+  }, [
+    reloadingTable,
+    tableStatusData,
+    isReloadingSingleTable,
+    context.connection_id,
+  ]);
 
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
@@ -515,11 +563,21 @@ const Schema = () => {
                   shouldShowDisabledState={shouldShowDisabledState}
                   reloadingTable={reloadingTable}
                   isReloadingSingleTable={isReloadingSingleTable}
+                  isRefreshDeltaTableInProgress={isRefreshDeltaTableInProgress}
+                  isRefreshSchemaInProgress={isRefreshSchemaInProgress}
                   tableStatusData={tableStatusData}
                   onReload={() => {
                     const isThisTableReloading =
                       reloadingTable === table && isReloadingSingleTable;
-                    if (shouldShowDisabledState && !isThisTableReloading) {
+                    const isRefreshDeltaInProgress =
+                      isRefreshDeltaTableInProgress > 0;
+                    const isSchemaRefreshing = isRefreshSchemaInProgress > 0;
+                    if (
+                      (shouldShowDisabledState ||
+                        isRefreshDeltaInProgress ||
+                        isSchemaRefreshing) &&
+                      !isThisTableReloading
+                    ) {
                       toaster.warning({
                         title: "Operation in progress",
                         description:
@@ -542,6 +600,7 @@ const Schema = () => {
         <SelectedTableList
           shouldShowDisabledState={shouldShowDisabledState}
           setShouldShowDisabledState={setShouldShowDisabledState}
+          selectedTablesFromMain={checkedTables}
         />
       </Grid>
 

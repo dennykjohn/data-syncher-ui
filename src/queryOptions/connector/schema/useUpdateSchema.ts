@@ -1,4 +1,3 @@
-import { toaster } from "@/components/ui/toaster";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 import { queryClient } from "@/lib/react-query-client";
@@ -12,13 +11,18 @@ const useUpdateSchema = ({ connectorId }: { connectorId: number }) => {
   return useMutation({
     mutationKey: ["updateSchema", connectorId],
     mutationFn: () => updateSchema(connectorId),
-    onSuccess: (response) => {
-      toaster.success({ title: response.data.message });
+    onSuccess: () => {
+      // Don't show success message here - it will be shown when schema update actually completes
+      // The API call succeeded, but the schema update is still processing in the background
+      // The completion message will be shown in the Actions component when is_in_progress becomes false
+      // Invalidate and refetch queries immediately
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectorId],
+        refetchType: "all",
       });
-      queryClient.invalidateQueries({
-        queryKey: ["SelectedTables", connectorId],
+      // Explicitly refetch to ensure data is updated immediately
+      queryClient.refetchQueries({
+        queryKey: ["ConnectorTable", connectorId],
       });
     },
   });
