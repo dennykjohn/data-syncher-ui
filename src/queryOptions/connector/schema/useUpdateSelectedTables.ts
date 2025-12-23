@@ -1,3 +1,4 @@
+import { toaster } from "@/components/ui/toaster";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 
@@ -21,7 +22,8 @@ const useUpdateSelectedTables = ({ connectorId }: { connectorId: number }) => {
   return useMutation({
     mutationFn: (payload: UpdateSelectedTablesPayload) =>
       updateSelectedTables(connectorId, payload),
-    onSuccess: () => {
+    onSuccess: (_response) => {
+      toaster.success({ title: _response.data.message });
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectorId],
       });

@@ -315,7 +315,9 @@ const Schema = () => {
 
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
-    true,
+    // Only enable the query when a table reload / migration is actually running.
+    shouldPollTableStatus,
+    // While enabled, keep polling while work is in progress.
     shouldPollTableStatus,
   );
 

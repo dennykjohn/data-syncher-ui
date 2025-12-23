@@ -91,6 +91,12 @@ const useUpdateSchemaStatus = (connectionId: number, enabled: boolean) => {
       }
     };
 
+    // Only hit the API when explicitly enabled.
+    // This prevents automatic status checks when the Schema page first loads.
+    if (!enabled) {
+      return;
+    }
+
     checkStatus();
 
     let checkInterval: NodeJS.Timeout | null = null;
