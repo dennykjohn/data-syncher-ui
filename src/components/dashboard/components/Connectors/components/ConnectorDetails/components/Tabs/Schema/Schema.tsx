@@ -98,7 +98,6 @@ const TableRow = ({
   const isRefreshDeltaInProgress = isRefreshDeltaTableInProgress > 0;
   const isSchemaRefreshing = isRefreshSchemaInProgress > 0;
 
-  // Check if ANY table is in progress (not just this one)
   const hasAnyOtherTableInProgress =
     tableStatusData?.tables?.some(
       (t) => t.status === "in_progress" && t.table !== table,
@@ -247,8 +246,6 @@ const Schema = () => {
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
 
-  // Only enable status checking when we're actively checking schema status
-  // Don't check automatically on page load
   const { status: schemaStatus } = useUpdateSchemaStatus(
     context.connection_id,
     isCheckingSchemaStatus,
@@ -258,6 +255,7 @@ const Schema = () => {
     if (!hasCheckedInitialStatus.current && schemaStatus) {
       hasCheckedInitialStatus.current = true;
       if (schemaStatus.is_in_progress) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsCheckingSchemaStatus(true);
       }
     }
@@ -265,18 +263,14 @@ const Schema = () => {
 
   useEffect(() => {
     if (schemaStatus?.is_in_progress && !isCheckingSchemaStatus) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsCheckingSchemaStatus(true);
     }
-    // Also check if update schema mutation is in progress
-    // This ensures we start checking even if status hasn't updated yet
   }, [schemaStatus, isCheckingSchemaStatus]);
 
-  // Start checking when update schema mutation begins (from Actions component)
-  // This is triggered via onUpdateSchemaStart callback
   const prevIsCheckingRef = useRef(false);
   useEffect(() => {
     if (isCheckingSchemaStatus && !prevIsCheckingRef.current) {
-      // Just started checking, status hook is already enabled via isCheckingSchemaStatus
       prevIsCheckingRef.current = true;
     } else if (!isCheckingSchemaStatus) {
       prevIsCheckingRef.current = false;
@@ -289,9 +283,8 @@ const Schema = () => {
       !schemaStatus.is_in_progress &&
       isCheckingSchemaStatus
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsCheckingSchemaStatus(false);
-      // Success message is shown in Actions component to avoid duplicates
-      // Explicitly refetch the table list when schema update completes
       queryClient.refetchQueries({
         queryKey: ["ConnectorTable", context.connection_id],
       });
@@ -301,9 +294,6 @@ const Schema = () => {
     useUpdateSelectedTables({
       connectorId: context.connection_id,
     });
-
-  const [recalculatedCheckedTables, setRecalculatedCheckedTables] =
-    useState<boolean>(false);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -320,14 +310,13 @@ const Schema = () => {
     mutationKey: ["refreshSchema", context.connection_id],
   });
 
-  // Keep table status polling enabled while reload is in progress
   const shouldPollTableStatus =
     reloadingTable !== null || isReloadingSingleTable;
 
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
     true,
-    shouldPollTableStatus, // Force polling when reload is in progress
+    shouldPollTableStatus,
   );
 
   const hasAnyTableInProgress = useMemo(() => {
@@ -353,9 +342,9 @@ const Schema = () => {
 
   useEffect(() => {
     if (hasAnyTableInProgress || isReloadingSingleTable) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShouldShowDisabledState(true);
     } else if (!reloadingTable && !hasAnyTableInProgress) {
-      // Only disable buttons if no table is in progress and no reload is happening
       setShouldShowDisabledState(false);
     }
   }, [hasAnyTableInProgress, isReloadingSingleTable, reloadingTable]);
@@ -363,10 +352,7 @@ const Schema = () => {
   useEffect(() => {
     if (!reloadingTable) return;
 
-    // Check if mutation has completed
     const mutationCompleted = !isReloadingSingleTable;
-
-    // Check table status from API
     const tableStatus = tableStatusData?.tables?.find(
       (t) => t.table === reloadingTable,
     );
@@ -374,25 +360,17 @@ const Schema = () => {
       tableStatus &&
       (tableStatus.status === "completed" || tableStatus.status === "failed");
 
-    // Reload has completed when both mutation is done AND status shows completed/failed
     if (mutationCompleted && statusCompleted) {
-      // Reload has completed - reset state and refetch data
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setReloadingTable(null);
       setShouldShowDisabledState(false);
-
-      // Refetch table list to get updated data immediately
       queryClient.refetchQueries({
         queryKey: ["ConnectorTable", context.connection_id],
       });
-
-      // Refetch table status to ensure we have latest data
       queryClient.refetchQueries({
         queryKey: ["TableStatus", context.connection_id],
       });
-    }
-    // If mutation completed but status not yet available, wait a bit and check again
-    else if (mutationCompleted && !tableStatusData) {
-      // Mutation completed but status not loaded yet - refetch status
+    } else if (mutationCompleted && !tableStatusData) {
       queryClient.refetchQueries({
         queryKey: ["TableStatus", context.connection_id],
       });
@@ -407,8 +385,7 @@ const Schema = () => {
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
     return AllTableList.filter((t) => t.selected);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [AllTableList, recalculatedCheckedTables]);
+  }, [AllTableList]);
 
   const [copyOfInitialCheckedTables, setCopyOfInitialCheckedTables] = useState<
     ConnectorTable[]
@@ -417,12 +394,12 @@ const Schema = () => {
 
   useEffect(() => {
     if (AllTableList?.length && !hasInitializedRef.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCopyOfInitialCheckedTables(AllTableList.filter((t) => t.selected));
       hasInitializedRef.current = true;
     }
   }, [AllTableList]);
 
-  // Local writable state
   const [userCheckedTables, setUserCheckedTables] = useState<ConnectorTable[]>(
     () => checkedTables,
   );
@@ -430,6 +407,7 @@ const Schema = () => {
 
   useEffect(() => {
     if (!shouldSkipUpdateRef.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUserCheckedTables(checkedTables);
     }
   }, [checkedTables]);
@@ -464,7 +442,6 @@ const Schema = () => {
             description: response?.data?.description,
           });
           shouldSkipUpdateRef.current = true;
-          setRecalculatedCheckedTables((prev) => !prev);
           setTimeout(() => {
             setCopyOfInitialCheckedTables(savedTables);
             setUserCheckedTables(savedTables);
@@ -567,17 +544,7 @@ const Schema = () => {
                   isRefreshSchemaInProgress={isRefreshSchemaInProgress}
                   tableStatusData={tableStatusData}
                   onReload={() => {
-                    const isThisTableReloading =
-                      reloadingTable === table && isReloadingSingleTable;
-                    const isRefreshDeltaInProgress =
-                      isRefreshDeltaTableInProgress > 0;
-                    const isSchemaRefreshing = isRefreshSchemaInProgress > 0;
-                    if (
-                      (shouldShowDisabledState ||
-                        isRefreshDeltaInProgress ||
-                        isSchemaRefreshing) &&
-                      !isThisTableReloading
-                    ) {
+                    if (shouldShowDisabledState) {
                       toaster.warning({
                         title: "Operation in progress",
                         description:

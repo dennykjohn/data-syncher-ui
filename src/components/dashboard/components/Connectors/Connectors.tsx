@@ -147,6 +147,7 @@ const Connectors = () => {
           data={data?.content || []}
           columns={columns}
           totalNumberOfPages={totalNumberOfPages}
+          totalElements={data?.totalElements}
           pageSize={SIZE}
           updateCurrentPage={updateCurrentPage}
           isLoading={isLoading}

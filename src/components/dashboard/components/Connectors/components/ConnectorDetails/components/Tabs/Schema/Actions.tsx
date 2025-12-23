@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 
 import { Button, Flex, Text } from "@chakra-ui/react";
 
@@ -94,9 +94,6 @@ const Actions = ({
     setShouldShowDisabledState,
   ]);
 
-  const hasShownCompletionMessage = useRef(false);
-  const prevIsInProgress = useRef<boolean | undefined>(undefined);
-
   useEffect(() => {
     if (isUpdateSchemaInProgress > 0 || isUpdating) {
       startTransition(() => {
@@ -148,10 +145,7 @@ const Actions = ({
       return;
     }
 
-    const wasInProgress = prevIsInProgress.current;
     const isInProgress = schemaStatus?.is_in_progress;
-
-    prevIsInProgress.current = isInProgress;
 
     const mutationCompleted = isUpdateSchemaInProgress === 0 && !isUpdating;
     const statusCompleted = schemaStatus ? !isInProgress : true;
@@ -169,25 +163,10 @@ const Actions = ({
       shouldShowDisabledState &&
       noOtherOperations
     ) {
-      if (!hasShownCompletionMessage.current && schemaStatus) {
-        toaster.success({
-          title: "Schema update completed",
-          description:
-            schemaStatus.message ||
-            "All tables have been fetched and updated successfully.",
-          duration: 5000,
-        });
-        hasShownCompletionMessage.current = true;
-      }
-
       startTransition(() => {
         setShouldShowDisabledState(false);
         setShouldPollSchemaStatus(false);
       });
-    }
-
-    if (isInProgress && !wasInProgress) {
-      hasShownCompletionMessage.current = false;
     }
   }, [
     schemaStatus,
@@ -320,7 +299,6 @@ const Actions = ({
                   return;
                 }
                 onUpdateSchemaStart?.();
-                hasShownCompletionMessage.current = false;
                 setShouldShowDisabledState(true);
                 setShouldPollSchemaStatus(true);
                 updateSchema(undefined, {
@@ -328,7 +306,6 @@ const Actions = ({
                   onError: () => {
                     setShouldShowDisabledState(false);
                     setShouldPollSchemaStatus(false);
-                    hasShownCompletionMessage.current = false;
                   },
                 });
               }}
