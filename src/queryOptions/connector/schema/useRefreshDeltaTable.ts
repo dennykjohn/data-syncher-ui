@@ -26,7 +26,7 @@ export default function useRefreshDeltaTable({
       toaster.success({ title: response.data.message });
 
       queryClient.invalidateQueries({
-        queryKey: ["SelectedTables", variables.connection_id],
+        queryKey: ["ConnectorTable", variables.connection_id],
       });
     },
   });

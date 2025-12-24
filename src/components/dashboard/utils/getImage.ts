@@ -1,4 +1,6 @@
+import AmazonS3Illustration from "@/assets/images/amazon-s3.svg";
 import DataBricksIllustration from "@/assets/images/databricks.svg";
+import GoogleReviewIllustration from "@/assets/images/google-review.svg";
 import MicrosoftDynamicsIllustration from "@/assets/images/ms-dynamics.svg";
 import PostgreSQLIllustration from "@/assets/images/postgres.svg";
 import SalesforceSandboxIllustration from "@/assets/images/salesforce-sandbox.svg";
@@ -14,10 +16,12 @@ const IMAGE_MAP = {
   databricks: DataBricksIllustration,
   postgresql: PostgreSQLIllustration,
   mysql: MySQLIllustration,
+  amazons3: AmazonS3Illustration,
+  googlereviews: GoogleReviewIllustration,
 
   // Destinations
   salesforce: SalesForceIllustration,
-  salesforce_sandbox: SalesforceSandboxIllustration,
+  salesforcesandbox: SalesforceSandboxIllustration,
 } as const;
 
 // Default fallback image
@@ -32,7 +36,7 @@ const DEFAULT_IMAGE = DataBricksIllustration;
 export const getSourceImage = (name: string, fallback?: string): string => {
   if (!name) return fallback || DEFAULT_IMAGE;
 
-  // Normalize the name: lowercase, remove spaces, underscores, special chars (digits are preserved)
+  // Normalize the name: lowercase, remove spaces, hyphens, dots
   const normalizedName = name.toLowerCase().replace(/[\s\-.]/g, "");
 
   // Try exact match first
@@ -40,7 +44,9 @@ export const getSourceImage = (name: string, fallback?: string): string => {
     return IMAGE_MAP[normalizedName as keyof typeof IMAGE_MAP];
   }
 
-  // Try partial matches for common variations
+  // Try partial matches for common variations (check more specific matches first)
+  // Check for sandbox first (more specific) before salesforce (less specific)
+
   const partialMatches = {
     snowflake: SnowFlakeIllustration,
     dynamics: MicrosoftDynamicsIllustration,
@@ -49,6 +55,8 @@ export const getSourceImage = (name: string, fallback?: string): string => {
     postgres: PostgreSQLIllustration,
     mysql: MySQLIllustration,
     salesforce: SalesForceIllustration,
+    googlereviews: GoogleReviewIllustration,
+    amazons3: AmazonS3Illustration,
   };
 
   for (const [key, image] of Object.entries(partialMatches)) {
@@ -85,6 +93,15 @@ export const getAllImages = () => {
  * Check if an image exists for a given name
  */
 export const hasImage = (name: string): boolean => {
+  if (!name) return false;
   const normalizedName = name.toLowerCase().replace(/[\s\-.]/g, "");
-  return normalizedName in IMAGE_MAP;
+
+  // Check exact match
+  if (normalizedName in IMAGE_MAP) {
+    return true;
+  }
+
+  // Check if it contains any known partial match
+  const knownKeys = Object.keys(IMAGE_MAP);
+  return knownKeys.some((key) => normalizedName.includes(key));
 };

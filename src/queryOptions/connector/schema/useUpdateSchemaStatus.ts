@@ -21,12 +21,11 @@ const useUpdateSchemaStatus = (connectionId: number, enabled: boolean) => {
     const prevConnectionId = prevConnectionIdRef.current;
     prevConnectionIdRef.current = connectionId;
 
-    if (!enabled || !connectionId) {
+    if (!connectionId) {
       return;
     }
 
     let pollTimeout: NodeJS.Timeout | null = null;
-    let checkInterval: NodeJS.Timeout | null = null;
     let isMounted = true;
     let isPolling = false;
 
@@ -38,50 +37,34 @@ const useUpdateSchemaStatus = (connectionId: number, enabled: boolean) => {
       }
     };
 
-    const stopCheckInterval = () => {
-      if (checkInterval) {
-        clearInterval(checkInterval);
-        checkInterval = null;
+    const pollOnce = async () => {
+      if (!isMounted || !isPolling) return;
+
+      try {
+        const response = await checkSchemaStatus(connectionId);
+
+        if (!isMounted) return;
+
+        setStatus(response);
+
+        if (!response.is_in_progress) {
+          stopPolling();
+          return;
+        }
+      } catch {
+        if (!isMounted) return;
+        stopPolling();
+        return;
+      }
+
+      if (isPolling && isMounted) {
+        pollTimeout = setTimeout(pollOnce, 2000);
       }
     };
 
     const startPolling = () => {
       if (isPolling || !isMounted) return;
-
       isPolling = true;
-      // Stop check interval when we start active polling
-      stopCheckInterval();
-
-      // Poll immediately, then continue every 2 seconds
-      const pollOnce = async () => {
-        if (!isMounted || !isPolling) return;
-
-        try {
-          const response = await checkSchemaStatus(connectionId);
-
-          if (!isMounted) return;
-
-          setStatus(response);
-
-          // If is_in_progress becomes false, stop polling
-          if (!response.is_in_progress) {
-            stopPolling();
-            return;
-          }
-        } catch (error) {
-          if (!isMounted) return;
-          console.error("Error checking schema status:", error);
-          stopPolling();
-          return;
-        }
-
-        // Schedule next poll if still in progress
-        if (isPolling && isMounted) {
-          pollTimeout = setTimeout(pollOnce, 2000);
-        }
-      };
-
-      // Start polling immediately
       pollOnce();
     };
 
@@ -95,42 +78,40 @@ const useUpdateSchemaStatus = (connectionId: number, enabled: boolean) => {
 
         setStatus(response);
 
-        // If is_in_progress is true and we're not polling, start polling
         if (response.is_in_progress && !isPolling) {
           startPolling();
-        }
-        // If is_in_progress is false, stop everything
-        else if (!response.is_in_progress) {
+        } else if (!response.is_in_progress) {
           stopPolling();
-          stopCheckInterval();
         }
-      } catch (error) {
+      } catch {
         if (!isMounted) return;
-        console.error("Error checking schema status:", error);
         stopPolling();
-        stopCheckInterval();
       }
     };
 
-    // Initial check
+    // Only hit the API when explicitly enabled.
+    // This prevents automatic status checks when the Schema page first loads.
+    if (!enabled) {
+      return;
+    }
+
     checkStatus();
 
-    // Start check interval only if we're not already polling
-    // This will check periodically to detect when a new job starts
-    // But we'll stop it when is_in_progress is false to avoid unnecessary calls
-    if (!isPolling) {
+    let checkInterval: NodeJS.Timeout | null = null;
+
+    if (enabled) {
       checkInterval = setInterval(() => {
         if (!isMounted || isPolling) return;
         checkStatus();
-      }, 10000); // Check every 10 seconds when not in progress
+      }, 10000);
     }
 
     return () => {
       isMounted = false;
       stopPolling();
-      stopCheckInterval();
-      // Only reset status when connectionId changes (not when just navigating away)
-      // This allows status to persist across navigation
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
       if (connectionId !== prevConnectionId) {
         setStatus(null);
       }

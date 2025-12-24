@@ -17,9 +17,6 @@ const useRefreshSchema = ({ connectorId }: { connectorId: number }) => {
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectorId],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["SelectedTables", connectorId],
-      });
     },
   });
 };

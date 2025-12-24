@@ -108,18 +108,50 @@ const Register = () => {
       navigate(`${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`);
     } catch (err: unknown) {
       const error = err as Record<string, unknown>;
-      const msg =
-        (Array.isArray(error?.non_field_errors)
-          ? error.non_field_errors[0]
-          : error?.non_field_errors) ||
-        error?.message ||
-        error?.error ||
-        error?.description ||
+
+      // Helper to extract first error message from any field
+      const getErrorMessage = (value: unknown): string | null => {
+        if (Array.isArray(value) && value.length > 0) return String(value[0]);
+        if (typeof value === "string" && value.trim()) return value;
+        return null;
+      };
+
+      // Map backend field names to frontend (email can come as any_email, company_email, etc.)
+      const fieldMap: Record<string, keyof FormState> = {
+        first_name: "firstName",
+        last_name: "lastName",
+        company_email: "email",
+        any_email: "email",
+        email: "email",
+        password: "password",
+        company_name: "company",
+      };
+
+      // Extract field errors
+      const fieldErrors: Partial<Record<keyof FormState, string>> = {};
+      for (const [key, value] of Object.entries(error)) {
+        if (fieldMap[key]) {
+          const msg = getErrorMessage(value);
+          if (msg) fieldErrors[fieldMap[key]] = msg;
+        }
+      }
+
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors(fieldErrors);
+      }
+
+      // Get error message for toast
+      const errorMessage =
+        getErrorMessage(error?.non_field_errors) ||
+        getErrorMessage(error?.message) ||
+        getErrorMessage(error?.error) ||
+        getErrorMessage(error?.description) ||
+        Object.values(fieldErrors)[0] ||
         "Registration failed";
 
       toaster.error({
         title: "Registration failed",
-        description: String(msg),
+        description: errorMessage,
       });
     } finally {
       setSubmitting(false);
