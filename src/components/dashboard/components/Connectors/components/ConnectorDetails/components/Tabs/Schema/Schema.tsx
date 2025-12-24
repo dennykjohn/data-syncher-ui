@@ -255,7 +255,7 @@ const Schema = () => {
     if (!hasCheckedInitialStatus.current && schemaStatus) {
       hasCheckedInitialStatus.current = true;
       if (schemaStatus.is_in_progress) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+       
         setIsCheckingSchemaStatus(true);
       }
     }
@@ -263,7 +263,7 @@ const Schema = () => {
 
   useEffect(() => {
     if (schemaStatus?.is_in_progress && !isCheckingSchemaStatus) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      
       setIsCheckingSchemaStatus(true);
     }
   }, [schemaStatus, isCheckingSchemaStatus]);
