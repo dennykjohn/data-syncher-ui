@@ -241,7 +241,6 @@ const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
   const [isCheckingSchemaStatus, setIsCheckingSchemaStatus] = useState(false);
-  const hasCheckedInitialStatus = useRef(false);
 
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
@@ -250,23 +249,6 @@ const Schema = () => {
     context.connection_id,
     isCheckingSchemaStatus,
   );
-
-  useEffect(() => {
-    if (!hasCheckedInitialStatus.current && schemaStatus) {
-      hasCheckedInitialStatus.current = true;
-      if (schemaStatus.is_in_progress) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setIsCheckingSchemaStatus(true);
-      }
-    }
-  }, [schemaStatus]);
-
-  useEffect(() => {
-    if (schemaStatus?.is_in_progress && !isCheckingSchemaStatus) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsCheckingSchemaStatus(true);
-    }
-  }, [schemaStatus, isCheckingSchemaStatus]);
 
   const prevIsCheckingRef = useRef(false);
   useEffect(() => {
