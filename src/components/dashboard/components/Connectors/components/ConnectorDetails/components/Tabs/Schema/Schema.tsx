@@ -327,10 +327,13 @@ const Schema = () => {
 
   useEffect(() => {
     if (hasAnyTableInProgress || isReloadingSingleTable) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setShouldShowDisabledState(true);
+      setTimeout(() => {
+        setShouldShowDisabledState(true);
+      }, 0);
     } else if (!reloadingTable && !hasAnyTableInProgress) {
-      setShouldShowDisabledState(false);
+      setTimeout(() => {
+        setShouldShowDisabledState(false);
+      }, 0);
     }
   }, [hasAnyTableInProgress, isReloadingSingleTable, reloadingTable]);
 
@@ -346,9 +349,10 @@ const Schema = () => {
       (tableStatus.status === "completed" || tableStatus.status === "failed");
 
     if (mutationCompleted && statusCompleted) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setReloadingTable(null);
-      setShouldShowDisabledState(false);
+      setTimeout(() => {
+        setReloadingTable(null);
+        setShouldShowDisabledState(false);
+      }, 0);
       queryClient.refetchQueries({
         queryKey: ["ConnectorTable", context.connection_id],
       });
@@ -379,8 +383,9 @@ const Schema = () => {
 
   useEffect(() => {
     if (AllTableList?.length && !hasInitializedRef.current) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCopyOfInitialCheckedTables(AllTableList.filter((t) => t.selected));
+      setTimeout(() => {
+        setCopyOfInitialCheckedTables(AllTableList.filter((t) => t.selected));
+      }, 0);
       hasInitializedRef.current = true;
     }
   }, [AllTableList]);
@@ -392,8 +397,9 @@ const Schema = () => {
 
   useEffect(() => {
     if (!shouldSkipUpdateRef.current) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setUserCheckedTables(checkedTables);
+      setTimeout(() => {
+        setUserCheckedTables(checkedTables);
+      }, 0);
     }
   }, [checkedTables]);
 
