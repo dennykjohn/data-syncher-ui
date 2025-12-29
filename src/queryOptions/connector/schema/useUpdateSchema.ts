@@ -8,6 +8,9 @@ import { useMutation } from "@tanstack/react-query";
 const updateSchema = (connectorId: number) =>
   AxiosInstance.post(ServerRoutes.connector.updateSchema(connectorId));
 
+const triggerUpdateSchemaStatus = (connectorId: number) =>
+  AxiosInstance.post(ServerRoutes.connector.updateSchemaStatus(connectorId));
+
 const useUpdateSchema = ({ connectorId }: { connectorId: number }) => {
   return useMutation({
     mutationKey: ["updateSchema", connectorId],
@@ -17,9 +20,11 @@ const useUpdateSchema = ({ connectorId }: { connectorId: number }) => {
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectorId],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["SelectedTables", connectorId],
+      queryClient.refetchQueries({
+        queryKey: ["ConnectorTable", connectorId],
       });
+
+      triggerUpdateSchemaStatus(connectorId);
     },
   });
 };

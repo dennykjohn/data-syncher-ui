@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 
 import { Button, Flex, Text } from "@chakra-ui/react";
 
@@ -11,6 +11,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useRefreshSchema from "@/queryOptions/connector/schema/useRefreshSchema";
 import useUpdateSchema from "@/queryOptions/connector/schema/useUpdateSchema";
+import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import { type Connector } from "@/types/connectors";
 
 import { useIsMutating } from "@tanstack/react-query";
@@ -34,48 +35,37 @@ const Actions = ({
     connectorId: connection_id,
   });
 
-  // Track refresh schema mutation status
   const isRefreshSchemaInProgress = useIsMutating({
     mutationKey: ["refreshSchema", connection_id],
   });
 
-  // Track refresh delta table mutation status (to disable other buttons)
+  const isUpdateSchemaInProgress = useIsMutating({
+    mutationKey: ["updateSchema", connection_id],
+  });
+
+  const [shouldPollSchemaStatus, setShouldPollSchemaStatus] = useState(false);
+
+  const { status: schemaStatus } = useUpdateSchemaStatus(
+    connection_id,
+    shouldPollSchemaStatus || isUpdateSchemaInProgress > 0 || isUpdating,
+  );
+
   const isRefreshDeltaTableInProgress = useIsMutating({
     mutationKey: ["refreshDeltaTable", connection_id],
   });
 
-  // Track reload single table mutation status (to disable other buttons)
   const isReloadSingleTableInProgress = useIsMutating({
     mutationKey: ["reloadSingleTable", connection_id],
   });
 
-  // Track when to poll table status for refresh schema button
   const [shouldPollRefreshStatus, setShouldPollRefreshStatus] = useState(false);
-  const prevIsRefreshInProgress = useRef(0);
 
-  // Start polling table status when refresh schema mutation begins
-  useEffect(() => {
-    const wasInProgress = prevIsRefreshInProgress.current > 0;
-    const isInProgress = isRefreshSchemaInProgress > 0 || isRefreshing;
-
-    // If refresh mutation just started, enable polling
-    if (!wasInProgress && isInProgress) {
-      startTransition(() => {
-        setShouldPollRefreshStatus(true);
-      });
-    }
-
-    prevIsRefreshInProgress.current = isInProgress ? 1 : 0;
-  }, [isRefreshSchemaInProgress, isRefreshing]);
-
-  // Poll get_table_status API - always enabled to check for any in-progress tables
   const { data: tableStatusData } = useFetchTableStatus(
     connection_id,
-    true, // Always enabled to check table status (for both refresh schema and refresh delta table)
+    shouldPollRefreshStatus,
+    shouldPollRefreshStatus,
   );
 
-  // Check if any table has "in_progress" status from get_table_status API
-  // OR if refresh delta table mutation is in progress OR reload single table is in progress
   const hasAnyTableInProgress = useMemo(() => {
     const hasTableInProgress =
       tableStatusData?.tables?.some(
@@ -90,10 +80,8 @@ const Actions = ({
     isReloadSingleTableInProgress,
   ]);
 
-  // Stop polling when no tables are in progress (keep polling until all tables complete)
   useEffect(() => {
     if (!hasAnyTableInProgress && shouldPollRefreshStatus && tableStatusData) {
-      // Only stop if we have data and no tables are in progress
       startTransition(() => {
         setShouldPollRefreshStatus(false);
         setShouldShowDisabledState(false);
@@ -106,17 +94,112 @@ const Actions = ({
     setShouldShowDisabledState,
   ]);
 
-  // Refresh button should show loading if mutation is pending OR tables are in progress
-  // Same logic as reload button: check both mutation state and table status from API
+  useEffect(() => {
+    if (isUpdateSchemaInProgress > 0 || isUpdating) {
+      startTransition(() => {
+        setShouldPollSchemaStatus(true);
+      });
+    }
+  }, [isUpdateSchemaInProgress, isUpdating]);
+
+  useEffect(() => {
+    if (
+      isUpdateSchemaInProgress === 0 &&
+      !isUpdating &&
+      shouldShowDisabledState &&
+      isRefreshSchemaInProgress === 0 &&
+      !isRefreshing &&
+      isRefreshDeltaTableInProgress === 0 &&
+      isReloadSingleTableInProgress === 0 &&
+      !hasAnyTableInProgress
+    ) {
+      const timer = setTimeout(() => {
+        if (
+          isUpdateSchemaInProgress === 0 &&
+          !isUpdating &&
+          shouldShowDisabledState
+        ) {
+          startTransition(() => {
+            setShouldShowDisabledState(false);
+            setShouldPollSchemaStatus(false);
+          });
+        }
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [
+    isUpdateSchemaInProgress,
+    isUpdating,
+    shouldShowDisabledState,
+    setShouldShowDisabledState,
+    isRefreshSchemaInProgress,
+    isRefreshing,
+    isRefreshDeltaTableInProgress,
+    isReloadSingleTableInProgress,
+    hasAnyTableInProgress,
+  ]);
+
+  useEffect(() => {
+    if (isUpdateSchemaInProgress === 0 && !isUpdating && !schemaStatus) {
+      return;
+    }
+
+    const isInProgress = schemaStatus?.is_in_progress;
+
+    const mutationCompleted = isUpdateSchemaInProgress === 0 && !isUpdating;
+    const statusCompleted = schemaStatus ? !isInProgress : true;
+
+    const noOtherOperations =
+      isRefreshSchemaInProgress === 0 &&
+      !isRefreshing &&
+      isRefreshDeltaTableInProgress === 0 &&
+      isReloadSingleTableInProgress === 0 &&
+      !hasAnyTableInProgress;
+
+    if (
+      mutationCompleted &&
+      statusCompleted &&
+      shouldShowDisabledState &&
+      noOtherOperations
+    ) {
+      startTransition(() => {
+        setShouldShowDisabledState(false);
+        setShouldPollSchemaStatus(false);
+      });
+    }
+  }, [
+    schemaStatus,
+    isUpdateSchemaInProgress,
+    isUpdating,
+    shouldShowDisabledState,
+    setShouldShowDisabledState,
+    isRefreshSchemaInProgress,
+    isRefreshing,
+    isRefreshDeltaTableInProgress,
+    isReloadSingleTableInProgress,
+    hasAnyTableInProgress,
+  ]);
+
   const isRefreshButtonLoading =
     isRefreshing || (shouldPollRefreshStatus && hasAnyTableInProgress);
+
+  const isAnyOperationInProgress =
+    isRefreshSchemaInProgress > 0 ||
+    isRefreshing ||
+    isUpdateSchemaInProgress > 0 ||
+    isUpdating ||
+    schemaStatus?.is_in_progress === true ||
+    isRefreshDeltaTableInProgress > 0 ||
+    isReloadSingleTableInProgress > 0 ||
+    hasAnyTableInProgress;
 
   const createButtonProps = (
     isButtonLoading: boolean,
     onAction: () => void,
   ) => {
     const isDisabled =
-      (shouldShowDisabledState || hasAnyTableInProgress) && !isButtonLoading;
+      (shouldShowDisabledState || isAnyOperationInProgress) && !isButtonLoading;
 
     return {
       onClick: () => {
@@ -138,13 +221,14 @@ const Actions = ({
 
   const createTooltipProps = (isButtonLoading: boolean) => {
     const isDisabled =
-      (shouldShowDisabledState || hasAnyTableInProgress) && !isButtonLoading;
+      (shouldShowDisabledState || isAnyOperationInProgress) && !isButtonLoading;
     return {
       content: isDisabled
         ? "Another migration is in progress. Please wait until it is complete."
         : "",
       disabled:
-        (!shouldShowDisabledState && !hasAnyTableInProgress) || isButtonLoading,
+        (!shouldShowDisabledState && !isAnyOperationInProgress) ||
+        isButtonLoading,
     };
   };
 
@@ -177,9 +261,15 @@ const Actions = ({
               variant="outline"
               colorPalette="brand"
               {...createButtonProps(isRefreshButtonLoading, () => {
-                setShouldPollRefreshStatus(true); // Start polling immediately
-                refreshSchema(undefined);
-                // State will be cleared when get_table_status shows all tables are completed
+                refreshSchema(undefined, {
+                  onSuccess: () => {
+                    setShouldPollRefreshStatus(true);
+                  },
+                  onError: () => {
+                    setShouldPollRefreshStatus(false);
+                    setShouldShowDisabledState(false);
+                  },
+                });
               })}
             >
               <MdRefresh />
@@ -191,14 +281,34 @@ const Actions = ({
             <Button
               variant="outline"
               colorPalette="brand"
-              {...createButtonProps(isUpdating, () => {
+              loading={isUpdating}
+              disabled={
+                (shouldShowDisabledState || isAnyOperationInProgress) &&
+                !isUpdating
+              }
+              onClick={() => {
+                if (
+                  (shouldShowDisabledState || isAnyOperationInProgress) &&
+                  !isUpdating
+                ) {
+                  toaster.warning({
+                    title: "Operation in progress",
+                    description:
+                      "Another migration is in progress. Please wait until it is complete.",
+                  });
+                  return;
+                }
                 onUpdateSchemaStart?.();
+                setShouldShowDisabledState(true);
+                setShouldPollSchemaStatus(true);
                 updateSchema(undefined, {
-                  onSettled: () => {
+                  onSuccess: () => {},
+                  onError: () => {
                     setShouldShowDisabledState(false);
+                    setShouldPollSchemaStatus(false);
                   },
                 });
-              })}
+              }}
             >
               <MdRefresh />
               Update schema

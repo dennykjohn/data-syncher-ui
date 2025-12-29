@@ -345,45 +345,46 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         if (!input) return null;
 
         return (
-          <Box key={field.name}>
-            {input}
+          <>
+            <Box key={field.name}>{input}</Box>
             {(field.name === "authentication_type" ||
               field.name === "authenticationType") && (
               <>
                 {passphraseField &&
                   values.authentication_type === "key_pair" && (
-                    <Field.Root
-                      key={passphraseField.name}
-                      required={passphraseField.required}
-                      invalid={!!errors[passphraseField.name]}
-                    >
-                      <Field.Label htmlFor={passphraseField.name}>
-                        {passphraseField.label}
-                      </Field.Label>
-                      {passphraseField.type === "PasswordInput" ? (
-                        <PasswordInput
-                          id={passphraseField.name}
-                          name={passphraseField.name}
-                          value={values[passphraseField.name] || ""}
-                          onChange={handleChange}
-                          placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
-                        />
-                      ) : (
-                        <Input
-                          id={passphraseField.name}
-                          name={passphraseField.name}
-                          type="text"
-                          value={values[passphraseField.name] || ""}
-                          onChange={handleChange}
-                          placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
-                        />
-                      )}
-                      {errors[passphraseField.name] && (
-                        <Field.ErrorText>
-                          {errors[passphraseField.name]}
-                        </Field.ErrorText>
-                      )}
-                    </Field.Root>
+                    <Box key={passphraseField.name}>
+                      <Field.Root
+                        required={passphraseField.required}
+                        invalid={!!errors[passphraseField.name]}
+                      >
+                        <Field.Label htmlFor={passphraseField.name}>
+                          {passphraseField.label}
+                        </Field.Label>
+                        {passphraseField.type === "PasswordInput" ? (
+                          <PasswordInput
+                            id={passphraseField.name}
+                            name={passphraseField.name}
+                            value={values[passphraseField.name] || ""}
+                            onChange={handleChange}
+                            placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
+                          />
+                        ) : (
+                          <Input
+                            id={passphraseField.name}
+                            name={passphraseField.name}
+                            type="text"
+                            value={values[passphraseField.name] || ""}
+                            onChange={handleChange}
+                            placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
+                          />
+                        )}
+                        {errors[passphraseField.name] && (
+                          <Field.ErrorText>
+                            {errors[passphraseField.name]}
+                          </Field.ErrorText>
+                        )}
+                      </Field.Root>
+                    </Box>
                   )}
                 <KeyPairGenerator
                   formValues={values}
@@ -413,7 +414,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 />
               </>
             )}
-          </Box>
+          </>
         );
       })}
       <Flex justifyContent="space-between">

@@ -98,7 +98,10 @@ const Header = ({ connector }: { connector: Connector }) => {
   const prevIsUpdateSchemaInProgress = useRef(0);
   const hasCheckedInitialStatus = useRef(false);
 
-  const { status: schemaStatus } = useUpdateSchemaStatus(connection_id, true);
+  const { status: schemaStatus } = useUpdateSchemaStatus(
+    connection_id,
+    shouldPollSchemaStatus || isUpdateSchemaInProgress > 0,
+  );
 
   useEffect(() => {
     if (!hasCheckedInitialStatus.current && schemaStatus) {
@@ -132,13 +135,14 @@ const Header = ({ connector }: { connector: Connector }) => {
     } else if (
       schemaStatus &&
       !schemaStatus.is_in_progress &&
+      isUpdateSchemaInProgress === 0 &&
       shouldPollSchemaStatus
     ) {
       startTransition(() => {
         setShouldPollSchemaStatus(false);
       });
     }
-  }, [schemaStatus, shouldPollSchemaStatus]);
+  }, [schemaStatus, shouldPollSchemaStatus, isUpdateSchemaInProgress]);
 
   // Check if any operation is in progress
   // For reload button: use get_table_status API (hasTableInProgress)

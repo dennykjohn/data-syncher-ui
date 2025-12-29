@@ -23,8 +23,13 @@ const useReloadSingleTable = ({ connectionId }: { connectionId: number }) => {
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", variables.connection_id],
       });
+
       queryClient.invalidateQueries({
-        queryKey: ["SelectedTables", variables.connection_id],
+        queryKey: ["TableStatus", variables.connection_id],
+      });
+
+      queryClient.refetchQueries({
+        queryKey: ["ConnectorTable", variables.connection_id],
       });
     },
   });

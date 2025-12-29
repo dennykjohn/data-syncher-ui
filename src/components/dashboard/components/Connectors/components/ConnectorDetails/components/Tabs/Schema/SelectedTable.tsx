@@ -3,7 +3,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -19,23 +18,25 @@ import ErrorIcon from "@/assets/icons/error-icon.svg";
 import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
-import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useRefreshDeltaTable from "@/queryOptions/connector/schema/useRefreshDeltaTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import {
   type Connector,
   type ConnectorSelectedTable,
+  type ConnectorTable,
 } from "@/types/connectors";
 
-import { useIsMutating, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 const SelectedTable = ({
   shouldShowDisabledState,
   setShouldShowDisabledState,
+  selectedTablesFromMain,
 }: {
   shouldShowDisabledState: boolean;
   setShouldShowDisabledState: (_value: boolean) => void;
+  selectedTablesFromMain: ConnectorTable[];
 }) => {
   const context = useOutletContext<Connector>();
   const queryClient = useQueryClient();
@@ -50,35 +51,9 @@ const SelectedTable = ({
   const { mutate: refreshDeltaTable, isPending: isRefreshingDeltaTable } =
     useRefreshDeltaTable({ connectionId: context.connection_id });
 
-  // Track refresh delta table mutation status
-  const isRefreshDeltaTableInProgress = useIsMutating({
-    mutationKey: ["refreshDeltaTable", context.connection_id],
-  });
-
   // Track when to poll table status for refresh delta table button
   const [shouldPollDeltaTableStatus, setShouldPollDeltaTableStatus] =
     useState(false);
-  const prevIsRefreshDeltaInProgress = useRef(0);
-
-  // Start polling table status when refresh delta table mutation begins
-  useEffect(() => {
-    const wasInProgress = prevIsRefreshDeltaInProgress.current > 0;
-    const isInProgress =
-      isRefreshDeltaTableInProgress > 0 || isRefreshingDeltaTable;
-
-    // If refresh mutation just started, enable polling
-    if (!wasInProgress && isInProgress) {
-      startTransition(() => {
-        setShouldPollDeltaTableStatus(true);
-      });
-    }
-
-    prevIsRefreshDeltaInProgress.current = isInProgress ? 1 : 0;
-  }, [isRefreshDeltaTableInProgress, isRefreshingDeltaTable]);
-
-  // Fetch selected tables list (for display) - always enabled
-  const { data: selectedTablesData, isLoading: isLoadingSelectedTables } =
-    useFetchSelectedTables(context.connection_id);
 
   // Poll get_table_status API - ONLY enabled when shouldPollDeltaTableStatus is true (after button click)
   // This API is called AFTER the refresh delta table button is clicked and polls until completion
@@ -88,17 +63,37 @@ const SelectedTable = ({
     shouldPollDeltaTableStatus, // Force polling when refresh delta table is active
   );
 
+  // Merge selected tables from main list with status from get_table_status API
   const selectedTables = useMemo(() => {
-    const baseTables = selectedTablesData?.tables || [];
-    if (!tableStatusData?.tables) return baseTables;
+    if (!selectedTablesFromMain || selectedTablesFromMain.length === 0) {
+      return [];
+    }
 
-    return baseTables.map((table) => {
+    if (!tableStatusData?.tables) {
+      // Return tables with default status if tableStatusData is not available
+      return selectedTablesFromMain.map((table) => ({
+        tbl_id: 0, // Not used, but required by type
+        table: table.table,
+        sequence: table.sequence || 0,
+        status: "completed" as "in_progress" | "completed" | "failed",
+      }));
+    }
+
+    return selectedTablesFromMain.map((table) => {
       const statusFromAPI = tableStatusData.tables.find(
         (t) => t.table === table.table,
       );
-      return statusFromAPI ? { ...table, status: statusFromAPI.status } : table;
+      return {
+        tbl_id: 0, // Not used, but required by type
+        table: table.table,
+        sequence: table.sequence || 0,
+        status: (statusFromAPI?.status ?? "completed") as
+          | "in_progress"
+          | "completed"
+          | "failed",
+      };
     });
-  }, [selectedTablesData, tableStatusData]);
+  }, [selectedTablesFromMain, tableStatusData]);
 
   const hasExistingMigrations = useMemo(() => {
     if (!tableStatusData?.tables) return false;
@@ -221,7 +216,7 @@ const SelectedTable = ({
           <Box minW="40px" />
         </Flex>
       </Flex>
-      {(isAssigningTables || isLoadingSelectedTables) && (
+      {isAssigningTables && (
         <For each={[...Array(10).keys()]}>
           {(_, index) => <Skeleton gap="4" height={8} key={index} />}
         </For>
@@ -320,15 +315,31 @@ const SelectedTable = ({
                         }
                         setShouldShowDisabledState(true);
                         setRefreshingTable(table.table);
-                        setShouldPollDeltaTableStatus(true); // Start polling immediately
-                        // Trigger immediate refetch of get_table_status API
-                        queryClient.invalidateQueries({
-                          queryKey: ["TableStatus", context.connection_id],
-                        });
-                        refreshDeltaTable({
-                          connection_id: context.connection_id,
-                          table_name: table.table,
-                        });
+                        refreshDeltaTable(
+                          {
+                            connection_id: context.connection_id,
+                            table_name: table.table,
+                          },
+                          {
+                            onSuccess: () => {
+                              // Start polling get_table_status only after refresh delta API completes
+                              setShouldPollDeltaTableStatus(true);
+                              // Trigger immediate refetch of get_table_status API
+                              queryClient.invalidateQueries({
+                                queryKey: [
+                                  "TableStatus",
+                                  context.connection_id,
+                                ],
+                              });
+                            },
+                            onError: () => {
+                              // Stop polling and re-enable buttons on error
+                              setShouldPollDeltaTableStatus(false);
+                              setRefreshingTable(null);
+                              setShouldShowDisabledState(false);
+                            },
+                          },
+                        );
                         // State will be cleared when get_table_status shows table is completed
                       }}
                       style={{
