@@ -265,8 +265,9 @@ const Schema = () => {
       !schemaStatus.is_in_progress &&
       isCheckingSchemaStatus
     ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsCheckingSchemaStatus(false);
+      setTimeout(() => {
+        setIsCheckingSchemaStatus(false);
+      }, 0);
       queryClient.refetchQueries({
         queryKey: ["ConnectorTable", context.connection_id],
       });

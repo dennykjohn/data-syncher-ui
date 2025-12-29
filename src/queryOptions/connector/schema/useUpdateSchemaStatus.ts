@@ -16,12 +16,10 @@ const checkSchemaStatus = async (
 const useUpdateSchemaStatus = (connectionId: number, enabled: boolean) => {
   const [status, setStatus] = useState<SchemaStatusResponse | null>(null);
   const prevConnectionIdRef = useRef(connectionId);
-  const prevEnabledRef = useRef(enabled);
 
   useEffect(() => {
     const prevConnectionId = prevConnectionIdRef.current;
     prevConnectionIdRef.current = connectionId;
-    prevEnabledRef.current = enabled;
 
     if (!connectionId) {
       return;
