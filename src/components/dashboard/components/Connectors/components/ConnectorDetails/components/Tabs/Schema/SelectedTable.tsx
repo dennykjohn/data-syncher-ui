@@ -27,7 +27,7 @@ import {
   type ConnectorTable,
 } from "@/types/connectors";
 
-import { useIsMutating, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 const SelectedTable = ({
   shouldShowDisabledState,
@@ -51,11 +51,6 @@ const SelectedTable = ({
   const { mutate: refreshDeltaTable, isPending: isRefreshingDeltaTable } =
     useRefreshDeltaTable({ connectionId: context.connection_id });
 
-  // Track refresh delta table mutation status
-  const _isRefreshDeltaTableInProgress = useIsMutating({
-    mutationKey: ["refreshDeltaTable", context.connection_id],
-  });
-
   // Track when to poll table status for refresh delta table button
   const [shouldPollDeltaTableStatus, setShouldPollDeltaTableStatus] =
     useState(false);
@@ -75,12 +70,12 @@ const SelectedTable = ({
     }
 
     if (!tableStatusData?.tables) {
-      // Return tables without status if tableStatusData is not available
+      // Return tables with default status if tableStatusData is not available
       return selectedTablesFromMain.map((table) => ({
         tbl_id: 0, // Not used, but required by type
         table: table.table,
         sequence: table.sequence || 0,
-        status: undefined as "in_progress" | "completed" | "failed" | undefined, // Will be set when tableStatusData is available
+        status: "completed" as "in_progress" | "completed" | "failed",
       }));
     }
 
@@ -92,11 +87,10 @@ const SelectedTable = ({
         tbl_id: 0, // Not used, but required by type
         table: table.table,
         sequence: table.sequence || 0,
-        status: (statusFromAPI?.status || undefined) as
+        status: (statusFromAPI?.status ?? "completed") as
           | "in_progress"
           | "completed"
-          | "failed"
-          | undefined,
+          | "failed",
       };
     });
   }, [selectedTablesFromMain, tableStatusData]);
