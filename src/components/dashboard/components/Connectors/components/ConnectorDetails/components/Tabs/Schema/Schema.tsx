@@ -198,7 +198,7 @@ const TableRow = ({
       </Flex>
 
       {isExpanded && (
-        <Flex direction="column" gap={2} mt={2} pl={1}>
+        <Flex direction="column" gap={2} mt={2} pl={8}>
           {tableFieldsData?.table_fields &&
             Object.entries(tableFieldsData.table_fields).map(
               ([field, fieldInfo]) => {
