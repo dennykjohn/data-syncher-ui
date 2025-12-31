@@ -43,8 +43,6 @@ export default function useFetchTableStatus(
     queryFn: () => fetchTableStatus(id),
     enabled: !!id && enabled,
     refetchInterval: (query) => {
-      if (!enabled || !id) return false;
-
       const data = query.state.data;
 
       if (!data) return 2000;

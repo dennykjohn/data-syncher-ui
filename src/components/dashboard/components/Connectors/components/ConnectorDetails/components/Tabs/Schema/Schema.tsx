@@ -32,7 +32,6 @@ import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetch
 import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
-import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import { type Connector, type ConnectorTable } from "@/types/connectors";
 
@@ -169,7 +168,6 @@ const TableRow = ({
                   cursor: isReloadButtonDisabled ? "not-allowed" : "pointer",
                 }}
                 p={1}
-                borderRadius="sm"
                 onClick={onReload}
                 style={{
                   animation: isThisTableReloading
@@ -200,7 +198,7 @@ const TableRow = ({
       </Flex>
 
       {isExpanded && (
-        <Flex direction="column" gap={2} mt={2} pl={8}>
+        <Flex direction="column" gap={2} mt={2} pl={1}>
           {tableFieldsData?.table_fields &&
             Object.entries(tableFieldsData.table_fields).map(
               ([field, fieldInfo]) => {
@@ -240,39 +238,8 @@ const TableRow = ({
 const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
-  const [isCheckingSchemaStatus, setIsCheckingSchemaStatus] = useState(false);
-
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
-
-  const { status: schemaStatus } = useUpdateSchemaStatus(
-    context.connection_id,
-    isCheckingSchemaStatus,
-  );
-
-  const prevIsCheckingRef = useRef(false);
-  useEffect(() => {
-    if (isCheckingSchemaStatus && !prevIsCheckingRef.current) {
-      prevIsCheckingRef.current = true;
-    } else if (!isCheckingSchemaStatus) {
-      prevIsCheckingRef.current = false;
-    }
-  }, [isCheckingSchemaStatus]);
-
-  useEffect(() => {
-    if (
-      schemaStatus &&
-      !schemaStatus.is_in_progress &&
-      isCheckingSchemaStatus
-    ) {
-      setTimeout(() => {
-        setIsCheckingSchemaStatus(false);
-      }, 0);
-      queryClient.refetchQueries({
-        queryKey: ["ConnectorTable", context.connection_id],
-      });
-    }
-  }, [schemaStatus, isCheckingSchemaStatus, context.connection_id]);
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
       connectorId: context.connection_id,
@@ -452,7 +419,11 @@ const Schema = () => {
       <Actions
         shouldShowDisabledState={shouldShowDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
-        onUpdateSchemaStart={() => setIsCheckingSchemaStatus(true)}
+        onUpdateSchemaComplete={() => {
+          queryClient.refetchQueries({
+            queryKey: ["ConnectorTable", context.connection_id],
+          });
+        }}
       />
       <Flex mr="auto">
         <InputGroup endElement={<MdSearch size={24} />}>

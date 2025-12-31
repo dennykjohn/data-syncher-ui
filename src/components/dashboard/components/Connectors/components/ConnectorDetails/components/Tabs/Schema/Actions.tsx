@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, Flex, Text } from "@chakra-ui/react";
 
@@ -19,11 +19,11 @@ import { useIsMutating } from "@tanstack/react-query";
 const Actions = ({
   shouldShowDisabledState,
   setShouldShowDisabledState,
-  onUpdateSchemaStart,
+  onUpdateSchemaComplete,
 }: {
   shouldShowDisabledState: boolean;
   setShouldShowDisabledState: (_value: boolean) => void;
-  onUpdateSchemaStart?: () => void;
+  onUpdateSchemaComplete?: () => void;
 }) => {
   const context = useOutletContext<Connector>();
   const { connection_id, target_database, target_schema } = context;
@@ -45,10 +45,9 @@ const Actions = ({
 
   const [shouldPollSchemaStatus, setShouldPollSchemaStatus] = useState(false);
 
-  const { status: schemaStatus } = useUpdateSchemaStatus(
-    connection_id,
-    shouldPollSchemaStatus || isUpdateSchemaInProgress > 0 || isUpdating,
-  );
+  // Always enable the query to check status on mount/updates.
+  // The hook's refetchInterval will handle stopping if not in progress.
+  const { data: schemaStatus } = useUpdateSchemaStatus(connection_id, true);
 
   const isRefreshDeltaTableInProgress = useIsMutating({
     mutationKey: ["refreshDeltaTable", connection_id],
@@ -60,9 +59,12 @@ const Actions = ({
 
   const [shouldPollRefreshStatus, setShouldPollRefreshStatus] = useState(false);
 
+  // Always enable table status check so we resume if we reload the page.
+  // We use shouldPollRefreshStatus to FORCE polling if we just clicked the button
+  // (though strict self-management might be enough, keeping force for safety).
   const { data: tableStatusData } = useFetchTableStatus(
     connection_id,
-    shouldPollRefreshStatus,
+    true,
     shouldPollRefreshStatus,
   );
 
@@ -101,6 +103,48 @@ const Actions = ({
       });
     }
   }, [isUpdateSchemaInProgress, isUpdating]);
+
+  const hasCheckedRefreshRef = useRef(false);
+  useEffect(() => {
+    if (hasCheckedRefreshRef.current) return;
+
+    if (isRefreshSchemaInProgress > 0 || isRefreshing) {
+      hasCheckedRefreshRef.current = true;
+      startTransition(() => {
+        setShouldPollRefreshStatus(true);
+        setShouldShowDisabledState(true);
+      });
+    }
+  }, [isRefreshSchemaInProgress, isRefreshing, setShouldShowDisabledState]);
+
+  const hasCheckedUpdateRef = useRef(false);
+  useEffect(() => {
+    if (hasCheckedUpdateRef.current) return;
+
+    if (
+      isUpdateSchemaInProgress > 0 ||
+      isUpdating ||
+      schemaStatus?.is_in_progress ||
+      hasAnyTableInProgress
+    ) {
+      hasCheckedUpdateRef.current = true;
+      startTransition(() => {
+        if (schemaStatus?.is_in_progress) {
+          setShouldPollSchemaStatus(true);
+        }
+        if (hasAnyTableInProgress) {
+          setShouldPollRefreshStatus(true);
+        }
+        setShouldShowDisabledState(true);
+      });
+    }
+  }, [
+    isUpdateSchemaInProgress,
+    isUpdating,
+    schemaStatus,
+    hasAnyTableInProgress,
+    setShouldShowDisabledState,
+  ]);
 
   useEffect(() => {
     if (
@@ -141,44 +185,22 @@ const Actions = ({
   ]);
 
   useEffect(() => {
-    if (isUpdateSchemaInProgress === 0 && !isUpdating && !schemaStatus) {
-      return;
-    }
-
-    const isInProgress = schemaStatus?.is_in_progress;
-
-    const mutationCompleted = isUpdateSchemaInProgress === 0 && !isUpdating;
-    const statusCompleted = schemaStatus ? !isInProgress : true;
-
-    const noOtherOperations =
-      isRefreshSchemaInProgress === 0 &&
-      !isRefreshing &&
-      isRefreshDeltaTableInProgress === 0 &&
-      isReloadSingleTableInProgress === 0 &&
-      !hasAnyTableInProgress;
-
     if (
-      mutationCompleted &&
-      statusCompleted &&
-      shouldShowDisabledState &&
-      noOtherOperations
+      shouldPollSchemaStatus &&
+      schemaStatus &&
+      !schemaStatus.is_in_progress
     ) {
       startTransition(() => {
-        setShouldShowDisabledState(false);
         setShouldPollSchemaStatus(false);
+        setShouldShowDisabledState(false);
+        onUpdateSchemaComplete?.();
       });
     }
   }, [
+    shouldPollSchemaStatus,
     schemaStatus,
-    isUpdateSchemaInProgress,
-    isUpdating,
-    shouldShowDisabledState,
     setShouldShowDisabledState,
-    isRefreshSchemaInProgress,
-    isRefreshing,
-    isRefreshDeltaTableInProgress,
-    isReloadSingleTableInProgress,
-    hasAnyTableInProgress,
+    onUpdateSchemaComplete,
   ]);
 
   const isRefreshButtonLoading =
@@ -193,6 +215,9 @@ const Actions = ({
     isRefreshDeltaTableInProgress > 0 ||
     isReloadSingleTableInProgress > 0 ||
     hasAnyTableInProgress;
+
+  const isUpdateSchemaFlowInProgress =
+    isUpdating || !!(shouldPollSchemaStatus && schemaStatus?.is_in_progress);
 
   const createButtonProps = (
     isButtonLoading: boolean,
@@ -277,19 +302,19 @@ const Actions = ({
             </Button>
           </Tooltip>
 
-          <Tooltip {...createTooltipProps(isUpdating)}>
+          <Tooltip {...createTooltipProps(isUpdateSchemaFlowInProgress)}>
             <Button
               variant="outline"
               colorPalette="brand"
-              loading={isUpdating}
+              loading={isUpdateSchemaFlowInProgress}
               disabled={
                 (shouldShowDisabledState || isAnyOperationInProgress) &&
-                !isUpdating
+                !isUpdateSchemaFlowInProgress
               }
               onClick={() => {
                 if (
                   (shouldShowDisabledState || isAnyOperationInProgress) &&
-                  !isUpdating
+                  !isUpdateSchemaFlowInProgress
                 ) {
                   toaster.warning({
                     title: "Operation in progress",
@@ -298,11 +323,11 @@ const Actions = ({
                   });
                   return;
                 }
-                onUpdateSchemaStart?.();
                 setShouldShowDisabledState(true);
-                setShouldPollSchemaStatus(true);
                 updateSchema(undefined, {
-                  onSuccess: () => {},
+                  onSuccess: () => {
+                    setShouldPollSchemaStatus(true);
+                  },
                   onError: () => {
                     setShouldShowDisabledState(false);
                     setShouldPollSchemaStatus(false);
