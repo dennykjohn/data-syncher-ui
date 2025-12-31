@@ -1,6 +1,9 @@
 import { Button, CloseButton, Dialog, Portal, Text } from "@chakra-ui/react";
 
+import { useNavigate } from "react-router";
+
 import { toaster } from "@/components/ui/toaster";
+import ClientRoutes from "@/constants/client-routes";
 import useDeleteConnection from "@/queryOptions/connector/useDeleteConnection";
 
 const DeleteConfirmationDialog = ({
@@ -12,6 +15,7 @@ const DeleteConfirmationDialog = ({
   setShowDeleteDialog: (_open: boolean) => void;
   connectorId: number;
 }) => {
+  const navigate = useNavigate();
   const { mutate: deleteConnection, isPending: isDeleteOperationPending } =
     useDeleteConnection({ connectorId });
 
@@ -50,6 +54,9 @@ const DeleteConfirmationDialog = ({
                         description: `The connection has been deleted.`,
                       });
                       setShowDeleteDialog(false);
+                      navigate(
+                        `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
+                      );
                     },
                   })
                 }
