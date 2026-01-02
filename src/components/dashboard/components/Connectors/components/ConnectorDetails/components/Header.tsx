@@ -1,3 +1,5 @@
+import { startTransition, useEffect, useRef, useState } from "react";
+
 import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
 
 import { CiPause1 } from "react-icons/ci";
@@ -12,7 +14,8 @@ import {
 import LoadingSpinner from "@/components/shared/Spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { dateTimeFormat } from "@/constants/common";
-import useFetchSelectedTables from "@/queryOptions/connector/schema/useFetchSelectedTables";
+import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
+import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
 
@@ -52,20 +55,105 @@ const Header = ({ connector }: { connector: Connector }) => {
     mutationKey: ["refreshDeltaTable", connection_id],
   });
 
-  // Check if any table has "in_progress" status
-  const { data: selectedTablesData } = useFetchSelectedTables(connection_id);
-  const hasInProgressStatus =
-    selectedTablesData?.tables?.some(
-      (table) => table.status === "in_progress",
-    ) ?? false;
+  // Track when to poll table status for reload button
+  const [shouldPollTableStatus, setShouldPollTableStatus] = useState(false);
+  const prevIsReloadInProgress = useRef(0);
+
+  // Start polling table status when reload mutation begins
+  useEffect(() => {
+    const wasInProgress = prevIsReloadInProgress.current > 0;
+    const isInProgress = isReloadInProgress > 0;
+
+    // If reload mutation just started, enable polling
+    if (!wasInProgress && isInProgress) {
+      startTransition(() => {
+        setShouldPollTableStatus(true);
+      });
+    }
+
+    prevIsReloadInProgress.current = isReloadInProgress;
+  }, [isReloadInProgress]);
+
+  // Poll get_table_status API when reload is in progress
+  const { data: tableStatusData } = useFetchTableStatus(
+    connection_id,
+    shouldPollTableStatus,
+  );
+
+  // Check if any table has "in_progress" status from get_table_status API
+  const hasTableInProgress =
+    tableStatusData?.tables?.some((table) => table.status === "in_progress") ??
+    false;
+
+  // Stop polling when no tables are in progress (keep polling until all tables complete)
+  useEffect(() => {
+    if (!hasTableInProgress && shouldPollTableStatus) {
+      startTransition(() => {
+        setShouldPollTableStatus(false);
+      });
+    }
+  }, [hasTableInProgress, shouldPollTableStatus]);
+
+  const [shouldPollSchemaStatus, setShouldPollSchemaStatus] = useState(false);
+  const prevIsUpdateSchemaInProgress = useRef(0);
+  const hasCheckedInitialStatus = useRef(false);
+
+  const { status: schemaStatus } = useUpdateSchemaStatus(
+    connection_id,
+    shouldPollSchemaStatus || isUpdateSchemaInProgress > 0,
+  );
+
+  useEffect(() => {
+    if (!hasCheckedInitialStatus.current && schemaStatus) {
+      hasCheckedInitialStatus.current = true;
+      if (schemaStatus.is_in_progress) {
+        startTransition(() => {
+          setShouldPollSchemaStatus(true);
+        });
+      }
+    }
+  }, [schemaStatus]);
+
+  useEffect(() => {
+    const wasInProgress = prevIsUpdateSchemaInProgress.current > 0;
+    const isInProgress = isUpdateSchemaInProgress > 0;
+
+    if (!wasInProgress && isInProgress) {
+      startTransition(() => {
+        setShouldPollSchemaStatus(true);
+      });
+    }
+
+    prevIsUpdateSchemaInProgress.current = isInProgress ? 1 : 0;
+  }, [isUpdateSchemaInProgress]);
+
+  useEffect(() => {
+    if (schemaStatus?.is_in_progress && !shouldPollSchemaStatus) {
+      startTransition(() => {
+        setShouldPollSchemaStatus(true);
+      });
+    } else if (
+      schemaStatus &&
+      !schemaStatus.is_in_progress &&
+      isUpdateSchemaInProgress === 0 &&
+      shouldPollSchemaStatus
+    ) {
+      startTransition(() => {
+        setShouldPollSchemaStatus(false);
+      });
+    }
+  }, [schemaStatus, shouldPollSchemaStatus, isUpdateSchemaInProgress]);
 
   // Check if any operation is in progress
+  // For reload button: use get_table_status API (hasTableInProgress)
+  // For other operations: use existing checks
   const isAnyOperationInProgress =
     isRefreshSchemaInProgress > 0 ||
     isUpdateSchemaInProgress > 0 ||
     isReloadInProgress > 0 ||
     isRefreshDeltaTableInProgress > 0 ||
-    hasInProgressStatus;
+    hasTableInProgress || // Use get_table_status for reload spinner
+    schemaStatus?.is_in_progress === true;
 
   // Determine the message to show based on the active operation
   const statusMessage = getStatusMessage({
@@ -75,6 +163,7 @@ const Header = ({ connector }: { connector: Connector }) => {
     next_sync_time,
     time_frequency,
     dateTimeFmt: dateTimeFormat,
+    schemaStatus,
   });
 
   return (

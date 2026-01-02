@@ -1,3 +1,5 @@
+import forge from "node-forge";
+
 import { toaster } from "@/components/ui/toaster";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
@@ -24,62 +26,28 @@ const exportPrivateKey = async (
   passphrase?: string,
 ): Promise<string> => {
   const exported = await window.crypto.subtle.exportKey("pkcs8", key);
-  const privateKeyBytes = new Uint8Array(exported);
 
   if (passphrase && passphrase.trim()) {
     try {
-      const passphraseBytes = new TextEncoder().encode(passphrase);
-      const passphraseBuffer = passphraseBytes.buffer;
-
-      const saltArray = window.crypto.getRandomValues(new Uint8Array(16)); // 128-bit salt
-      const salt = saltArray.buffer;
-      const baseKey = await window.crypto.subtle.importKey(
-        "raw",
-        passphraseBuffer,
-        "PBKDF2",
-        false,
-        ["deriveBits", "deriveKey"],
+      // Convert PKCS#8 DER to node-forge private key
+      const privateKeyDer = forge.util.createBuffer(
+        arrayBufferToString(exported),
+      );
+      const privateKey = forge.pki.privateKeyFromAsn1(
+        forge.asn1.fromDer(privateKeyDer),
       );
 
-      const derivedKey = await window.crypto.subtle.deriveKey(
+      // Use node-forge to encrypt with standard PKCS#8 format
+      // This generates a standard encrypted private key that the backend can parse
+      const encryptedPem = forge.pki.encryptRsaPrivateKey(
+        privateKey,
+        passphrase,
         {
-          name: "PBKDF2",
-          salt: salt,
-          iterations: 100000,
-          hash: "SHA-256",
+          algorithm: "aes256", // AES-256-CBC
         },
-        baseKey,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt"],
       );
 
-      // Generate IV for AES-GCM
-      const ivArray = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
-
-      // Encrypt the private key
-      const encrypted = await window.crypto.subtle.encrypt(
-        {
-          name: "AES-GCM",
-          iv: ivArray,
-        },
-        derivedKey,
-        privateKeyBytes.buffer,
-      );
-
-      // Combine salt + iv + encrypted data and encode as base64
-      const combined = new Uint8Array(
-        saltArray.length + ivArray.length + encrypted.byteLength,
-      );
-      combined.set(saltArray, 0);
-      combined.set(ivArray, saltArray.length);
-      combined.set(
-        new Uint8Array(encrypted),
-        saltArray.length + ivArray.length,
-      );
-
-      const encryptedBase64 = window.btoa(arrayBufferToString(combined.buffer));
-      return formatAsPem(encryptedBase64, "ENCRYPTED PRIVATE KEY");
+      return encryptedPem;
     } catch (error) {
       console.error("Error encrypting private key:", error);
       toaster.error({

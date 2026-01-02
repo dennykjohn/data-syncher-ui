@@ -32,6 +32,7 @@ import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetch
 import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
+import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import { type Connector, type ConnectorTable } from "@/types/connectors";
 
@@ -240,6 +241,35 @@ const Schema = () => {
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
+
+  const { status: schemaStatus } = useUpdateSchemaStatus(
+    context.connection_id,
+    isCheckingSchemaStatus,
+  );
+
+  const prevIsCheckingRef = useRef(false);
+  useEffect(() => {
+    if (isCheckingSchemaStatus && !prevIsCheckingRef.current) {
+      prevIsCheckingRef.current = true;
+    } else if (!isCheckingSchemaStatus) {
+      prevIsCheckingRef.current = false;
+    }
+  }, [isCheckingSchemaStatus]);
+
+  useEffect(() => {
+    if (
+      schemaStatus &&
+      !schemaStatus.is_in_progress &&
+      isCheckingSchemaStatus
+    ) {
+      setTimeout(() => {
+        setIsCheckingSchemaStatus(false);
+      }, 0);
+      queryClient.refetchQueries({
+        queryKey: ["ConnectorTable", context.connection_id],
+      });
+    }
+  }, [schemaStatus, isCheckingSchemaStatus, context.connection_id]);
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
       connectorId: context.connection_id,

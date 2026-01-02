@@ -18,13 +18,18 @@ const useReloadSingleTable = ({ connectionId }: { connectionId: number }) => {
     mutationKey: ["reloadSingleTable", connectionId],
     mutationFn: reloadSingleTable,
     onSuccess: (response, variables) => {
-      toaster.warning({ title: response.data.message });
+      toaster.success({ title: response.data.message });
       // ensure schema lists refresh
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", variables.connection_id],
       });
+
       queryClient.invalidateQueries({
-        queryKey: ["SelectedTables", variables.connection_id],
+        queryKey: ["TableStatus", variables.connection_id],
+      });
+
+      queryClient.refetchQueries({
+        queryKey: ["ConnectorTable", variables.connection_id],
       });
     },
   });

@@ -28,7 +28,7 @@ const ConnectorDetails = () => {
   return (
     <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
       <Header connector={connector} />
-      <Tabs />
+      <Tabs connector={connector} />
       <Suspense fallback={<LoadingSpinner />}>
         <Flex overflowX="auto" flexGrow={1} justifyContent={"center"}>
           <Outlet context={connector} />

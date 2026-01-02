@@ -45,7 +45,7 @@ const Actions = ({
 
   const [shouldPollSchemaStatus, setShouldPollSchemaStatus] = useState(false);
 
-  // Always enable the query to check status on mount/updates.
+  
   // The hook's refetchInterval will handle stopping if not in progress.
   const { data: schemaStatus } = useUpdateSchemaStatus(connection_id, true);
 
@@ -59,9 +59,6 @@ const Actions = ({
 
   const [shouldPollRefreshStatus, setShouldPollRefreshStatus] = useState(false);
 
-  // Always enable table status check so we resume if we reload the page.
-  // We use shouldPollRefreshStatus to FORCE polling if we just clicked the button
-  // (though strict self-management might be enough, keeping force for safety).
   const { data: tableStatusData } = useFetchTableStatus(
     connection_id,
     true,
