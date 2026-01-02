@@ -169,7 +169,6 @@ const TableRow = ({
                   cursor: isReloadButtonDisabled ? "not-allowed" : "pointer",
                 }}
                 p={1}
-                borderRadius="sm"
                 onClick={onReload}
                 style={{
                   animation: isThisTableReloading
@@ -240,8 +239,6 @@ const TableRow = ({
 const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
-  const [isCheckingSchemaStatus, setIsCheckingSchemaStatus] = useState(false);
-
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
 
@@ -452,7 +449,11 @@ const Schema = () => {
       <Actions
         shouldShowDisabledState={shouldShowDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
-        onUpdateSchemaStart={() => setIsCheckingSchemaStatus(true)}
+        onUpdateSchemaComplete={() => {
+          queryClient.refetchQueries({
+            queryKey: ["ConnectorTable", context.connection_id],
+          });
+        }}
       />
       <Flex mr="auto">
         <InputGroup endElement={<MdSearch size={24} />}>

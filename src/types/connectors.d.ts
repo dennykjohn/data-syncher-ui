@@ -136,16 +136,7 @@ export interface ConnectorActivityDetailResponse {
   }[];
 }
 
-export type SchemaStatusResponse = {
+export interface SchemaStatusResponse {
   is_in_progress: boolean;
-  current_job: string | null;
-  message?: string;
-  tables_fetched?: number;
-  total_tables?: number;
-};
-
-export type ReverseSchemaResponse = {
-  source_tables?: ConnectorTable[];
-  destination_tables?: ConnectorTable[];
-  tables?: ConnectorTable[];
-};
+  current_job?: string;
+}

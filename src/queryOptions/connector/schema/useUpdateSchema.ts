@@ -17,11 +17,18 @@ const useUpdateSchema = ({ connectorId }: { connectorId: number }) => {
     mutationFn: () => updateSchema(connectorId),
     onSuccess: (response) => {
       toaster.success({ title: response.data.message });
+      queryClient.setQueryData(["SchemaStatus", connectorId], {
+        is_in_progress: true,
+        current_job: "Updating schema...",
+      });
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectorId],
       });
       queryClient.refetchQueries({
         queryKey: ["ConnectorTable", connectorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["SchemaStatus", connectorId],
       });
 
       triggerUpdateSchemaStatus(connectorId);

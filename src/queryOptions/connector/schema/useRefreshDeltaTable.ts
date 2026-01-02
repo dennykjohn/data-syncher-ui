@@ -28,6 +28,9 @@ export default function useRefreshDeltaTable({
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", variables.connection_id],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["TableStatus", variables.connection_id],
+      });
     },
   });
 }
