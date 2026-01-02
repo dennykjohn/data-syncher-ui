@@ -7,7 +7,7 @@ export interface CreateConnectionPayload {
 }
 
 export interface ConnectorConfigResponse {
-  source_schema: Record<string, string>;
+  source_schema: FieldConfig[]; // Array of fields with read_only property from backend in edit mode
   initial_data: Record<string, string>;
   destination_config: {
     name: string;
@@ -126,4 +126,9 @@ export interface ConnectorActivityDetailResponse {
     timestamp: string;
     message: string;
   }[];
+}
+
+export interface SchemaStatusResponse {
+  is_in_progress: boolean;
+  current_job?: string;
 }
