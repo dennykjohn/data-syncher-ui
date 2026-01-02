@@ -7,7 +7,7 @@ export interface CreateConnectionPayload {
 }
 
 export interface ConnectorConfigResponse {
-  source_schema: FieldConfig[]; // Array of fields with read_only property from backend in edit mode
+  source_schema: Record<string, string>;
   initial_data: Record<string, string>;
   destination_config: {
     name: string;
