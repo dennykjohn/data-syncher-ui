@@ -45,7 +45,6 @@ const Actions = ({
 
   const [shouldPollSchemaStatus, setShouldPollSchemaStatus] = useState(false);
 
-  
   // The hook's refetchInterval will handle stopping if not in progress.
   const { data: schemaStatus } = useUpdateSchemaStatus(connection_id, true);
 
