@@ -264,9 +264,7 @@ const Schema = () => {
       !schemaStatus.is_in_progress &&
       isCheckingSchemaStatus
     ) {
-      setTimeout(() => {
-        setIsCheckingSchemaStatus(false);
-      }, 0);
+      setTimeout(() => {}, 0);
       queryClient.refetchQueries({
         queryKey: ["ConnectorTable", context.connection_id],
       });
