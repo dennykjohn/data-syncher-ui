@@ -239,13 +239,15 @@ const TableRow = ({
 const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
+
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
 
   const { status: schemaStatus } = useUpdateSchemaStatus(
     context.connection_id,
-    isCheckingSchemaStatus,
+    true,
   );
+  const isCheckingSchemaStatus = !!schemaStatus?.is_in_progress;
 
   const prevIsCheckingRef = useRef(false);
   useEffect(() => {
