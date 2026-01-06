@@ -199,8 +199,7 @@ const Actions = ({
     onUpdateSchemaComplete,
   ]);
 
-  const isRefreshButtonLoading =
-    isRefreshing || (shouldPollRefreshStatus && hasAnyTableInProgress);
+  const isRefreshButtonLoading = isRefreshing || isRefreshSchemaInProgress > 0;
 
   const isAnyOperationInProgress =
     isRefreshSchemaInProgress > 0 ||
