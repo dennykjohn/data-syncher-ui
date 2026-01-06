@@ -26,8 +26,8 @@ type Column<T> = {
 type TableProps<T> = {
   data: T[];
   columns: Column<T>[];
-  pageSize?: number;
-  totalNumberOfPages: number;
+  pageSize: number;
+  totalElements: number;
   updateCurrentPage: (_currentPage: number) => void;
   isLoading?: boolean;
   onRowClick?: (_row: T, _index: number) => void;
@@ -38,7 +38,8 @@ type TableProps<T> = {
 const Table = <T,>({
   data,
   columns,
-  totalNumberOfPages,
+  totalElements,
+  pageSize,
   updateCurrentPage,
   isLoading = false,
   onRowClick,
@@ -46,8 +47,6 @@ const Table = <T,>({
   hidePagination = false,
 }: TableProps<T>) => {
   const [currentPage, setCurrentPage] = useState(1);
-
-  const totalPages = totalNumberOfPages;
 
   useEffect(() => {
     updateCurrentPage(currentPage);
@@ -140,8 +139,9 @@ const Table = <T,>({
       {!hidePagination && (
         <Flex justifyContent={"flex-end"} mt={4}>
           <Pagination.Root
-            count={totalPages}
-            pageSize={5}
+            count={totalElements}
+            defaultPageSize={10}
+            pageSize={pageSize}
             page={currentPage}
             onPageChange={(e) => setCurrentPage(e.page)}
           >
