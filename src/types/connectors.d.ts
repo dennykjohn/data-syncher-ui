@@ -91,7 +91,7 @@ export type ConnectorSettingsApiResponse = {
 export type ConnectorTable = {
   table: string;
   selected: boolean;
-  sequence: null;
+  sequence: number | null;
   is_delta: boolean;
   table_fields: Record<string, string>;
 };
@@ -100,7 +100,7 @@ export interface ConnectorSelectedTable {
   tbl_id: number;
   table: string;
   sequence: number;
-  status: "in_progress" | "completed" | "failed";
+  status: "in_progress" | "completed" | "failed" | null;
 }
 
 // ------------------ Connector Activity Types ------------------
