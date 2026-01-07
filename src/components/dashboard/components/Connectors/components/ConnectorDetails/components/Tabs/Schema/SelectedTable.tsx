@@ -55,12 +55,12 @@ const SelectedTable = ({
   const [shouldPollDeltaTableStatus, setShouldPollDeltaTableStatus] =
     useState(false);
 
-  // Poll get_table_status API - ONLY enabled when shouldPollDeltaTableStatus is true (after button click)
-  // This API is called AFTER the refresh delta table button is clicked and polls until completion
+  // Always fetch table status to show current state
+  // Poll continuously only when shouldPollDeltaTableStatus is true (after button click)
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
-    shouldPollDeltaTableStatus, // Only enabled when polling is needed (after button click)
-    shouldPollDeltaTableStatus, // Force polling when refresh delta table is active
+    true, // Always enabled to fetch initial status
+    shouldPollDeltaTableStatus, // Only force polling when refresh is active
   );
 
   // Merge selected tables from main list with status from get_table_status API
@@ -69,28 +69,19 @@ const SelectedTable = ({
       return [];
     }
 
-    if (!tableStatusData?.tables) {
-      // Return tables with default status if tableStatusData is not available
-      return selectedTablesFromMain.map((table) => ({
-        tbl_id: 0, // Not used, but required by type
-        table: table.table,
-        sequence: table.sequence || 0,
-        status: "completed" as "in_progress" | "completed" | "failed",
-      }));
-    }
-
     return selectedTablesFromMain.map((table) => {
-      const statusFromAPI = tableStatusData.tables.find(
+      const statusFromAPI = tableStatusData?.tables?.find(
         (t) => t.table === table.table,
       );
       return {
         tbl_id: 0, // Not used, but required by type
         table: table.table,
         sequence: table.sequence || 0,
-        status: (statusFromAPI?.status ?? "completed") as
+        status: (statusFromAPI?.status || null) as
           | "in_progress"
           | "completed"
-          | "failed",
+          | "failed"
+          | null,
       };
     });
   }, [selectedTablesFromMain, tableStatusData]);

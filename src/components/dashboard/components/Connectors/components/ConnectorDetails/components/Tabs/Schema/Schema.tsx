@@ -54,7 +54,7 @@ interface TableRowProps {
   isReloadingSingleTable: boolean;
   isRefreshDeltaTableInProgress: number;
   isRefreshSchemaInProgress: number;
-  tableStatusData?: { tables: Array<{ table: string; status: string }> };
+  tableStatusData?: { tables: Array<{ table: string; status: string | null }> };
   onReload: () => void;
 }
 
@@ -95,59 +95,75 @@ const TableRow = ({
     (reloadingTable === table && isReloadingSingleTable) ||
     (reloadingTable === table && isTableInProgressFromAPI);
 
-  const isRefreshDeltaInProgress = isRefreshDeltaTableInProgress > 0;
-  const isSchemaRefreshing = isRefreshSchemaInProgress > 0;
-
-  const hasAnyOtherTableInProgress =
-    tableStatusData?.tables?.some(
-      (t) => t.status === "in_progress" && t.table !== table,
-    ) ?? false;
-
   const isReloadButtonDisabled =
     (shouldShowDisabledState ||
-      isRefreshDeltaInProgress ||
-      isSchemaRefreshing ||
-      hasAnyOtherTableInProgress ||
+      isRefreshDeltaTableInProgress > 0 ||
+      isRefreshSchemaInProgress > 0 ||
+      tableStatusData?.tables?.some(
+        (t) => t.status === "in_progress" && t.table !== table,
+      ) ||
       (isReloadingSingleTable && reloadingTable !== table)) &&
     !isThisTableReloading;
 
   return (
     <Flex
       key={table}
-      justifyContent="space-between"
       backgroundColor={rowBg}
-      alignItems="center"
-      direction={isExpanded ? "column" : "row"}
+      direction="column"
       padding={2}
       borderRadius={4}
     >
-      <Flex
-        alignItems="center"
-        justifyContent="space-between"
-        gap={2}
+      <Grid
+        templateColumns="24px 1fr auto"
+        alignItems="start"
         width="100%"
+        gap={2}
       >
-        <Flex alignItems="center" gap={2} flex="1">
-          <Box
-            onClick={() => onToggleExpand(table)}
-            style={{ cursor: "pointer" }}
-            padding={1}
-            _hover={{
-              backgroundColor: "brand.200",
-              borderRadius: 4,
-            }}
-          >
+        <Box>
+          <Box onClick={() => onToggleExpand(table)} cursor="pointer">
             {isExpanded ? <IoCaretDownSharp /> : <IoMdPlay />}
           </Box>
+        </Box>
+
+        <Box>
           <Text
             fontSize="sm"
+            cursor="pointer"
             onClick={() => onToggleExpand(table)}
-            style={{ cursor: "pointer" }}
           >
             {table}
           </Text>
-        </Flex>
-        <Flex gap={6} alignItems="center">
+
+          {isExpanded && (
+            <Flex direction="column" gap={2} mt={2}>
+              {tableFieldsData?.table_fields &&
+                Object.entries(tableFieldsData.table_fields).map(
+                  ([field, fieldInfo]) => {
+                    const dataType =
+                      typeof fieldInfo === "string"
+                        ? fieldInfo
+                        : (fieldInfo as { data_type?: string }).data_type ||
+                          "unknown";
+
+                    const isPK = isPrimaryKey(field, fieldInfo);
+
+                    return (
+                      <Flex key={field} gap={2} alignItems="center">
+                        {isPK && <Text color="yellow.600">🔑</Text>}
+                        <Text fontSize="sm">{field}</Text>
+                        <Text color="gray.500">:</Text>
+                        <Text fontSize="sm" color="gray.600">
+                          {dataType}
+                        </Text>
+                      </Flex>
+                    );
+                  },
+                )}
+            </Flex>
+          )}
+        </Box>
+
+        <Flex gap={6} alignItems="center" justifySelf="end">
           <Flex justifyContent="center" minW="40px">
             {item.is_delta && (
               <TbDelta color="#2563EB" size={18} title="Delta table" />
@@ -196,42 +212,7 @@ const TableRow = ({
             </Checkbox.Root>
           </Flex>
         </Flex>
-      </Flex>
-
-      {isExpanded && (
-        <Flex direction="column" gap={2} mt={2} pl={8}>
-          {tableFieldsData?.table_fields &&
-            Object.entries(tableFieldsData.table_fields).map(
-              ([field, fieldInfo]) => {
-                const dataType =
-                  typeof fieldInfo === "string"
-                    ? fieldInfo
-                    : (fieldInfo as { data_type?: string }).data_type ||
-                      "unknown";
-                const isPK = isPrimaryKey(field, fieldInfo);
-
-                return (
-                  <Flex key={field} alignItems="center" gap={2}>
-                    {isPK && (
-                      <Text fontSize="sm" color="yellow.600">
-                        🔑
-                      </Text>
-                    )}
-                    <Text fontSize="sm" fontWeight="medium">
-                      {field}
-                    </Text>
-                    <Text fontSize="sm" color="gray.500">
-                      :
-                    </Text>
-                    <Text fontSize="sm" color="gray.600" fontStyle="italic">
-                      {dataType}
-                    </Text>
-                  </Flex>
-                );
-              },
-            )}
-        </Flex>
-      )}
+      </Grid>
     </Flex>
   );
 };
@@ -239,13 +220,15 @@ const TableRow = ({
 const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
+
   const { data: AllTableList, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
 
   const { status: schemaStatus } = useUpdateSchemaStatus(
     context.connection_id,
-    isCheckingSchemaStatus,
+    true,
   );
+  const isCheckingSchemaStatus = !!schemaStatus?.is_in_progress;
 
   const prevIsCheckingRef = useRef(false);
   useEffect(() => {
@@ -262,9 +245,7 @@ const Schema = () => {
       !schemaStatus.is_in_progress &&
       isCheckingSchemaStatus
     ) {
-      setTimeout(() => {
-        setIsCheckingSchemaStatus(false);
-      }, 0);
+      setTimeout(() => {}, 0);
       queryClient.refetchQueries({
         queryKey: ["ConnectorTable", context.connection_id],
       });
@@ -370,7 +351,12 @@ const Schema = () => {
 
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
-    return AllTableList.filter((t) => t.selected);
+    return AllTableList.filter((t) => t.selected).sort((a, b) => {
+      // Sort by sequence if available, otherwise maintain current order
+      const seqA = a.sequence ?? 0;
+      const seqB = b.sequence ?? 0;
+      return seqA - seqB;
+    });
   }, [AllTableList]);
 
   const [copyOfInitialCheckedTables, setCopyOfInitialCheckedTables] = useState<
@@ -425,16 +411,24 @@ const Schema = () => {
         onSuccess: (response) => {
           const message =
             response?.data?.message || "Tables updated successfully";
-          toaster.success({
-            title: message,
-            description: response?.data?.description,
-          });
+          const warning = response?.data?.warning;
+
+          // Show warning if present, otherwise show success
+          if (warning) {
+            toaster.warning({
+              title: warning,
+            });
+          } else {
+            toaster.success({
+              title: message,
+              description: response?.data?.description,
+            });
+          }
+
           shouldSkipUpdateRef.current = true;
-          setTimeout(() => {
-            setCopyOfInitialCheckedTables(savedTables);
-            setUserCheckedTables(savedTables);
-            shouldSkipUpdateRef.current = false;
-          }, 3000);
+          setCopyOfInitialCheckedTables(savedTables);
+          setUserCheckedTables(savedTables);
+          shouldSkipUpdateRef.current = false;
         },
       },
     );

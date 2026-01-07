@@ -27,7 +27,7 @@ const fetchTableStatus = async (
       tbl_id: index,
       table: item.table_name,
       sequence: index,
-      status: item.status as "in_progress" | "completed" | "failed",
+      status: (item.status as "in_progress" | "completed" | "failed") || null,
     })) || [];
 
   return { tables };
