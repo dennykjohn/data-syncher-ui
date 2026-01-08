@@ -56,12 +56,9 @@ interface TableRowProps {
   isReloadingSingleTable: boolean;
   isRefreshDeltaTableInProgress: number;
   isRefreshSchemaInProgress: number;
-  tableStatusData?: {
-    tables: Array<{ table: string; status?: string | null }>;
-  };
+  tableStatusData?: { tables: Array<{ table: string; status: string | null }> };
   onReload: () => void;
 }
-
 const TableRow = ({
   item,
   index,
@@ -438,7 +435,6 @@ const Schema = () => {
       { selected_tables: tablesToAdd },
       {
         onSuccess: async (response) => {
-          // Axios response structure: response.data contains the actual API response
           const message =
             response?.data?.message || "Tables updated successfully";
           const warning = response?.data?.warning;
