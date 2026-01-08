@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from "react";
 
 import Cookies from "js-cookie";
 
+import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
@@ -37,6 +38,15 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             access_token,
             refresh_token: refresh_token || null,
           });
+
+          // Show trial expiration message if present
+          if (user.is_trial_expired && user.message) {
+            toaster.error({
+              title: "Trial Expired",
+              description: user.message,
+              id: "trial-expired",
+            });
+          }
         } catch (error) {
           console.error("Failed to fetch profile:", error);
           // Clear invalid tokens
