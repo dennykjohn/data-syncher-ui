@@ -105,7 +105,7 @@ export interface ConnectorSelectedTable {
   tbl_id: number;
   table: string;
   sequence: number;
-  status?: "in_progress" | "completed" | "failed" | "null";
+  status?: "in_progress" | "completed" | "failed" | null;
 }
 
 // ------------------ Connector Activity Types ------------------

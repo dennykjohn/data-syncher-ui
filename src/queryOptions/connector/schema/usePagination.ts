@@ -33,6 +33,6 @@ export const usePagination = <T>({
     totalPages,
     currentData,
     jumpToPage,
-    setCurrentPage, // Expose raw setter if needed
+    setCurrentPage,
   };
 };
