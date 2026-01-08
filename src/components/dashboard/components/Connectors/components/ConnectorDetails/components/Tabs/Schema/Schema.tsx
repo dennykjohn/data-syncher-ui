@@ -269,7 +269,7 @@ const Schema = () => {
   // Filtered tables based on search query
   const filteredTables = useMemo(() => {
     return (
-      AllTableList?.filter((item) =>
+      AllTableList?.filter((item: ConnectorTable) =>
         item.table.toLowerCase().includes(searchQuery),
       ) || []
     );
@@ -377,12 +377,14 @@ const Schema = () => {
 
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
-    return AllTableList.filter((t) => t.selected).sort((a, b) => {
-      // Sort by sequence if available, otherwise maintain current order
-      const seqA = a.sequence ?? 0;
-      const seqB = b.sequence ?? 0;
-      return seqA - seqB;
-    });
+    return AllTableList.filter((t: ConnectorTable) => t.selected).sort(
+      (a: ConnectorTable, b: ConnectorTable) => {
+        // Sort by sequence if available, otherwise maintain current order
+        const seqA = a.sequence ?? 0;
+        const seqB = b.sequence ?? 0;
+        return seqA - seqB;
+      },
+    );
   }, [AllTableList]);
 
   const [copyOfInitialCheckedTables, setCopyOfInitialCheckedTables] = useState<
@@ -393,7 +395,9 @@ const Schema = () => {
   useEffect(() => {
     if (AllTableList?.length && !hasInitializedRef.current) {
       setTimeout(() => {
-        setCopyOfInitialCheckedTables(AllTableList.filter((t) => t.selected));
+        setCopyOfInitialCheckedTables(
+          AllTableList.filter((t: ConnectorTable) => t.selected),
+        );
       }, 0);
       hasInitializedRef.current = true;
     }
@@ -416,8 +420,10 @@ const Schema = () => {
     return (
       userCheckedTables.length !== copyOfInitialCheckedTables.length ||
       userCheckedTables.some(
-        (table) =>
-          !copyOfInitialCheckedTables.find((t) => t.table === table.table),
+        (table: ConnectorTable) =>
+          !copyOfInitialCheckedTables.find(
+            (t: ConnectorTable) => t.table === table.table,
+          ),
       )
     );
   }, [userCheckedTables, copyOfInitialCheckedTables]);
@@ -551,10 +557,12 @@ const Schema = () => {
                     onToggleExpand={toggleExpand}
                     userCheckedTables={userCheckedTables}
                     onCheckedChange={(checked) => {
-                      setUserCheckedTables((prev) =>
+                      setUserCheckedTables((prev: ConnectorTable[]) =>
                         checked
                           ? [...prev, item]
-                          : prev.filter((t) => t.table !== table),
+                          : prev.filter(
+                              (t: ConnectorTable) => t.table !== table,
+                            ),
                       );
                     }}
                     shouldShowDisabledState={shouldShowDisabledState}
