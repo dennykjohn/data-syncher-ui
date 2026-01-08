@@ -21,8 +21,6 @@ export type UserTableItem = {
   company_email: string;
   company_name: string;
   role: string;
-  is_trial_expired?: boolean;
-  message?: string;
 };
 
 export type User = UserTableItem;
