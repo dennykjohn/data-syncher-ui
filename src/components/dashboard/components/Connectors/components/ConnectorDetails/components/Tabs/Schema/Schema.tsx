@@ -36,7 +36,11 @@ import { usePagination } from "@/queryOptions/connector/schema/usePagination";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
-import { type Connector, type ConnectorTable } from "@/types/connectors";
+import {
+  type Connector,
+  type ConnectorTable,
+  type ConnectorTablesResponse,
+} from "@/types/connectors";
 
 import { isPrimaryKey } from "../ReverseSchema/utils/validation";
 import Actions from "./Actions";
@@ -56,7 +60,9 @@ interface TableRowProps {
   isReloadingSingleTable: boolean;
   isRefreshDeltaTableInProgress: number;
   isRefreshSchemaInProgress: number;
-  tableStatusData?: { tables: Array<{ table: string; status: string | null }> };
+  tableStatusData?: {
+    tables: Array<{ table: string; status?: string | null }>;
+  };
   onReload: () => void;
 }
 const TableRow = ({
@@ -222,8 +228,11 @@ const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
 
-  const { data: allTableData, isLoading: isAllTableListLoading } =
+  const { data: rawAllTableData, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
+
+  // Explicitly cast to ensure TypeScript understands the shape
+  const allTableData = rawAllTableData as unknown as ConnectorTablesResponse;
 
   const AllTableList = allTableData?.tables;
   const itemsPerPage = allTableData?.pagination_limit;
@@ -281,7 +290,7 @@ const Schema = () => {
     currentPage,
     totalPages,
     jumpToPage,
-  } = usePagination({
+  } = usePagination<ConnectorTable>({
     data: filteredTables,
     itemsPerPage,
   });
