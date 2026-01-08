@@ -24,6 +24,7 @@ import { TbDelta } from "react-icons/tb";
 
 import { useOutletContext } from "react-router";
 
+import Pagination from "@/components/shared/Pagination";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -31,6 +32,7 @@ import { queryClient } from "@/lib/react-query-client";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
+import { usePagination } from "@/queryOptions/connector/schema/usePagination";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
@@ -54,7 +56,9 @@ interface TableRowProps {
   isReloadingSingleTable: boolean;
   isRefreshDeltaTableInProgress: number;
   isRefreshSchemaInProgress: number;
-  tableStatusData?: { tables: Array<{ table: string; status: string | null }> };
+  tableStatusData?: {
+    tables: Array<{ table: string; status?: string | null }>;
+  };
   onReload: () => void;
 }
 
@@ -221,8 +225,11 @@ const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
 
-  const { data: AllTableList, isLoading: isAllTableListLoading } =
+  const { data: allTableData, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
+
+  const AllTableList = allTableData?.tables;
+  const itemsPerPage = allTableData?.pagination_limit;
 
   const { status: schemaStatus } = useUpdateSchemaStatus(
     context.connection_id,
@@ -251,6 +258,7 @@ const Schema = () => {
       });
     }
   }, [schemaStatus, isCheckingSchemaStatus, context.connection_id]);
+
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
       connectorId: context.connection_id,
@@ -258,7 +266,28 @@ const Schema = () => {
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
+
   const [reloadingTable, setReloadingTable] = useState<string | null>(null);
+
+  // Filtered tables based on search query
+  const filteredTables = useMemo(() => {
+    return (
+      AllTableList?.filter((item) =>
+        item.table.toLowerCase().includes(searchQuery),
+      ) || []
+    );
+  }, [AllTableList, searchQuery]);
+
+  // Pagination logic
+  const {
+    currentData: paginatedTables,
+    currentPage,
+    totalPages,
+    jumpToPage,
+  } = usePagination({
+    data: filteredTables,
+    itemsPerPage,
+  });
 
   const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
     useReloadSingleTable({ connectionId: context.connection_id });
@@ -408,7 +437,8 @@ const Schema = () => {
     updateTables(
       { selected_tables: tablesToAdd },
       {
-        onSuccess: (response) => {
+        onSuccess: async (response) => {
+          // Axios response structure: response.data contains the actual API response
           const message =
             response?.data?.message || "Tables updated successfully";
           const warning = response?.data?.warning;
@@ -421,7 +451,6 @@ const Schema = () => {
           } else {
             toaster.success({
               title: message,
-              description: response?.data?.description,
             });
           }
 
@@ -429,6 +458,15 @@ const Schema = () => {
           setCopyOfInitialCheckedTables(savedTables);
           setUserCheckedTables(savedTables);
           shouldSkipUpdateRef.current = false;
+
+          // Manually trigger refetch since we're overriding the default onSuccess
+          await queryClient.refetchQueries({
+            queryKey: ["ConnectorTable", context.connection_id],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["TableStatus", context.connection_id],
+          });
         },
       },
     );
@@ -457,6 +495,7 @@ const Schema = () => {
             onChange={(e) => {
               const query = e.target.value.toLowerCase();
               setSearchQuery(query);
+              jumpToPage(1);
             }}
           />
         </InputGroup>
@@ -500,54 +539,64 @@ const Schema = () => {
             </Flex>
           )}
 
-          {!isAssigningTables &&
-            AllTableList?.filter((item) =>
-              item.table.toLowerCase().includes(searchQuery),
-            ).map((item, index) => {
-              const { table } = item;
-              const isExpanded = !!expanded[table];
+          {!isAssigningTables && (
+            <>
+              {paginatedTables.map((item, index) => {
+                const { table } = item;
+                const isExpanded = !!expanded[table];
 
-              return (
-                <TableRow
-                  key={table}
-                  item={item}
-                  index={index}
-                  connectionId={context.connection_id}
-                  isExpanded={isExpanded}
-                  onToggleExpand={toggleExpand}
-                  userCheckedTables={userCheckedTables}
-                  onCheckedChange={(checked) => {
-                    setUserCheckedTables((prev) =>
-                      checked
-                        ? [...prev, item]
-                        : prev.filter((t) => t.table !== table),
-                    );
-                  }}
-                  shouldShowDisabledState={shouldShowDisabledState}
-                  reloadingTable={reloadingTable}
-                  isReloadingSingleTable={isReloadingSingleTable}
-                  isRefreshDeltaTableInProgress={isRefreshDeltaTableInProgress}
-                  isRefreshSchemaInProgress={isRefreshSchemaInProgress}
-                  tableStatusData={tableStatusData}
-                  onReload={() => {
-                    if (shouldShowDisabledState) {
-                      toaster.warning({
-                        title: "Operation in progress",
-                        description:
-                          "Another migration is in progress. Please wait until it is complete.",
-                      });
-                      return;
+                return (
+                  <TableRow
+                    key={table}
+                    item={item}
+                    index={index}
+                    connectionId={context.connection_id}
+                    isExpanded={isExpanded}
+                    onToggleExpand={toggleExpand}
+                    userCheckedTables={userCheckedTables}
+                    onCheckedChange={(checked) => {
+                      setUserCheckedTables((prev) =>
+                        checked
+                          ? [...prev, item]
+                          : prev.filter((t) => t.table !== table),
+                      );
+                    }}
+                    shouldShowDisabledState={shouldShowDisabledState}
+                    reloadingTable={reloadingTable}
+                    isReloadingSingleTable={isReloadingSingleTable}
+                    isRefreshDeltaTableInProgress={
+                      isRefreshDeltaTableInProgress
                     }
-                    setShouldShowDisabledState(true);
-                    setReloadingTable(table);
-                    reloadSingleTable({
-                      connection_id: context.connection_id,
-                      table_name: table,
-                    });
-                  }}
+                    isRefreshSchemaInProgress={isRefreshSchemaInProgress}
+                    tableStatusData={tableStatusData}
+                    onReload={() => {
+                      if (shouldShowDisabledState) {
+                        toaster.warning({
+                          title: "Operation in progress",
+                          description:
+                            "Another migration is in progress. Please wait until it is complete.",
+                        });
+                        return;
+                      }
+                      setShouldShowDisabledState(true);
+                      setReloadingTable(table);
+                      reloadSingleTable({
+                        connection_id: context.connection_id,
+                        table_name: table,
+                      });
+                    }}
+                  />
+                );
+              })}
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={jumpToPage}
                 />
-              );
-            })}
+              )}
+            </>
+          )}
         </Flex>
 
         <SelectedTableList
