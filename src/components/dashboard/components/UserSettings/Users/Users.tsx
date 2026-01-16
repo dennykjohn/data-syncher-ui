@@ -39,7 +39,6 @@ const Users = () => {
     refetch();
   }, [searchTerm, refetch]);
 
-  const totalNumberOfPages = data ? Math.ceil(data.totalElements / SIZE) : 0;
   const updateCurrentPage = (page: number) => {
     setCurrentPage(page);
   };
@@ -71,7 +70,8 @@ const Users = () => {
         <Table<UserTableItem>
           data={data?.content || []}
           columns={columns}
-          totalNumberOfPages={totalNumberOfPages}
+          totalElements={data?.totalElements || 0}
+          pageSize={SIZE}
           updateCurrentPage={updateCurrentPage}
           isLoading={isLoading}
           onRowClick={({ user_id }) =>
