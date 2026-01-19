@@ -159,7 +159,10 @@ const SelectedTable = ({
     const targetIndex = newList.findIndex((i) => i.table === targetItem.table);
 
     newList.splice(draggedIndex, 1);
-    newList.splice(targetIndex, 0, draggedItem);
+    newList.splice(targetIndex, 0, {
+      ...draggedItem,
+      status: draggedItem.status ?? null,
+    });
 
     const tablesToUpdate = newList.map((t) => t.table);
     updateTables(

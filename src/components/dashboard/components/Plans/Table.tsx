@@ -15,10 +15,11 @@ const columns: Column<TableRow>[] = [
 const DataTable = () => {
   return (
     <Flex h="100%" pb={8}>
-      <Table
+      <Table<TableRow>
         columns={columns}
         data={TableData}
-        totalNumberOfPages={1}
+        totalElements={TableData.length}
+        pageSize={10}
         updateCurrentPage={() => {}}
         hidePagination={true}
       />
