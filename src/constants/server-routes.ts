@@ -82,6 +82,8 @@ const ServerRoutes = {
       connectionId: number;
       sessionId: number;
     }) => `connection/${connectionId}/session/${sessionId}/`,
+    fetchMigrationStatus: (connectionId: number) =>
+      `connection/migration_status/${connectionId}/`,
     createConnector: (type: string) => `source-config/${type}/create/`,
     updateConnectionSettings: (id: number) => `connection/${id}/update/`,
     toggleStatus: (id: number) => `connection/${id}/toggle/`,

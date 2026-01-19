@@ -19,6 +19,7 @@ const useFetchConnectorActivity = (id: number, filterDays: number) => {
     queryKey: ["connectorActivity", id, filterDays],
     queryFn: () => fetchConnectorActivity(id, filterDays),
     enabled: !!id && filterDays > 0,
+    refetchInterval: 5000,
   });
 };
 
