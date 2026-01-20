@@ -55,8 +55,6 @@ const SelectedTable = ({
   const [shouldPollDeltaTableStatus, setShouldPollDeltaTableStatus] =
     useState(false);
 
-  // Poll get_table_status API - ONLY enabled when shouldPollDeltaTableStatus is true (after button click)
-  // This API is called AFTER the refresh delta table button is clicked and polls until completion
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
     shouldPollDeltaTableStatus, // Only enabled when polling is needed (after button click)

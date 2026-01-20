@@ -8,9 +8,9 @@ import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 
 const MigrationProgressTable = ({
-  logs,
+  tables,
 }: {
-  logs: ConnectorActivityDetailResponse["tables"];
+  tables: ConnectorActivityDetailResponse["tables"];
 }) => {
   return (
     <Box w="100%">
@@ -77,12 +77,12 @@ const MigrationProgressTable = ({
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          {logs?.map(
+          {tables?.map(
             (
-              log: ConnectorActivityDetailResponse["tables"][number],
+              table: ConnectorActivityDetailResponse["tables"][number],
               index: number,
             ) => {
-              const statusLower = log.status.toLowerCase();
+              const statusLower = table.status.toLowerCase();
               const isSuccess =
                 statusLower === "success" || statusLower === "completed";
               const isFailed =
@@ -90,17 +90,17 @@ const MigrationProgressTable = ({
               const isPending = !isSuccess && !isFailed;
 
               // Format times if available
-              const startTime = log.start_time
-                ? format(new Date(log.start_time), "h:mm:ss a")
+              const startTime = table.start_time
+                ? format(new Date(table.start_time), "h:mm:ss a")
                 : "--";
-              const endTime = log.end_time
-                ? format(new Date(log.end_time), "h:mm:ss a")
+              const endTime = table.end_time
+                ? format(new Date(table.end_time), "h:mm:ss a")
                 : "--";
 
               // Display new records count
               const newRecordsDisplay =
-                log.new_rec !== undefined && log.new_rec !== null
-                  ? log.new_rec
+                table.new_rec !== undefined && table.new_rec !== null
+                  ? table.new_rec
                   : "--";
 
               return (
@@ -146,7 +146,7 @@ const MigrationProgressTable = ({
                     color="gray.800"
                     py={2}
                   >
-                    {log.table_name}
+                    {table.table_name}
                   </Table.Cell>
                   <Table.Cell
                     borderColor="gray.200"
