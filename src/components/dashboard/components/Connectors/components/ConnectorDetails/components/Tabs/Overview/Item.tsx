@@ -1,12 +1,12 @@
-import { Flex, Text } from "@chakra-ui/react";
+import { Box, Flex, Image, Text } from "@chakra-ui/react";
 
 import { FaPauseCircle } from "react-icons/fa";
-import { FcOk } from "react-icons/fc";
-import { MdArrowRight, MdHourglassTop, MdRefresh } from "react-icons/md";
 
 import { format } from "date-fns";
 
-import { dateTimeFormat } from "@/constants/common";
+import CheckIcon from "@/assets/icons/check-icon.svg";
+import ErrorIcon from "@/assets/icons/error-icon.svg";
+import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import { type ConnectorActivityLog } from "@/types/connectors";
 
 const Item = ({
@@ -20,58 +20,89 @@ const Item = ({
   pointerEvent: "pointer" | "not-allowed";
   selectedLog: number | null;
 }) => {
-  const { message, user, timestamp, session_id } = log;
-  const isSelected = session_id && session_id === selectedLog;
+  const {
+    message,
+    user,
+    user_name,
+    timestamp,
+    session_id,
+    migration_id,
+    status,
+  } = log;
 
-  const InProgress =
-    message.toLowerCase().includes("progress") ||
-    message.toLowerCase().includes("started");
-  const Paused = message.toLowerCase().includes("paused");
-  const Refreshed = message.toLowerCase().includes("refreshed");
-  const Completed =
-    message.toLowerCase().includes("completed") ||
-    message.toLowerCase().includes("activated");
+  // Use migration_id for selection if available, fallback to session_id for legacy or if mixed
+  const idToCompare = migration_id ?? session_id;
+  const isSelected = idToCompare && idToCompare === selectedLog;
+
+  const msg = message.toLowerCase();
+  let currentStatus = "pending";
+
+  if (status === "E" || msg.includes("error") || msg.includes("failed")) {
+    currentStatus = "error";
+  } else if (msg.includes("paused")) {
+    currentStatus = "paused";
+  } else if (msg.includes("progress") || msg.includes("started")) {
+    currentStatus = "progress";
+  } else if (
+    status === "S" ||
+    msg.includes("completed") ||
+    msg.includes("activated")
+  ) {
+    currentStatus = "success";
+  }
+
+  const displayUser = user_name || user;
 
   return (
     <Flex
-      alignItems="center"
-      cursor={pointerEvent}
       gap={2}
-      padding={2}
+      py={1}
+      px={2}
       borderBottom="1px solid #E2E8F0"
-      bgColor={isSelected ? "blue.100" : "white"}
+      bg={isSelected ? "blue.50" : "white"}
+      _hover={{ bg: isSelected ? "blue.100" : "gray.50" }}
+      cursor={pointerEvent}
       onClick={onClick}
-      direction={{ base: "column", md: "row" }}
+      borderRadius="md"
+      transition="background-color 0.2s"
     >
-      <Flex
-        alignSelf={{ base: "flex-start", md: "center" }}
-        minW="24px"
-        justifyContent="center"
-      >
-        {Completed && <FcOk size={20} />}
-        {InProgress && <MdHourglassTop size={20} color="#2684FC" />}
-        {Paused && <FaPauseCircle size={20} color="#EAAB00" />}
-        {Refreshed && <MdRefresh size={20} color="#6E2FD5" />}
-      </Flex>
-      <Flex
-        direction="column"
-        ml={{ base: 0, md: 2 }}
-        flex={1}
-        alignSelf={{ base: "flex-start" }}
-      >
-        <Text fontSize="sm" fontWeight="semibold">
+      <Box pt={0.5}>
+        {currentStatus === "success" && (
+          <Image src={CheckIcon} w="16px" h="16px" objectFit="contain" />
+        )}
+        {currentStatus === "progress" && (
+          <Image src={SandtimeIcon} w="16px" h="16px" objectFit="contain" />
+        )}
+        {currentStatus === "paused" && (
+          <FaPauseCircle color="#DD6B20" size={16} />
+        )}
+        {currentStatus === "error" && (
+          <Image src={ErrorIcon} w="16px" h="16px" objectFit="contain" />
+        )}
+        {currentStatus === "pending" && (
+          <Image src={SandtimeIcon} w="16px" h="16px" objectFit="contain" />
+        )}
+      </Box>
+      <Flex direction="column" flex={1} gap={0.5}>
+        <Text
+          fontSize="sm"
+          fontWeight="medium"
+          color="gray.700"
+          lineHeight="short"
+          lineClamp={2}
+        >
           {message}
         </Text>
-        <Text fontSize="xs">{user}</Text>
-      </Flex>
-      <Flex alignSelf={{ base: "flex-start", md: "center" }}>
-        <Text fontSize="xs">{format(timestamp, dateTimeFormat)}</Text>
-      </Flex>
-      <Flex alignSelf={{ base: "flex-end", md: "center" }}>
-        <MdArrowRight
-          size={20}
-          style={{ visibility: session_id ? "visible" : "hidden" }}
-        />
+        <Flex gap={4} alignItems="center">
+          <Text fontSize="xs" color="gray.500">
+            {timestamp
+              ? format(new Date(timestamp), "yyyy-MM-dd, HH:mm:ss")
+              : ""}
+          </Text>
+          <Text fontSize="xs" color="gray.500">
+            {displayUser}
+          </Text>
+        </Flex>
       </Flex>
     </Flex>
   );

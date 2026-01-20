@@ -1,11 +1,10 @@
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 
 import { Flex } from "@chakra-ui/react";
 
 import { Outlet, useParams } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
-import { VIEW_CONFIG } from "@/constants/view-config";
 import { useFetchConnectorById } from "@/queryOptions/connector/useFetchConnectorDetailsById";
 
 import Header from "./components/Header";
@@ -16,6 +15,7 @@ const ConnectorDetails = () => {
   const { data: connector, isLoading } = useFetchConnectorById(
     Number(connectionId) || 0,
   );
+  const [filterDays, setFilterDays] = useState<number>(1);
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -26,12 +26,14 @@ const ConnectorDetails = () => {
   }
 
   return (
-    <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
-      <Header connector={connector} />
-      <Tabs connector={connector} />
+    <Flex flexDirection="column" gap={0} h="100%">
+      <Flex direction="column" gap={4}>
+        <Header connector={connector} />
+        <Tabs connector={connector} />
+      </Flex>
       <Suspense fallback={<LoadingSpinner />}>
-        <Flex overflowX="auto" flexGrow={1} justifyContent={"center"}>
-          <Outlet context={connector} />
+        <Flex overflowX="auto" flexGrow={1} justifyContent={"center"} pt={2}>
+          <Outlet context={{ ...connector, filterDays, setFilterDays }} />
         </Flex>
       </Suspense>
     </Flex>
