@@ -5,12 +5,16 @@ import { MdCompareArrows } from "react-icons/md";
 import { format } from "date-fns";
 
 import { dateTimeFormat } from "@/constants/common";
-import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 
 const Detail = ({
   detail,
 }: {
-  detail: ConnectorActivityDetailResponse["logs"][number];
+  detail: {
+    message: string;
+    timestamp: string;
+    user?: string;
+    user_name?: string;
+  };
 }) => {
   const { message, timestamp } = detail;
   return (

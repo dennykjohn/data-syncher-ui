@@ -159,7 +159,6 @@ export interface ConnectorActivityDetailResponse {
     message?: string;
   }[];
   total_tables?: number;
-
   logs?: unknown[];
 }
 
