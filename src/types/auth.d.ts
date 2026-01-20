@@ -10,15 +10,22 @@ export interface AuthContextType {
 }
 
 type User = {
+  user_id: number;
   first_name: string;
   last_name: string;
-  email: string;
-  role: null;
-  profile_image: null;
+  company_email: string;
+  role: string;
+  profile_image: string | null;
   company: {
-    cmp_name: string;
     cmp_id: number;
+    cmp_name: string;
+    start_date: string;
+    end_date: string;
   };
+  is_trial: boolean;
+  trial_days_remaining: number;
+  is_trial_expired: boolean;
+  message?: string;
 };
 
 type AuthState = {

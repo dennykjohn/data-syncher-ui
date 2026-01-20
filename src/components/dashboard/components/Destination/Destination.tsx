@@ -81,7 +81,6 @@ const Destination = () => {
   useEffect(() => {
     refetch();
   }, [currentPage, refetch]);
-  const totalNumberOfPages = data ? Math.ceil(data.totalElements / SIZE) : 0;
   const updateCurrentPage = (page: number) => {
     setCurrentPage(page);
   };
@@ -102,8 +101,9 @@ const Destination = () => {
         <Table<DestinationTableItem>
           data={data?.content || []}
           columns={columns}
-          totalNumberOfPages={totalNumberOfPages}
           updateCurrentPage={updateCurrentPage}
+          totalElements={data?.totalElements || 0}
+          pageSize={SIZE}
           isLoading={isLoading}
           onRowClick={(row) =>
             navigate(`${ClientRoutes.DESTINATION.EDIT}/${row.dst_config_id}`)
