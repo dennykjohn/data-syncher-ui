@@ -159,7 +159,12 @@ export interface ConnectorActivityDetailResponse {
     message?: string;
   }[];
   total_tables?: number;
-  logs?: unknown[];
+  logs?: {
+    table: string;
+    status: string;
+    timestamp: string;
+    message: string;
+  }[];
 }
 
 export interface SchemaStatusResponse {

@@ -4,8 +4,11 @@ export const isPrimaryKey = (
   fieldName: string,
   fieldInfo: string | { data_type?: string; is_primary_key?: boolean },
 ): boolean => {
-  if (typeof fieldInfo === "object" && fieldInfo?.is_primary_key) {
-    return true;
+  if (
+    typeof fieldInfo === "object" &&
+    typeof fieldInfo?.is_primary_key === "boolean"
+  ) {
+    return fieldInfo.is_primary_key;
   }
   const primaryKeyPatterns = [/^id$/i, /_id$/i, /^pk_/i, /primary_key/i];
   return primaryKeyPatterns.some((pattern) => pattern.test(fieldName));

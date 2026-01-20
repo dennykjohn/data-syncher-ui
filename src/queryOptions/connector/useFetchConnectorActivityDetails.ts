@@ -5,29 +5,25 @@ import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 import { useQuery } from "@tanstack/react-query";
 
 const fetchConnectorActivityDetails = async (
-  connectionId: number,
-  sessionId: number,
+  migrationId: number,
 ): Promise<ConnectorActivityDetailResponse> => {
   const { data } = await AxiosInstance.get<ConnectorActivityDetailResponse>(
-    ServerRoutes.connector.fetchConnectionActivityDetails({
-      connectionId,
-      sessionId,
-    }),
+    ServerRoutes.connector.fetchMigrationStatus(migrationId),
   );
   return data;
 };
 
 const useFetchConnectorActivityDetails = ({
-  connectionId,
-  sessionId,
+  migrationId,
 }: {
-  connectionId: number;
-  sessionId: number;
+  migrationId: number;
 }) => {
   return useQuery({
-    queryKey: ["connectorActivityDetails", connectionId, sessionId],
-    queryFn: () => fetchConnectorActivityDetails(connectionId, sessionId),
-    enabled: !!connectionId && !!sessionId,
+    queryKey: ["connectorActivityDetails", migrationId],
+    queryFn: () => fetchConnectorActivityDetails(migrationId),
+    enabled: !!migrationId,
+    refetchInterval: 3000, // Refetch every 3 seconds for real-time migration progress
+    // Continue polling even when tab is not focused
   });
 };
 

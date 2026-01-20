@@ -19,6 +19,8 @@ const useFetchConnectorActivity = (id: number, filterDays: number) => {
     queryKey: ["connectorActivity", id, filterDays],
     queryFn: () => fetchConnectorActivity(id, filterDays),
     enabled: !!id && filterDays > 0,
+    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
+    // Continue polling even when tab is not focused
   });
 };
 
