@@ -42,7 +42,7 @@ const Settings = () => {
           <Flex>
             <Text fontSize="sm">Connected on:</Text>
             <Text fontSize="sm" fontWeight="semibold">
-              {connector?.destination_name}
+              {connector?.connected_on}
             </Text>
           </Flex>
         </Flex>

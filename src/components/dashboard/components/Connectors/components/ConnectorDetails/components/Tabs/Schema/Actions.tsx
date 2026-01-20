@@ -267,11 +267,11 @@ const Actions = ({
       >
         <Flex gap={4}>
           <Flex gap={2}>
-            <Text>Destination database:</Text>
+            <Text>Database:</Text>
             <Text fontWeight="semibold">{target_database}</Text>
           </Flex>
           <Flex gap={2}>
-            <Text>Destination Schema:</Text>
+            <Text>Schema:</Text>
             <Text fontWeight="semibold">{target_schema}</Text>
           </Flex>
         </Flex>

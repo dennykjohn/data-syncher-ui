@@ -55,12 +55,12 @@ const SelectedTable = ({
   const [shouldPollDeltaTableStatus, setShouldPollDeltaTableStatus] =
     useState(false);
 
-  // Always fetch table status to show current state
-  // Poll continuously only when shouldPollDeltaTableStatus is true (after button click)
+  // Poll get_table_status API - ONLY enabled when shouldPollDeltaTableStatus is true (after button click)
+  // This API is called AFTER the refresh delta table button is clicked and polls until completion
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
-    true, // Always enabled to fetch initial status
-    shouldPollDeltaTableStatus, // Only force polling when refresh is active
+    shouldPollDeltaTableStatus, // Only enabled when polling is needed (after button click)
+    shouldPollDeltaTableStatus, // Force polling when refresh delta table is active
   );
 
   // Merge selected tables from main list with status from get_table_status API
@@ -69,19 +69,34 @@ const SelectedTable = ({
       return [];
     }
 
-    return selectedTablesFromMain.map((table) => {
-      const statusFromAPI = tableStatusData?.tables?.find(
+    if (!tableStatusData?.tables) {
+      // Return tables without status if tableStatusData is not available
+      return selectedTablesFromMain.map((table) => ({
+        tbl_id: 0, // Not used, but required by type
+        table: table.table,
+        sequence: table.sequence || 0,
+        status: null,
+      }));
+    }
+
+    return selectedTablesFromMain.map((table: ConnectorTable) => {
+      const statusFromAPI = tableStatusData.tables.find(
         (t) => t.table === table.table,
       );
+
+      const status = statusFromAPI?.status;
+      const validStatus =
+        status === "in_progress" ||
+        status === "completed" ||
+        status === "failed"
+          ? status
+          : null;
+
       return {
         tbl_id: 0, // Not used, but required by type
         table: table.table,
         sequence: table.sequence || 0,
-        status: (statusFromAPI?.status || null) as
-          | "in_progress"
-          | "completed"
-          | "failed"
-          | null,
+        status: validStatus,
       };
     });
   }, [selectedTablesFromMain, tableStatusData]);
@@ -152,17 +167,19 @@ const SelectedTable = ({
   const handleDrop = (targetItem: ConnectorSelectedTable) => {
     if (!draggedItem || draggedItem.table === targetItem.table) return;
 
-    const newList = [...(selectedTables || [])];
+    const newList: ConnectorSelectedTable[] = [...(selectedTables || [])];
     const draggedIndex = newList.findIndex(
       (i) => i.table === draggedItem.table,
     );
     const targetIndex = newList.findIndex((i) => i.table === targetItem.table);
 
-    newList.splice(draggedIndex, 1);
-    newList.splice(targetIndex, 0, {
+    const draggedItemToInsert = {
       ...draggedItem,
       status: draggedItem.status ?? null,
-    });
+    };
+
+    newList.splice(draggedIndex, 1);
+    newList.splice(targetIndex, 0, draggedItemToInsert);
 
     const tablesToUpdate = newList.map((t) => t.table);
     updateTables(
@@ -221,10 +238,12 @@ const SelectedTable = ({
         </Flex>
       )}
       {!isAssigningTables &&
-        selectedTables?.map((table, index) => {
+        selectedTables?.map((table: ConnectorSelectedTable, index: number) => {
           const isEven = index % 2 === 0;
           const rowBg = isEven ? "gray.100" : "white";
           const { status } = table;
+
+          const isLocked = shouldShowDisabledState || hasExistingMigrations;
 
           return (
             <Flex
@@ -234,10 +253,10 @@ const SelectedTable = ({
               alignItems="center"
               padding={2}
               borderRadius={4}
-              draggable
-              onDragStart={() => handleDragStart(table)}
+              draggable={!isLocked}
+              onDragStart={() => !isLocked && handleDragStart(table)}
               onDragOver={handleDragOver}
-              onDrop={() => handleDrop(table)}
+              onDrop={() => !isLocked && handleDrop(table)}
             >
               <Flex gap={2} alignItems="center" flex="1">
                 <Text fontSize="sm">{table.table}</Text>
@@ -362,13 +381,15 @@ const SelectedTable = ({
                 <Flex justifyContent="center" minW="40px">
                   <Box
                     _hover={{
-                      color: "brand.500",
-                      backgroundColor: "gray.300",
+                      color: isLocked ? "gray.400" : "brand.500",
+                      backgroundColor: isLocked ? "transparent" : "gray.300",
                     }}
                     p={1}
                     borderRadius="sm"
+                    cursor={isLocked ? "not-allowed" : "grab"}
+                    color={isLocked ? "gray.300" : "inherit"}
                   >
-                    <RxDragHandleDots2 cursor="grab" />
+                    <RxDragHandleDots2 />
                   </Box>
                 </Flex>
               </Flex>
