@@ -14,7 +14,7 @@ const MigrationProgressTable = ({
 }) => {
   return (
     <Box w="100%">
-      <Table.Root variant="simple" borderBottomWidth={1} borderColor="gray.200">
+      <Table.Root borderBottomWidth={1} borderColor="gray.200">
         <Table.Header bg="gray.100">
           <Table.Row>
             <Table.ColumnHeader
