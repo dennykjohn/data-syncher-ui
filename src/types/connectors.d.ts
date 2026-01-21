@@ -5,7 +5,7 @@ export type ConnectorStatus = "A" | "P" | "B";
 export interface CreateConnectionPayload {
   connection_name: string;
   destination_schema: string;
-  form_data: Record<string, string>;
+  form_data: Record<string, unknown>;
 }
 
 export interface ConnectorConfigResponse {
