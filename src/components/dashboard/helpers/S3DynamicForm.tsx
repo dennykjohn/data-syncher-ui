@@ -413,8 +413,8 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
               id={field.name}
               name={field.name}
               value={fieldValue}
-              readOnly
             />
+
             <Select.Control>
               <Select.Trigger>
                 <Select.ValueText
