@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 
 import { Flex, Grid, Text } from "@chakra-ui/react";
 
-import { FcComboChart } from "react-icons/fc";
-
 import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
@@ -11,124 +9,191 @@ import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnecto
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
 import { type Connector } from "@/types/connectors";
 
-import Detail from "./Detail";
 import Filter from "./Filter";
 import Item from "./Item";
+import MigrationProgressTable from "./components/MigrationProgressTable";
 
 const Overview = () => {
-  const context = useOutletContext<Connector>();
-  const [filterDays, setFilterDays] = useState<number>(1);
+  const context = useOutletContext<
+    Connector & { filterDays: number; setFilterDays: (_days: number) => void }
+  >();
   const { data, isLoading } = useFetchConnectorActivity(
     context.connection_id,
-    filterDays,
+    context.filterDays,
   );
-  const [selectedLog, setSelectedLog] = useState<number | null>(null);
+  const [userSelectedLog, setUserSelectedLog] = useState<number | null>(null);
 
-  // derive first log with session id from data
-  const firstLogWithSessionId = useMemo(
-    () => data?.logs?.find((log) => log.session_id !== null),
-    [data],
+  // Derive the default selected log from data (first log in the list)
+  const defaultSelectedLog = useMemo(() => {
+    if (data?.logs?.length) {
+      const firstLog = data.logs[0];
+      return firstLog.migration_id ?? firstLog.session_id ?? null;
+    }
+    return null;
+  }, [data?.logs]);
+
+  // Effective selected log: user selection wins, otherwise use default
+  const effectiveSelectedLog = userSelectedLog ?? defaultSelectedLog;
+
+  // Find the active log object to check properties
+  const activeLog = useMemo(
+    () =>
+      data?.logs?.find(
+        (log) =>
+          log.migration_id === effectiveSelectedLog ||
+          log.session_id === effectiveSelectedLog,
+      ),
+    [data, effectiveSelectedLog],
   );
 
-  // effective selected log: user selection wins, otherwise first available
-  const effectiveSelectedLog =
-    selectedLog ?? firstLogWithSessionId?.session_id ?? null;
+  // Only fetch if is_clickable is true and we have a migration_id
+  const migrationIdToFetch =
+    activeLog?.is_clickable && activeLog?.migration_id
+      ? activeLog.migration_id
+      : 0;
 
   const { data: logDetails, isLoading: isLoadingDetails } =
     useFetchConnectorActivityDetails({
-      connectionId: context.connection_id,
-      sessionId: effectiveSelectedLog || 0,
+      migrationId: migrationIdToFetch,
     });
 
   if (isLoading) return <LoadingSpinner />;
 
   return (
-    <Flex flexDirection="column" gap={4} w="100%">
-      <Flex justifyContent="space-between" alignItems="center" paddingBlock={2}>
-        <Text fontWeight="semibold">Connector activity</Text>
-        <Filter filterDays={filterDays} setFilterDays={setFilterDays} />
+    <Flex flexDirection="column" gap={2} w="100%" h="full">
+      {/* Header Section if needed, though mostly handled by tabs outside */}
+
+      <Flex justifyContent="flex-end" mt={0}>
+        <Filter
+          filterDays={context.filterDays}
+          setFilterDays={context.setFilterDays}
+        />
       </Flex>
+
       <Grid
-        minW="2xl"
-        templateColumns="repeat(2, 1fr)"
-        gap={4}
-        overflowX="auto"
-        h="100%"
+        templateColumns={{ base: "1fr", lg: "minmax(0, 1fr) minmax(0, 1fr)" }}
+        gap={6}
+        h="full"
+        minH="600px"
       >
+        {/* Left Panel: Migration Logs */}
         <Flex
           direction="column"
           bgColor="white"
-          overflowX="auto"
-          borderRadius="md"
+          borderRadius="lg"
+          border="1px solid"
+          borderColor="gray.200"
+          overflow="hidden"
+          h="full"
         >
-          {data?.logs.length === 0 && (
-            <Flex
-              direction="column"
-              alignItems="center"
-              justifyContent="center"
-              gap={2}
-              padding={8}
-              h="100%"
-            >
-              <FcComboChart size={48} />
-              <Text color="brand.500">No logs available</Text>
-            </Flex>
-          )}
-          {data?.logs.map((log, index) => (
-            <Item
-              key={index}
-              log={log}
-              onClick={() => {
-                if (log.session_id) setSelectedLog(log.session_id);
-              }}
-              pointerEvent={log.session_id ? "pointer" : "not-allowed"}
-              selectedLog={effectiveSelectedLog}
-            />
-          ))}
+          <Flex
+            justifyContent="space-between"
+            alignItems="center"
+            p={4}
+            borderBottom="1px solid"
+            borderColor="gray.200"
+          >
+            <Text fontWeight="bold" fontSize="md" color="gray.700">
+              Migration Logs
+            </Text>
+          </Flex>
+
+          <Flex direction="column" overflowY="auto" flex={1}>
+            {data?.logs?.length === 0 && (
+              <Flex
+                direction="column"
+                alignItems="center"
+                justifyContent="center"
+                gap={2}
+                padding={8}
+                h="100%"
+              >
+                <Text color="gray.500">No logs available</Text>
+              </Flex>
+            )}
+            {data?.logs?.map((log, index) => (
+              <Item
+                key={index}
+                log={log}
+                onClick={() => {
+                  // Allow selection of any log (migration details will only show if clickable)
+                  const logId = log.migration_id ?? log.session_id;
+                  if (logId) {
+                    setUserSelectedLog(logId);
+                  }
+                }}
+                pointerEvent="pointer"
+                selectedLog={effectiveSelectedLog}
+              />
+            ))}
+          </Flex>
         </Flex>
+
+        {/* Right Panel: Migration Progress */}
         <Flex
           direction="column"
-          gap={2}
           bgColor="white"
-          overflowX="auto"
-          paddingInline={4}
-          borderRadius="md"
+          borderRadius="lg"
+          border="1px solid"
+          borderColor="gray.200"
+          overflow="hidden"
+          h="full"
         >
-          {isLoadingDetails ? (
-            <LoadingSpinner />
-          ) : (
-            <>
-              {!effectiveSelectedLog && (
-                <Flex
-                  direction="column"
-                  alignItems="center"
-                  justifyContent="center"
-                  gap={2}
-                  padding={8}
-                  h="100%"
-                >
-                  <FcComboChart size={48} />
-                  <Text color="brand.500">No log selected</Text>
-                </Flex>
-              )}
-              {logDetails?.logs.length === 0 && (
-                <Flex
-                  direction="column"
-                  alignItems="center"
-                  justifyContent="center"
-                  gap={2}
-                  padding={8}
-                  h="100%"
-                >
-                  <FcComboChart size={48} />
-                  <Text color="brand.500">No logs available</Text>
-                </Flex>
-              )}
-              {logDetails?.logs.map((detail, index) => (
-                <Detail key={index} detail={detail} />
-              ))}
-            </>
-          )}
+          <Flex
+            justifyContent="space-between"
+            alignItems="center"
+            p={4}
+            borderBottom="1px solid"
+            borderColor="gray.200"
+            bg="gray.50"
+          >
+            <Text fontWeight="bold" fontSize="md" color="gray.700">
+              Migration Details
+            </Text>
+          </Flex>
+
+          <Flex direction="column" flex={1} overflowY="auto" p={0}>
+            {isLoadingDetails ? (
+              <LoadingSpinner />
+            ) : (
+              <>
+                {!effectiveSelectedLog && (
+                  <Flex
+                    direction="column"
+                    alignItems="center"
+                    justifyContent="center"
+                    gap={2}
+                    padding={8}
+                    h="100%"
+                  >
+                    <Text color="gray.500">Select a log to view details</Text>
+                  </Flex>
+                )}
+                {(() => {
+                  const currentTables = logDetails?.tables || [];
+                  return (
+                    <>
+                      {effectiveSelectedLog && currentTables.length === 0 && (
+                        <Flex
+                          direction="column"
+                          alignItems="center"
+                          justifyContent="center"
+                          gap={2}
+                          padding={8}
+                          h="100%"
+                        >
+                          <Text color="gray.500">No details available</Text>
+                        </Flex>
+                      )}
+                      {currentTables.length > 0 && (
+                        <MigrationProgressTable tables={currentTables} />
+                      )}
+                    </>
+                  );
+                })()}
+              </>
+            )}
+          </Flex>
         </Flex>
       </Grid>
     </Flex>

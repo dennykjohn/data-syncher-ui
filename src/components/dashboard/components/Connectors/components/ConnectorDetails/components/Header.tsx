@@ -23,16 +23,17 @@ import { formatTimeFrequency, getStatusMessage } from "../helpers";
 import { useIsMutating } from "@tanstack/react-query";
 
 const Header = ({ connector }: { connector: Connector }) => {
+  // Safely destructure with fallback to prevent undefined errors
   const {
-    source_title,
-    destination_title,
-    source_name,
-    destination_name,
-    status,
-    connection_id,
-    time_frequency,
-    next_sync_time,
-  } = connector;
+    source_title = "",
+    destination_title = "",
+    source_name = "",
+    destination_name = "",
+    status = "P",
+    connection_id = 0,
+    time_frequency = "None",
+    next_sync_time = "",
+  } = connector || {};
 
   const { mutate: toggleConnectionStatus, isPending } =
     useToggleConnectionStatus({
@@ -74,10 +75,10 @@ const Header = ({ connector }: { connector: Connector }) => {
     prevIsReloadInProgress.current = isReloadInProgress;
   }, [isReloadInProgress]);
 
-  // Poll get_table_status API when reload is in progress
+  // Poll get_table_status API in background to track table migration status
   const { data: tableStatusData } = useFetchTableStatus(
     connection_id,
-    shouldPollTableStatus,
+    true, // Always enabled to check table status in background
   );
 
   // Check if any table has "in_progress" status from get_table_status API
@@ -100,7 +101,7 @@ const Header = ({ connector }: { connector: Connector }) => {
 
   const { status: schemaStatus } = useUpdateSchemaStatus(
     connection_id,
-    shouldPollSchemaStatus || isUpdateSchemaInProgress > 0,
+    true, // Always enabled to check schema status in background
   );
 
   useEffect(() => {

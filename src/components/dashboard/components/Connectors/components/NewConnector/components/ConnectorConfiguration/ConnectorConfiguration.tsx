@@ -109,6 +109,19 @@ const ConnectorConfiguration = ({
   ) {
     return <LoadingSpinner />;
   }
+
+  // Determine the source name
+  const sourceName = state?.source || connectorData?.source_name || "";
+
+  // Get the schema fields
+  const schemaFields =
+    mode === "edit" &&
+    connectorConfig?.source_schema &&
+    Array.isArray(connectorConfig.source_schema) &&
+    connectorConfig.source_schema.length > 0
+      ? connectorConfig.source_schema
+      : formSchema || [];
+
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
       <PageHeader
@@ -131,15 +144,9 @@ const ConnectorConfiguration = ({
       <DynamicForm
         mode={mode}
         config={{
-          fields:
-            mode === "edit" &&
-            connectorConfig?.source_schema &&
-            Array.isArray(connectorConfig.source_schema) &&
-            connectorConfig.source_schema.length > 0
-              ? connectorConfig.source_schema
-              : formSchema || [],
+          fields: schemaFields,
         }}
-        sourceName={state?.source || connectorData?.source_name || ""}
+        sourceName={sourceName}
         onSubmit={(values) => {
           handleFormSubmit(values);
         }}
@@ -156,4 +163,5 @@ const ConnectorConfiguration = ({
     </Flex>
   );
 };
+
 export default ConnectorConfiguration;

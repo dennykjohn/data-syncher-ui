@@ -82,6 +82,9 @@ const ServerRoutes = {
       connectionId: number;
       sessionId: number;
     }) => `connection/${connectionId}/session/${sessionId}/`,
+    fetchMigrationStatus: (connectionId: number) =>
+      `connection/migration_status/${connectionId}/`,
+
     createConnector: (type: string) => `source-config/${type}/create/`,
     updateConnectionSettings: (id: number) => `connection/${id}/update/`,
     toggleStatus: (id: number) => `connection/${id}/toggle/`,
@@ -97,6 +100,13 @@ const ServerRoutes = {
     fetchReverseSchema: (id: number) => `schema/${id}/`,
     fetchConnectionMappings: (id: number) => `connection/${id}/mappings/`,
     saveConnectionMappings: () => "connection/mappings/save/",
+    suggestTableName: () => "s3/suggest-table-name/",
+    previewdata: () => "s3/preview-pattern/",
+    suggestPrimaryKeys: () => "s3/suggest-primary-keys/",
+  },
+  s3: {
+    listFiles: () => "s3/list-files/",
+    suggestTableName: () => "s3/suggest-table-name/",
   },
   user: {
     createUser: () => "users/",

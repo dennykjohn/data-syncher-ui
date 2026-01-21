@@ -27,6 +27,7 @@ export interface ConnectorTableItem {
   readable_time_frequency: string;
   last_synced_new: string;
   next_sync_time: string;
+  connected_on: number;
 }
 
 export interface Connector {
@@ -50,6 +51,7 @@ export interface Connector {
   target_schema: string;
   next_sync_time: string;
   is_reverse_etl: boolean;
+  connected_on: number | string;
 }
 
 export interface ConnectorTabsProps {
@@ -105,7 +107,7 @@ export interface ConnectorSelectedTable {
   tbl_id: number;
   table: string;
   sequence: number;
-  status?: "in_progress" | "completed" | "failed" | null;
+  status: "in_progress" | "completed" | "failed" | null;
 }
 
 // ------------------ Connector Activity Types ------------------
@@ -114,10 +116,15 @@ type Status = "S" | "W" | "E";
 
 export type ConnectorActivityLog = {
   message: string;
-  user: string;
+  user?: string;
+  user_name?: string;
   timestamp: string;
   status: Status;
   session_id: number | null;
+  is_clickable?: boolean;
+  migration_id?: number;
+  log_id?: number;
+  log_type?: string;
 };
 
 export type MigrationRecord = {
@@ -133,7 +140,26 @@ export type ConnectorActivityResponse = {
 };
 
 export interface ConnectorActivityDetailResponse {
-  logs: {
+  job_name?: string;
+  migration_session_id?: number;
+  connection_id?: number;
+  overall_status?: string;
+  tables: {
+    table_name: string;
+    status: string;
+    status_icon?: string;
+    start_time: string | null;
+    end_time: string | null;
+    record_count?: number;
+    new_rec?: number;
+    mod_rec?: number;
+    del_rec?: number;
+    duration?: string | null;
+    migration_record_id?: number;
+    message?: string;
+  }[];
+  total_tables?: number;
+  logs?: {
     table: string;
     status: string;
     timestamp: string;
