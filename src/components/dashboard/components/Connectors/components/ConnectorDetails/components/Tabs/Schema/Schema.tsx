@@ -36,11 +36,7 @@ import { usePagination } from "@/queryOptions/connector/schema/usePagination";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
-import {
-  type Connector,
-  type ConnectorTable,
-  type ConnectorTablesResponse,
-} from "@/types/connectors";
+import { type Connector, type ConnectorTable } from "@/types/connectors";
 
 import { isPrimaryKey } from "../ReverseSchema/utils/validation";
 import Actions from "./Actions";
@@ -228,11 +224,8 @@ const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
 
-  const { data: rawAllTableData, isLoading: isAllTableListLoading } =
+  const { data: allTableData, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
-
-  // Explicitly cast to ensure TypeScript understands the shape
-  const allTableData = rawAllTableData as unknown as ConnectorTablesResponse;
 
   const AllTableList = allTableData?.tables;
   const itemsPerPage = allTableData?.pagination_limit;
@@ -277,11 +270,11 @@ const Schema = () => {
 
   // Filtered tables based on search query
   const filteredTables = useMemo(() => {
-    return (
+    const filtered =
       AllTableList?.filter((item: ConnectorTable) =>
         item.table.toLowerCase().includes(searchQuery),
-      ) || []
-    );
+      ) || [];
+    return filtered;
   }, [AllTableList, searchQuery]);
 
   // Pagination logic
