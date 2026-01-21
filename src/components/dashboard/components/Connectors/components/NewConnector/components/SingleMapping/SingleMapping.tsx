@@ -86,7 +86,6 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
   const s3TableList = useMemo(() => {
     if (!s3Files) return [];
     if (Array.isArray(s3Files)) return s3Files;
-    // @ts-expect-error - Handle potential object wrapper
     if (s3Files.tables && Array.isArray(s3Files.tables)) return s3Files.tables;
     return [];
   }, [s3Files]);
