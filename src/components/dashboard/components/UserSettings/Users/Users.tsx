@@ -9,6 +9,7 @@ import TableFilter from "@/components/dashboard/wrapper/TableFilter";
 import TableWrapper from "@/components/dashboard/wrapper/TableWrapper";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
+import usePermissions from "@/hooks/usePermissions";
 import { useFetchUsersListByPage } from "@/queryOptions/user/useFetchUsersListByPage";
 import Table, { type Column } from "@/shared/Table";
 import { type UserTableItem } from "@/types/user";
@@ -28,6 +29,10 @@ const Users = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const { can } = usePermissions();
+
+  const canCreate = can("can_create_users");
+  const canEdit = can("can_edit_users");
 
   const { data, isLoading, refetch } = useFetchUsersListByPage({
     page: currentPage,
@@ -57,8 +62,12 @@ const Users = () => {
           },
         ]}
         title="Users & permissions"
-        buttonLabel="Add Member"
-        onCreateClick={() => navigate(`${ClientRoutes.USER_SETTINGS.USER_ADD}`)}
+        buttonLabel={canCreate ? "Add Member" : undefined}
+        onCreateClick={
+          canCreate
+            ? () => navigate(`${ClientRoutes.USER_SETTINGS.USER_ADD}`)
+            : undefined
+        }
       />
       {data?.totalElements === 0 && !searchTerm && <NoUsers />}
       <TableFilter
@@ -74,8 +83,11 @@ const Users = () => {
           pageSize={SIZE}
           updateCurrentPage={updateCurrentPage}
           isLoading={isLoading}
-          onRowClick={({ user_id }) =>
-            navigate(`${ClientRoutes.USER_SETTINGS.USER_EDIT}/${user_id}`)
+          onRowClick={
+            canEdit
+              ? ({ user_id }) =>
+                  navigate(`${ClientRoutes.USER_SETTINGS.USER_EDIT}/${user_id}`)
+              : undefined
           }
         />
       </TableWrapper>

@@ -16,6 +16,7 @@ import CustomerIcon from "@/assets/images/customer-icon.svg";
 import Logo from "@/assets/images/logo.svg";
 import ClientRoutes from "@/constants/client-routes";
 import useAuth from "@/context/Auth/useAuth";
+import usePermissions from "@/hooks/usePermissions";
 
 import SidebarAccordion from "./Accordion";
 import MenuItem from "./MenuItem";
@@ -31,6 +32,7 @@ const Sidebar = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { can } = usePermissions();
   const breakpointDisplay = useBreakpointValue({ base: "none", md: "block" });
   const sidebarDisplay = isDrawer ? "block" : breakpointDisplay;
   const isActive = (path: string, exact = false) =>
@@ -45,26 +47,30 @@ const Sidebar = ({
       icon: <MdOutlineArrowRightAlt size={24} />,
       path: ClientRoutes.CONNECTORS.ROOT,
       isAccordion: false,
+      visible: can("can_view_connectors"),
     },
     {
       label: "Destination",
       icon: <MdWrapText size={24} />,
       path: ClientRoutes.DESTINATION.ROOT,
       isAccordion: false,
+      visible: can("can_view_destinations"),
     },
     {
       label: "User Settings",
       icon: <FaUsers size={24} />,
       path: ClientRoutes.USER_SETTINGS.ROOT,
       isAccordion: true,
+      visible: true,
     },
     {
       label: "Plans",
       icon: <MdCategory size={24} />,
       path: ClientRoutes.PLANS,
       isAccordion: false,
+      visible: can("can_access_billing"),
     },
-  ];
+  ].filter((link) => link.visible);
 
   return (
     <GridItem

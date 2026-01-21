@@ -4,6 +4,8 @@ import { FaUsers } from "react-icons/fa6";
 import { MdOutlineSettings } from "react-icons/md";
 
 import ClientRoutes from "@/constants/client-routes";
+import usePermissions from "@/hooks/usePermissions";
+import { Permissions } from "@/types/auth";
 
 import MenuItem from "./MenuItem";
 
@@ -15,9 +17,61 @@ const SidebarAccordion = ({
   isActive: (_path: string) => boolean;
   onMenuItemClick?: () => void;
 }) => {
+  const { can } = usePermissions();
+
+  const items: {
+    value: string;
+    title: string;
+    icon: React.ReactNode;
+    links: { label: string; path: string; permission?: keyof Permissions }[];
+  }[] = [
+    {
+      value: "userSettings",
+      title: "User Settings",
+      icon: <FaUsers size={24} />,
+      links: [
+        {
+          label: "Profile",
+          path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.PROFILE}`,
+        },
+        {
+          label: "Users",
+          path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
+          permission: "can_view_users",
+        },
+      ],
+    },
+    {
+      value: "accountSettings",
+      title: "Account Settings",
+      icon: <MdOutlineSettings size={24} />,
+      links: [
+        {
+          label: "Billing",
+          path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`,
+          permission: "can_access_billing",
+        },
+        {
+          label: "Communication Support",
+          path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.EMAIL}`,
+          permission: "can_access_settings",
+        },
+      ],
+    },
+  ];
+
+  const filteredItems = items
+    .map((item) => ({
+      ...item,
+      links: item.links.filter(
+        (link) => !link.permission || can(link.permission),
+      ),
+    }))
+    .filter((item) => item.links.length > 0);
+
   return (
     <Accordion.Root collapsible paddingInline={3} variant="plain">
-      {items.map(({ title, links, value, icon }, index) => (
+      {filteredItems.map(({ title, links, value, icon }, index) => (
         <Accordion.Item key={index} value={value} mt={2}>
           <Accordion.ItemTrigger
             justifyContent="space-between"
@@ -53,36 +107,3 @@ const SidebarAccordion = ({
 };
 
 export default SidebarAccordion;
-
-const items = [
-  {
-    value: "userSettings",
-    title: "User Settings",
-    icon: <FaUsers size={24} />,
-    links: [
-      {
-        label: "Profile",
-        path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.PROFILE}`,
-      },
-      {
-        label: "Users",
-        path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
-      },
-    ],
-  },
-  {
-    value: "accountSettings",
-    title: "Account Settings",
-    icon: <MdOutlineSettings size={24} />,
-    links: [
-      {
-        label: "Billing",
-        path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`,
-      },
-      {
-        label: "Communication Support",
-        path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.EMAIL}`,
-      },
-    ],
-  },
-];

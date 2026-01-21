@@ -15,6 +15,7 @@ import { MdRefresh } from "react-icons/md";
 
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import usePermissions from "@/hooks/usePermissions";
 import useUpdateConnectionSettings from "@/queryOptions/connector/schema/useUpdateConnectionSettings";
 import useTestConnection from "@/queryOptions/connector/useTestConnection";
 import { type Connector } from "@/types/connectors";
@@ -31,6 +32,11 @@ import { reducer } from "./reducer";
 
 const Form = (props: Connector) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const { can } = usePermissions();
+
+  const canEdit = can("can_edit_connection_settings");
+  const canDelete = can("can_delete_connectors");
+
   const {
     sync_start_date,
     time_frequency,
@@ -66,12 +72,13 @@ const Form = (props: Connector) => {
   return (
     <Flex direction="column" gap={4} mb={8}>
       <Stack gap="8" flexWrap="wrap" direction="row">
-        <Field.Root maxW="sm">
+        <Field.Root maxW="sm" disabled={!canEdit}>
           <Field.Label>Start date & time (UTC)</Field.Label>
           <Input
             placeholder="Choose date and time"
             type="datetime-local"
             value={syncStartLocal ?? ""}
+            disabled={!canEdit}
             onChange={(e) => {
               // Convert local datetime-local value to UTC ISO and store that in formState
               const iso = fromLocalDateTimeInput(e.currentTarget.value);
@@ -86,9 +93,9 @@ const Form = (props: Connector) => {
           />
         </Field.Root>
 
-        <Field.Root maxW="sm">
+        <Field.Root maxW="sm" disabled={!canEdit}>
           <Field.Label>Sync Frequency</Field.Label>
-          <NativeSelect.Root>
+          <NativeSelect.Root disabled={!canEdit}>
             <NativeSelect.Field
               value={formState.time_frequency}
               onChange={(e) =>
@@ -109,9 +116,9 @@ const Form = (props: Connector) => {
           </NativeSelect.Root>
         </Field.Root>
 
-        <Field.Root maxW="sm">
+        <Field.Root maxW="sm" disabled={!canEdit}>
           <Field.Label>Safety Interval</Field.Label>
-          <NativeSelect.Root>
+          <NativeSelect.Root disabled={!canEdit}>
             <NativeSelect.Field
               value={formState.safety_interval}
               onChange={(e) =>
@@ -132,9 +139,9 @@ const Form = (props: Connector) => {
           </NativeSelect.Root>
         </Field.Root>
 
-        <Field.Root maxW="sm">
+        <Field.Root maxW="sm" disabled={!canEdit}>
           <Field.Label>Execution Order</Field.Label>
-          <NativeSelect.Root>
+          <NativeSelect.Root disabled={!canEdit}>
             <NativeSelect.Field
               value={formState.execution_order}
               onChange={(e) =>
@@ -155,10 +162,11 @@ const Form = (props: Connector) => {
           </NativeSelect.Root>
         </Field.Root>
 
-        <Field.Root maxW="sm">
+        <Field.Root maxW="sm" disabled={!canEdit}>
           <Field.Label>Transfer order count</Field.Label>
           <NumberInput.Root
             defaultValue="10"
+            disabled={!canEdit}
             min={dst_min_count || 10000}
             max={dst_max_count || 1000000}
             step={10000}
@@ -183,29 +191,33 @@ const Form = (props: Connector) => {
 
       <Flex justifyContent={"space-between"} mt={4}>
         <Flex gap={4}>
-          {status === "A" ? (
-            <Tooltip content="Cannot delete an active connector">
-              <Button
-                variant="outline"
-                colorPalette="red"
-                color="red.500"
-                onClick={() => setShowDeleteDialog(true)}
-                disabled
-              >
-                <CiTrash />
-                Delete
-              </Button>
-            </Tooltip>
-          ) : (
-            <Button
-              variant="outline"
-              colorPalette="red"
-              color="red.500"
-              onClick={() => setShowDeleteDialog(true)}
-            >
-              <CiTrash />
-              Delete
-            </Button>
+          {canDelete && (
+            <>
+              {status === "A" ? (
+                <Tooltip content="Cannot delete an active connector">
+                  <Button
+                    variant="outline"
+                    colorPalette="red"
+                    color="red.500"
+                    onClick={() => setShowDeleteDialog(true)}
+                    disabled
+                  >
+                    <CiTrash />
+                    Delete
+                  </Button>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="outline"
+                  colorPalette="red"
+                  color="red.500"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <CiTrash />
+                  Delete
+                </Button>
+              )}
+            </>
           )}
         </Flex>
         <Flex gap={4}>
@@ -230,6 +242,7 @@ const Form = (props: Connector) => {
           </Button>
           <Button
             colorPalette="brand"
+            disabled={!canEdit}
             onClick={() =>
               updateSettings(
                 {

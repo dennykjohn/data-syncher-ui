@@ -9,6 +9,7 @@ import TableWrapper from "@/components/dashboard/wrapper/TableWrapper";
 import ClientRoutes from "@/constants/client-routes";
 import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
+import usePermissions from "@/hooks/usePermissions";
 import { useFetchConnectorsListByPage } from "@/queryOptions/connector/useFetchConnectorsListByPage";
 import Table, { type Column } from "@/shared/Table";
 import {
@@ -102,6 +103,9 @@ const Connectors = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const { can } = usePermissions();
+
+  const canCreate = can("can_create_connectors");
 
   const { data, isLoading, refetch } = useFetchConnectorsListByPage({
     page: currentPage,
@@ -134,9 +138,12 @@ const Connectors = () => {
           },
         ]}
         title="Connectors"
-        buttonLabel="Add Connector"
-        onCreateClick={() => navigate(ClientRoutes.CONNECTORS.ADD)}
+        buttonLabel={canCreate ? "Add Connector" : undefined}
+        onCreateClick={
+          canCreate ? () => navigate(ClientRoutes.CONNECTORS.ADD) : undefined
+        }
       />
+
       {data?.totalElements === 0 && !searchTerm && <NoConnections />}
       <TableFilter
         handleSearchInputChange={(e) => setSearchTerm(e.target.value)}
