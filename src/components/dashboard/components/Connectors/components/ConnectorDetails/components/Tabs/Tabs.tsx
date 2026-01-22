@@ -5,21 +5,9 @@ import { Flex, Tabs } from "@chakra-ui/react";
 import { useLocation, useNavigate, useParams } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
+import usePermissions from "@/hooks/usePermissions";
+import { Permissions } from "@/types/auth";
 import { type Connector } from "@/types/connectors";
-
-// Base tab list without Schema/Reverse Schema
-const BaseTabList = [
-  { label: "Overview", route: ClientRoutes.CONNECTORS.OVERVIEW },
-  { label: "Usage", route: ClientRoutes.CONNECTORS.USAGE },
-  { label: "Settings", route: ClientRoutes.CONNECTORS.SETTINGS },
-];
-
-// Schema tabs
-const SchemaTab = { label: "Schema", route: ClientRoutes.CONNECTORS.SCHEMA };
-const ReverseSchemaTab = {
-  label: "Schema",
-  route: ClientRoutes.CONNECTORS.REVERSE_SCHEMA,
-};
 
 interface ConnectorTabsProps {
   connector?: Connector;
@@ -29,16 +17,40 @@ const ConnectorTabs = ({ connector }: ConnectorTabsProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { connectionId } = useParams();
+  const { can } = usePermissions();
 
-  // Determine which schema tab to show based on is_reverse_etl
-  const schemaTab = connector?.is_reverse_etl ? ReverseSchemaTab : SchemaTab;
-
-  // Build the tab list with the appropriate schema tab
-  const TabList = [
-    BaseTabList[0], // Overview
-    schemaTab, // Schema or Reverse Schema based on is_reverse_etl
-    ...BaseTabList.slice(1), // Usage and Settings
+  // Build the tab list with permissions
+  const fullTabList: {
+    label: string;
+    route: string;
+    permission?: keyof Permissions;
+  }[] = [
+    {
+      label: "Overview",
+      route: ClientRoutes.CONNECTORS.OVERVIEW,
+      permission: "can_view_logs",
+    },
+    {
+      label: "Schema",
+      route: connector?.is_reverse_etl
+        ? ClientRoutes.CONNECTORS.REVERSE_SCHEMA
+        : ClientRoutes.CONNECTORS.SCHEMA,
+      permission: "can_view_tables",
+    },
+    {
+      label: "Usage",
+      route: ClientRoutes.CONNECTORS.USAGE,
+      permission: "can_view_metrics",
+    },
+    {
+      label: "Settings",
+      route: ClientRoutes.CONNECTORS.SETTINGS,
+    },
   ];
+
+  const TabList = fullTabList.filter(
+    (tab) => !tab.permission || can(tab.permission),
+  );
 
   // Get current active tab from URL
   const currentPath = location.pathname.split("/").pop();

@@ -28,16 +28,6 @@ import MultipleMapping from "@/components/dashboard/components/Connectors/compon
 import SingleMapping from "@/components/dashboard/components/Connectors/components/NewConnector/components/SingleMapping/SingleMapping";
 import { PasswordInput } from "@/components/ui/password-input";
 
-/**
- * S3DynamicForm - Amazon S3 specific configuration form component.
- * This component is designed exclusively for Amazon S3 source connector configuration.
- *
- * It accepts a schema from the backend and dynamically renders fields based on:
- * - Field visibility (is_visible)
- * - Conditional dependencies (depend_on, dependency_value)
- * - Field types (CharField, ChoiceField, TextField, IntegerField)
- * - Widget types (PasswordInput)
- */
 export interface S3FieldSchema {
   name: string;
   label: string;

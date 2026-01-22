@@ -5,6 +5,7 @@ import { MdOutlineEdit } from "react-icons/md";
 import { useNavigate, useOutletContext } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
+import usePermissions from "@/hooks/usePermissions";
 import { type Connector } from "@/types/connectors";
 
 import Form from "./Form";
@@ -12,6 +13,7 @@ import Form from "./Form";
 const Settings = () => {
   const connector = useOutletContext<Connector>();
   const navigate = useNavigate();
+  const { can } = usePermissions();
 
   const handleEditConnectorClick = () => {
     navigate(
@@ -20,6 +22,8 @@ const Settings = () => {
       }`,
     );
   };
+
+  const canEdit = can("can_edit_connectors");
 
   return (
     <Flex flexDirection="column" gap={4} w="100%">
@@ -42,19 +46,21 @@ const Settings = () => {
           <Flex>
             <Text fontSize="sm">Connected on:</Text>
             <Text fontSize="sm" fontWeight="semibold">
-              {connector?.destination_name}
+              {connector?.connected_on}
             </Text>
           </Flex>
         </Flex>
-        <Button
-          variant="outline"
-          colorPalette={"brand"}
-          color={"brand.500"}
-          onClick={handleEditConnectorClick}
-        >
-          <MdOutlineEdit color="brand.500" />
-          Edit connection
-        </Button>
+        {canEdit && (
+          <Button
+            variant="outline"
+            colorPalette={"brand"}
+            color={"brand.500"}
+            onClick={handleEditConnectorClick}
+          >
+            <MdOutlineEdit color="brand.500" />
+            Edit connection
+          </Button>
+        )}
       </Flex>
       <Form {...connector} />
     </Flex>

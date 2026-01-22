@@ -6,13 +6,15 @@ import { format, parseISO } from "date-fns";
 
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import { VIEW_CONFIG } from "@/constants/view-config";
-import useFetchCurrentUserProfile from "@/queryOptions/user/useFetchCurrentUserProfile";
+import useAuth from "@/context/Auth/useAuth";
 
 import ProfileForm from "./Form";
 import { initialState } from "./helper";
 
 const Profile = () => {
-  const { data: userProfile, isLoading } = useFetchCurrentUserProfile();
+  const { authState } = useAuth();
+  const userProfile = authState.user;
+  const isLoading = !userProfile;
 
   const initialFormState = useMemo(() => {
     if (!userProfile) return initialState;

@@ -10,7 +10,7 @@ import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 const Detail = ({
   detail,
 }: {
-  detail: ConnectorActivityDetailResponse["logs"][number];
+  detail: NonNullable<ConnectorActivityDetailResponse["logs"]>[number];
 }) => {
   const { message, timestamp } = detail;
   return (
