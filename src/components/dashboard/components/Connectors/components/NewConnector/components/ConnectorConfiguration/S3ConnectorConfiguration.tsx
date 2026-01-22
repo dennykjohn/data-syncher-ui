@@ -43,10 +43,11 @@ const S3ConnectorConfiguration = ({
   const [createdConnectionId, setCreatedConnectionId] = useState<number | null>(
     null,
   );
-  const [pendingFormData, setPendingFormData] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const [pendingFormData, setPendingFormData] = useState<{
+    connection_name: string;
+    destination_schema: string;
+    form_data: Record<string, string>;
+  } | null>(null);
 
   // Query hooks
   const { data: connectorData, isPending: isFetchConnectorByIdPending } =
@@ -64,13 +65,13 @@ const S3ConnectorConfiguration = ({
   // Prepare params for suggest primary keys API
   const suggestPrimaryKeysParams = useMemo(() => {
     if (pendingFormData?.form_data) {
-      const formData = pendingFormData.form_data as Record<string, string>;
+      const formData = pendingFormData.form_data;
       return {
-        s3_bucket: formData.s3_bucket as string,
-        aws_access_key_id: formData.aws_access_key_id as string,
-        aws_secret_access_key: formData.aws_secret_access_key as string,
-        base_folder_path: formData.base_folder_path as string | undefined,
-        file_type: formData.file_type as string | undefined,
+        s3_bucket: formData.s3_bucket,
+        aws_access_key_id: formData.aws_access_key_id,
+        aws_secret_access_key: formData.aws_secret_access_key,
+        base_folder_path: formData.base_folder_path,
+        file_type: formData.file_type,
         ...formData,
       };
     } else if (createdConnectionId) {
@@ -213,12 +214,12 @@ const S3ConnectorConfiguration = ({
     if (pendingFormData) {
       if (isSuggestPrimaryKeysPending) return <LoadingSpinner />;
 
-      const formData = pendingFormData.form_data as Record<string, string>;
+      const formData = pendingFormData.form_data;
       const schemaData = suggestedPrimaryKeys?.tables
         ? {
             schemaName:
-              (formData.multi_files_table_name as string) ||
-              (formData.destination_schema as string) ||
+              formData.multi_files_table_name ||
+              formData.destination_schema ||
               "Schema",
             tables: suggestedPrimaryKeys.tables.map((table) => ({
               name: table.table_name,
@@ -245,7 +246,7 @@ const S3ConnectorConfiguration = ({
             const formDataWithPrimaryKeys = {
               ...pendingFormData,
               form_data: {
-                ...pendingFormData.form_data,
+                ...formData,
                 custom_primary_key: primaryKeys,
               },
             };
