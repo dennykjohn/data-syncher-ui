@@ -233,7 +233,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       }
     });
 
-    onSubmit(normalizedValues as Record<string, string>);
+    onSubmit(normalizedValues as Record<string, unknown>);
   };
 
   const isReadOnly = (fieldName: string) =>
