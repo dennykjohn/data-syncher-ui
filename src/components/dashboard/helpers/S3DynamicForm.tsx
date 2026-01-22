@@ -51,7 +51,7 @@ export interface S3FieldSchema {
 
 interface S3DynamicFormProps {
   schema: S3FieldSchema[];
-  onSubmit: (_values: Record<string, string | number | boolean>) => void;
+  onSubmit: (_values: Record<string, unknown>) => void;
   loading?: boolean;
   defaultValues?: Record<string, string>;
   handleBackButtonClick?: () => void;
@@ -61,7 +61,7 @@ interface S3DynamicFormProps {
   hideSubmitButton?: boolean;
   leftButtons?: React.ReactNode;
   rightButtons?: React.ReactNode;
-  onValuesChange?: (_values: Record<string, string>) => void;
+  onValuesChange?: (_values: Record<string, unknown>) => void;
   readOnlyFields?: string[];
 }
 
