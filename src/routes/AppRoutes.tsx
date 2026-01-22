@@ -3,7 +3,10 @@ import { lazy } from "react";
 import { Navigate, createBrowserRouter } from "react-router";
 
 import ConnectorConfiguration from "@/components/dashboard/components/Connectors/components/NewConnector/components/ConnectorConfiguration/ConnectorConfiguration";
+import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
+import useAuth from "@/context/Auth/useAuth";
+import usePermissions from "@/hooks/usePermissions";
 import NotFound from "@/shared/NotFound";
 import RouteError from "@/shared/RouteError";
 
@@ -60,6 +63,40 @@ const EmailSettings = lazy(
 // Pages
 //const HomePage = lazy(() => import("@/pages/website/HomePage"));
 
+const DashboardIndex = () => {
+  const { authState } = useAuth();
+  const { can } = usePermissions();
+  const user = authState.user;
+
+  // Wait for user profile to load
+  if (!user) {
+    return <LoadingSpinner />;
+  }
+
+  // Priority 1: Connectors (Admin & Analysts usually have this)
+  if (can("can_view_connectors")) {
+    return <Navigate to={ClientRoutes.CONNECTORS.ROOT} replace />;
+  }
+
+  // Priority 2: Billing (Billing role usually has this)
+  if (can("can_access_billing")) {
+    return (
+      <Navigate
+        to={`${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`}
+        replace
+      />
+    );
+  }
+
+  // Priority 3: Default to Profile (All logged-in users)
+  return (
+    <Navigate
+      to={`${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.PROFILE}`}
+      replace
+    />
+  );
+};
+
 export const router = createBrowserRouter([
   // Setup Website Routes in the below object
   {
@@ -94,10 +131,18 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to={ClientRoutes.CONNECTORS.ROOT} replace />,
+            element: <DashboardIndex />,
           },
+
           /** Start Connectors Routes */
-          { path: ClientRoutes.CONNECTORS.ROOT, element: <Connectors /> },
+          {
+            path: ClientRoutes.CONNECTORS.ROOT,
+            element: (
+              <ProtectedRoute permission="can_view_connectors">
+                <Connectors />
+              </ProtectedRoute>
+            ),
+          },
           {
             path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.ADD}`,
             element: <NewConnector />,
@@ -140,7 +185,14 @@ export const router = createBrowserRouter([
           },
           /** End Connectors Routes */
           /** Start Destination Routes */
-          { path: ClientRoutes.DESTINATION.ROOT, element: <Destination /> },
+          {
+            path: ClientRoutes.DESTINATION.ROOT,
+            element: (
+              <ProtectedRoute permission="can_view_destinations">
+                <Destination />
+              </ProtectedRoute>
+            ),
+          },
           {
             path: `${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
             element: <NewDestination />,
@@ -154,11 +206,22 @@ export const router = createBrowserRouter([
             element: <DestinationForm mode="edit" />,
           },
           /** End Destination Routes */
-          { path: ClientRoutes.PLANS, element: <Plans /> },
+          {
+            path: ClientRoutes.PLANS,
+            element: (
+              <ProtectedRoute permission="can_access_billing">
+                <Plans />
+              </ProtectedRoute>
+            ),
+          },
           /** Start User Settings Routes */
           {
             path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
-            element: <Users />,
+            element: (
+              <ProtectedRoute permission="can_view_users">
+                <Users />
+              </ProtectedRoute>
+            ),
           },
           {
             path: `${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}/${ClientRoutes.USER_SETTINGS.USER_ADD}`,
@@ -175,11 +238,19 @@ export const router = createBrowserRouter([
           /** End User Settings Routes */
           {
             path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`,
-            element: <AccountSettings />,
+            element: (
+              <ProtectedRoute permission="can_access_billing">
+                <AccountSettings />
+              </ProtectedRoute>
+            ),
           },
           {
             path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.EMAIL}`,
-            element: <EmailSettings />,
+            element: (
+              <ProtectedRoute permission="can_access_settings">
+                <EmailSettings />
+              </ProtectedRoute>
+            ),
           },
         ],
       },

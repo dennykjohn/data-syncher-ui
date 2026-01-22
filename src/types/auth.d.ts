@@ -1,6 +1,7 @@
 export type LoginResponse = {
   access_token: string;
   refresh_token: string;
+  user: User;
 };
 
 export interface AuthContextType {
@@ -9,7 +10,38 @@ export interface AuthContextType {
   authState: AuthState;
 }
 
-type User = {
+export type Permissions = {
+  can_view_connectors: boolean;
+  can_create_connectors: boolean;
+  can_edit_connectors: boolean;
+  can_delete_connectors: boolean;
+  can_view_destinations: boolean;
+  can_create_destinations: boolean;
+  can_edit_destinations: boolean;
+  can_delete_destinations: boolean;
+  can_view_tables: boolean;
+  can_select_tables: boolean;
+  can_edit_tables: boolean;
+  can_view_connection_details: boolean;
+  can_edit_connection_settings: boolean;
+  can_toggle_connections: boolean;
+  can_update_sync_frequency: boolean;
+  can_view_logs: boolean;
+  can_view_metrics: boolean;
+  can_view_migration_status: boolean;
+  can_view_users: boolean;
+  can_create_users: boolean;
+  can_edit_users: boolean;
+  can_delete_users: boolean;
+  can_access_billing: boolean;
+  can_view_billing_charts: boolean;
+  can_view_billing_plans: boolean;
+  can_update_billing_plan: boolean;
+  can_access_settings: boolean;
+  can_edit_company_settings: boolean;
+};
+
+export type User = {
   user_id: number;
   first_name: string;
   last_name: string;
@@ -26,9 +58,10 @@ type User = {
   trial_days_remaining: number;
   is_trial_expired: boolean;
   message?: string;
+  permissions: Permissions;
 };
 
-type AuthState = {
+export type AuthState = {
   isAuthenticated: boolean;
   user: User | null;
   access_token: string | null;

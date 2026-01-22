@@ -3,6 +3,7 @@ import { useReducer } from "react";
 import { Flex } from "@chakra-ui/react";
 
 import ConnectorConfiguration from "./components/ConnectorConfiguration/ConnectorConfiguration";
+import S3ConnectorConfiguration from "./components/ConnectorConfiguration/S3ConnectorConfiguration";
 import DestinationSelection from "./components/DestinationSelection/DestinationSelection";
 import SourceSelection from "./components/SourceSelection/SourceSelection";
 import { connectorFormReducer, initialState } from "./reducer";
@@ -67,15 +68,29 @@ const NewConnector = () => {
             )}
           </>
         );
-      case 3:
+      case 3: {
         if (!isStepCompleted(2)) return null;
-        return (
+
+        // Determine if this is an S3 connector
+        const isS3Connector =
+          state.source?.toLowerCase().includes("s3") ||
+          state.source?.toLowerCase().includes("amazon");
+
+        // Route to appropriate configuration component
+        return isS3Connector ? (
+          <S3ConnectorConfiguration
+            state={state}
+            handlePrevious={handlePrevious}
+            mode="create"
+          />
+        ) : (
           <ConnectorConfiguration
             state={state}
             handlePrevious={handlePrevious}
             mode="create"
           />
         );
+      }
       default:
         return null;
     }

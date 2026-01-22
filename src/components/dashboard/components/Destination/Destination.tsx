@@ -9,6 +9,7 @@ import TableWrapper from "@/components/dashboard/wrapper/TableWrapper";
 import ClientRoutes from "@/constants/client-routes";
 import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
+import usePermissions from "@/hooks/usePermissions";
 import { useFetchDestinationListByPage } from "@/queryOptions/destination/useFetchDestinationListByPage";
 import Table, { type Column } from "@/shared/Table";
 import { type DestinationTableItem } from "@/types/destination";
@@ -65,6 +66,10 @@ const Destination = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const { can } = usePermissions();
+
+  const canCreate = can("can_create_destinations");
+  const canEdit = can("can_edit_destinations");
 
   const { data, isLoading, refetch } = useFetchDestinationListByPage({
     page: currentPage,
@@ -90,8 +95,10 @@ const Destination = () => {
       <PageHeader
         breadcrumbs={[{ label: "Destinations", route: "" }]}
         title="Destinations"
-        buttonLabel="Add Destination"
-        onCreateClick={() => navigate(ClientRoutes.DESTINATION.ADD)}
+        buttonLabel={canCreate ? "Add Destination" : undefined}
+        onCreateClick={
+          canCreate ? () => navigate(ClientRoutes.DESTINATION.ADD) : undefined
+        }
       />
       {data?.totalElements === 0 && !searchTerm && <NoDestinations />}
       <TableFilter
@@ -105,8 +112,13 @@ const Destination = () => {
           totalElements={data?.totalElements || 0}
           pageSize={SIZE}
           isLoading={isLoading}
-          onRowClick={(row) =>
-            navigate(`${ClientRoutes.DESTINATION.EDIT}/${row.dst_config_id}`)
+          onRowClick={
+            canEdit
+              ? (row) =>
+                  navigate(
+                    `${ClientRoutes.DESTINATION.EDIT}/${row.dst_config_id}`,
+                  )
+              : undefined
           }
         />
       </TableWrapper>

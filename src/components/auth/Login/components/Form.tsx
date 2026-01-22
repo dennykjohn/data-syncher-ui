@@ -51,10 +51,7 @@ export default function Form() {
         url: ServerRoutes.auth.login(),
         data,
       });
-      login({
-        access_token: respData.access_token,
-        refresh_token: respData.refresh_token,
-      });
+      login(respData);
     } catch {
       setHasError(true);
       setIsLoading(false);

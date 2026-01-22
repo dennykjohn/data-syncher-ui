@@ -6,7 +6,12 @@ import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
-import { type AuthContextType, type AuthState, type User } from "@/types/auth";
+import {
+  type AuthContextType,
+  type AuthState,
+  type LoginResponse,
+  type User,
+} from "@/types/auth";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -62,10 +67,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async ({
     access_token,
     refresh_token,
-  }: {
-    access_token: string;
-    refresh_token: string;
-  }) => {
+    user,
+  }: LoginResponse) => {
     try {
       Cookies.set("access_token", access_token, {
         expires: 7,
@@ -76,12 +79,6 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         expires: 7,
         secure: true,
         sameSite: "Strict",
-      });
-
-      // Fetch User Profile
-      const { data: user }: { data: User } = await AxiosInstance({
-        method: "GET",
-        url: ServerRoutes.auth.profile(),
       });
 
       setAuthState({
