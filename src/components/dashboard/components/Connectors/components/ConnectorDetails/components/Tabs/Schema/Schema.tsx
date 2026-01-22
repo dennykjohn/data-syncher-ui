@@ -491,8 +491,8 @@ const Schema = () => {
           });
         }}
       />
-      <Flex mr="auto">
-        <InputGroup endElement={<MdSearch size={24} />}>
+      <Flex mr="auto" mt={-7}>
+        <InputGroup endElement={<MdSearch size={28} />}>
           <Input
             placeholder="Search table name"
             size="md"

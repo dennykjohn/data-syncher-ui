@@ -43,10 +43,11 @@ const S3ConnectorConfiguration = ({
   const [createdConnectionId, setCreatedConnectionId] = useState<number | null>(
     null,
   );
-  const [pendingFormData, setPendingFormData] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const [pendingFormData, setPendingFormData] = useState<{
+    connection_name: string;
+    destination_schema: string;
+    form_data: Record<string, string>;
+  } | null>(null);
 
   // Query hooks
   const { data: connectorData, isPending: isFetchConnectorByIdPending } =
@@ -64,14 +65,13 @@ const S3ConnectorConfiguration = ({
   // Prepare params for suggest primary keys API
   const suggestPrimaryKeysParams = useMemo(() => {
     if (pendingFormData?.form_data) {
-      const formData = pendingFormData.form_data as Record<string, unknown>;
-      // Extract S3 credentials from pending form data
+      const formData = pendingFormData.form_data;
       return {
-        s3_bucket: formData.s3_bucket as string,
-        aws_access_key_id: formData.aws_access_key_id as string,
-        aws_secret_access_key: formData.aws_secret_access_key as string,
-        base_folder_path: formData.base_folder_path as string | undefined,
-        file_type: formData.file_type as string | undefined,
+        s3_bucket: formData.s3_bucket,
+        aws_access_key_id: formData.aws_access_key_id,
+        aws_secret_access_key: formData.aws_secret_access_key,
+        base_folder_path: formData.base_folder_path,
+        file_type: formData.file_type,
         ...formData,
       };
     } else if (createdConnectionId) {
@@ -98,8 +98,10 @@ const S3ConnectorConfiguration = ({
   const { mutate: createConnection, isPending: isCreateConnectorPending } =
     useCreateConnection(state?.source || "");
 
-  const handleFormSubmit = (values: Record<string, string>) => {
-    // Parse JSON fields to ensure they are sent as objects, not strings
+  // ------------------- Strict-safe form submit -------------------
+  const handleFormSubmit = (values: Record<string, unknown>) => {
+    const connectionName =
+      (values["connection_name"] as string) || "Unnamed Connector";
     const parsedValues: Record<string, unknown> = { ...values };
     const jsonFields = ["single_file_table_mapping", "table_to_files_mapping"];
 
@@ -113,28 +115,37 @@ const S3ConnectorConfiguration = ({
       }
     });
 
-    // Check if user selected "upsert_custom_key" for load_method
+    // ✅ Convert all values to strings to satisfy TS
+    const stringifiedValues: Record<string, string> = {};
+    Object.entries(parsedValues).forEach(([key, value]) => {
+      if (value === undefined || value === null) {
+        stringifiedValues[key] = "";
+      } else if (typeof value === "object") {
+        stringifiedValues[key] = JSON.stringify(value);
+      } else {
+        stringifiedValues[key] = String(value);
+      }
+    });
+
     const requiresPrimaryKeySelection =
       parsedValues["load_method"] === "upsert_custom_key";
 
     if (mode === "create") {
-      // If requires primary key selection, show PrimaryKeySelection component
       if (requiresPrimaryKeySelection) {
         setPendingFormData({
-          connection_name: values.connection_name || "Unnamed Connector",
+          connection_name: connectionName,
           destination_schema: state?.destination || "",
-          form_data: parsedValues,
+          form_data: stringifiedValues, // ✅ use stringifiedValues
         });
         setShowPrimaryKeySelection(true);
         return;
       }
 
-      // For other load methods, create connection normally
       createConnection(
         {
-          connection_name: values.connection_name || "Unnamed Connector",
+          connection_name: connectionName,
           destination_schema: state?.destination || "",
-          form_data: parsedValues,
+          form_data: stringifiedValues, // ✅ use stringifiedValues
         },
         {
           onSuccess: (response) => {
@@ -155,9 +166,9 @@ const S3ConnectorConfiguration = ({
     } else {
       updateConnectorConfig(
         {
-          connection_name: values.connection_name || "Unnamed Connector",
+          connection_name: connectionName,
           destination_schema: connectorConfig?.destination_config.name || "",
-          form_data: parsedValues,
+          form_data: stringifiedValues, // ✅ use stringifiedValues
         },
         {
           onSuccess: (response) => {
@@ -174,7 +185,9 @@ const S3ConnectorConfiguration = ({
       );
     }
   };
+  // -----------------------------------------------------------------
 
+  // ------------------- Loading state -------------------
   if (
     (mode === "create" && (isLoading || !formSchema)) ||
     (mode === "edit" &&
@@ -196,20 +209,17 @@ const S3ConnectorConfiguration = ({
       ? connectorConfig.source_schema
       : formSchema || [];
 
-  // If showing primary key selection, render that component
+  // ------------------- Primary key selection -------------------
   if (showPrimaryKeySelection) {
     if (pendingFormData) {
-      if (isSuggestPrimaryKeysPending) {
-        return <LoadingSpinner />;
-      }
+      if (isSuggestPrimaryKeysPending) return <LoadingSpinner />;
 
-      const formData = pendingFormData.form_data as Record<string, unknown>;
-      // Transform the API response to match PrimaryKeySelection's expected format
+      const formData = pendingFormData.form_data;
       const schemaData = suggestedPrimaryKeys?.tables
         ? {
             schemaName:
-              (formData.multi_files_table_name as string) ||
-              (formData.destination_schema as string) ||
+              formData.multi_files_table_name ||
+              formData.destination_schema ||
               "Schema",
             tables: suggestedPrimaryKeys.tables.map((table) => ({
               name: table.table_name,
@@ -236,7 +246,7 @@ const S3ConnectorConfiguration = ({
             const formDataWithPrimaryKeys = {
               ...pendingFormData,
               form_data: {
-                ...(pendingFormData.form_data as Record<string, unknown>),
+                ...formData,
                 custom_primary_key: primaryKeys,
               },
             };
@@ -244,7 +254,7 @@ const S3ConnectorConfiguration = ({
             createConnection(
               formDataWithPrimaryKeys as unknown as CreateConnectionPayload,
               {
-                onSuccess: (_response) => {
+                onSuccess: () => {
                   toaster.success({
                     title: "S3 Connector created successfully",
                     description: "Primary keys have been configured.",
@@ -266,11 +276,8 @@ const S3ConnectorConfiguration = ({
       );
     }
 
-    // Legacy flow for existing connections
     if (createdConnectionId) {
-      if (isSuggestPrimaryKeysPending) {
-        return <LoadingSpinner />;
-      }
+      if (isSuggestPrimaryKeysPending) return <LoadingSpinner />;
 
       const schemaData = suggestedPrimaryKeys?.tables
         ? {
@@ -309,6 +316,7 @@ const S3ConnectorConfiguration = ({
     }
   }
 
+  // ------------------- Main form -------------------
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
       <PageHeader
@@ -332,16 +340,12 @@ const S3ConnectorConfiguration = ({
       />
       <S3DynamicForm
         schema={schemaFields as S3FieldSchema[]}
-        onSubmit={(values) => {
-          handleFormSubmit(values);
-        }}
+        onSubmit={handleFormSubmit}
         loading={isCreateConnectorPending || isUpdateConnectorConfigPending}
         handleBackButtonClick={handlePrevious}
         defaultValues={
           mode === "edit" && connectorConfig
-            ? {
-                ...connectorConfig?.initial_data,
-              }
+            ? { ...connectorConfig.initial_data }
             : undefined
         }
         mode={mode}
