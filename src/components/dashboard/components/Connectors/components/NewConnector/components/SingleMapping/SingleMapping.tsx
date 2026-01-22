@@ -6,6 +6,7 @@ import {
   Checkbox,
   Flex,
   Input,
+  InputGroup,
   Spinner,
   Text,
   VStack,
@@ -18,7 +19,7 @@ import useFetchS3Files, {
   type S3ListFilesRequest,
 } from "@/queryOptions/connector/useFetchS3Files";
 
-type Mapping = {
+export type Mapping = {
   fileName: string;
   tableName: string;
   isSelected?: boolean;
@@ -93,19 +94,18 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
   // Sync state with props when they change
   React.useEffect(() => {
     setLocalMappings((prev) => {
-      // Create a map of existing scanned files (not in props)
-      const scannedFiles = prev.filter((p) => !p.isSelected);
-
       // Mappings from props are always selected
       const propMappings = mappings.map((m) => ({
         ...m,
         isSelected: m.isSelected ?? true,
       }));
 
-      // Merge: priority to props, then keep scanned files that aren't in props
       const propFileNames = new Set(propMappings.map((m) => m.fileName));
-      const remainingScanned = scannedFiles.filter(
-        (s) => !propFileNames.has(s.fileName),
+
+      // Preserve files that were found via scanning but aren't in props yet,
+      // regardless of their selection state.
+      const remainingScanned = prev.filter(
+        (p) => !propFileNames.has(p.fileName),
       );
 
       return [...propMappings, ...remainingScanned];
@@ -114,19 +114,13 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     if (mappings.length > 0 && !_selectedFileName) {
       setSelectedFileName(mappings[0].fileName);
     }
-  }, [mappings, _selectedFileName]);
+  }, [mappings]);
 
   // Sync state with S3 files when they arrive
   React.useEffect(() => {
     if (s3TableList.length > 0) {
       setLocalMappings((prev) => {
         const existing = new Set(prev.map((m) => m.fileName));
-
-        // Determine if we should auto-select new files.
-        // If we have no selected mappings yet (first time load),
-        // we display them in the right panel (isSelected: true).
-        const hasAnySelected = prev.some((m) => m.isSelected);
-        const isFirstTimeSelection = !hasAnySelected && mappings.length === 0;
 
         const additions = s3TableList
           .filter((t) => {
@@ -137,7 +131,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
             fileName: (t.file_key || t.table) as string,
             tableName:
               t.table || extractTableName((t.file_key || t.table) as string),
-            isSelected: isFirstTimeSelection,
+            isSelected: false,
           }));
 
         if (additions.length === 0) return prev;
@@ -198,37 +192,26 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
 
   return (
     <VStack align="stretch" gap={4} p={4}>
-      <Flex direction="column" align="center" gap={1} mt={8}>
+      <Flex direction="column" align="center" gap={1} mt={2}>
         <Text fontSize="lg" fontWeight="semibold" textAlign="center">
           Map Files to Tables
         </Text>
       </Flex>
 
-      {/* Grid Layout - Both panels same width and height */}
-      <Flex gap={4} h="480px" maxW="1000px" mx="auto" w="100%" mt={8}>
+      {/* Grid Layout */}
+      <Flex gap={4} h="450px" maxW="1300px" mx="auto" w="100%" mt={4}>
         {/* LEFT PANEL - Source Files */}
         <Flex direction="column" flex="1" gap={3}>
           {/* Search for Source Files */}
-          <Flex
-            align="center"
-            gap={2}
-            borderWidth={1}
-            borderRadius="md"
-            px={3}
-            h="40px"
-            bg="white"
-            borderColor="gray.300"
-          >
-            <FiSearch color="gray.500" size={16} />
+          <InputGroup startElement={<FiSearch color="gray.500" />} w="100%">
             <Input
               size="sm"
-              border="none"
-              _focusVisible={{ boxShadow: "none" }}
               placeholder="Search source files..."
               value={searchFiles}
               onChange={(e) => setSearchFiles(e.target.value)}
+              bg="white"
             />
-          </Flex>
+          </InputGroup>
 
           {/* Source Files List */}
           <Box
@@ -244,7 +227,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
               align="center"
               justify="space-between"
               px={4}
-              h="64px"
+              h="44px"
               borderBottomWidth={1}
               borderBottomColor="gray.200"
               bg="gray.50"
@@ -252,17 +235,10 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
               <Text fontWeight="semibold" fontSize="sm">
                 Source Files
               </Text>
-              <Text
-                fontWeight="semibold"
-                fontSize="sm"
-                textAlign="center"
-                minW="60px"
-              >
-                Select
-              </Text>
+              <Flex align="center" gap={2} minW="60px" justify="center" />
             </Flex>
 
-            <Box overflowY="auto" h="calc(100% - 64px)">
+            <Box overflowY="auto" h="calc(100% - 44px)">
               {isS3Loading ? (
                 <VStack gap={2} align="center" py={6} color="gray.500">
                   <Spinner size="sm" />
@@ -282,20 +258,22 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                   </Text>
                 </VStack>
               ) : (
-                filteredFiles.map((m, index) => {
+                filteredFiles.map((m) => {
                   return (
                     <Flex
                       key={m.fileName}
                       align="center"
                       justify="space-between"
-                      h="52px"
+                      h="44px"
                       px={4}
                       cursor="pointer"
-                      bg={index % 2 === 0 ? "white" : "gray.50"}
+                      bg="white"
                       borderBottomWidth={1}
                       borderBottomColor="gray.100"
                       _hover={{ bg: "gray.100" }}
-                      onClick={() => setSelectedFileName(m.fileName)}
+                      onClick={() =>
+                        toggleFileSelection(m.fileName, !m.isSelected)
+                      }
                     >
                       <Text
                         fontSize="sm"
@@ -330,26 +308,15 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
         {/* RIGHT PANEL - Table Mapping */}
         <Flex direction="column" flex="1" gap={3}>
           {/* Search for Mapped Tables */}
-          <Flex
-            align="center"
-            gap={2}
-            borderWidth={1}
-            borderRadius="md"
-            px={3}
-            h="40px"
-            bg="white"
-            borderColor="gray.300"
-          >
-            <FiSearch color="gray.500" size={16} />
+          <InputGroup startElement={<FiSearch color="gray.500" />} w="100%">
             <Input
               size="sm"
-              border="none"
-              _focusVisible={{ boxShadow: "none" }}
               placeholder="Search mapped tables..."
               value={searchMappings}
               onChange={(e) => setSearchMappings(e.target.value)}
+              bg="white"
             />
-          </Flex>
+          </InputGroup>
 
           {/* Table Mapping List */}
           <Box
@@ -365,7 +332,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
               align="center"
               justify="space-between"
               px={4}
-              h="64px"
+              h="44px"
               borderBottomWidth={1}
               borderBottomColor="gray.200"
               bg="gray.50"
@@ -375,7 +342,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
               </Text>
             </Flex>
 
-            <Box overflowY="auto" h="calc(100% - 64px)">
+            <Box overflowY="auto" h="calc(100% - 44px)">
               {isS3Loading ? (
                 <VStack gap={2} align="center" py={6} color="gray.500">
                   <Spinner size="sm" />
@@ -394,14 +361,14 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                   </Text>
                 </VStack>
               ) : (
-                filteredMappings.map((mapping, idx) => (
+                filteredMappings.map((mapping) => (
                   <Flex
                     key={mapping.fileName}
                     align="center"
                     justify="space-between"
-                    h="52px"
+                    h="44px"
                     px={4}
-                    bg={idx % 2 === 0 ? "white" : "gray.50"}
+                    bg="white"
                     borderBottomWidth={1}
                     borderBottomColor="gray.100"
                   >
@@ -424,8 +391,9 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                         updateTableName(mapping.fileName, e.target.value)
                       }
                       disabled={false}
-                      w="200px"
-                      h="36px"
+                      w="280px"
+                      h="32px"
+                      fontSize="sm"
                     />
                   </Flex>
                 ))
@@ -436,7 +404,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       </Flex>
 
       {/* Save/Cancel Buttons - Below both panels */}
-      <Flex justify="flex-end" gap={3} maxW="1000px" mx="auto" w="100%">
+      <Flex justify="flex-end" gap={3} maxW="1300px" mx="auto" w="100%">
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>

@@ -93,7 +93,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
   };
 
   return (
-    <VStack align="stretch" gap={4} w="100%">
+    <VStack align="stretch" gap={3} w="100%">
       {/* ---------- HEADER ---------- */}
       <Flex direction="column" align="center" gap={1} mt={8}>
         <Text fontSize="lg" fontWeight="semibold" textAlign="center">
@@ -107,8 +107,8 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       <Flex
         gap={6}
         align="stretch"
-        minH="480px"
-        maxW="900px"
+        minH="420px"
+        maxW="1000px"
         mx="auto"
         w="100%"
       >
@@ -120,14 +120,14 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
           borderRadius="lg"
           bg="white"
           overflow="hidden"
-          minW="400px"
+          minW="300px"
           boxShadow="sm"
         >
           <Flex
             align="center"
             justify="space-between"
             px={4}
-            h="64px"
+            h="52px"
             borderBottomWidth={1}
             borderBottomColor="gray.200"
             bg="gray.50"
@@ -202,14 +202,14 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
           borderRadius="lg"
           bg="white"
           overflow="hidden"
-          minW="400px"
+          minW="300px"
           boxShadow="sm"
           display="flex"
           flexDirection="column"
         >
           <Flex
-            h="64px"
-            px={4}
+            h="52px"
+            px={5}
             borderBottomWidth={1}
             borderColor="gray.200"
             justify="space-between"

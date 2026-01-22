@@ -22,10 +22,12 @@ import {
 } from "@chakra-ui/react";
 
 import { IoMdArrowBack } from "react-icons/io";
-import { MdOutlineSave } from "react-icons/md";
+import { MdDelete, MdOutlineSave } from "react-icons/md";
 
 import MultipleMapping from "@/components/dashboard/components/Connectors/components/NewConnector/components/SingleMapping/MultipleMapping";
-import SingleMapping from "@/components/dashboard/components/Connectors/components/NewConnector/components/SingleMapping/SingleMapping";
+import SingleMapping, {
+  Mapping,
+} from "@/components/dashboard/components/Connectors/components/NewConnector/components/SingleMapping/SingleMapping";
 import { PasswordInput } from "@/components/ui/password-input";
 
 export interface S3FieldSchema {
@@ -42,14 +44,14 @@ export interface S3FieldSchema {
   }>;
   depend_on?: string | null;
   dependency_value?: string | null;
-  description?: string; // Helper text shown below the field
-  placeholder?: string; // Placeholder text for input fields
-  default_value?: string; // Default value for the field
+  description?: string;
+  placeholder?: string;
+  default_value?: string;
 }
 
 interface S3DynamicFormProps {
   schema: S3FieldSchema[];
-  onSubmit: (_values: Record<string, string>) => void;
+  onSubmit: (_values: Record<string, string | number | boolean>) => void;
   loading?: boolean;
   defaultValues?: Record<string, string>;
   handleBackButtonClick?: () => void;
@@ -60,7 +62,7 @@ interface S3DynamicFormProps {
   leftButtons?: React.ReactNode;
   rightButtons?: React.ReactNode;
   onValuesChange?: (_values: Record<string, string>) => void;
-  readOnlyFields?: string[]; // Fields that should be read-only in edit mode
+  readOnlyFields?: string[];
 }
 
 // Fields that should always be hidden - these will NEVER be shown
@@ -245,9 +247,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
   // Open modal when mapping method is selected
 
-  const handleFileMappingSave = (
-    mappings: Array<{ fileName: string; tableName: string }>,
-  ) => {
+  const handleFileMappingSave = (mappings: Mapping[]) => {
     // Convert array of mappings to object format: {"file.csv": "TABLE_NAME"}
     const mappingsObject = mappings.reduce(
       (acc, mapping) => {
@@ -346,6 +346,31 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     }
   }, [values.table_to_files_mapping]);
 
+  const hasMappings = useMemo(() => {
+    return currentMappings.length > 0 || currentMultipleFiles.length > 0;
+  }, [currentMappings, currentMultipleFiles]);
+
+  const handleClearMapping = () => {
+    // ⛔ stop defaultValues from restoring old mapping
+    defaultValuesRef.current = {};
+
+    setValues((prev) => ({
+      ...prev,
+
+      file_type: "",
+      file_mapping_method: "",
+
+      mapping_config: "",
+      mapping_id: "",
+      mappings: "",
+
+      single_file_table_mapping: "",
+      table_to_files_mapping: "",
+      multi_files_table_name: "",
+      multi_files_prefix: "",
+    }));
+  };
+
   const renderField = (field: S3FieldSchema) => {
     const fieldReadOnly = isReadOnly(field.name);
     const fieldValue = values[field.name] || "";
@@ -381,20 +406,30 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
         >
           <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
           <Select.Root
+            key={`${field.name}-${values.file_type}-${values.file_mapping_method}`}
             collection={collection}
             size="sm"
-            disabled={fieldReadOnly}
+            disabled={
+              fieldReadOnly ||
+              (hasMappings &&
+                Boolean(values.file_mapping_method) &&
+                (field.name === "file_mapping_method" ||
+                  field.name === "file_type" ||
+                  field.name.includes("file_type")))
+            }
             value={fieldValue ? [fieldValue] : []}
             onValueChange={handleSelectChange}
+            bg="white"
           >
-            <Select.HiddenSelect
-              id={field.name}
-              name={field.name}
-              value={fieldValue}
-            />
+            <Select.HiddenSelect id={field.name} name={field.name} />
 
             <Select.Control>
-              <Select.Trigger>
+              <Select.Trigger
+                bg="white !important"
+                css={{ backgroundColor: "white !important" }}
+                _disabled={{ bg: "white !important", cursor: "not-allowed" }}
+                _readOnly={{ bg: "white !important" }}
+              >
                 <Select.ValueText
                   placeholder={
                     !field.depend_on
@@ -443,15 +478,26 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
           {/* Show Configure Mapping button in both create and edit modes */}
           {field.name === "file_mapping_method" && fieldValue && (
-            <Button
-              size="xs"
-              variant="outline"
-              mt={2}
-              w="fit-content"
-              onClick={() => setIsMappingModalOpen(true)}
-            >
-              Configure Mapping
-            </Button>
+            <Flex gap={2} mt={2}>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => setIsMappingModalOpen(true)}
+              >
+                Configure Mapping
+              </Button>
+              {hasMappings && (
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  colorPalette="red"
+                  onClick={handleClearMapping}
+                >
+                  <MdDelete />
+                  Clear Mapping
+                </Button>
+              )}
+            </Flex>
           )}
         </Field.Root>
       );
@@ -480,9 +526,16 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             fontSize="xs"
             resize="vertical"
             readOnly={fieldReadOnly}
-            bg={fieldReadOnly ? "gray.200" : undefined}
-            color={fieldReadOnly ? "gray.400" : undefined}
-            borderColor={fieldReadOnly ? "gray.300" : undefined}
+            bg="white !important"
+            css={{
+              backgroundColor: "white !important",
+              "&:-webkit-autofill": {
+                WebkitBoxShadow: "0 0 0 1000px white inset !important",
+                WebkitTextFillColor: "inherit !important",
+              },
+            }}
+            _readOnly={{ bg: "white !important" }}
+            _disabled={{ bg: "white !important" }}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -508,6 +561,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             id={field.name}
             name={field.name}
             type="number"
+            size="sm"
             value={fieldValue}
             onChange={handleChange}
             placeholder={
@@ -516,9 +570,16 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                 : undefined
             }
             readOnly={fieldReadOnly}
-            bg={fieldReadOnly ? "gray.200" : undefined}
-            color={fieldReadOnly ? "gray.400" : undefined}
-            borderColor={fieldReadOnly ? "gray.300" : undefined}
+            bg="white !important"
+            css={{
+              backgroundColor: "white !important",
+              "&:-webkit-autofill": {
+                WebkitBoxShadow: "0 0 0 1000px white inset !important",
+                WebkitTextFillColor: "inherit !important",
+              },
+            }}
+            _readOnly={{ bg: "white !important" }}
+            _disabled={{ bg: "white !important" }}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -543,6 +604,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
           <PasswordInput
             id={field.name}
             name={field.name}
+            size="sm"
             value={fieldValue}
             onChange={handleChange}
             placeholder={
@@ -551,9 +613,16 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                 : undefined
             }
             readOnly={fieldReadOnly}
-            bg={fieldReadOnly ? "gray.200" : undefined}
-            color={fieldReadOnly ? "gray.400" : undefined}
-            borderColor={fieldReadOnly ? "gray.300" : undefined}
+            bg="white !important"
+            css={{
+              backgroundColor: "white !important",
+              "&:-webkit-autofill": {
+                WebkitBoxShadow: "0 0 0 1000px white inset !important",
+                WebkitTextFillColor: "inherit !important",
+              },
+            }}
+            _readOnly={{ bg: "white !important" }}
+            _disabled={{ bg: "white !important" }}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -578,6 +647,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
           id={field.name}
           name={field.name}
           type="text"
+          size="sm"
           value={fieldValue}
           onChange={handleChange}
           placeholder={
@@ -586,9 +656,16 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
               : undefined
           }
           readOnly={fieldReadOnly}
-          bg={fieldReadOnly ? "gray.200" : undefined}
-          color={fieldReadOnly ? "gray.400" : undefined}
-          borderColor={fieldReadOnly ? "gray.300" : undefined}
+          bg="white !important"
+          css={{
+            backgroundColor: "white !important",
+            "&:-webkit-autofill": {
+              WebkitBoxShadow: "0 0 0 1000px white inset !important",
+              WebkitTextFillColor: "inherit !important",
+            },
+          }}
+          _readOnly={{ bg: "white !important" }}
+          _disabled={{ bg: "white !important" }}
         />
         {field.description && (
           <Field.HelperText fontSize="xs" color="gray.600">
@@ -628,12 +705,12 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
           <Box
             border="1px solid"
             borderColor="gray.200"
-            p={4}
+            p={3}
             borderRadius="md"
             mt={2}
-            bg="gray.50"
+            bg="white"
           >
-            <VStack gap={4} align="stretch">
+            <VStack gap={3} align="stretch">
               {dependentFields.map((dep) => renderField(dep))}
             </VStack>
           </Box>
@@ -645,7 +722,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   return (
     <>
       <VStack
-        gap={4}
+        gap={3}
         align="stretch"
         as="form"
         maxW="lg"
@@ -686,7 +763,12 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
           <Portal>
             <Dialog.Backdrop />
             <Dialog.Positioner>
-              <Dialog.Content maxW="6xl" w="90vw" maxH="90vh" overflow="auto">
+              <Dialog.Content
+                maxW="1330px"
+                w="90vw"
+                maxH="90vh"
+                overflow="auto"
+              >
                 {isSingleTablePerFile ? (
                   <SingleMapping
                     formValues={values}
