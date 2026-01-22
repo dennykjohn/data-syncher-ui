@@ -113,6 +113,18 @@ const S3ConnectorConfiguration = ({
       }
     });
 
+    // Convert all values to string to satisfy Record<string, string>
+    const stringifiedValues: Record<string, string> = {};
+    Object.entries(parsedValues).forEach(([key, value]) => {
+      if (value === undefined || value === null) {
+        stringifiedValues[key] = "";
+      } else if (typeof value === "object") {
+        stringifiedValues[key] = JSON.stringify(value);
+      } else {
+        stringifiedValues[key] = String(value);
+      }
+    });
+
     // Check if user selected "upsert_custom_key" for load_method
     const requiresPrimaryKeySelection =
       parsedValues["load_method"] === "upsert_custom_key";
@@ -134,7 +146,7 @@ const S3ConnectorConfiguration = ({
         {
           connection_name: values.connection_name || "Unnamed Connector",
           destination_schema: state?.destination || "",
-          form_data: parsedValues,
+          form_data: stringifiedValues,
         },
         {
           onSuccess: (response) => {
@@ -157,7 +169,7 @@ const S3ConnectorConfiguration = ({
         {
           connection_name: values.connection_name || "Unnamed Connector",
           destination_schema: connectorConfig?.destination_config.name || "",
-          form_data: parsedValues,
+          form_data: stringifiedValues,
         },
         {
           onSuccess: (response) => {
@@ -204,7 +216,6 @@ const S3ConnectorConfiguration = ({
       }
 
       const formData = pendingFormData.form_data as Record<string, unknown>;
-      // Transform the API response to match PrimaryKeySelection's expected format
       const schemaData = suggestedPrimaryKeys?.tables
         ? {
             schemaName:
@@ -266,7 +277,6 @@ const S3ConnectorConfiguration = ({
       );
     }
 
-    // Legacy flow for existing connections
     if (createdConnectionId) {
       if (isSuggestPrimaryKeysPending) {
         return <LoadingSpinner />;
