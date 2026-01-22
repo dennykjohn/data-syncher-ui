@@ -28,16 +28,6 @@ import MultipleMapping from "@/components/dashboard/components/Connectors/compon
 import SingleMapping from "@/components/dashboard/components/Connectors/components/NewConnector/components/SingleMapping/SingleMapping";
 import { PasswordInput } from "@/components/ui/password-input";
 
-/**
- * S3DynamicForm - Amazon S3 specific configuration form component.
- * This component is designed exclusively for Amazon S3 source connector configuration.
- *
- * It accepts a schema from the backend and dynamically renders fields based on:
- * - Field visibility (is_visible)
- * - Conditional dependencies (depend_on, dependency_value)
- * - Field types (CharField, ChoiceField, TextField, IntegerField)
- * - Widget types (PasswordInput)
- */
 export interface S3FieldSchema {
   name: string;
   label: string;
@@ -288,32 +278,26 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     setIsMappingModalOpen(false);
   };
 
-  const getExistingMappings = () => {
+  const currentMappings = useMemo(() => {
     const mappingData = values.single_file_table_mapping;
-    if (!mappingData) return [];
+    if (!mappingData || mappingData === "[]" || mappingData === "{}") return [];
 
     try {
-      // Handle both string (JSON) and object formats
       let parsed: unknown = mappingData;
       if (typeof mappingData === "string") {
         parsed = JSON.parse(mappingData);
       }
-
-      // Handle null or undefined
       if (!parsed) return [];
 
-      // If it's already an array, ensure isSelected is set
       if (Array.isArray(parsed)) {
         return (parsed as Record<string, unknown>[]).map((m) => ({
           ...m,
           fileName: m.fileName as string,
           tableName: m.tableName as string,
-          isSelected: (m.isSelected ?? true) as boolean, // Default to true for existing mappings
+          isSelected: (m.isSelected ?? true) as boolean,
         }));
       }
 
-      // If it's an object, convert to array format
-      // {"file.csv": "TABLE_NAME"} -> [{fileName: "file.csv", tableName: "TABLE_NAME", isSelected: true}]
       if (typeof parsed === "object") {
         const entries = Object.entries(parsed as Record<string, string>);
         if (entries.length === 0) return [];
@@ -321,7 +305,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
         return entries.map(([fileName, tableName]) => ({
           fileName,
           tableName: tableName as string,
-          isSelected: true, // Default to true for existing mappings
+          isSelected: true,
         }));
       }
 
@@ -329,24 +313,19 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     } catch {
       return [];
     }
-  };
+  }, [values.single_file_table_mapping]);
 
-  const getExistingMultipleFiles = () => {
+  const currentMultipleFiles = useMemo(() => {
     const mappingData = values.table_to_files_mapping;
-    if (!mappingData) return [];
+    if (!mappingData || mappingData === "[]" || mappingData === "{}") return [];
 
     try {
-      // Handle both string (JSON) and object formats
       let parsed: unknown = mappingData;
       if (typeof mappingData === "string") {
         parsed = JSON.parse(mappingData);
       }
-
-      // Handle null or undefined
       if (!parsed) return [];
 
-      // If it's an object like {"TABLE_NAME": ["file1", "file2"]}
-      // Extract the files array from the first (and only) table entry
       if (typeof parsed === "object" && !Array.isArray(parsed)) {
         const objectValues = Object.values(parsed as Record<string, string[]>);
         if (objectValues.length === 0) return [];
@@ -357,7 +336,6 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
         }
       }
 
-      // If it's already an array, return it
       if (Array.isArray(parsed)) {
         return parsed as string[];
       }
@@ -366,7 +344,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     } catch {
       return [];
     }
-  };
+  }, [values.table_to_files_mapping]);
 
   const renderField = (field: S3FieldSchema) => {
     const fieldReadOnly = isReadOnly(field.name);
@@ -712,7 +690,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                 {isSingleTablePerFile ? (
                   <SingleMapping
                     formValues={values}
-                    mappings={getExistingMappings()}
+                    mappings={currentMappings}
                     onCancel={handleFileMappingCancel}
                     onSaveMappings={handleFileMappingSave}
                     loading={loading}
@@ -721,7 +699,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                   <MultipleMapping
                     formValues={values}
                     tableName={values.multi_files_table_name || ""}
-                    selectedFiles={getExistingMultipleFiles()}
+                    selectedFiles={currentMultipleFiles}
                     onSave={(data) => {
                       // Format table_to_files_mapping as object: { "TABLE_NAME": ["file1", "file2"] }
                       const tableToFilesMapping = {

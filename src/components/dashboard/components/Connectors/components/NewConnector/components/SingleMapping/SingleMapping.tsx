@@ -48,7 +48,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     mappings.map((m) => ({ ...m, isSelected: m.isSelected ?? true })),
   );
   const [_selectedFileName, setSelectedFileName] = useState<string | null>(
-    mappings.length > 0 ? mappings[0].fileName : null,
+    null,
   );
 
   const hasRequiredCreds = useMemo(
@@ -68,32 +68,67 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       base_folder_path: formValues.base_folder_path || undefined,
       file_type: formValues.file_type || undefined,
     } as S3ListFilesRequest;
-  }, [hasRequiredCreds, formValues]);
+  }, [
+    hasRequiredCreds,
+    formValues.s3_bucket,
+    formValues.aws_access_key_id,
+    formValues.aws_secret_access_key,
+    formValues.base_folder_path,
+    formValues.file_type,
+  ]);
 
   const { data: s3Files, isPending: isS3Loading } = useFetchS3Files(
     s3Params ?? ({} as S3ListFilesRequest),
     !!s3Params && hasRequiredCreds,
   );
 
-  // Sync state with props during render to avoid useEffect cascading renders
-  const [prevPropsMappings, setPrevPropsMappings] = useState(mappings);
-  if (prevPropsMappings !== mappings) {
-    setPrevPropsMappings(mappings);
-    setLocalMappings(
-      mappings.map((m) => ({ ...m, isSelected: m.isSelected ?? true })),
-    );
-    setSelectedFileName(mappings.length > 0 ? mappings[0].fileName : null);
-  }
+  // Helper to extract tables from S3 response
+  const s3TableList = useMemo(() => {
+    if (!s3Files) return [];
+    if (Array.isArray(s3Files)) return s3Files;
+    if (s3Files.tables && Array.isArray(s3Files.tables)) return s3Files.tables;
+    return [];
+  }, [s3Files]);
 
-  // Sync state with S3 files during render to avoid useEffect cascading renders
-  const [lastS3Files, setLastS3Files] = useState(s3Files);
-  if (lastS3Files !== s3Files) {
-    setLastS3Files(s3Files);
+  // Sync state with props when they change
+  React.useEffect(() => {
+    setLocalMappings((prev) => {
+      // Create a map of existing scanned files (not in props)
+      const scannedFiles = prev.filter((p) => !p.isSelected);
 
-    if (s3Files?.tables && s3Files.tables.length > 0) {
+      // Mappings from props are always selected
+      const propMappings = mappings.map((m) => ({
+        ...m,
+        isSelected: m.isSelected ?? true,
+      }));
+
+      // Merge: priority to props, then keep scanned files that aren't in props
+      const propFileNames = new Set(propMappings.map((m) => m.fileName));
+      const remainingScanned = scannedFiles.filter(
+        (s) => !propFileNames.has(s.fileName),
+      );
+
+      return [...propMappings, ...remainingScanned];
+    });
+
+    if (mappings.length > 0 && !_selectedFileName) {
+      setSelectedFileName(mappings[0].fileName);
+    }
+  }, [mappings, _selectedFileName]);
+
+  // Sync state with S3 files when they arrive
+  React.useEffect(() => {
+    if (s3TableList.length > 0) {
       setLocalMappings((prev) => {
         const existing = new Set(prev.map((m) => m.fileName));
-        const additions = s3Files.tables
+
+        // Determine if we should auto-select new files.
+        // If we have no selected mappings yet (first time load),
+        // we display them in the right panel (isSelected: true).
+        const hasAnySelected = prev.some((m) => m.isSelected);
+        const isFirstTimeSelection = !hasAnySelected && mappings.length === 0;
+
+        const additions = s3TableList
           .filter((t) => {
             const name = t.file_key || t.table;
             return name && !existing.has(name);
@@ -102,22 +137,22 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
             fileName: (t.file_key || t.table) as string,
             tableName:
               t.table || extractTableName((t.file_key || t.table) as string),
-            isSelected: false,
+            isSelected: isFirstTimeSelection,
           }));
 
         if (additions.length === 0) return prev;
         return [...prev, ...additions];
       });
 
-      setSelectedFileName((prevFileName) => {
-        if (prevFileName) return prevFileName;
-        const firstName = s3Files.tables.find(
+      setSelectedFileName((prev) => {
+        if (prev) return prev;
+        const firstName = s3TableList.find(
           (t) => t.file_key || t.table,
         )?.file_key;
         return (firstName as string) || null;
       });
     }
-  }
+  }, [s3TableList, mappings.length]);
 
   const filteredFiles = useMemo(() => {
     if (!searchFiles.trim()) return localMappings;
