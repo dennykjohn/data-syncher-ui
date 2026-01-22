@@ -64,8 +64,7 @@ const S3ConnectorConfiguration = ({
   // Prepare params for suggest primary keys API
   const suggestPrimaryKeysParams = useMemo(() => {
     if (pendingFormData?.form_data) {
-      const formData = pendingFormData.form_data as Record<string, unknown>;
-      // Extract S3 credentials from pending form data
+      const formData = pendingFormData.form_data as Record<string, string>;
       return {
         s3_bucket: formData.s3_bucket as string,
         aws_access_key_id: formData.aws_access_key_id as string,
@@ -98,8 +97,10 @@ const S3ConnectorConfiguration = ({
   const { mutate: createConnection, isPending: isCreateConnectorPending } =
     useCreateConnection(state?.source || "");
 
-  const handleFormSubmit = (values: Record<string, string>) => {
-    // Parse JSON fields to ensure they are sent as objects, not strings
+  // ------------------- Strict-safe form submit -------------------
+  const handleFormSubmit = (values: Record<string, unknown>) => {
+    const connectionName =
+      (values["connection_name"] as string) || "Unnamed Connector";
     const parsedValues: Record<string, unknown> = { ...values };
     const jsonFields = ["single_file_table_mapping", "table_to_files_mapping"];
 
@@ -113,7 +114,7 @@ const S3ConnectorConfiguration = ({
       }
     });
 
-    // Convert all values to string to satisfy Record<string, string>
+    // ✅ Convert all values to strings to satisfy TS
     const stringifiedValues: Record<string, string> = {};
     Object.entries(parsedValues).forEach(([key, value]) => {
       if (value === undefined || value === null) {
@@ -125,28 +126,25 @@ const S3ConnectorConfiguration = ({
       }
     });
 
-    // Check if user selected "upsert_custom_key" for load_method
     const requiresPrimaryKeySelection =
       parsedValues["load_method"] === "upsert_custom_key";
 
     if (mode === "create") {
-      // If requires primary key selection, show PrimaryKeySelection component
       if (requiresPrimaryKeySelection) {
         setPendingFormData({
-          connection_name: values.connection_name || "Unnamed Connector",
+          connection_name: connectionName,
           destination_schema: state?.destination || "",
-          form_data: parsedValues,
+          form_data: stringifiedValues, // ✅ use stringifiedValues
         });
         setShowPrimaryKeySelection(true);
         return;
       }
 
-      // For other load methods, create connection normally
       createConnection(
         {
-          connection_name: values.connection_name || "Unnamed Connector",
+          connection_name: connectionName,
           destination_schema: state?.destination || "",
-          form_data: stringifiedValues,
+          form_data: stringifiedValues, // ✅ use stringifiedValues
         },
         {
           onSuccess: (response) => {
@@ -167,9 +165,9 @@ const S3ConnectorConfiguration = ({
     } else {
       updateConnectorConfig(
         {
-          connection_name: values.connection_name || "Unnamed Connector",
+          connection_name: connectionName,
           destination_schema: connectorConfig?.destination_config.name || "",
-          form_data: stringifiedValues,
+          form_data: stringifiedValues, // ✅ use stringifiedValues
         },
         {
           onSuccess: (response) => {
@@ -186,7 +184,9 @@ const S3ConnectorConfiguration = ({
       );
     }
   };
+  // -----------------------------------------------------------------
 
+  // ------------------- Loading state -------------------
   if (
     (mode === "create" && (isLoading || !formSchema)) ||
     (mode === "edit" &&
@@ -208,14 +208,12 @@ const S3ConnectorConfiguration = ({
       ? connectorConfig.source_schema
       : formSchema || [];
 
-  // If showing primary key selection, render that component
+  // ------------------- Primary key selection -------------------
   if (showPrimaryKeySelection) {
     if (pendingFormData) {
-      if (isSuggestPrimaryKeysPending) {
-        return <LoadingSpinner />;
-      }
+      if (isSuggestPrimaryKeysPending) return <LoadingSpinner />;
 
-      const formData = pendingFormData.form_data as Record<string, unknown>;
+      const formData = pendingFormData.form_data as Record<string, string>;
       const schemaData = suggestedPrimaryKeys?.tables
         ? {
             schemaName:
@@ -247,7 +245,7 @@ const S3ConnectorConfiguration = ({
             const formDataWithPrimaryKeys = {
               ...pendingFormData,
               form_data: {
-                ...(pendingFormData.form_data as Record<string, unknown>),
+                ...pendingFormData.form_data,
                 custom_primary_key: primaryKeys,
               },
             };
@@ -255,7 +253,7 @@ const S3ConnectorConfiguration = ({
             createConnection(
               formDataWithPrimaryKeys as unknown as CreateConnectionPayload,
               {
-                onSuccess: (_response) => {
+                onSuccess: () => {
                   toaster.success({
                     title: "S3 Connector created successfully",
                     description: "Primary keys have been configured.",
@@ -278,9 +276,7 @@ const S3ConnectorConfiguration = ({
     }
 
     if (createdConnectionId) {
-      if (isSuggestPrimaryKeysPending) {
-        return <LoadingSpinner />;
-      }
+      if (isSuggestPrimaryKeysPending) return <LoadingSpinner />;
 
       const schemaData = suggestedPrimaryKeys?.tables
         ? {
@@ -319,6 +315,7 @@ const S3ConnectorConfiguration = ({
     }
   }
 
+  // ------------------- Main form -------------------
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
       <PageHeader
@@ -342,16 +339,12 @@ const S3ConnectorConfiguration = ({
       />
       <S3DynamicForm
         schema={schemaFields as S3FieldSchema[]}
-        onSubmit={(values) => {
-          handleFormSubmit(values);
-        }}
+        onSubmit={handleFormSubmit}
         loading={isCreateConnectorPending || isUpdateConnectorConfigPending}
         handleBackButtonClick={handlePrevious}
         defaultValues={
           mode === "edit" && connectorConfig
-            ? {
-                ...connectorConfig?.initial_data,
-              }
+            ? { ...connectorConfig.initial_data }
             : undefined
         }
         mode={mode}
