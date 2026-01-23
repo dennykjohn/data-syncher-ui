@@ -2,9 +2,11 @@ import { Button, Flex, Text } from "@chakra-ui/react";
 
 import { MdOutlineEdit } from "react-icons/md";
 
+import { format } from "date-fns";
 import { useNavigate, useOutletContext } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
+import { dateTimeFormat } from "@/constants/common";
 import usePermissions from "@/hooks/usePermissions";
 import { type Connector } from "@/types/connectors";
 
@@ -46,7 +48,9 @@ const Settings = () => {
           <Flex>
             <Text fontSize="sm">Connected on:</Text>
             <Text fontSize="sm" fontWeight="semibold">
-              {connector?.connected_on}
+              {connector?.connected_on
+                ? format(new Date(connector.connected_on), dateTimeFormat)
+                : "--"}
             </Text>
           </Flex>
         </Flex>

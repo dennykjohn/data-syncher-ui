@@ -67,26 +67,26 @@ const ProfileForm = ({
               borderColor="gray.300"
             />
           </Field.Root>
-          {/* Start date */}
+          {/* Valid from */}
           <Field.Root required>
-            <Field.Label>Start date</Field.Label>
+            <Field.Label>Valid from</Field.Label>
             <Input
               type="date"
-              placeholder="Enter your start date"
-              value={initialData.start_date}
+              placeholder="Enter your valid from date"
+              value={initialData.valid_from}
               readOnly
               bg="gray.200"
               color="gray.400"
               borderColor="gray.300"
             />
           </Field.Root>
-          {/* End date */}
+          {/* Valid to */}
           <Field.Root required>
-            <Field.Label>End date</Field.Label>
+            <Field.Label>Valid to</Field.Label>
             <Input
               type="date"
-              placeholder="Enter your end date"
-              value={initialData.end_date}
+              placeholder="Enter your valid to date"
+              value={initialData.valid_to}
               readOnly
               bg="gray.200"
               color="gray.400"

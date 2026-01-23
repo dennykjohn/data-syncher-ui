@@ -32,8 +32,8 @@ export type UserProfile = {
   role: string;
   company: {
     cmp_name: string;
-    start_date: string;
-    end_date: string;
+    valid_from: string;
+    valid_to: string;
   };
   profile_image?: string | null;
 };
@@ -43,6 +43,6 @@ export type UpdateCurrentUserPayload = {
   last_name: string;
   company_email: string;
   cmp_name: string;
-  start_date: string;
-  end_date: string;
+  valid_from: string;
+  valid_to: string;
 };
