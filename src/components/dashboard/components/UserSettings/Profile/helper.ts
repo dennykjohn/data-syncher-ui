@@ -3,8 +3,8 @@ export type FormState = {
   lastName: string;
   company_email: string;
   cmp_name: string;
-  start_date: string;
-  end_date: string;
+  valid_from: string;
+  valid_to: string;
 };
 
 export const initialState: FormState = {
@@ -12,6 +12,6 @@ export const initialState: FormState = {
   lastName: "",
   company_email: "",
   cmp_name: "",
-  start_date: "",
-  end_date: "",
+  valid_from: "",
+  valid_to: "",
 };

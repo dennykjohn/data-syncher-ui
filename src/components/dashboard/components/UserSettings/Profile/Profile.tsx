@@ -19,21 +19,22 @@ const Profile = () => {
   const initialFormState = useMemo(() => {
     if (!userProfile) return initialState;
 
+    const company = userProfile.company;
     const regex = /(\.\d{3})\d+Z$/;
-    const cleanedStartDate = parseISO(
-      userProfile.company?.start_date.replace(regex, "$1Z"),
-    );
-    const cleanedEndDate = parseISO(
-      userProfile.company?.end_date.replace(regex, "$1Z"),
-    );
+
+    const startDateStr = company?.valid_from?.replace(regex, "$1Z");
+    const endDateStr = company?.valid_to?.replace(regex, "$1Z");
+
+    const cleanedStartDate = startDateStr ? parseISO(startDateStr) : new Date();
+    const cleanedEndDate = endDateStr ? parseISO(endDateStr) : new Date();
 
     return {
       firstName: userProfile.first_name,
       lastName: userProfile.last_name,
       company_email: userProfile.company_email,
       cmp_name: userProfile.company?.cmp_name,
-      start_date: format(cleanedStartDate, "yyyy-MM-dd"),
-      end_date: format(cleanedEndDate, "yyyy-MM-dd"),
+      valid_from: format(cleanedStartDate, "yyyy-MM-dd"),
+      valid_to: format(cleanedEndDate, "yyyy-MM-dd"),
     };
   }, [userProfile]);
 

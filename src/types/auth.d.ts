@@ -51,8 +51,8 @@ export type User = {
   company: {
     cmp_id: number;
     cmp_name: string;
-    start_date: string;
-    end_date: string;
+    valid_from: string;
+    valid_to: string;
   };
   is_trial: boolean;
   trial_days_remaining: number;
