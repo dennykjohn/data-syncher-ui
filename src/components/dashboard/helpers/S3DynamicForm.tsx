@@ -416,7 +416,14 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             key={`${field.name}-${values.file_type}-${values.file_mapping_method}`}
             collection={collection}
             size="sm"
-            disabled={fieldReadOnly}
+            disabled={
+              fieldReadOnly ||
+              (hasMappings &&
+                Boolean(values.file_mapping_method) &&
+                (field.name === "file_mapping_method" ||
+                  field.name === "file_type" ||
+                  field.name.includes("file_type")))
+            }
             value={fieldValue ? [fieldValue] : []}
             onValueChange={handleSelectChange}
             bg="white"
@@ -542,9 +549,16 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             fontSize="xs"
             resize="vertical"
             readOnly={fieldReadOnly}
-            bg={fieldReadOnly ? "gray.200" : undefined}
-            color={fieldReadOnly ? "gray.400" : undefined}
-            borderColor={fieldReadOnly ? "gray.300" : undefined}
+            bg="white !important"
+            css={{
+              backgroundColor: "white !important",
+              "&:-webkit-autofill": {
+                WebkitBoxShadow: "0 0 0 1000px white inset !important",
+                WebkitTextFillColor: "inherit !important",
+              },
+            }}
+            _readOnly={{ bg: "white !important" }}
+            _disabled={{ bg: "white !important" }}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -579,9 +593,16 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                 : undefined
             }
             readOnly={fieldReadOnly}
-            bg={fieldReadOnly ? "gray.200" : undefined}
-            color={fieldReadOnly ? "gray.400" : undefined}
-            borderColor={fieldReadOnly ? "gray.300" : undefined}
+            bg="white !important"
+            css={{
+              backgroundColor: "white !important",
+              "&:-webkit-autofill": {
+                WebkitBoxShadow: "0 0 0 1000px white inset !important",
+                WebkitTextFillColor: "inherit !important",
+              },
+            }}
+            _readOnly={{ bg: "white !important" }}
+            _disabled={{ bg: "white !important" }}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -615,9 +636,16 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                 : undefined
             }
             readOnly={fieldReadOnly}
-            bg={fieldReadOnly ? "gray.200" : undefined}
-            color={fieldReadOnly ? "gray.400" : undefined}
-            borderColor={fieldReadOnly ? "gray.300" : undefined}
+            bg="white !important"
+            css={{
+              backgroundColor: "white !important",
+              "&:-webkit-autofill": {
+                WebkitBoxShadow: "0 0 0 1000px white inset !important",
+                WebkitTextFillColor: "inherit !important",
+              },
+            }}
+            _readOnly={{ bg: "white !important" }}
+            _disabled={{ bg: "white !important" }}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -651,9 +679,16 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
               : undefined
           }
           readOnly={fieldReadOnly}
-          bg={fieldReadOnly ? "gray.200" : undefined}
-          color={fieldReadOnly ? "gray.400" : undefined}
-          borderColor={fieldReadOnly ? "gray.300" : undefined}
+          bg="white !important"
+          css={{
+            backgroundColor: "white !important",
+            "&:-webkit-autofill": {
+              WebkitBoxShadow: "0 0 0 1000px white inset !important",
+              WebkitTextFillColor: "inherit !important",
+            },
+          }}
+          _readOnly={{ bg: "white !important" }}
+          _disabled={{ bg: "white !important" }}
         />
         {field.description && (
           <Field.HelperText fontSize="xs" color="gray.600">
