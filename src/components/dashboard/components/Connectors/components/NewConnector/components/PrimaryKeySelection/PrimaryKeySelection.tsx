@@ -64,14 +64,7 @@ const PrimaryKeySelection: React.FC<PrimaryKeySelectionProps> = ({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedTables, setExpandedTables] = useState<Record<string, boolean>>(
-    () => {
-      const initialState: Record<string, boolean> = {};
-      if (defaultSchema.schemaName)
-        initialState[defaultSchema.schemaName] = true;
-      if (defaultSchema.tables?.[0]?.name)
-        initialState[defaultSchema.tables[0].name] = true;
-      return initialState;
-    },
+    {},
   );
   const [selectedTable, setSelectedTable] = useState<string | null>(() => {
     return defaultSchema.tables?.[0]?.name || null;

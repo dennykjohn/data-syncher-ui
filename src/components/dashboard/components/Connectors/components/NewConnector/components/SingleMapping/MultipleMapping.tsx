@@ -104,14 +104,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
         </Text>
       </Flex>
 
-      <Flex
-        gap={6}
-        align="stretch"
-        minH="420px"
-        maxW="1000px"
-        mx="auto"
-        w="100%"
-      >
+      <Flex gap={6} align="stretch" h="450px" maxW="1300px" mx="auto" w="100%">
         {/* Left Panel - Configuration */}
         <Box
           flex="1"
@@ -310,7 +303,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       </Flex>
 
       {/* ---------- ACTIONS BELOW PANELS ---------- */}
-      <Flex justify="flex-end" gap={3} maxW="1000px" mx="auto" w="100%" pb={4}>
+      <Flex justify="flex-end" gap={3} maxW="1300px" mx="auto" w="100%" pb={4}>
         {onCancel && (
           <Button variant="outline" onClick={onCancel}>
             Cancel
