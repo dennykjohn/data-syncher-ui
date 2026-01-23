@@ -47,6 +47,7 @@ export interface S3FieldSchema {
   description?: string;
   placeholder?: string;
   default_value?: string;
+  read_only?: boolean;
 }
 
 interface S3DynamicFormProps {
@@ -62,7 +63,6 @@ interface S3DynamicFormProps {
   leftButtons?: React.ReactNode;
   rightButtons?: React.ReactNode;
   onValuesChange?: (_values: Record<string, unknown>) => void;
-  readOnlyFields?: string[];
 }
 
 // Fields that should always be hidden - these will NEVER be shown
@@ -87,11 +87,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   leftButtons,
   rightButtons,
   onValuesChange,
-  readOnlyFields = [],
 }) => {
   // Initialize form values from schema and defaultValues
   const initialValues = useMemo(() => {
-    return schema.reduce(
+    const initial = schema.reduce(
       (acc, field) => ({
         ...acc,
         // Priority: defaultValues (from API) > default_value (from schema) > empty string
@@ -99,6 +98,15 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       }),
       {} as Record<string, string>,
     );
+
+    // Also include hidden fields from defaultValues
+    HIDDEN_FIELDS.forEach((fieldName) => {
+      if (defaultValues?.[fieldName] !== undefined) {
+        initial[fieldName] = defaultValues[fieldName];
+      }
+    });
+
+    return initial;
   }, [schema, defaultValues]);
 
   const [values, setValues] = useState<Record<string, string>>(
@@ -126,6 +134,12 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
               updated[field.name] = defaultValues[field.name];
             }
           });
+          // Also update hidden fields
+          HIDDEN_FIELDS.forEach((fieldName) => {
+            if (defaultValues[fieldName] !== undefined) {
+              updated[fieldName] = defaultValues[fieldName];
+            }
+          });
           return updated;
         });
       });
@@ -139,8 +153,9 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   ) => {
     const { name, value } = e.target;
 
-    // Check if field is read-only in edit mode
-    if (mode === "edit" && readOnlyFields.includes(name)) {
+    // Check if field is read-only
+    const fieldSchema = schema.find((f) => f.name === name);
+    if (mode === "edit" && fieldSchema?.read_only === true) {
       console.warn(`Attempted to change read-only field: ${name}`);
       return;
     }
@@ -236,8 +251,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     onSubmit(normalizedValues as Record<string, unknown>);
   };
 
-  const isReadOnly = (fieldName: string) =>
-    mode === "edit" && readOnlyFields.includes(fieldName);
+  const isReadOnly = (field: S3FieldSchema) => field.read_only === true;
 
   // Detect which mapping method is selected
   const mappingMethodValue = values.file_mapping_method || "";
@@ -268,13 +282,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   };
 
   const handleFileMappingCancel = () => {
-    // Clear the file_mapping_method to allow user to select again
-    setValues((prev) => ({
-      ...prev,
-      file_mapping_method: "",
-    }));
-
-    // Close the modal
+    // Close the modal without clearing settings
     setIsMappingModalOpen(false);
   };
 
@@ -351,7 +359,6 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   }, [currentMappings, currentMultipleFiles]);
 
   const handleClearMapping = () => {
-    // ⛔ stop defaultValues from restoring old mapping
     defaultValuesRef.current = {};
 
     setValues((prev) => ({
@@ -372,7 +379,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   };
 
   const renderField = (field: S3FieldSchema) => {
-    const fieldReadOnly = isReadOnly(field.name);
+    const fieldReadOnly = isReadOnly(field);
     const fieldValue = values[field.name] || "";
 
     if (field.type === "ChoiceField") {
@@ -425,10 +432,24 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
             <Select.Control>
               <Select.Trigger
-                bg="white !important"
-                css={{ backgroundColor: "white !important" }}
-                _disabled={{ bg: "white !important", cursor: "not-allowed" }}
-                _readOnly={{ bg: "white !important" }}
+                _disabled={{
+                  bg: fieldReadOnly
+                    ? "gray.200 !important"
+                    : "white !important",
+                  cursor: "not-allowed",
+                  color: fieldReadOnly ? "gray.400" : undefined,
+                  borderColor: fieldReadOnly ? "gray.300" : undefined,
+                }}
+                _readOnly={{
+                  bg: fieldReadOnly
+                    ? "gray.200 !important"
+                    : "white !important",
+                  color: fieldReadOnly ? "gray.400" : undefined,
+                  borderColor: fieldReadOnly ? "gray.300" : undefined,
+                }}
+                bg={fieldReadOnly ? "gray.200 !important" : "white !important"}
+                color={fieldReadOnly ? "gray.400" : undefined}
+                borderColor={fieldReadOnly ? "gray.300" : undefined}
               >
                 <Select.ValueText
                   placeholder={
@@ -483,6 +504,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                 size="xs"
                 variant="outline"
                 onClick={() => setIsMappingModalOpen(true)}
+                disabled={fieldReadOnly}
               >
                 Configure Mapping
               </Button>
@@ -492,6 +514,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                   variant="ghost"
                   colorPalette="red"
                   onClick={handleClearMapping}
+                  disabled={fieldReadOnly}
                 >
                   <MdDelete />
                   Clear Mapping

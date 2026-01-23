@@ -110,12 +110,11 @@ const S3ConnectorConfiguration = ({
         try {
           parsedValues[field] = JSON.parse(parsedValues[field]);
         } catch (e) {
-          console.warn(`⚠️ S3 - Failed to parse ${field}:`, e);
+          console.warn(`\u26a0\ufe0f S3 - Failed to parse ${field}:`, e);
         }
       }
     });
 
-    // ✅ Convert all values to strings to satisfy TS
     const stringifiedValues: Record<string, string> = {};
     Object.entries(parsedValues).forEach(([key, value]) => {
       if (value === undefined || value === null) {
@@ -135,7 +134,7 @@ const S3ConnectorConfiguration = ({
         setPendingFormData({
           connection_name: connectionName,
           destination_schema: state?.destination || "",
-          form_data: stringifiedValues, // ✅ use stringifiedValues
+          form_data: stringifiedValues,
         });
         setShowPrimaryKeySelection(true);
         return;
@@ -145,7 +144,7 @@ const S3ConnectorConfiguration = ({
         {
           connection_name: connectionName,
           destination_schema: state?.destination || "",
-          form_data: stringifiedValues, // ✅ use stringifiedValues
+          form_data: stringifiedValues,
         },
         {
           onSuccess: (response) => {
@@ -168,7 +167,7 @@ const S3ConnectorConfiguration = ({
         {
           connection_name: connectionName,
           destination_schema: connectorConfig?.destination_config.name || "",
-          form_data: stringifiedValues, // ✅ use stringifiedValues
+          form_data: stringifiedValues,
         },
         {
           onSuccess: (response) => {
@@ -187,6 +186,11 @@ const S3ConnectorConfiguration = ({
   };
   // -----------------------------------------------------------------
 
+  const sourceName = state?.source || connectorData?.source_name || "";
+
+  // Get the schema fields - Always use formSchema to match 'create' format
+  const schemaFields = formSchema || [];
+
   // ------------------- Loading state -------------------
   if (
     (mode === "create" && (isLoading || !formSchema)) ||
@@ -197,17 +201,6 @@ const S3ConnectorConfiguration = ({
   ) {
     return <LoadingSpinner />;
   }
-
-  const sourceName = state?.source || connectorData?.source_name || "";
-
-  // Get the schema fields
-  const schemaFields =
-    mode === "edit" &&
-    connectorConfig?.source_schema &&
-    Array.isArray(connectorConfig.source_schema) &&
-    connectorConfig.source_schema.length > 0
-      ? connectorConfig.source_schema
-      : formSchema || [];
 
   // ------------------- Primary key selection -------------------
   if (showPrimaryKeySelection) {
@@ -240,7 +233,6 @@ const S3ConnectorConfiguration = ({
           loading={isCreateConnectorPending}
           onBack={() => {
             setShowPrimaryKeySelection(false);
-            setPendingFormData(null);
           }}
           onSaveAndContinue={(primaryKeys) => {
             const formDataWithPrimaryKeys = {
@@ -346,7 +338,7 @@ const S3ConnectorConfiguration = ({
         defaultValues={
           mode === "edit" && connectorConfig
             ? { ...connectorConfig.initial_data }
-            : undefined
+            : pendingFormData?.form_data || undefined
         }
         mode={mode}
         sourceName={sourceName}

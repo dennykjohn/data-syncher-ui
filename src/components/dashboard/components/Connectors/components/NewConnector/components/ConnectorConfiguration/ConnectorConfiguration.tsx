@@ -15,8 +15,12 @@ import useUpdateConnectorConfig from "@/queryOptions/connector/useUpdateConnecto
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 
 import { type ConnectorFormState } from "../../type";
+import S3ConnectorConfiguration from "./S3ConnectorConfiguration";
 
-const ConnectorConfiguration = ({
+/**
+ * Generic configuration component for all other connectors
+ */
+const GenericConnectorConfiguration = ({
   state,
   handlePrevious,
   mode = "create",
@@ -162,6 +166,39 @@ const ConnectorConfiguration = ({
       />
     </Flex>
   );
+};
+
+/**
+ * Dispatcher component that routes to the appropriate configuration component
+ * based on the connector type.
+ */
+const ConnectorConfiguration = (props: {
+  state?: ConnectorFormState;
+  handlePrevious?: () => void;
+  mode: "create" | "edit";
+}) => {
+  const { connectionId } = useParams<{ connectionId: string }>();
+  const shouldFetch = props.mode === "edit" && !!connectionId;
+
+  // Fetch connector details to determine the type in edit mode
+  const { data: connectorData, isPending: isFetchConnectorByIdPending } =
+    useFetchConnectorById(shouldFetch ? Number(connectionId) : 0);
+
+  // Determine the source name
+  const sourceName = props.state?.source || connectorData?.source_name || "";
+  const isS3Connector =
+    sourceName?.toLowerCase().includes("s3") ||
+    sourceName?.toLowerCase().includes("amazon");
+
+  if (shouldFetch && isFetchConnectorByIdPending) {
+    return <LoadingSpinner />;
+  }
+
+  if (isS3Connector) {
+    return <S3ConnectorConfiguration {...props} />;
+  }
+
+  return <GenericConnectorConfiguration {...props} />;
 };
 
 export default ConnectorConfiguration;
