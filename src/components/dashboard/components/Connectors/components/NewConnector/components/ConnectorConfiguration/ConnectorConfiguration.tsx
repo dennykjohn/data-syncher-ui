@@ -119,11 +119,11 @@ const GenericConnectorConfiguration = ({
 
   // Get the schema fields
   const schemaFields =
-    mode === "edit" &&
-    connectorConfig?.source_schema &&
-    Array.isArray(connectorConfig.source_schema) &&
-    connectorConfig.source_schema.length > 0
-      ? connectorConfig.source_schema
+    mode === "edit"
+      ? connectorConfig?.source_schema ||
+        connectorConfig?.fields ||
+        formSchema ||
+        []
       : formSchema || [];
 
   return (

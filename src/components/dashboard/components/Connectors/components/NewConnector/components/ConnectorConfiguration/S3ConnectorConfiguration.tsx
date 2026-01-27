@@ -188,8 +188,14 @@ const S3ConnectorConfiguration = ({
 
   const sourceName = state?.source || connectorData?.source_name || "";
 
-  // Get the schema fields - Always use formSchema to match 'create' format
-  const schemaFields = formSchema || [];
+  // Get the schema fields - Priority: Backend Config (Edit) > Form Schema (Create)
+  const schemaFields =
+    mode === "edit"
+      ? connectorConfig?.source_schema ||
+        connectorConfig?.fields ||
+        formSchema ||
+        []
+      : formSchema || [];
 
   // ------------------- Loading state -------------------
   if (

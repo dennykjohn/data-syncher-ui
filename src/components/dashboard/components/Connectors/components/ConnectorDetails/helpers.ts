@@ -57,16 +57,16 @@ export const getStatusMessage = ({
   if (isAnyOperationInProgress) {
     return "Sync in progress";
   }
-  if (next_sync_time) {
+  if (next_sync_time && next_sync_time !== "None") {
     const date = new Date(next_sync_time);
     if (isValid(date)) {
       const fmt = dateTimeFmt ?? dateTimeFormat;
       const formattedDate = format(date, fmt);
       return `Next Sync at: ${formattedDate}`;
     } else {
-      console.error("Invalid next_sync_time format:", next_sync_time);
+      console.warn("Invalid next_sync_time format:", next_sync_time);
       return `Next Sync in: ${formatTimeFrequency(time_frequency)}`;
     }
   }
-  return "Next Sync in: None";
+  return `Next Sync in: ${formatTimeFrequency(time_frequency)}`;
 };
