@@ -41,11 +41,14 @@ const fetchTableStatus = async (
 export default function useFetchTableStatus(
   id: number,
   enabled: boolean = true,
-  _isPolling: boolean = false,
+  isPolling: boolean = false,
 ) {
-  return useQuery<FetchTableStatusResponse>({
+  const { data } = useQuery<FetchTableStatusResponse>({
     queryKey: ["TableStatus", id],
     queryFn: () => fetchTableStatus(id),
     enabled: !!id && enabled,
+    refetchInterval: isPolling ? 3000 : false,
   });
+
+  return { data };
 }
