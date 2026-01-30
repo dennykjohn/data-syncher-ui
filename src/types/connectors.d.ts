@@ -112,7 +112,7 @@ export interface ConnectorSelectedTable {
 
 // ------------------ Connector Activity Types ------------------
 
-type Status = "S" | "W" | "E";
+export type Status = "S" | "W" | "E" | "P" | "I";
 
 export type ConnectorActivityLog = {
   message: string;
@@ -122,7 +122,7 @@ export type ConnectorActivityLog = {
   status: Status;
   session_id: number | null;
   is_clickable?: boolean;
-  migration_id?: number;
+  migration_id?: number | null;
   log_id?: number;
   log_type?: string;
 };
@@ -157,6 +157,7 @@ export interface ConnectorActivityDetailResponse {
     duration?: string | null;
     migration_record_id?: number;
     message?: string;
+    error_message?: string;
   }[];
   total_tables?: number;
   logs?: {

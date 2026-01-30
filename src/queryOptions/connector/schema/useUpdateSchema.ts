@@ -9,7 +9,7 @@ const updateSchema = (connectorId: number) =>
   AxiosInstance.post(ServerRoutes.connector.updateSchema(connectorId));
 
 const triggerUpdateSchemaStatus = (connectorId: number) =>
-  AxiosInstance.post(ServerRoutes.connector.updateSchemaStatus(connectorId));
+  AxiosInstance.get(ServerRoutes.connector.updateSchemaStatus(connectorId));
 
 const useUpdateSchema = ({ connectorId }: { connectorId: number }) => {
   return useMutation({

@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 
-import { Flex, Grid, Text } from "@chakra-ui/react";
+import { Box, Flex, Grid, Text } from "@chakra-ui/react";
 
 import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
+import useConnectionActivityLogWS from "@/hooks/useConnectionActivityLogWS";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
 import { type Connector } from "@/types/connectors";
@@ -21,16 +22,26 @@ const Overview = () => {
     context.connection_id,
     context.filterDays,
   );
+
+  // Real-time WebSocket Updates
+  useConnectionActivityLogWS(context.connection_id);
+
   const [userSelectedLog, setUserSelectedLog] = useState<number | null>(null);
 
-  // Derive the default selected log from data (first log in the list)
+  // Derive the default selected log from data (first clickable log in the list)
   const defaultSelectedLog = useMemo(() => {
     if (data?.logs?.length) {
-      const firstLog = data.logs[0];
-      return firstLog.migration_id ?? firstLog.session_id ?? null;
+      const firstClickableLog = data.logs.find(
+        (log) => log.is_clickable !== false,
+      );
+      if (firstClickableLog) {
+        return Number(
+          firstClickableLog.migration_id ?? firstClickableLog.session_id ?? 0,
+        );
+      }
     }
     return null;
-  }, [data?.logs]);
+  }, [data]);
 
   // Effective selected log: user selection wins, otherwise use default
   const effectiveSelectedLog = userSelectedLog ?? defaultSelectedLog;
@@ -71,7 +82,7 @@ const Overview = () => {
       </Flex>
 
       <Grid
-        templateColumns={{ base: "1fr", lg: "minmax(0, 1fr) minmax(0, 1fr)" }}
+        templateColumns={{ base: "1fr", lg: "450px 1fr" }}
         gap={6}
         h="full"
         minH="600px"
@@ -113,7 +124,7 @@ const Overview = () => {
             )}
             {data?.logs?.map((log, index) => (
               <Item
-                key={index}
+                key={`${log.migration_id || log.session_id || "log"}-${index}`}
                 log={log}
                 onClick={() => {
                   // Allow selection of any log (migration details will only show if clickable)
@@ -169,28 +180,14 @@ const Overview = () => {
                     <Text color="gray.500">Select a log to view details</Text>
                   </Flex>
                 )}
-                {(() => {
-                  const currentTables = logDetails?.tables || [];
-                  return (
-                    <>
-                      {effectiveSelectedLog && currentTables.length === 0 && (
-                        <Flex
-                          direction="column"
-                          alignItems="center"
-                          justifyContent="center"
-                          gap={2}
-                          padding={8}
-                          h="100%"
-                        >
-                          <Text color="gray.500">No details available</Text>
-                        </Flex>
-                      )}
-                      {currentTables.length > 0 && (
-                        <MigrationProgressTable tables={currentTables} />
-                      )}
-                    </>
-                  );
-                })()}
+                {effectiveSelectedLog && (
+                  <Box p={4}>
+                    <MigrationProgressTable
+                      tables={logDetails?.tables || []}
+                      migrationId={migrationIdToFetch || null}
+                    />
+                  </Box>
+                )}
               </>
             )}
           </Flex>

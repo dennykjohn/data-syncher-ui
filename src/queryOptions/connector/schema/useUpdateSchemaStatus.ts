@@ -18,11 +18,6 @@ const useUpdateSchemaStatus = (connectionId: number, enabled: boolean) => {
     queryKey: ["SchemaStatus", connectionId],
     queryFn: () => checkSchemaStatus(connectionId),
     enabled: !!connectionId && enabled,
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      if (!data) return 2000;
-      return data.is_in_progress ? 2000 : false;
-    },
   });
 
   return { ...query, status: query.data };

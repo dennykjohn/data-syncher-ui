@@ -1,17 +1,39 @@
-import { Box, Flex, Image, Table } from "@chakra-ui/react";
+import { Box, Flex, Image, Table, Text } from "@chakra-ui/react";
 
 import { format } from "date-fns";
 
 import CheckIcon from "@/assets/icons/check-icon.svg";
 import ErrorIcon from "@/assets/icons/error-icon.svg";
 import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
+import { Tooltip } from "@/components/ui/tooltip";
+import { dateTimeFormat } from "@/constants/common";
+import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
 import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 
 const MigrationProgressTable = ({
   tables,
+  migrationId,
 }: {
   tables: ConnectorActivityDetailResponse["tables"];
+  migrationId: number | null;
 }) => {
+  // Real-time Migration Status Updates
+  useMigrationStatusWS(migrationId);
+
+  if (!tables || tables.length === 0) {
+    return (
+      <Flex
+        direction="column"
+        alignItems="center"
+        justifyContent="center"
+        padding={8}
+        h="full"
+      >
+        <Text color="gray.500">No migration details recorded yet.</Text>
+      </Flex>
+    );
+  }
+
   return (
     <Box w="100%">
       <Table.Root
@@ -72,7 +94,7 @@ const MigrationProgressTable = ({
               width="15%"
               py={2}
             >
-              New Records
+              Records
             </Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
@@ -91,10 +113,10 @@ const MigrationProgressTable = ({
 
               // Format times if available
               const startTime = table.start_time
-                ? format(new Date(table.start_time), "h:mm:ss a")
+                ? format(new Date(table.start_time), dateTimeFormat)
                 : "--";
               const endTime = table.end_time
-                ? format(new Date(table.end_time), "h:mm:ss a")
+                ? format(new Date(table.end_time), dateTimeFormat)
                 : "--";
 
               // Display new records count
@@ -114,28 +136,68 @@ const MigrationProgressTable = ({
                     py={2}
                   >
                     <Flex alignItems="center" justifyContent="center">
-                      {/* Status Icons */}
-                      {isSuccess && (
-                        <Image
-                          src={CheckIcon}
-                          boxSize="20px"
-                          objectFit="contain"
-                        />
-                      )}
-                      {isFailed && (
-                        <Image
-                          src={ErrorIcon}
-                          boxSize="20px"
-                          objectFit="contain"
-                        />
-                      )}
-                      {isPending && (
-                        <Image
-                          src={SandtimeIcon}
-                          boxSize="20px"
-                          objectFit="contain"
-                        />
-                      )}
+                      <Tooltip
+                        content={
+                          <Flex alignItems="center" gap={2}>
+                            <Box
+                              bg="red.500"
+                              borderRadius="full"
+                              p={1}
+                              minW="16px"
+                              h="16px"
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              <Text
+                                fontSize="xs"
+                                fontWeight="bold"
+                                lineHeight={1}
+                              >
+                                !
+                              </Text>
+                            </Box>
+                            <Text fontSize="xs" fontWeight="medium">
+                              Error: {table.error_message}
+                            </Text>
+                          </Flex>
+                        }
+                        disabled={!table.error_message}
+                        showArrow
+                        contentProps={{
+                          bg: "gray.800",
+                          color: "white",
+                          p: 3,
+                          borderRadius: "md",
+                          maxW: "300px",
+                        }}
+                      >
+                        <Box
+                          cursor={table.error_message ? "pointer" : "default"}
+                        >
+                          {isSuccess && (
+                            <Image
+                              src={CheckIcon}
+                              boxSize="20px"
+                              objectFit="contain"
+                            />
+                          )}
+                          {isFailed && (
+                            <Image
+                              src={ErrorIcon}
+                              boxSize="20px"
+                              objectFit="contain"
+                            />
+                          )}
+                          {isPending && (
+                            <Image
+                              src={SandtimeIcon}
+                              boxSize="20px"
+                              objectFit="contain"
+                            />
+                          )}
+                        </Box>
+                      </Tooltip>
                     </Flex>
                   </Table.Cell>
                   <Table.Cell
