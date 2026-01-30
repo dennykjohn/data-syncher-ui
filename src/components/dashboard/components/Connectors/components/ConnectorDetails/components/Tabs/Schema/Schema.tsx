@@ -306,8 +306,6 @@ const Schema = () => {
     context.connection_id,
     // Only enable the query when a table reload / migration is actually running.
     shouldPollTableStatus,
-    // While enabled, keep polling while work is in progress.
-    shouldPollTableStatus,
   );
 
   const hasAnyTableInProgress = useMemo(() => {
@@ -491,7 +489,7 @@ const Schema = () => {
           });
         }}
       />
-      <Flex mr="auto" mt={-7}>
+      <Flex mr="auto" mt={-4}>
         <InputGroup endElement={<MdSearch size={28} />}>
           <Input
             placeholder="Search table name"

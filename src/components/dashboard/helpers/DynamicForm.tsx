@@ -345,8 +345,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         if (!input) return null;
 
         return (
-          <>
-            <Box key={field.name}>{input}</Box>
+          <React.Fragment key={field.name}>
+            <Box>{input}</Box>
             {(field.name === "authentication_type" ||
               field.name === "authenticationType") && (
               <>
@@ -414,7 +414,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 />
               </>
             )}
-          </>
+          </React.Fragment>
         );
       })}
       <Flex justifyContent="space-between">

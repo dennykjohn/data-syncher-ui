@@ -57,8 +57,7 @@ const SelectedTable = ({
 
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
-    shouldPollDeltaTableStatus, // Only enabled when polling is needed (after button click)
-    shouldPollDeltaTableStatus, // Force polling when refresh delta table is active
+    shouldPollDeltaTableStatus,
   );
 
   // Merge selected tables from main list with status from get_table_status API
