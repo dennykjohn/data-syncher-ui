@@ -22,8 +22,6 @@ const useFetchConnectorActivityDetails = ({
     queryKey: ["connectorActivityDetails", migrationId],
     queryFn: () => fetchConnectorActivityDetails(migrationId),
     enabled: !!migrationId,
-    refetchInterval: 3000, // Refetch every 3 seconds for real-time migration progress
-    // Continue polling even when tab is not focused
   });
 };
 

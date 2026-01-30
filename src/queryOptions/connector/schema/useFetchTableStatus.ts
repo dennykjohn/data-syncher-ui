@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 
 type FetchTableStatusResponse = {
   tables: ConnectorSelectedTable[];
+  schema_refresh_in_progress?: boolean;
 };
 
 type GetTableStatusResponse = {
@@ -13,6 +14,7 @@ type GetTableStatusResponse = {
     table_name: string;
     status: string;
   }>;
+  schema_refresh_in_progress?: boolean;
 };
 
 const fetchTableStatus = async (
@@ -30,30 +32,20 @@ const fetchTableStatus = async (
       status: (item.status as "in_progress" | "completed" | "failed") || null,
     })) || [];
 
-  return { tables };
+  return {
+    tables,
+    schema_refresh_in_progress: data.schema_refresh_in_progress,
+  };
 };
 
 export default function useFetchTableStatus(
   id: number,
   enabled: boolean = true,
-  forcePolling: boolean = false,
+  _isPolling: boolean = false,
 ) {
   return useQuery<FetchTableStatusResponse>({
     queryKey: ["TableStatus", id],
     queryFn: () => fetchTableStatus(id),
     enabled: !!id && enabled,
-    refetchInterval: (query) => {
-      const data = query.state.data;
-
-      if (!data) return 2000;
-
-      if (forcePolling) return 2000;
-
-      const hasInProgress = data?.tables?.some(
-        (table) => table.status === "in_progress",
-      );
-
-      return hasInProgress ? 2000 : false;
-    },
   });
 }
