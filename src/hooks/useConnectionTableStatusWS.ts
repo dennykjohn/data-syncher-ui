@@ -77,19 +77,19 @@ export const useConnectionTableStatusWS = (connectionId: number | null) => {
             refetchType: "none",
           });
         }
-      } catch (e) {
-        console.warn("[WS Table Status] Parse error", e);
+      } catch {
+        // console.warn("[WS Table Status] Parse error", e);
       }
     },
-    onError: (error) => {
-      console.error(`[WS Table Status] ❌ Error:`, error);
+    onError: (_error) => {
+      // console.error(`[WS Table Status] ❌ Error:`, error);
     },
-    onClose: (event) => {
-      console.warn(
-        `[WS Table Status] 🔌 Connection closed:`,
-        event.code,
-        event.reason,
-      );
+    onClose: (_event) => {
+      // console.warn(
+      //   `[WS Table Status] 🔌 Connection closed:`,
+      //   event.code,
+      //   event.reason,
+      // );
     },
     shouldReconnect: () => true,
     reconnectInterval: 3000,

@@ -1,6 +1,6 @@
 import useWebSocket from "react-use-websocket";
 
-import { ConnectorActivityLog } from "@/types/connectors";
+import { ConnectorActivityLog, Status } from "@/types/connectors";
 
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -103,7 +103,7 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                   message.message ||
                   ""
                 ).toLowerCase();
-                let newStatus: "S" | "W" | "E" | "P" | "I" = "P"; // Pending/Progress
+                let newStatus: Status = "P"; // Pending/Progress
                 if (
                   rawStatus.includes("success") ||
                   rawStatus.includes("completed")
@@ -149,24 +149,24 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
             );
           });
         }
-      } catch (e) {
-        console.warn("[WS Activity Log] Parse error", e);
+      } catch {
+        // console.warn("[WS Activity Log] Parse error", e);
       }
     },
-    onError: (error) => {
-      console.error(`[WS Activity Log] ❌ Error:`, error);
+    onError: (_error) => {
+      // console.error(`[WS Activity Log] ❌ Error:`, error);
     },
-    onClose: (event) => {
-      console.warn(
-        `[WS Activity Log] 🔌 Connection closed:`,
-        event.code,
-        event.reason,
-      );
+    onClose: (_event) => {
+      // console.warn(
+      //   `[WS Activity Log] 🔌 Connection closed:`,
+      //   event.code,
+      //   event.reason,
+      // );
     },
     shouldReconnect: () => true,
     reconnectInterval: 3000,
     reconnectAttempts: 10,
-    share: false, // Disable sharing to prevent message buffering
+    share: false,
     retryOnError: true,
   });
 };

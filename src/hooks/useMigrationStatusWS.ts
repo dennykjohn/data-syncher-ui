@@ -72,8 +72,8 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
             return updated;
           },
         );
-      } catch (e) {
-        console.warn("[WS Migration Status] Parse error", e);
+      } catch {
+        // console.warn("[WS Migration Status] Parse error", e);
       }
     },
     shouldReconnect: () => true,

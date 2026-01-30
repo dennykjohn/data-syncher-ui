@@ -51,19 +51,19 @@ export const useUpdateSchemaStatusWS = (connectionId: number | null) => {
             queryKey: ["ConnectorTable", connectionId],
           });
         }
-      } catch (e) {
-        console.warn("[WS Schema Status] Parse error", e);
+      } catch {
+        // console.warn("[WS Schema Status] Parse error", e);
       }
     },
-    onError: (error) => {
-      console.error(`[WS Schema Status] ❌ Error:`, error);
+    onError: (_error) => {
+      // console.error(`[WS Schema Status] ❌ Error:`, error);
     },
-    onClose: (event) => {
-      console.warn(
-        `[WS Schema Status] 🔌 Connection closed:`,
-        event.code,
-        event.reason,
-      );
+    onClose: (_event) => {
+      // console.warn(
+      //   `[WS Schema Status] 🔌 Connection closed:`,
+      //   event.code,
+      //   event.reason,
+      // );
     },
     shouldReconnect: () => true,
     reconnectInterval: 3000,
