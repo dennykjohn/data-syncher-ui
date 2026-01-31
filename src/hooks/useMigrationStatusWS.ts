@@ -18,6 +18,7 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
     onMessage: (event) => {
       try {
         const message = JSON.parse(event.data);
+
         if (!migrationId) return;
 
         // Update Detailed Progress Cache
@@ -59,26 +60,28 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
             if (
               rawStatus.includes("success") ||
               rawStatus.includes("completed")
-            )
+            ) {
               updated.overall_status = "completed";
-            else if (
+            } else if (
               rawStatus.includes("failed") ||
               rawStatus.includes("error")
-            )
+            ) {
               updated.overall_status = "failed";
-            else if (rawStatus.includes("progress"))
+            } else if (rawStatus.includes("progress")) {
               updated.overall_status = "in_progress";
+            }
 
             return updated;
           },
         );
       } catch {
-        // console.warn("[WS Migration Status] Parse error", e);
+        // console.warn("[WS Migration Status] Parse error");
       }
     },
     shouldReconnect: () => true,
     reconnectInterval: 3000,
     share: true,
+    retryOnError: true,
   });
 };
 

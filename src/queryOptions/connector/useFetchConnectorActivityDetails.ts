@@ -22,6 +22,7 @@ const useFetchConnectorActivityDetails = ({
     queryKey: ["connectorActivityDetails", migrationId],
     queryFn: () => fetchConnectorActivityDetails(migrationId),
     enabled: !!migrationId,
+    refetchInterval: 2000,
   });
 };
 
