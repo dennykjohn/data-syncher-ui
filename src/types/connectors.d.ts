@@ -150,14 +150,13 @@ export interface ConnectorActivityDetailResponse {
     status_icon?: string;
     start_time: string | null;
     end_time: string | null;
-    record_count?: number;
-    new_rec?: number;
     mod_rec?: number;
     del_rec?: number;
     duration?: string | null;
     migration_record_id?: number;
     message?: string;
     error_message?: string;
+    staging_records_count?: number;
   }[];
   total_tables?: number;
   logs?: {

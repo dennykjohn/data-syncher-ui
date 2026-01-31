@@ -39,21 +39,16 @@ const MigrationProgressTable = ({
 
   return (
     <Box w="100%">
-      <Table.Root
-        variant="outline"
-        borderBottomWidth={1}
-        borderColor="gray.200"
-      >
-        <Table.Header bg="gray.100">
+      <Table.Root>
+        <Table.Header bg="gray.50">
           <Table.Row>
             <Table.ColumnHeader
               width="10%"
               textAlign="center"
               fontWeight="bold"
               color="gray.600"
-              borderColor="gray.300"
               borderRightWidth={1}
-              borderLeftWidth={1}
+              borderColor="gray.200"
               py={2}
             >
               Status
@@ -61,9 +56,9 @@ const MigrationProgressTable = ({
             <Table.ColumnHeader
               fontWeight="bold"
               color="gray.600"
-              borderColor="gray.300"
-              borderRightWidth={1}
               width="25%"
+              borderRightWidth={1}
+              borderColor="gray.200"
               py={2}
             >
               Table Name
@@ -71,9 +66,9 @@ const MigrationProgressTable = ({
             <Table.ColumnHeader
               fontWeight="bold"
               color="gray.600"
-              borderColor="gray.300"
-              borderRightWidth={1}
               width="25%"
+              borderRightWidth={1}
+              borderColor="gray.200"
               py={2}
             >
               Start Time
@@ -81,9 +76,9 @@ const MigrationProgressTable = ({
             <Table.ColumnHeader
               fontWeight="bold"
               color="gray.600"
-              borderColor="gray.300"
-              borderRightWidth={1}
               width="25%"
+              borderRightWidth={1}
+              borderColor="gray.200"
               py={2}
             >
               End Time
@@ -92,8 +87,6 @@ const MigrationProgressTable = ({
               fontWeight="bold"
               color="gray.600"
               textAlign="left"
-              borderColor="gray.300"
-              borderRightWidth={1}
               width="15%"
               py={2}
             >
@@ -122,21 +115,20 @@ const MigrationProgressTable = ({
                 ? format(new Date(table.end_time), dateTimeFormat)
                 : "--";
 
-              // Display new records count
-              const newRecordsDisplay =
-                table.new_rec !== undefined && table.new_rec !== null
-                  ? table.new_rec
+              // Display staging records count
+              const stagingRecordsDisplay =
+                table.staging_records_count !== undefined &&
+                table.staging_records_count !== null
+                  ? table.staging_records_count
                   : "--";
 
               return (
                 <Table.Row key={index} bg="white" _hover={{ bg: "gray.50" }}>
                   <Table.Cell
-                    borderColor="gray.200"
-                    borderRightWidth={1}
-                    borderLeftWidth={1}
-                    borderBottomWidth={1}
                     textAlign="center"
                     py={2}
+                    borderRightWidth={1}
+                    borderColor="gray.200"
                   >
                     <Flex alignItems="center" justifyContent="center">
                       <Tooltip
@@ -233,42 +225,32 @@ const MigrationProgressTable = ({
                     </Flex>
                   </Table.Cell>
                   <Table.Cell
-                    borderColor="gray.200"
-                    borderRightWidth={1}
-                    borderBottomWidth={1}
                     fontWeight="medium"
                     color="gray.800"
                     py={2}
+                    borderRightWidth={1}
+                    borderColor="gray.200"
                   >
                     {table.table_name}
                   </Table.Cell>
                   <Table.Cell
-                    borderColor="gray.200"
-                    borderRightWidth={1}
-                    borderBottomWidth={1}
                     color="gray.700"
                     py={2}
+                    borderRightWidth={1}
+                    borderColor="gray.200"
                   >
                     {startTime}
                   </Table.Cell>
                   <Table.Cell
-                    borderColor="gray.200"
-                    borderRightWidth={1}
-                    borderBottomWidth={1}
                     color="gray.700"
                     py={2}
+                    borderRightWidth={1}
+                    borderColor="gray.200"
                   >
                     {endTime}
                   </Table.Cell>
-                  <Table.Cell
-                    textAlign="left"
-                    color="gray.700"
-                    borderColor="gray.200"
-                    borderRightWidth={1}
-                    borderBottomWidth={1}
-                    py={2}
-                  >
-                    {newRecordsDisplay}
+                  <Table.Cell textAlign="left" color="gray.700" py={2}>
+                    {stagingRecordsDisplay}
                   </Table.Cell>
                 </Table.Row>
               );
