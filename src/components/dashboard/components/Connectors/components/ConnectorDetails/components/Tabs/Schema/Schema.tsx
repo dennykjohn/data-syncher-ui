@@ -531,7 +531,7 @@ const Schema = () => {
 
           {(isAssigningTables || isAllTableListLoading) && (
             <For each={[...Array(10).keys()]}>
-              {() => <Skeleton gap="4" height={8} />}
+              {(_item, index) => <Skeleton key={index} gap="4" height={8} />}
             </For>
           )}
 

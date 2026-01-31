@@ -181,7 +181,7 @@ const Overview = () => {
                   </Flex>
                 )}
                 {effectiveSelectedLog && (
-                  <Box p={4}>
+                  <Box p={0}>
                     <MigrationProgressTable
                       tables={logDetails?.tables || []}
                       migrationId={migrationIdToFetch || null}
