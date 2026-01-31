@@ -27,6 +27,7 @@ interface MultipleMappingProps {
   }) => void;
   onCancel?: () => void;
   loading?: boolean;
+  readOnly?: boolean;
 }
 
 const MultipleMapping: React.FC<MultipleMappingProps> = ({
@@ -36,6 +37,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
   onSave,
   onCancel,
   loading: saveLoading,
+  readOnly = false,
 }) => {
   const [tableName, setTableName] = useState(initialTableName);
   const [prefix, setPrefix] = useState("");
@@ -143,6 +145,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 value={tableName}
                 onChange={(e) => setTableName(e.target.value)}
                 size="sm"
+                readOnly={readOnly}
               />
               <Field.HelperText>
                 All selected files will be mapped to this table
@@ -161,28 +164,31 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                   setShouldFetchPreview(false);
                 }}
                 size="sm"
+                readOnly={readOnly}
               />
               <Field.HelperText>
                 Filter files by prefix to preview matching tables
               </Field.HelperText>
 
               {/* Preview Button */}
-              <Button
-                size="sm"
-                variant="outline"
-                colorPalette="brand"
-                mt={2}
-                onClick={() => {
-                  // Trigger the preview API call
-                  if (tableName.trim() && prefix.trim()) {
-                    setShouldFetchPreview(true);
-                  }
-                }}
-                disabled={!tableName.trim() || !prefix.trim()}
-                w="fit-content"
-              >
-                Preview
-              </Button>
+              {!readOnly && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  colorPalette="brand"
+                  mt={2}
+                  onClick={() => {
+                    // Trigger the preview API call
+                    if (tableName.trim() && prefix.trim()) {
+                      setShouldFetchPreview(true);
+                    }
+                  }}
+                  disabled={!tableName.trim() || !prefix.trim()}
+                  w="fit-content"
+                >
+                  Preview
+                </Button>
+              )}
             </Field.Root>
           </VStack>
         </Box>
@@ -306,18 +312,20 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       <Flex justify="flex-end" gap={3} maxW="1300px" mx="auto" w="100%" pb={4}>
         {onCancel && (
           <Button variant="outline" onClick={onCancel}>
-            Cancel
+            {readOnly ? "Close" : "Cancel"}
           </Button>
         )}
-        <Button
-          colorPalette="brand"
-          onClick={handleSave}
-          disabled={!tableName.trim() || matchedTables.length === 0}
-          loading={saveLoading}
-        >
-          <MdOutlineSave />
-          Save Mapping
-        </Button>
+        {!readOnly && (
+          <Button
+            colorPalette="brand"
+            onClick={handleSave}
+            disabled={!tableName.trim() || matchedTables.length === 0}
+            loading={saveLoading}
+          >
+            <MdOutlineSave />
+            Save Mapping
+          </Button>
+        )}
       </Flex>
     </VStack>
   );

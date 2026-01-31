@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import CheckIcon from "@/assets/icons/check-icon.svg";
 import ErrorIcon from "@/assets/icons/error-icon.svg";
 import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
+import { dateTimeFormat } from "@/constants/common";
 import { type ConnectorActivityLog } from "@/types/connectors";
 
 const Item = ({
@@ -41,7 +42,12 @@ const Item = ({
     currentStatus = "error";
   } else if (msg.includes("paused")) {
     currentStatus = "paused";
-  } else if (msg.includes("progress") || msg.includes("started")) {
+  } else if (
+    msg.includes("progress") ||
+    msg.includes("started") ||
+    status === "P" ||
+    status === "I"
+  ) {
     currentStatus = "progress";
   } else if (
     status === "S" ||
@@ -95,9 +101,7 @@ const Item = ({
         </Text>
         <Flex gap={4} alignItems="center">
           <Text fontSize="xs" color="gray.500">
-            {timestamp
-              ? format(new Date(timestamp), "yyyy-MM-dd, HH:mm:ss")
-              : ""}
+            {timestamp ? format(new Date(timestamp), dateTimeFormat) : ""}
           </Text>
           <Text fontSize="xs" color="gray.500">
             {displayUser}

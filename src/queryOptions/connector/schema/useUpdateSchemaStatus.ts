@@ -13,11 +13,16 @@ const checkSchemaStatus = async (
   return data;
 };
 
-const useUpdateSchemaStatus = (connectionId: number, enabled: boolean) => {
+const useUpdateSchemaStatus = (
+  connectionId: number,
+  enabled: boolean,
+  isPolling: boolean = false,
+) => {
   const query = useQuery({
     queryKey: ["SchemaStatus", connectionId],
     queryFn: () => checkSchemaStatus(connectionId),
     enabled: !!connectionId && enabled,
+    refetchInterval: isPolling ? 3000 : false,
   });
 
   return { ...query, status: query.data };

@@ -493,14 +493,6 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
           {/* Show Configure Mapping button in both create and edit modes */}
           {field.name === "file_mapping_method" && fieldValue && (
             <Flex gap={2} mt={2}>
-              <Button
-                size="xs"
-                variant="outline"
-                onClick={() => setIsMappingModalOpen(true)}
-                disabled={fieldReadOnly}
-              >
-                Configure Mapping
-              </Button>
               {hasMappings && (
                 <Button
                   size="xs"
@@ -513,6 +505,15 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                   Clear Mapping
                 </Button>
               )}
+              {/* Enable button even if read-only, to allow viewing mapping */}
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => setIsMappingModalOpen(true)}
+                disabled={false}
+              >
+                {fieldReadOnly ? "View Mapping" : "Configure Mapping"}
+              </Button>
             </Flex>
           )}
         </Field.Root>
@@ -764,6 +765,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     onCancel={handleFileMappingCancel}
                     onSaveMappings={handleFileMappingSave}
                     loading={loading}
+                    readOnly={mode === "edit"}
                   />
                 ) : isMultiFilesSingleTable ? (
                   <MultipleMapping
@@ -790,6 +792,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     }}
                     onCancel={handleFileMappingCancel}
                     loading={loading}
+                    readOnly={mode === "edit"}
                   />
                 ) : null}
               </Dialog.Content>

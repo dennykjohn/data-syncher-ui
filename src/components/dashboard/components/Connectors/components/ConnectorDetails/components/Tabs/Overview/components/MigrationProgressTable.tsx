@@ -1,10 +1,13 @@
 import { Box, Flex, Image, Table, Text } from "@chakra-ui/react";
 
+import { LuCopy } from "react-icons/lu";
+
 import { format } from "date-fns";
 
 import CheckIcon from "@/assets/icons/check-icon.svg";
 import ErrorIcon from "@/assets/icons/error-icon.svg";
 import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
+import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { dateTimeFormat } from "@/constants/common";
 import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
@@ -157,11 +160,40 @@ const MigrationProgressTable = ({
                                 !
                               </Text>
                             </Box>
-                            <Text fontSize="xs" fontWeight="medium">
+                            <Text fontSize="xs" fontWeight="medium" flex={1}>
                               Error: {table.error_message}
                             </Text>
+                            <Box
+                              as="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (table.error_message) {
+                                  navigator.clipboard.writeText(
+                                    table.error_message,
+                                  );
+                                  toaster.success({
+                                    title: "Copied to clipboard",
+                                    description: "Error message copied",
+                                  });
+                                }
+                              }}
+                              _hover={{
+                                color: "gray.300",
+                                bg: "whiteAlpha.200",
+                              }}
+                              cursor="pointer"
+                              p={1}
+                              borderRadius="md"
+                              transition="all 0.2s"
+                              title="Copy error message"
+                              color="white"
+                            >
+                              <LuCopy size={16} />
+                            </Box>
                           </Flex>
                         }
+                        interactive={true}
+                        closeOnPointerDown={false}
                         disabled={!table.error_message}
                         showArrow
                         contentProps={{

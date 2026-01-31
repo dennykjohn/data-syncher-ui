@@ -31,6 +31,7 @@ interface SingleMappingProps {
   onCancel: () => void;
   onSaveMappings: (_mappings: Mapping[]) => void;
   loading?: boolean;
+  readOnly?: boolean;
 }
 
 const extractTableName = (fileName: string) =>
@@ -42,6 +43,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
   onCancel,
   onSaveMappings,
   loading,
+  readOnly = false,
 }) => {
   const [searchFiles, setSearchFiles] = useState("");
   const [searchMappings, setSearchMappings] = useState("");
@@ -166,6 +168,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
   }, [localMappings, searchMappings]);
 
   const toggleFileSelection = (fileName: string, checked: boolean) => {
+    if (readOnly) return;
     setLocalMappings((prev) =>
       prev.map((m) =>
         m.fileName === fileName ? { ...m, isSelected: checked } : m,
@@ -266,12 +269,13 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                       justify="space-between"
                       h="44px"
                       px={4}
-                      cursor="pointer"
+                      cursor={readOnly ? "default" : "pointer"}
                       bg="white"
                       borderBottomWidth={1}
                       borderBottomColor="gray.100"
-                      _hover={{ bg: "gray.100" }}
+                      _hover={!readOnly ? { bg: "gray.100" } : undefined}
                       onClick={() =>
+                        !readOnly &&
                         toggleFileSelection(m.fileName, !m.isSelected)
                       }
                     >
@@ -289,12 +293,16 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                           colorPalette="brand"
                           variant="solid"
                           checked={m.isSelected}
+                          disabled={readOnly}
                           onCheckedChange={({ checked }) =>
+                            !readOnly &&
                             toggleFileSelection(m.fileName, checked === true)
                           }
                         >
                           <Checkbox.HiddenInput />
-                          <Checkbox.Control cursor="pointer" />
+                          <Checkbox.Control
+                            cursor={readOnly ? "not-allowed" : "pointer"}
+                          />
                         </Checkbox.Root>
                       </Box>
                     </Flex>
@@ -390,7 +398,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                       onChange={(e) =>
                         updateTableName(mapping.fileName, e.target.value)
                       }
-                      disabled={false}
+                      disabled={readOnly}
                       w="280px"
                       h="32px"
                       fontSize="sm"
@@ -406,17 +414,19 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       {/* Save/Cancel Buttons - Below both panels */}
       <Flex justify="flex-end" gap={3} maxW="1300px" mx="auto" w="100%">
         <Button variant="outline" onClick={onCancel}>
-          Cancel
+          {readOnly ? "Close" : "Cancel"}
         </Button>
-        <Button
-          colorPalette="brand"
-          onClick={handleSave}
-          loading={loading}
-          disabled={isSaveDisabled}
-        >
-          <MdOutlineSave />
-          Save Mapping
-        </Button>
+        {!readOnly && (
+          <Button
+            colorPalette="brand"
+            onClick={handleSave}
+            loading={loading}
+            disabled={isSaveDisabled}
+          >
+            <MdOutlineSave />
+            Save Mapping
+          </Button>
+        )}
       </Flex>
     </VStack>
   );

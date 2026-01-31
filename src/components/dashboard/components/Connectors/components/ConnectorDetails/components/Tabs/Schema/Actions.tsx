@@ -46,7 +46,11 @@ const Actions = ({
   const [shouldPollSchemaStatus, setShouldPollSchemaStatus] = useState(false);
 
   // The hook's refetchInterval will handle stopping if not in progress.
-  const { data: schemaStatus } = useUpdateSchemaStatus(connection_id, true);
+  const { data: schemaStatus } = useUpdateSchemaStatus(
+    connection_id,
+    true,
+    shouldPollSchemaStatus,
+  );
 
   const isRefreshDeltaTableInProgress = useIsMutating({
     mutationKey: ["refreshDeltaTable", connection_id],
@@ -79,11 +83,21 @@ const Actions = ({
   ]);
 
   useEffect(() => {
-    if (!hasAnyTableInProgress && shouldPollRefreshStatus && tableStatusData) {
-      startTransition(() => {
-        setShouldPollRefreshStatus(false);
-        setShouldShowDisabledState(false);
-      });
+    if (shouldPollRefreshStatus && tableStatusData) {
+      const isSchemaRefreshFinished =
+        tableStatusData.schema_refresh_in_progress === false;
+      const isSchemaRefreshActive =
+        tableStatusData.schema_refresh_in_progress === true;
+
+      if (
+        isSchemaRefreshFinished ||
+        (!hasAnyTableInProgress && !isSchemaRefreshActive)
+      ) {
+        startTransition(() => {
+          setShouldPollRefreshStatus(false);
+          setShouldShowDisabledState(false);
+        });
+      }
     }
   }, [
     hasAnyTableInProgress,
@@ -151,7 +165,8 @@ const Actions = ({
       !isRefreshing &&
       isRefreshDeltaTableInProgress === 0 &&
       isReloadSingleTableInProgress === 0 &&
-      !hasAnyTableInProgress
+      !hasAnyTableInProgress &&
+      tableStatusData?.schema_refresh_in_progress !== true
     ) {
       const timer = setTimeout(() => {
         if (
@@ -178,6 +193,7 @@ const Actions = ({
     isRefreshDeltaTableInProgress,
     isReloadSingleTableInProgress,
     hasAnyTableInProgress,
+    tableStatusData?.schema_refresh_in_progress,
   ]);
 
   useEffect(() => {
@@ -209,6 +225,7 @@ const Actions = ({
     schemaStatus?.is_in_progress === true ||
     isRefreshDeltaTableInProgress > 0 ||
     isReloadSingleTableInProgress > 0 ||
+    tableStatusData?.schema_refresh_in_progress === true ||
     hasAnyTableInProgress;
 
   const isUpdateSchemaFlowInProgress =
@@ -253,88 +270,87 @@ const Actions = ({
   };
 
   return (
-    <Flex direction="column" gap={2} mb={2} minW="xl">
-      <Flex w="100%">
-        <Text fontWeight="semibold" flexGrow={1} w="100%">
-          Destination Details
-        </Text>
-      </Flex>
-      <Flex
-        justifyContent="space-between"
-        alignItems="center"
-        flexWrap="wrap"
-        gap={4}
-      >
-        <Flex gap={4}>
+    <Flex
+      justifyContent="space-between"
+      alignItems="center"
+      flexWrap="wrap"
+      gap={4}
+      mb={2}
+      minW="xl"
+    >
+      <Flex direction="column" gap={2}>
+        <Text fontWeight="semibold">Destination Details</Text>
+        <Flex gap={12} alignItems="center" flexWrap="wrap">
           <Flex gap={2}>
-            <Text>Database:</Text>
+            <Text color="gray.600">Database:</Text>
             <Text fontWeight="semibold">{target_database}</Text>
           </Flex>
           <Flex gap={2}>
-            <Text>Schema:</Text>
+            <Text color="gray.600">Schema:</Text>
             <Text fontWeight="semibold">{target_schema}</Text>
           </Flex>
         </Flex>
-        <Flex gap={4}>
-          <Tooltip {...createTooltipProps(isRefreshButtonLoading)}>
-            <Button
-              variant="outline"
-              colorPalette="brand"
-              {...createButtonProps(isRefreshButtonLoading, () => {
-                refreshSchema(undefined, {
-                  onSuccess: () => {
-                    setShouldPollRefreshStatus(true);
-                  },
-                  onError: () => {
-                    setShouldPollRefreshStatus(false);
-                    setShouldShowDisabledState(false);
-                  },
-                });
-              })}
-            >
-              <MdRefresh />
-              Refresh schema
-            </Button>
-          </Tooltip>
+      </Flex>
 
-          <Tooltip {...createTooltipProps(isUpdateSchemaFlowInProgress)}>
-            <Button
-              variant="outline"
-              colorPalette="brand"
-              loading={isUpdateSchemaFlowInProgress}
-              disabled={
+      <Flex gap={4}>
+        <Tooltip {...createTooltipProps(isRefreshButtonLoading)}>
+          <Button
+            variant="outline"
+            colorPalette="brand"
+            {...createButtonProps(isRefreshButtonLoading, () => {
+              refreshSchema(undefined, {
+                onSuccess: () => {
+                  setShouldPollRefreshStatus(true);
+                },
+                onError: () => {
+                  setShouldPollRefreshStatus(false);
+                  setShouldShowDisabledState(false);
+                },
+              });
+            })}
+          >
+            <MdRefresh />
+            Refresh schema
+          </Button>
+        </Tooltip>
+
+        <Tooltip {...createTooltipProps(isUpdateSchemaFlowInProgress)}>
+          <Button
+            variant="outline"
+            colorPalette="brand"
+            loading={isUpdateSchemaFlowInProgress}
+            disabled={
+              (shouldShowDisabledState || isAnyOperationInProgress) &&
+              !isUpdateSchemaFlowInProgress
+            }
+            onClick={() => {
+              if (
                 (shouldShowDisabledState || isAnyOperationInProgress) &&
                 !isUpdateSchemaFlowInProgress
-              }
-              onClick={() => {
-                if (
-                  (shouldShowDisabledState || isAnyOperationInProgress) &&
-                  !isUpdateSchemaFlowInProgress
-                ) {
-                  toaster.warning({
-                    title: "Operation in progress",
-                    description:
-                      "Another migration is in progress. Please wait until it is complete.",
-                  });
-                  return;
-                }
-                setShouldShowDisabledState(true);
-                updateSchema(undefined, {
-                  onSuccess: () => {
-                    setShouldPollSchemaStatus(true);
-                  },
-                  onError: () => {
-                    setShouldShowDisabledState(false);
-                    setShouldPollSchemaStatus(false);
-                  },
+              ) {
+                toaster.warning({
+                  title: "Operation in progress",
+                  description:
+                    "Another migration is in progress. Please wait until it is complete.",
                 });
-              }}
-            >
-              <MdRefresh />
-              Update schema
-            </Button>
-          </Tooltip>
-        </Flex>
+                return;
+              }
+              setShouldShowDisabledState(true);
+              updateSchema(undefined, {
+                onSuccess: () => {
+                  setShouldPollSchemaStatus(true);
+                },
+                onError: () => {
+                  setShouldShowDisabledState(false);
+                  setShouldPollSchemaStatus(false);
+                },
+              });
+            }}
+          >
+            <MdRefresh />
+            Update schema
+          </Button>
+        </Tooltip>
       </Flex>
     </Flex>
   );
