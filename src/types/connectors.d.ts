@@ -22,6 +22,7 @@ export interface ConnectorTableItem {
   connection_id: number;
   connector_name: string;
   source_name: string;
+  display_name: string;
   destination_name: string;
   status: ConnectorStatus;
   readable_time_frequency: string;

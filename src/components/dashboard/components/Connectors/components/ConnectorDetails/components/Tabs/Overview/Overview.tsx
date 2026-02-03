@@ -105,7 +105,7 @@ const Overview = () => {
             borderColor="gray.200"
           >
             <Text fontWeight="bold" fontSize="md" color="gray.700">
-              Migration Logs
+              Logs
             </Text>
           </Flex>
 

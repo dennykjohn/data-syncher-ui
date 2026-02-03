@@ -40,7 +40,7 @@ const columns: Column<ConnectorTableItem>[] = [
   {
     header: "Source",
     accessor: "source_name",
-    render: (_, { source_name }) => (
+    render: (_, { source_name, display_name }) => (
       <HStack gap={1} align="center">
         <Image
           src={getSourceImage(source_name)}
@@ -48,7 +48,7 @@ const columns: Column<ConnectorTableItem>[] = [
           boxSize="24px"
           objectFit="contain"
         />
-        <Text fontSize="sm">{source_name}</Text>
+        <Text fontSize="sm">{display_name || source_name}</Text>
       </HStack>
     ),
   },
