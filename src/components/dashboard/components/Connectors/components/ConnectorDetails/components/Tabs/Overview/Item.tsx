@@ -38,15 +38,14 @@ const Item = ({
   const msg = message.toLowerCase();
   let currentStatus = "pending";
 
-  if (status === "E" || msg.includes("error") || msg.includes("failed")) {
-    currentStatus = "error";
-  } else if (msg.includes("paused")) {
-    currentStatus = "paused";
-  } else if (
+  // Check status codes first (they take priority over message content)
+  // User Override: If message implies active progress (initiated, started), show hourglass even if status is 'S'
+  if (
+    status === "P" ||
+    status === "I" ||
     msg.includes("progress") ||
     msg.includes("started") ||
-    status === "P" ||
-    status === "I"
+    msg.includes("initiated")
   ) {
     currentStatus = "progress";
   } else if (
@@ -55,6 +54,14 @@ const Item = ({
     msg.includes("activated")
   ) {
     currentStatus = "success";
+  } else if (
+    status === "E" ||
+    msg.includes("error") ||
+    msg.includes("failed")
+  ) {
+    currentStatus = "error";
+  } else if (msg.includes("paused")) {
+    currentStatus = "paused";
   }
 
   const displayUser = user_name || user;

@@ -168,7 +168,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
         rightButtons={
           mode === "edit" && params.destinationId ? (
             <Button
-              variant="ghost"
+              variant="outline"
               colorPalette="red"
               color="red.500"
               loading={isTriggeringBackend}

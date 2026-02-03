@@ -71,10 +71,8 @@ const NewConnector = () => {
       case 3: {
         if (!isStepCompleted(2)) return null;
 
-        // Determine if this is an S3 connector
-        const isS3Connector =
-          state.source?.toLowerCase().includes("s3") ||
-          state.source?.toLowerCase().includes("amazon");
+        // Determine if this is an S3 connector based on source name
+        const isS3Connector = state.source?.toLowerCase() === "amazons3";
 
         // Route to appropriate configuration component
         return isS3Connector ? (

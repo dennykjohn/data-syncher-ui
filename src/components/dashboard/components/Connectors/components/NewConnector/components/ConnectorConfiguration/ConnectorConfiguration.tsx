@@ -186,9 +186,9 @@ const ConnectorConfiguration = (props: {
 
   // Determine the source name
   const sourceName = props.state?.source || connectorData?.source_name || "";
-  const isS3Connector =
-    sourceName?.toLowerCase().includes("s3") ||
-    sourceName?.toLowerCase().includes("amazon");
+
+  // Determine if this is an S3 connector based on source name
+  const isS3Connector = sourceName?.toLowerCase() === "amazons3";
 
   if (shouldFetch && isFetchConnectorByIdPending) {
     return <LoadingSpinner />;

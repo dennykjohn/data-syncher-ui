@@ -222,7 +222,7 @@ const Form = (props: Connector) => {
         </Flex>
         <Flex gap={4}>
           <Button
-            variant="ghost"
+            variant="outline"
             colorPalette="red"
             color="red.500"
             loading={isTestOperationPending}

@@ -62,7 +62,7 @@ const Destination = ({
           },
           { label: "Configure" },
         ]}
-        title="Select destination type"
+        title="Select Destination"
         subtitle="Select an existing destination or add a new one"
       />
       <Flex
