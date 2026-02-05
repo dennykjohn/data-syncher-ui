@@ -29,6 +29,12 @@ const Source = ({
     name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
+  // Manual mapping for when the API returns display names but requires internal names
+  const DISPLAY_TO_API_NAME_MAP: Record<string, string> = {
+    "Microsoft Dynamics 365 F&O": "MicrosoftDynamics365_FO",
+    "Amazon S3": "AmazonS3",
+  };
+
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
       <PageHeader
@@ -59,14 +65,16 @@ const Source = ({
         {isLoading && <LoadingSpinner />}
         {!isLoading && (
           <Flex gap={VIEW_CONFIG.pageGap} wrap="wrap" justifyContent="center">
-            {filteredSourceList?.map(({ name, src_id }) => {
-              const isSelected = selectedSource === name;
+            {filteredSourceList?.map(({ name, src_id, source_name }) => {
+              const sourceIdentifier =
+                source_name || DISPLAY_TO_API_NAME_MAP[name] || name;
+              const isSelected = selectedSource === sourceIdentifier;
               return (
                 <SourceCard
                   key={src_id}
                   title={name}
                   image={getSourceImage(name)}
-                  handleClick={() => onSourceSelect(name)}
+                  handleClick={() => onSourceSelect(sourceIdentifier)}
                   isSelected={isSelected}
                 />
               );
