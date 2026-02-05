@@ -1,4 +1,4 @@
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { Flex } from "@chakra-ui/react";
 
@@ -24,6 +24,20 @@ const ConnectorDetails = () => {
 
   const [filterDays, setFilterDays] = useState<number>(1);
 
+  const storageKey = `reloading_tables_${Number(connectionId) || 0}`;
+  const [reloadingTables, setReloadingTables] = useState<string[]>(() => {
+    try {
+      const stored = sessionStorage.getItem(storageKey);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem(storageKey, JSON.stringify(reloadingTables));
+  }, [reloadingTables, storageKey]);
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
@@ -40,7 +54,15 @@ const ConnectorDetails = () => {
       </Flex>
       <Suspense fallback={<LoadingSpinner />}>
         <Flex overflowX="auto" flexGrow={1} justifyContent={"center"} pt={2}>
-          <Outlet context={{ ...connector, filterDays, setFilterDays }} />
+          <Outlet
+            context={{
+              ...connector,
+              filterDays,
+              setFilterDays,
+              reloadingTables,
+              setReloadingTables,
+            }}
+          />
         </Flex>
       </Suspense>
     </Flex>

@@ -1,6 +1,6 @@
 import { Box, Flex, Image, Text } from "@chakra-ui/react";
 
-import { FaPauseCircle } from "react-icons/fa";
+import { FaPauseCircle, FaPlayCircle } from "react-icons/fa";
 
 import { format } from "date-fns";
 
@@ -31,16 +31,19 @@ const Item = ({
     status,
   } = log;
 
-  // Use migration_id for selection if available, fallback to session_id for legacy or if mixed
-  const idToCompare = migration_id ?? session_id;
+  // Prioritize log_id for uniqueness, fallback to migration_id or session_id
+  const idToCompare = log.log_id ?? migration_id ?? session_id;
   const isSelected = idToCompare && idToCompare === selectedLog;
 
   const msg = message.toLowerCase();
   let currentStatus = "pending";
 
-  // Check status codes first (they take priority over message content)
-  // User Override: If message implies active progress (initiated, started), show hourglass even if status is 'S'
-  if (
+  // Check specific statuses first to avoid being overridden by generic status codes
+  if (msg.includes("paused")) {
+    currentStatus = "paused";
+  } else if (msg.includes("activated")) {
+    currentStatus = "activated";
+  } else if (
     status === "P" ||
     status === "I" ||
     msg.includes("progress") ||
@@ -51,7 +54,7 @@ const Item = ({
   } else if (
     status === "S" ||
     msg.includes("completed") ||
-    msg.includes("activated")
+    msg.includes("success")
   ) {
     currentStatus = "success";
   } else if (
@@ -60,8 +63,6 @@ const Item = ({
     msg.includes("failed")
   ) {
     currentStatus = "error";
-  } else if (msg.includes("paused")) {
-    currentStatus = "paused";
   }
 
   const displayUser = user_name || user;
@@ -88,6 +89,9 @@ const Item = ({
         )}
         {currentStatus === "paused" && (
           <FaPauseCircle color="#DD6B20" size={16} />
+        )}
+        {currentStatus === "activated" && (
+          <FaPlayCircle color="#38A169" size={16} />
         )}
         {currentStatus === "error" && (
           <Image src={ErrorIcon} w="16px" h="16px" objectFit="contain" />

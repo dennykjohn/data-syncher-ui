@@ -13,6 +13,7 @@ import { type Connector } from "@/types/connectors";
 import Filter from "./Filter";
 import Item from "./Item";
 import MigrationProgressTable from "./components/MigrationProgressTable";
+import TableSelectionDetails from "./components/TableSelectionDetails";
 
 const Overview = () => {
   const context = useOutletContext<
@@ -36,7 +37,10 @@ const Overview = () => {
       );
       if (firstClickableLog) {
         return Number(
-          firstClickableLog.migration_id ?? firstClickableLog.session_id ?? 0,
+          firstClickableLog.log_id ??
+            firstClickableLog.migration_id ??
+            firstClickableLog.session_id ??
+            0,
         );
       }
     }
@@ -51,29 +55,36 @@ const Overview = () => {
     () =>
       data?.logs?.find(
         (log) =>
+          (log.log_id && log.log_id === effectiveSelectedLog) ||
           log.migration_id === effectiveSelectedLog ||
           log.session_id === effectiveSelectedLog,
       ),
     [data, effectiveSelectedLog],
   );
 
-  // Only fetch if is_clickable is true and we have a migration_id
+  // Only fetch if is_clickable is true
   const migrationIdToFetch =
     activeLog?.is_clickable && activeLog?.migration_id
       ? activeLog.migration_id
-      : 0;
+      : undefined;
+
+  const logIdToFetch =
+    activeLog?.is_clickable && !activeLog?.migration_id && activeLog?.log_id
+      ? activeLog.log_id
+      : undefined;
 
   const { data: logDetails, isLoading: isLoadingDetails } =
     useFetchConnectorActivityDetails({
       migrationId: migrationIdToFetch,
+      connectionId: logIdToFetch ? context.connection_id : undefined,
+      logId: logIdToFetch,
     });
 
   if (isLoading) return <LoadingSpinner />;
 
   return (
     <Flex flexDirection="column" gap={2} w="100%" h="full">
-      {/* Header Section if needed, though mostly handled by tabs outside */}
-
+      {/* Top Level Filter */}
       <Flex justifyContent="flex-end" mt={0}>
         <Filter
           filterDays={context.filterDays}
@@ -84,8 +95,8 @@ const Overview = () => {
       <Grid
         templateColumns={{ base: "1fr", lg: "450px 1fr" }}
         gap={6}
-        h="full"
-        minH="600px"
+        flex={1}
+        minH="0"
       >
         {/* Left Panel: Migration Logs */}
         <Flex
@@ -124,11 +135,12 @@ const Overview = () => {
             )}
             {data?.logs?.map((log, index) => (
               <Item
-                key={`${log.migration_id || log.session_id || "log"}-${index}`}
+                key={`${log.log_id || log.migration_id || log.session_id || "log"}-${index}`}
                 log={log}
                 onClick={() => {
                   // Allow selection of any log (migration details will only show if clickable)
-                  const logId = log.migration_id ?? log.session_id;
+                  const logId =
+                    log.log_id ?? log.migration_id ?? log.session_id;
                   if (logId) {
                     setUserSelectedLog(logId);
                   }
@@ -156,7 +168,6 @@ const Overview = () => {
             p={4}
             borderBottom="1px solid"
             borderColor="gray.200"
-            bg="gray.50"
           >
             <Text fontWeight="bold" fontSize="md" color="gray.700">
               Migration Details
@@ -181,11 +192,17 @@ const Overview = () => {
                   </Flex>
                 )}
                 {effectiveSelectedLog && (
-                  <Box p={0}>
-                    <MigrationProgressTable
-                      tables={logDetails?.tables || []}
-                      migrationId={migrationIdToFetch || null}
-                    />
+                  <Box p={0} h="full">
+                    {logDetails?.changes ? (
+                      <TableSelectionDetails
+                        changes={logDetails.changes || []}
+                      />
+                    ) : (
+                      <MigrationProgressTable
+                        tables={logDetails?.tables || []}
+                        migrationId={migrationIdToFetch || null}
+                      />
+                    )}
                   </Box>
                 )}
               </>
