@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Button,
@@ -30,6 +30,12 @@ export default function Form() {
   const passwordRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    if (passwordRef.current) {
+      passwordRef.current.value = "";
+    }
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -63,7 +69,7 @@ export default function Form() {
   };
 
   return (
-    <form style={{ width: "100%" }} onSubmit={handleSubmit}>
+    <form style={{ width: "100%" }} onSubmit={handleSubmit} autoComplete="off">
       <Flex justifyContent="center" alignItems="center">
         <Fieldset.Root
           size="lg"
@@ -105,6 +111,7 @@ export default function Form() {
                 type="email"
                 placeholder="Enter your email id"
                 autoFocus
+                autoComplete="off"
               />
             </Field.Root>
             <Field.Root required>
@@ -115,6 +122,7 @@ export default function Form() {
                 name="password"
                 placeholder="Enter your password"
                 ref={passwordRef}
+                autoComplete="new-password"
               />
             </Field.Root>
           </Fieldset.Content>
