@@ -1,10 +1,4 @@
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Box, Flex, For, Image, Skeleton, Text } from "@chakra-ui/react";
 
@@ -30,46 +24,100 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 const SelectedTable = ({
-  shouldShowDisabledState,
-  setShouldShowDisabledState,
   selectedTablesFromMain,
+  reloadingTables,
+  isReloadingSingleTable,
+  shouldLockAllReloads,
+  shouldLockAllRefreshes,
+  refreshingTables,
+  setRefreshingTables,
 }: {
-  shouldShowDisabledState: boolean;
-  setShouldShowDisabledState: (_value: boolean) => void;
   selectedTablesFromMain: ConnectorTable[];
+  reloadingTables: string[];
+  isReloadingSingleTable: boolean;
+  shouldLockAllReloads: boolean;
+  shouldLockAllRefreshes: boolean;
+  refreshingTables: string[];
+  setRefreshingTables: React.Dispatch<React.SetStateAction<string[]>>;
 }) => {
   const context = useOutletContext<Connector>();
   const queryClient = useQueryClient();
 
-  const [refreshingTable, setRefreshingTable] = useState<string | null>(null);
+  const refreshTimestamps = useRef<Record<string, number>>({});
+  const hasSeenInProgressRef = useRef<Record<string, boolean>>({});
 
   const { mutate: updateTables, isPending: isAssigningTables } =
     useUpdateSelectedTables({
       connectorId: context.connection_id,
     });
 
-  const { mutate: refreshDeltaTable, isPending: isRefreshingDeltaTable } =
-    useRefreshDeltaTable({ connectionId: context.connection_id });
-
-  // Track when to poll table status for refresh delta table button
-  const [shouldPollDeltaTableStatus, setShouldPollDeltaTableStatus] =
-    useState(false);
+  const { mutate: refreshDeltaTable } = useRefreshDeltaTable({
+    connectionId: context.connection_id,
+  });
 
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
-    shouldPollDeltaTableStatus,
+    true,
   );
 
-  // Merge selected tables from main list with status from get_table_status API
+  useEffect(() => {
+    refreshingTables.forEach((table) => {
+      if (!refreshTimestamps.current[table]) {
+        refreshTimestamps.current[table] = 0;
+      }
+    });
+  }, [refreshingTables]);
+
+  useEffect(() => {
+    if (refreshingTables.length === 0 || !tableStatusData?.tables) return;
+
+    const tablesToRemove = refreshingTables.filter((tName) => {
+      const statusItem = tableStatusData.tables.find(
+        (t) => t.table.toLowerCase() === tName.toLowerCase(),
+      );
+      const startTime = refreshTimestamps.current[tName];
+      const isTimeSafe = !startTime || startTime === 0;
+
+      const status = statusItem?.status;
+      if (status === "in_progress") {
+        hasSeenInProgressRef.current[tName] = true;
+        return false;
+      }
+
+      const hasSeenInProgress = hasSeenInProgressRef.current[tName];
+      const isFinished =
+        status === "completed" || status === "failed" || status === null;
+
+      if (statusItem && isFinished && (hasSeenInProgress || isTimeSafe)) {
+        return true;
+      }
+
+      if (!startTime) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (tablesToRemove.length > 0) {
+      setRefreshingTables((prev) =>
+        prev.filter((t) => !tablesToRemove.includes(t)),
+      );
+      tablesToRemove.forEach((t) => {
+        delete refreshTimestamps.current[t];
+        delete hasSeenInProgressRef.current[t];
+      });
+    }
+  }, [tableStatusData, refreshingTables, setRefreshingTables]);
+
   const selectedTables = useMemo(() => {
     if (!selectedTablesFromMain || selectedTablesFromMain.length === 0) {
       return [];
     }
 
     if (!tableStatusData?.tables) {
-      // Return tables without status if tableStatusData is not available
       return selectedTablesFromMain.map((table) => ({
-        tbl_id: 0, // Not used, but required by type
+        tbl_id: 0,
         table: table.table,
         sequence: table.sequence || 0,
         status: null,
@@ -90,20 +138,13 @@ const SelectedTable = ({
           : null;
 
       return {
-        tbl_id: 0, // Not used, but required by type
+        tbl_id: 0,
         table: table.table,
         sequence: table.sequence || 0,
         status: validStatus,
       };
     });
   }, [selectedTablesFromMain, tableStatusData]);
-
-  const hasExistingMigrations = useMemo(() => {
-    if (!tableStatusData?.tables) return false;
-    return tableStatusData.tables.some(
-      (table) => table.status === "in_progress",
-    );
-  }, [tableStatusData]);
 
   const getTableStatus = useCallback(
     (tableName: string) => {
@@ -113,45 +154,6 @@ const SelectedTable = ({
     [tableStatusData],
   );
 
-  useEffect(() => {
-    if (
-      !refreshingTable ||
-      !shouldPollDeltaTableStatus ||
-      !tableStatusData?.tables
-    ) {
-      return;
-    }
-
-    const tableStatus = tableStatusData.tables.find(
-      (t) => t.table === refreshingTable,
-    )?.status;
-
-    if (tableStatus && tableStatus !== "in_progress") {
-      startTransition(() => {
-        setShouldPollDeltaTableStatus(false);
-        setRefreshingTable(null);
-        setShouldShowDisabledState(false);
-      });
-    }
-  }, [
-    refreshingTable,
-    tableStatusData,
-    shouldPollDeltaTableStatus,
-    setShouldShowDisabledState,
-  ]);
-
-  // Set shouldShowDisabledState when there are existing migrations
-  useEffect(() => {
-    if (hasExistingMigrations) {
-      setShouldShowDisabledState(true);
-    } else {
-      if (!refreshingTable) {
-        setShouldShowDisabledState(false);
-      }
-    }
-  }, [hasExistingMigrations, refreshingTable, setShouldShowDisabledState]);
-
-  // Drag and drop state
   const [draggedItem, setDraggedItem] = useState<null | ConnectorSelectedTable>(
     null,
   );
@@ -159,7 +161,7 @@ const SelectedTable = ({
     setDraggedItem(table);
   };
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Allow drop
+    e.preventDefault();
   };
   const handleDrop = (targetItem: ConnectorSelectedTable) => {
     if (!draggedItem || draggedItem.table === targetItem.table) return;
@@ -240,7 +242,29 @@ const SelectedTable = ({
           const rowBg = isEven ? "gray.100" : "white";
           const { status } = table;
 
-          const isLocked = shouldShowDisabledState || hasExistingMigrations;
+          const isThisTableRefreshing = refreshingTables.includes(table.table);
+
+          const isThisTableProcessing =
+            isThisTableRefreshing ||
+            getTableStatus(table.table) === "in_progress";
+
+          const isThisTableReloading =
+            reloadingTables?.some(
+              (t) => t.toLowerCase() === table.table.toLowerCase(),
+            ) ?? false;
+
+          const isReloadDisabled =
+            shouldLockAllReloads ||
+            isThisTableReloading ||
+            isThisTableProcessing ||
+            isReloadingSingleTable;
+
+          const isRefreshDisabled =
+            shouldLockAllRefreshes ||
+            isThisTableReloading ||
+            isThisTableProcessing;
+
+          const isLocked = isReloadDisabled || isRefreshDisabled;
 
           return (
             <Flex
@@ -260,71 +284,48 @@ const SelectedTable = ({
               </Flex>
               <Flex gap={3} alignItems="center">
                 <Flex justifyContent="center" minW="40px">
-                  {status === "in_progress" && <Image src={SandtimeIcon} />}
-                  {status === "completed" && <Image src={CheckIcon} />}
-                  {status === "failed" && <Image src={ErrorIcon} />}
+                  {isThisTableReloading ? (
+                    <Image src={CheckIcon} />
+                  ) : (
+                    <>
+                      {status === "in_progress" && <Image src={SandtimeIcon} />}
+                      {status === "completed" && <Image src={CheckIcon} />}
+                      {status === "failed" && <Image src={ErrorIcon} />}
+                    </>
+                  )}
                 </Flex>
                 <Flex justifyContent="center" minW="40px">
                   <Tooltip
                     content={
-                      (shouldShowDisabledState || hasExistingMigrations) &&
-                      !(
-                        refreshingTable === table.table &&
-                        (isRefreshingDeltaTable ||
-                          getTableStatus(table.table) === "in_progress")
-                      )
-                        ? "Another migration is in progress. Please wait until it is complete."
+                      isRefreshDisabled
+                        ? "Migration in progress. Please wait."
                         : ""
                     }
-                    disabled={
-                      !(shouldShowDisabledState || hasExistingMigrations) ||
-                      (refreshingTable === table.table &&
-                        (isRefreshingDeltaTable ||
-                          getTableStatus(table.table) === "in_progress"))
-                    }
+                    disabled={!isRefreshDisabled}
                   >
                     <Box
+                      color={isRefreshDisabled ? "gray.400" : "inherit"}
+                      opacity={isRefreshDisabled ? 0.5 : 1}
+                      filter={isRefreshDisabled ? "blur(0.3px)" : "none"}
                       _hover={{
-                        color:
-                          (shouldShowDisabledState || hasExistingMigrations) &&
-                          !(
-                            refreshingTable === table.table &&
-                            (isRefreshingDeltaTable ||
-                              getTableStatus(table.table) === "in_progress")
-                          )
-                            ? "gray.400"
-                            : "brand.500",
-                        cursor:
-                          (shouldShowDisabledState || hasExistingMigrations) &&
-                          !(
-                            refreshingTable === table.table &&
-                            (isRefreshingDeltaTable ||
-                              getTableStatus(table.table) === "in_progress")
-                          )
-                            ? "not-allowed"
-                            : "pointer",
+                        color: isRefreshDisabled ? "gray.400" : "brand.500",
+                        cursor: isRefreshDisabled ? "not-allowed" : "pointer",
                       }}
                       p={1}
                       borderRadius="sm"
                       onClick={() => {
-                        const isThisTableRefreshing =
-                          (refreshingTable === table.table &&
-                            isRefreshingDeltaTable) ||
-                          (refreshingTable === table.table &&
-                            getTableStatus(table.table) === "in_progress");
-                        if (
-                          (shouldShowDisabledState || hasExistingMigrations) &&
-                          !isThisTableRefreshing
-                        ) {
+                        if (isRefreshDisabled) {
                           toaster.warning({
                             title: "Operation in progress",
-                            description:
-                              "Another migration is in progress. Please wait until it is complete.",
+                            description: "Migration in progress. Please wait.",
                           });
                           return;
                         }
-                        setShouldShowDisabledState(true);
-                        setRefreshingTable(table.table);
+
+                        delete hasSeenInProgressRef.current[table.table];
+
+                        setRefreshingTables((prev) => [...prev, table.table]);
+                        refreshTimestamps.current[table.table] = Date.now();
                         refreshDeltaTable(
                           {
                             connection_id: context.connection_id,
@@ -332,8 +333,6 @@ const SelectedTable = ({
                           },
                           {
                             onSuccess: () => {
-                              // Start polling get_table_status only after refresh delta API completes
-                              setShouldPollDeltaTableStatus(true);
                               // Trigger immediate refetch of get_table_status API
                               queryClient.invalidateQueries({
                                 queryKey: [
@@ -343,35 +342,24 @@ const SelectedTable = ({
                               });
                             },
                             onError: () => {
-                              // Stop polling and re-enable buttons on error
-                              setShouldPollDeltaTableStatus(false);
-                              setRefreshingTable(null);
-                              setShouldShowDisabledState(false);
+                              setRefreshingTables((prev) =>
+                                prev.filter((t) => t !== table.table),
+                              );
                             },
                           },
                         );
-                        // State will be cleared when get_table_status shows table is completed
                       }}
                       style={{
-                        animation:
-                          (refreshingTable === table.table &&
-                            isRefreshingDeltaTable) ||
-                          (refreshingTable === table.table &&
-                            getTableStatus(table.table) === "in_progress")
-                            ? "spin 1s linear infinite"
-                            : undefined,
-                        cursor:
-                          (shouldShowDisabledState || hasExistingMigrations) &&
-                          !(
-                            refreshingTable === table.table &&
-                            (isRefreshingDeltaTable ||
-                              getTableStatus(table.table) === "in_progress")
-                          )
-                            ? "not-allowed"
-                            : "pointer",
+                        cursor: isRefreshDisabled ? "not-allowed" : "pointer",
                       }}
                     >
-                      <SlRefresh />
+                      <SlRefresh
+                        className={
+                          isThisTableProcessing && !isThisTableReloading
+                            ? "spin-animation"
+                            : ""
+                        }
+                      />
                     </Box>
                   </Tooltip>
                 </Flex>

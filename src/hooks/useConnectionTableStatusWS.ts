@@ -31,70 +31,66 @@ export const useConnectionTableStatusWS = (connectionId: number | null) => {
     : null;
 
   useWebSocket(socketUrl, {
-    onOpen: () => {
-      // socket connected
-    },
+    onOpen: () => {},
     onMessage: (event) => {
       try {
         const data = JSON.parse(event.data) as WSMessage;
         if (!connectionId) return;
 
-        // Backend sends: { table_statuses: Array, schema_refresh_in_progress: boolean, readable_time_frequency: string }
         if (
           data.table_statuses ||
           data.schema_refresh_in_progress !== undefined
         ) {
-          // Transform table_statuses to match the format expected by components
-          const tables =
-            data.table_statuses?.map((item, index: number) => ({
-              tbl_id: index,
-              table: item.table_name,
-              sequence: index,
-              status:
-                (item.status as "in_progress" | "completed" | "failed") || null,
-            })) || [];
-
           queryClient.setQueryData(
             ["TableStatus", connectionId],
-            (oldData: TableStatusCache | undefined) => ({
-              ...(oldData || { tables: [] }),
-              tables: tables, // Store as 'tables' to match API format
-              schema_refresh_in_progress:
-                data.schema_refresh_in_progress ??
-                oldData?.schema_refresh_in_progress ??
-                false,
-              readable_time_frequency:
-                data.readable_time_frequency ||
-                oldData?.readable_time_frequency,
-              last_updated: new Date().toISOString(),
-              _updateId: Math.random(),
-            }),
+            (oldData: TableStatusCache | undefined) => {
+              const currentTables = oldData?.tables || [];
+              const newTables = data.table_statuses
+                ? data.table_statuses.map((item, index: number) => ({
+                    tbl_id: index,
+                    table: item.table_name,
+                    sequence: index,
+                    status:
+                      (item.status as "in_progress" | "completed" | "failed") ||
+                      null,
+                  }))
+                : currentTables;
+
+              return {
+                ...(oldData || { tables: [] }),
+                tables: newTables,
+                schema_refresh_in_progress:
+                  data.schema_refresh_in_progress ??
+                  oldData?.schema_refresh_in_progress ??
+                  false,
+                readable_time_frequency:
+                  data.readable_time_frequency ||
+                  oldData?.readable_time_frequency,
+                last_updated: new Date().toISOString(),
+                _updateId: Math.random(),
+              };
+            },
           );
 
-          // Force invalidation to trigger re-render
           queryClient.invalidateQueries({
             queryKey: ["TableStatus", connectionId],
             refetchType: "none",
           });
         }
       } catch {
-        // console.warn("[WS Table Status] Parse error", e);
+        void 0;
       }
     },
-    onError: (_error) => {
-      // console.error(`[WS Table Status] ❌ Error:`, error);
+    onError: () => {
+      void 0;
     },
-    onClose: (_event) => {
-      // console.warn(
-      //   `[WS Table Status] 🔌 Connection closed:`,
-      //   event.code,
-      //   event.reason,
-      // );
+    onClose: () => {
+      void 0;
     },
     shouldReconnect: () => true,
     reconnectInterval: 3000,
     reconnectAttempts: 10,
-    share: false, // Disable sharing to prevent message buffering
+    share: true,
     retryOnError: true,
   });
 };
