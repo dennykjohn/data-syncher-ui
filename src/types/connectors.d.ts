@@ -140,12 +140,22 @@ export type ConnectorActivityResponse = {
   migration_records: MigrationRecord[];
 };
 
+export interface TableChange {
+  table: string;
+  action: string;
+  timestamp: string;
+  changed_by: string;
+  sequence?: number;
+  old_sequence?: number;
+  new_sequence?: number;
+}
+
 export interface ConnectorActivityDetailResponse {
   job_name?: string;
   migration_session_id?: number;
   connection_id?: number;
   overall_status?: string;
-  tables: {
+  tables?: {
     table_name: string;
     status: string;
     status_icon?: string;
@@ -166,6 +176,12 @@ export interface ConnectorActivityDetailResponse {
     timestamp: string;
     message: string;
   }[];
+  // Fields for table selection logs
+  log_id?: number;
+  changes?: TableChange[];
+  type?: string;
+  summary?: string;
+  user?: string | null;
 }
 
 export interface SchemaStatusResponse {

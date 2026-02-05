@@ -104,6 +104,13 @@ const ServerRoutes = {
     suggestTableName: () => "s3/suggest-table-name/",
     previewdata: () => "s3/preview-pattern/",
     suggestPrimaryKeys: () => "s3/suggest-primary-keys/",
+    fetchLogDetails: ({
+      connectionId,
+      logId,
+    }: {
+      connectionId: number;
+      logId: number;
+    }) => `connection/${connectionId}/log/${logId}/`,
   },
   s3: {
     listFiles: () => "s3/list-files/",
