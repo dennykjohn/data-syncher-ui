@@ -53,6 +53,8 @@ export interface Connector {
   next_sync_time: string;
   is_reverse_etl: boolean;
   connected_on: number | string;
+  reloadingTables?: string[];
+  setReloadingTables?: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export interface ConnectorTabsProps {

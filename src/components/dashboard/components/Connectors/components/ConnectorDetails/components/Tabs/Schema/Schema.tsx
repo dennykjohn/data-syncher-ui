@@ -279,7 +279,7 @@ const Schema = () => {
   const reloadTimestamps = useRef<Record<string, number>>({});
 
   useEffect(() => {
-    reloadingTables.forEach((table) => {
+    reloadingTables.forEach((table: string) => {
       if (!reloadTimestamps.current[table]) {
         reloadTimestamps.current[table] = 0;
       }
@@ -342,8 +342,8 @@ const Schema = () => {
 
   const activeMigrations =
     tableStatusData?.tables
-      ?.filter((t) => t.status === "in_progress")
-      .map((t) => t.table.toLowerCase()) || [];
+      ?.filter((t: { status?: string | null }) => t.status === "in_progress")
+      .map((t: { table: string }) => t.table.toLowerCase()) || [];
   const activeReloads = reloadingTables.map((t) => t.toLowerCase());
 
   const activeRefreshes = activeMigrations.filter(
@@ -380,9 +380,10 @@ const Schema = () => {
     if (isReloadingSingleTable) return;
     if (reloadingTables.length === 0 || !tableStatusData?.tables) return;
 
-    const tablesToRemove = reloadingTables.filter((table) => {
+    const tablesToRemove = reloadingTables.filter((table: string) => {
       const statusItem = tableStatusData.tables.find(
-        (t) => t.table.toLowerCase() === table.toLowerCase(),
+        (t: { table: string; status?: string | null }) =>
+          t.table.toLowerCase() === table.toLowerCase(),
       );
       const startTime = reloadTimestamps.current[table];
       const isTimeSafe = !startTime || startTime === 0;
@@ -409,8 +410,8 @@ const Schema = () => {
     });
 
     if (tablesToRemove.length > 0) {
-      setReloadingTables((prev) =>
-        prev.filter((t) => !tablesToRemove.includes(t)),
+      setReloadingTables((prev: string[]) =>
+        prev.filter((t: string) => !tablesToRemove.includes(t)),
       );
 
       tablesToRemove.forEach((t) => {
@@ -631,7 +632,7 @@ const Schema = () => {
                     tableStatusData={tableStatusData}
                     onReload={() => {
                       setShouldShowDisabledState(true);
-                      setReloadingTables((prev) => [...prev, table]);
+                      setReloadingTables((prev: string[]) => [...prev, table]);
                       reloadTimestamps.current[table] = Date.now();
                       reloadSingleTable({
                         connection_id: context.connection_id,
