@@ -2,12 +2,17 @@ import { useState } from "react";
 
 import { Grid, GridItem } from "@chakra-ui/react";
 
-import { Outlet } from "react-router";
+import { Outlet, useParams } from "react-router";
 
 import Header from "@/components/dashboard/components/Header";
 import Sidebar from "@/components/dashboard/components/Sidebar/Sidebar";
+import useConnectionTableStatusWS from "@/hooks/useConnectionTableStatusWS";
 
 export default function Layout() {
+  const { connectionId } = useParams<{ connectionId: string }>();
+  // Keep WebSocket open for any route providing a connectionId (e.g. /connectors/:connectionId/...)
+  useConnectionTableStatusWS(Number(connectionId) || null);
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const sidebarWidth = isSidebarCollapsed ? "0" : "250px";
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);

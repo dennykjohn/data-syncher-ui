@@ -8,6 +8,7 @@ import {
   Flex,
   For,
   Grid,
+  Image,
   Input,
   InputGroup,
   Portal,
@@ -24,6 +25,7 @@ import { TbDelta } from "react-icons/tb";
 
 import { useOutletContext } from "react-router";
 
+import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import Pagination from "@/components/shared/Pagination";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
@@ -51,11 +53,11 @@ interface TableRowProps {
   onToggleExpand: (_table: string) => void;
   userCheckedTables: ConnectorTable[];
   onCheckedChange: (_checked: boolean) => void;
-  shouldShowDisabledState: boolean;
-  reloadingTable: string | null;
+  reloadingTables: string[];
   isReloadingSingleTable: boolean;
   isRefreshDeltaTableInProgress: number;
   isRefreshSchemaInProgress: number;
+  shouldLockAllReloads: boolean; // New prop for Cross-Blocking
   tableStatusData?: {
     tables: Array<{ table: string; status?: string | null }>;
   };
@@ -69,11 +71,8 @@ const TableRow = ({
   onToggleExpand,
   userCheckedTables,
   onCheckedChange,
-  shouldShowDisabledState,
-  reloadingTable,
-  isReloadingSingleTable,
-  isRefreshDeltaTableInProgress,
-  isRefreshSchemaInProgress,
+  reloadingTables,
+  shouldLockAllReloads,
   tableStatusData,
   onReload,
 }: TableRowProps) => {
@@ -89,24 +88,17 @@ const TableRow = ({
 
   const isChecked = userCheckedTables.some((t) => t.table === table);
 
-  const tableStatus = tableStatusData?.tables?.find(
-    (t) => t.table === table,
-  )?.status;
-  const isTableInProgressFromAPI = tableStatus === "in_progress";
-
   const isThisTableReloading =
-    (reloadingTable === table && isReloadingSingleTable) ||
-    (reloadingTable === table && isTableInProgressFromAPI);
+    reloadingTables?.some((t) => t.toLowerCase() === table.toLowerCase()) ??
+    false;
+
+  const isThisTableInProgress =
+    tableStatusData?.tables?.some(
+      (t) => t.table === table && t.status === "in_progress",
+    ) ?? false;
 
   const isReloadButtonDisabled =
-    (shouldShowDisabledState ||
-      isRefreshDeltaTableInProgress > 0 ||
-      isRefreshSchemaInProgress > 0 ||
-      tableStatusData?.tables?.some(
-        (t) => t.status === "in_progress" && t.table !== table,
-      ) ||
-      (isReloadingSingleTable && reloadingTable !== table)) &&
-    !isThisTableReloading;
+    shouldLockAllReloads || isThisTableReloading || isThisTableInProgress;
 
   return (
     <Flex
@@ -177,26 +169,41 @@ const TableRow = ({
             <Tooltip
               content={
                 isReloadButtonDisabled
-                  ? "Another migration is in progress. Please wait until it is complete."
+                  ? "Another migration is currently in progress. Please wait until it completes."
                   : ""
               }
               disabled={!isReloadButtonDisabled}
             >
               <Box
+                color={isReloadButtonDisabled ? "gray.400" : "inherit"}
+                opacity={isReloadButtonDisabled ? 0.5 : 1}
+                filter={isReloadButtonDisabled ? "blur(0.3px)" : "none"}
                 _hover={{
                   color: isReloadButtonDisabled ? "gray.400" : "brand.500",
                   cursor: isReloadButtonDisabled ? "not-allowed" : "pointer",
                 }}
                 p={1}
-                onClick={onReload}
+                onClick={(e) => {
+                  if (isReloadButtonDisabled) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  onReload();
+                }}
                 style={{
-                  animation: isThisTableReloading
-                    ? "spin 1s linear infinite"
-                    : undefined,
                   cursor: isReloadButtonDisabled ? "not-allowed" : "pointer",
                 }}
               >
-                <GrRefresh />
+                {isThisTableReloading ? (
+                  <Image
+                    src={SandtimeIcon}
+                    boxSize="16px" // Match icon size
+                    objectFit="contain"
+                  />
+                ) : (
+                  <GrRefresh />
+                )}
               </Box>
             </Tooltip>
           </Flex>
@@ -266,9 +273,19 @@ const Schema = () => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const [reloadingTable, setReloadingTable] = useState<string | null>(null);
+  const reloadingTables = context.reloadingTables ?? [];
+  const setReloadingTables = context.setReloadingTables ?? (() => {});
+  const [refreshingTables, setRefreshingTables] = useState<string[]>([]); // Hoist Refresh State
+  const reloadTimestamps = useRef<Record<string, number>>({});
 
-  // Filtered tables based on search query
+  useEffect(() => {
+    reloadingTables.forEach((table) => {
+      if (!reloadTimestamps.current[table]) {
+        reloadTimestamps.current[table] = 0;
+      }
+    });
+  }, [reloadingTables]);
+
   const filteredTables = useMemo(() => {
     const filtered =
       AllTableList?.filter((item: ConnectorTable) =>
@@ -277,7 +294,6 @@ const Schema = () => {
     return filtered;
   }, [AllTableList, searchQuery]);
 
-  // Pagination logic
   const {
     currentData: paginatedTables,
     currentPage,
@@ -299,13 +315,10 @@ const Schema = () => {
     mutationKey: ["refreshSchema", context.connection_id],
   });
 
-  const shouldPollTableStatus =
-    reloadingTable !== null || isReloadingSingleTable;
-
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
-    // Only enable the query when a table reload / migration is actually running.
-    shouldPollTableStatus,
+    true,
+    false,
   );
 
   const hasAnyTableInProgress = useMemo(() => {
@@ -313,73 +326,117 @@ const Schema = () => {
       tableStatusData?.tables?.some(
         (table) => table.status === "in_progress",
       ) ?? false;
-    const isDeltaTableRefreshing = isRefreshDeltaTableInProgress > 0;
     const isSchemaRefreshing = isRefreshSchemaInProgress > 0;
-    const isReloading = isReloadingSingleTable;
+    const isReloading = isReloadingSingleTable || reloadingTables.length > 0;
+    const isRefreshing = refreshingTables.length > 0;
     return (
-      hasTableInProgress ||
-      isDeltaTableRefreshing ||
-      isSchemaRefreshing ||
-      isReloading
+      hasTableInProgress || isSchemaRefreshing || isReloading || isRefreshing
     );
   }, [
     tableStatusData,
-    isRefreshDeltaTableInProgress,
     isRefreshSchemaInProgress,
     isReloadingSingleTable,
+    reloadingTables,
+    refreshingTables,
   ]);
+
+  const activeMigrations =
+    tableStatusData?.tables
+      ?.filter((t) => t.status === "in_progress")
+      .map((t) => t.table.toLowerCase()) || [];
+  const activeReloads = reloadingTables.map((t) => t.toLowerCase());
+
+  const activeRefreshes = activeMigrations.filter(
+    (t) => !activeReloads.includes(t),
+  );
+
+  const isAnyRefreshing =
+    isRefreshDeltaTableInProgress > 0 ||
+    activeRefreshes.length > 0 ||
+    refreshingTables.length > 0;
+  const isAnyReloading = reloadingTables.length > 0 || isReloadingSingleTable;
+  const isSchemaSyncing = isRefreshSchemaInProgress > 0;
+
+  const shouldLockAllReloads = isAnyRefreshing || isSchemaSyncing;
+
+  const shouldLockAllRefreshes = isAnyReloading || isSchemaSyncing;
 
   useEffect(() => {
     if (hasAnyTableInProgress || isReloadingSingleTable) {
       setTimeout(() => {
         setShouldShowDisabledState(true);
       }, 0);
-    } else if (!reloadingTable && !hasAnyTableInProgress) {
+    } else if (reloadingTables.length === 0 && !hasAnyTableInProgress) {
       setTimeout(() => {
         setShouldShowDisabledState(false);
       }, 0);
     }
-  }, [hasAnyTableInProgress, isReloadingSingleTable, reloadingTable]);
+  }, [hasAnyTableInProgress, isReloadingSingleTable, reloadingTables]);
 
+  const hasSeenInProgressRef = useRef<Record<string, boolean>>({});
+
+  // Clean up completed reloads
   useEffect(() => {
-    if (!reloadingTable) return;
+    if (isReloadingSingleTable) return;
+    if (reloadingTables.length === 0 || !tableStatusData?.tables) return;
 
-    const mutationCompleted = !isReloadingSingleTable;
-    const tableStatus = tableStatusData?.tables?.find(
-      (t) => t.table === reloadingTable,
-    );
-    const statusCompleted =
-      tableStatus &&
-      (tableStatus.status === "completed" || tableStatus.status === "failed");
+    const tablesToRemove = reloadingTables.filter((table) => {
+      const statusItem = tableStatusData.tables.find(
+        (t) => t.table.toLowerCase() === table.toLowerCase(),
+      );
+      const startTime = reloadTimestamps.current[table];
+      const isTimeSafe = !startTime || startTime === 0;
 
-    if (mutationCompleted && statusCompleted) {
-      setTimeout(() => {
-        setReloadingTable(null);
-        setShouldShowDisabledState(false);
-      }, 0);
+      const status = statusItem?.status;
+      if (status === "in_progress") {
+        hasSeenInProgressRef.current[table] = true;
+        return false;
+      }
+
+      const hasSeenInProgress = hasSeenInProgressRef.current[table];
+      const isFinished =
+        status === "completed" || status === "failed" || status === null;
+
+      if (statusItem && isFinished && (hasSeenInProgress || isTimeSafe)) {
+        return true;
+      }
+
+      if (!startTime) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (tablesToRemove.length > 0) {
+      setReloadingTables((prev) =>
+        prev.filter((t) => !tablesToRemove.includes(t)),
+      );
+
+      tablesToRemove.forEach((t) => {
+        delete reloadTimestamps.current[t];
+        delete hasSeenInProgressRef.current[t];
+      });
+
       queryClient.refetchQueries({
         queryKey: ["ConnectorTable", context.connection_id],
       });
       queryClient.refetchQueries({
         queryKey: ["TableStatus", context.connection_id],
       });
-    } else if (mutationCompleted && !tableStatusData) {
-      queryClient.refetchQueries({
-        queryKey: ["TableStatus", context.connection_id],
-      });
     }
   }, [
-    reloadingTable,
     tableStatusData,
-    isReloadingSingleTable,
+    reloadingTables,
+    setReloadingTables,
     context.connection_id,
+    isReloadingSingleTable,
   ]);
 
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
     return AllTableList.filter((t: ConnectorTable) => t.selected).sort(
       (a: ConnectorTable, b: ConnectorTable) => {
-        // Sort by sequence if available, otherwise maintain current order
         const seqA = a.sequence ?? 0;
         const seqB = b.sequence ?? 0;
         return seqA - seqB;
@@ -445,7 +502,6 @@ const Schema = () => {
             response?.data?.message || "Tables updated successfully";
           const warning = response?.data?.warning;
 
-          // Show warning if present, otherwise show success
           if (warning) {
             toaster.warning({
               title: warning,
@@ -461,7 +517,6 @@ const Schema = () => {
           setUserCheckedTables(savedTables);
           shouldSkipUpdateRef.current = false;
 
-          // Manually trigger refetch since we're overriding the default onSuccess
           await queryClient.refetchQueries({
             queryKey: ["ConnectorTable", context.connection_id],
           });
@@ -483,6 +538,7 @@ const Schema = () => {
       <Actions
         shouldShowDisabledState={shouldShowDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
+        reloadingTables={reloadingTables}
         onUpdateSchemaComplete={() => {
           queryClient.refetchQueries({
             queryKey: ["ConnectorTable", context.connection_id],
@@ -565,25 +621,18 @@ const Schema = () => {
                             ),
                       );
                     }}
-                    shouldShowDisabledState={shouldShowDisabledState}
-                    reloadingTable={reloadingTable}
+                    reloadingTables={reloadingTables}
                     isReloadingSingleTable={isReloadingSingleTable}
                     isRefreshDeltaTableInProgress={
                       isRefreshDeltaTableInProgress
                     }
                     isRefreshSchemaInProgress={isRefreshSchemaInProgress}
+                    shouldLockAllReloads={shouldLockAllReloads}
                     tableStatusData={tableStatusData}
                     onReload={() => {
-                      if (shouldShowDisabledState) {
-                        toaster.warning({
-                          title: "Operation in progress",
-                          description:
-                            "Another migration is in progress. Please wait until it is complete.",
-                        });
-                        return;
-                      }
                       setShouldShowDisabledState(true);
-                      setReloadingTable(table);
+                      setReloadingTables((prev) => [...prev, table]);
+                      reloadTimestamps.current[table] = Date.now();
                       reloadSingleTable({
                         connection_id: context.connection_id,
                         table_name: table,
@@ -604,9 +653,13 @@ const Schema = () => {
         </Flex>
 
         <SelectedTableList
-          shouldShowDisabledState={shouldShowDisabledState}
-          setShouldShowDisabledState={setShouldShowDisabledState}
           selectedTablesFromMain={checkedTables}
+          reloadingTables={reloadingTables}
+          refreshingTables={refreshingTables}
+          setRefreshingTables={setRefreshingTables}
+          isReloadingSingleTable={isReloadingSingleTable}
+          shouldLockAllReloads={shouldLockAllReloads}
+          shouldLockAllRefreshes={shouldLockAllRefreshes}
         />
       </Grid>
 

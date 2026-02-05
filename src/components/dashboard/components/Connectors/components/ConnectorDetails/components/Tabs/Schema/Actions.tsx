@@ -20,10 +20,12 @@ const Actions = ({
   shouldShowDisabledState,
   setShouldShowDisabledState,
   onUpdateSchemaComplete,
+  reloadingTables,
 }: {
   shouldShowDisabledState: boolean;
   setShouldShowDisabledState: (_value: boolean) => void;
   onUpdateSchemaComplete?: () => void;
+  reloadingTables: string[];
 }) => {
   const context = useOutletContext<Connector>();
   const { connection_id, target_database, target_schema } = context;
@@ -56,11 +58,11 @@ const Actions = ({
     mutationKey: ["refreshDeltaTable", connection_id],
   });
 
+  const [shouldPollRefreshStatus, setShouldPollRefreshStatus] = useState(false);
+
   const isReloadSingleTableInProgress = useIsMutating({
     mutationKey: ["reloadSingleTable", connection_id],
   });
-
-  const [shouldPollRefreshStatus, setShouldPollRefreshStatus] = useState(false);
 
   const { data: tableStatusData } = useFetchTableStatus(
     connection_id,
@@ -74,12 +76,16 @@ const Actions = ({
         (table) => table.status === "in_progress",
       ) ?? false;
     const isDeltaTableRefreshing = isRefreshDeltaTableInProgress > 0;
-    const isReloading = isReloadSingleTableInProgress > 0;
+    const isReloading =
+      isReloadSingleTableInProgress > 0 ||
+      (reloadingTables && reloadingTables.length > 0);
+
     return hasTableInProgress || isDeltaTableRefreshing || isReloading;
   }, [
     tableStatusData,
     isRefreshDeltaTableInProgress,
     isReloadSingleTableInProgress,
+    reloadingTables,
   ]);
 
   useEffect(() => {
@@ -163,8 +169,6 @@ const Actions = ({
       shouldShowDisabledState &&
       isRefreshSchemaInProgress === 0 &&
       !isRefreshing &&
-      isRefreshDeltaTableInProgress === 0 &&
-      isReloadSingleTableInProgress === 0 &&
       !hasAnyTableInProgress &&
       tableStatusData?.schema_refresh_in_progress !== true
     ) {
@@ -190,8 +194,6 @@ const Actions = ({
     setShouldShowDisabledState,
     isRefreshSchemaInProgress,
     isRefreshing,
-    isRefreshDeltaTableInProgress,
-    isReloadSingleTableInProgress,
     hasAnyTableInProgress,
     tableStatusData?.schema_refresh_in_progress,
   ]);
@@ -223,8 +225,6 @@ const Actions = ({
     isUpdateSchemaInProgress > 0 ||
     isUpdating ||
     schemaStatus?.is_in_progress === true ||
-    isRefreshDeltaTableInProgress > 0 ||
-    isReloadSingleTableInProgress > 0 ||
     tableStatusData?.schema_refresh_in_progress === true ||
     hasAnyTableInProgress;
 
@@ -244,7 +244,7 @@ const Actions = ({
           toaster.warning({
             title: "Operation in progress",
             description:
-              "Another migration is in progress. Please wait until it is complete.",
+              "Another migration is currently in progress. Please wait until it completes.",
           });
           return;
         }
@@ -261,7 +261,7 @@ const Actions = ({
       (shouldShowDisabledState || isAnyOperationInProgress) && !isButtonLoading;
     return {
       content: isDisabled
-        ? "Another migration is in progress. Please wait until it is complete."
+        ? "Another migration is currently in progress. Please wait until it completes."
         : "",
       disabled:
         (!shouldShowDisabledState && !isAnyOperationInProgress) ||
@@ -331,7 +331,7 @@ const Actions = ({
                 toaster.warning({
                   title: "Operation in progress",
                   description:
-                    "Another migration is in progress. Please wait until it is complete.",
+                    "Another migration is currently in progress. Please wait until it completes.",
                 });
                 return;
               }
