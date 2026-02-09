@@ -38,7 +38,7 @@ const Actions = ({
           toaster.warning({
             title: "Operation in progress",
             description:
-              "Another migration is in progress. Please wait until it is complete.",
+              "Another migration is currently in progress. Please wait until it completes.",
           });
           return;
         }
@@ -54,7 +54,7 @@ const Actions = ({
     const isDisabled = shouldShowDisabledState && !isPending;
     return {
       content: isDisabled
-        ? "Another migration is in progress. Please wait until it is complete."
+        ? "Another migration is currently in progress. Please wait until it completes."
         : "",
       disabled: !shouldShowDisabledState || isPending,
     };

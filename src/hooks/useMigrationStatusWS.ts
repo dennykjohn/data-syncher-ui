@@ -12,76 +12,66 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
     : null;
 
   useWebSocket(socketUrl, {
-    onOpen: () => {
-      // Connected
-    },
     onMessage: (event) => {
-      try {
-        const message = JSON.parse(event.data);
+      const message = JSON.parse(event.data);
 
-        if (!migrationId) return;
+      if (!migrationId) return;
 
-        // Update Detailed Progress Cache
-        queryClient.setQueryData(
-          ["connectorActivityDetails", migrationId],
-          (oldData: ConnectorActivityDetailResponse | undefined) => {
-            const updated = { ...(oldData || { tables: [] }), ...message };
+      queryClient.setQueryData(
+        ["connectorActivityDetails", migrationId, undefined, undefined],
+        (oldData: ConnectorActivityDetailResponse | undefined) => {
+          const updated = { ...(oldData || { tables: [] }), ...message };
 
-            // Preserve tables if not in message
-            if (!message.tables && oldData?.tables) {
-              updated.tables = [...oldData.tables];
+          // Preserve tables if backend didn't send them
+          if (!message.tables && oldData?.tables) {
+            updated.tables = [...oldData.tables];
+          }
+
+          if (message.message && !message.logs) {
+            const logs = oldData?.logs || [];
+            const isDuplicate = logs.some(
+              (l) =>
+                l.message === message.message &&
+                l.timestamp === message.timestamp,
+            );
+
+            if (!isDuplicate) {
+              const newLog = {
+                message: message.message,
+                timestamp: message.timestamp || new Date().toISOString(),
+                table: message.table_name || "",
+                status: (message.status as string) || "I",
+              };
+              updated.logs = [newLog, ...logs];
             }
+          }
 
-            // Sync with Activity Logs if message exists
-            if (message.message && !message.logs) {
-              const logs = oldData?.logs || [];
-              const isDuplicate = logs.some(
-                (l: { message: string; timestamp: string }) =>
-                  l.message === message.message &&
-                  l.timestamp === message.timestamp,
-              );
-              if (!isDuplicate) {
-                const newLog = {
-                  message: message.message,
-                  timestamp: message.timestamp || new Date().toISOString(),
-                  table: message.table_name || "",
-                  status: (message.status as string) || "I",
-                };
-                updated.logs = [newLog, ...logs];
-              }
-            }
+          // Normalize status
+          const rawStatus = (
+            message.overall_status ||
+            message.status ||
+            ""
+          ).toLowerCase();
 
-            // Status Normalization
-            const rawStatus = (
-              message.overall_status ||
-              message.status ||
-              ""
-            ).toLowerCase();
-            if (
-              rawStatus.includes("success") ||
-              rawStatus.includes("completed")
-            ) {
-              updated.overall_status = "completed";
-            } else if (
-              rawStatus.includes("failed") ||
-              rawStatus.includes("error")
-            ) {
-              updated.overall_status = "failed";
-            } else if (rawStatus.includes("progress")) {
-              updated.overall_status = "in_progress";
-            }
+          if (
+            rawStatus.includes("success") ||
+            rawStatus.includes("completed")
+          ) {
+            updated.overall_status = "completed";
+          } else if (
+            rawStatus.includes("failed") ||
+            rawStatus.includes("error")
+          ) {
+            updated.overall_status = "failed";
+          } else if (rawStatus.includes("progress")) {
+            updated.overall_status = "in_progress";
+          }
 
-            return updated;
-          },
-        );
-      } catch {
-        // console.warn("[WS Migration Status] Parse error");
-      }
+          return updated;
+        },
+      );
     },
-    shouldReconnect: () => true,
-    reconnectInterval: 3000,
     share: true,
-    retryOnError: true,
   });
 };
 

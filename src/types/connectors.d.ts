@@ -128,6 +128,8 @@ export type ConnectorActivityLog = {
   migration_id?: number | null;
   log_id?: number;
   log_type?: string;
+
+  ui_state?: string;
 };
 
 export type MigrationRecord = {

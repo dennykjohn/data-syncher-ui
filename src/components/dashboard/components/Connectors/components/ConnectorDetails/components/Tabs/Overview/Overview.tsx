@@ -6,6 +6,7 @@ import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import useConnectionActivityLogWS from "@/hooks/useConnectionActivityLogWS";
+import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
 import { type Connector } from "@/types/connectors";
@@ -32,15 +33,10 @@ const Overview = () => {
   // Derive the default selected log from data (first clickable log in the list)
   const defaultSelectedLog = useMemo(() => {
     if (data?.logs?.length) {
-      const firstClickableLog = data.logs.find(
-        (log) => log.is_clickable !== false,
-      );
-      if (firstClickableLog) {
+      const firstLog = data.logs[0];
+      if (firstLog.is_clickable !== false) {
         return Number(
-          firstClickableLog.log_id ??
-            firstClickableLog.migration_id ??
-            firstClickableLog.session_id ??
-            0,
+          firstLog.log_id ?? firstLog.migration_id ?? firstLog.session_id ?? 0,
         );
       }
     }
@@ -72,6 +68,8 @@ const Overview = () => {
     activeLog?.is_clickable && !activeLog?.migration_id && activeLog?.log_id
       ? activeLog.log_id
       : undefined;
+
+  useMigrationStatusWS(migrationIdToFetch || null);
 
   const { data: logDetails, isLoading: isLoadingDetails } =
     useFetchConnectorActivityDetails({
@@ -138,14 +136,16 @@ const Overview = () => {
                 key={`${log.log_id || log.migration_id || log.session_id || "log"}-${index}`}
                 log={log}
                 onClick={() => {
-                  // Allow selection of any log (migration details will only show if clickable)
+                  if (log.is_clickable === false) return;
                   const logId =
                     log.log_id ?? log.migration_id ?? log.session_id;
                   if (logId) {
                     setUserSelectedLog(logId);
                   }
                 }}
-                pointerEvent="pointer"
+                pointerEvent={
+                  log.is_clickable === false ? "not-allowed" : "pointer"
+                }
                 selectedLog={effectiveSelectedLog}
               />
             ))}
@@ -200,7 +200,6 @@ const Overview = () => {
                     ) : (
                       <MigrationProgressTable
                         tables={logDetails?.tables || []}
-                        migrationId={migrationIdToFetch || null}
                       />
                     )}
                   </Box>
