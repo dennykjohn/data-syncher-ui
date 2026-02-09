@@ -1,6 +1,10 @@
 import { Box, Flex, Image, Text } from "@chakra-ui/react";
 
-import { FaPauseCircle, FaPlayCircle } from "react-icons/fa";
+import {
+  FaExclamationTriangle,
+  FaPauseCircle,
+  FaPlayCircle,
+} from "react-icons/fa";
 
 import { format } from "date-fns";
 
@@ -28,42 +32,12 @@ const Item = ({
     timestamp,
     session_id,
     migration_id,
-    status,
+    ui_state,
   } = log;
 
   // Prioritize log_id for uniqueness, fallback to migration_id or session_id
   const idToCompare = log.log_id ?? migration_id ?? session_id;
   const isSelected = idToCompare && idToCompare === selectedLog;
-
-  const msg = message.toLowerCase();
-  let currentStatus = "pending";
-
-  // Check specific statuses first to avoid being overridden by generic status codes
-  if (msg.includes("paused")) {
-    currentStatus = "paused";
-  } else if (msg.includes("activated")) {
-    currentStatus = "activated";
-  } else if (
-    status === "P" ||
-    status === "I" ||
-    msg.includes("progress") ||
-    msg.includes("started") ||
-    msg.includes("initiated")
-  ) {
-    currentStatus = "progress";
-  } else if (
-    status === "S" ||
-    msg.includes("completed") ||
-    msg.includes("success")
-  ) {
-    currentStatus = "success";
-  } else if (
-    status === "E" ||
-    msg.includes("error") ||
-    msg.includes("failed")
-  ) {
-    currentStatus = "error";
-  }
 
   const displayUser = user_name || user;
 
@@ -81,23 +55,19 @@ const Item = ({
       transition="background-color 0.2s"
     >
       <Box pt={0.5}>
-        {currentStatus === "success" && (
+        {ui_state === "success" && (
           <Image src={CheckIcon} w="16px" h="16px" objectFit="contain" />
         )}
-        {currentStatus === "progress" && (
+        {ui_state === "in_progress" && (
           <Image src={SandtimeIcon} w="16px" h="16px" objectFit="contain" />
         )}
-        {currentStatus === "paused" && (
-          <FaPauseCircle color="#DD6B20" size={16} />
-        )}
-        {currentStatus === "activated" && (
-          <FaPlayCircle color="#38A169" size={16} />
-        )}
-        {currentStatus === "error" && (
+        {ui_state === "paused" && <FaPauseCircle color="#DD6B20" size={16} />}
+        {ui_state === "active" && <FaPlayCircle color="#38A169" size={16} />}
+        {ui_state === "error" && (
           <Image src={ErrorIcon} w="16px" h="16px" objectFit="contain" />
         )}
-        {currentStatus === "pending" && (
-          <Image src={SandtimeIcon} w="16px" h="16px" objectFit="contain" />
+        {ui_state === "warning" && (
+          <FaExclamationTriangle color="#DD6B20" size={16} />
         )}
       </Box>
       <Flex direction="column" flex={1} gap={0.5}>

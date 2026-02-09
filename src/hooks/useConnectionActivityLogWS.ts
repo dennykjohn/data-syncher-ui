@@ -19,16 +19,12 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
     : null;
 
   useWebSocket(socketUrl, {
-    onOpen: () => {
-      // socket opened
-    },
+    onOpen: () => {},
     onMessage: (event) => {
       try {
         const message = JSON.parse(event.data);
-
         if (!connectionId) return;
 
-        // Check if backend is sending the full logs array (new format)
         if (message.logs && Array.isArray(message.logs)) {
           const queries = queryClient.getQueriesData({
             queryKey: ["connectorActivity", Number(connectionId)],
@@ -43,15 +39,23 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                   return oldData;
                 }
 
-                // Create a completely new object structure to force React to detect changes
-                // Deep clone the logs array to ensure referential inequality
-                const newLogs = JSON.parse(JSON.stringify(message.logs));
+                const newLogs = message.logs.map(
+                  (log: ConnectorActivityLog & { ui_state?: string }) => {
+                    const uiState = log.ui_state
+                      ? log.ui_state.toLowerCase()
+                      : "";
+
+                    return {
+                      ...log,
+                      ui_state: uiState,
+                    };
+                  },
+                );
 
                 const newData: ActivityCache = {
                   ...oldData,
                   logs: newLogs,
                   last_updated: new Date().toISOString(),
-                  // Add a random key to force React to see this as a new object
                   _updateId: Math.random(),
                 };
 
@@ -59,17 +63,8 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
               },
             );
           });
-
-          // Immediately invalidate to force re-render
-          queryClient.invalidateQueries({
-            queryKey: ["connectorActivity", Number(connectionId)],
-            exact: false,
-            refetchType: "none",
-          });
-          return;
         }
 
-        // Fallback: Handle individual log messages (old format)
         const sessionId =
           message.migration_session_id ||
           message.session_id ||
@@ -103,17 +98,24 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                   message.message ||
                   ""
                 ).toLowerCase();
-                let newStatus: Status = "P"; // Pending/Progress
+
+                let newStatus: Status = "P";
                 if (
+                  rawStatus === "s" ||
                   rawStatus.includes("success") ||
                   rawStatus.includes("completed")
                 )
                   newStatus = "S";
                 else if (
+                  rawStatus === "e" ||
                   rawStatus.includes("failed") ||
                   rawStatus.includes("error")
                 )
                   newStatus = "E";
+
+                const uiState = message.ui_state
+                  ? message.ui_state.toLowerCase()
+                  : "";
 
                 let updatedLogs: ConnectorActivityLog[];
                 if (logIndex > -1) {
@@ -121,6 +123,7 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                   updatedLogs[logIndex] = {
                     ...updatedLogs[logIndex],
                     status: newStatus,
+                    ui_state: uiState,
                     message: message.message || updatedLogs[logIndex].message,
                     timestamp:
                       message.timestamp || updatedLogs[logIndex].timestamp,
@@ -132,6 +135,7 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                       session_id: numericSessionId,
                       message: message.message || "Migration initiated...",
                       status: newStatus,
+                      ui_state: uiState,
                       timestamp: message.timestamp || new Date().toISOString(),
                       user_name: message.user_name || "System",
                       is_clickable: true,
@@ -150,19 +154,11 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
           });
         }
       } catch {
-        // console.warn("[WS Activity Log] Parse error", e);
+        // Ignore JSON parse errors
       }
     },
-    onError: (_error) => {
-      // console.error(`[WS Activity Log] ❌ Error:`, error);
-    },
-    onClose: (_event) => {
-      // console.warn(
-      //   `[WS Activity Log] 🔌 Connection closed:`,
-      //   event.code,
-      //   event.reason,
-      // );
-    },
+    onError: (_error) => {},
+    onClose: (_event) => {},
     shouldReconnect: () => true,
     reconnectInterval: 3000,
     reconnectAttempts: 10,

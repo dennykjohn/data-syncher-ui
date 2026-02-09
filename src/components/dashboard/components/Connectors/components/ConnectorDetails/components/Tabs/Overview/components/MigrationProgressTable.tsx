@@ -10,19 +10,13 @@ import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { dateTimeFormat } from "@/constants/common";
-import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
 import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 
 const MigrationProgressTable = ({
   tables,
-  migrationId,
 }: {
   tables: ConnectorActivityDetailResponse["tables"];
-  migrationId: number | null;
 }) => {
-  // Real-time Migration Status Updates
-  useMigrationStatusWS(migrationId);
-
   if (!tables || tables.length === 0) {
     return (
       <Flex
@@ -49,7 +43,7 @@ const MigrationProgressTable = ({
               color="gray.600"
               borderRightWidth={1}
               borderColor="gray.200"
-              py={2}
+              py={1}
             >
               Status
             </Table.ColumnHeader>
@@ -59,7 +53,7 @@ const MigrationProgressTable = ({
               width="25%"
               borderRightWidth={1}
               borderColor="gray.200"
-              py={2}
+              py={1}
             >
               Table Name
             </Table.ColumnHeader>
@@ -69,7 +63,7 @@ const MigrationProgressTable = ({
               width="25%"
               borderRightWidth={1}
               borderColor="gray.200"
-              py={2}
+              py={1}
             >
               Start Time
             </Table.ColumnHeader>
@@ -79,7 +73,7 @@ const MigrationProgressTable = ({
               width="25%"
               borderRightWidth={1}
               borderColor="gray.200"
-              py={2}
+              py={1}
             >
               End Time
             </Table.ColumnHeader>
@@ -88,7 +82,7 @@ const MigrationProgressTable = ({
               color="gray.600"
               textAlign="left"
               width="15%"
-              py={2}
+              py={1}
             >
               Records
             </Table.ColumnHeader>
@@ -122,7 +116,7 @@ const MigrationProgressTable = ({
               <Table.Row key={index} bg="white" _hover={{ bg: "gray.50" }}>
                 <Table.Cell
                   textAlign="center"
-                  py={2}
+                  py={0.5}
                   borderRightWidth={1}
                   borderColor="gray.200"
                 >
@@ -221,7 +215,7 @@ const MigrationProgressTable = ({
                 <Table.Cell
                   fontWeight="medium"
                   color="gray.800"
-                  py={2}
+                  py={0.5}
                   borderRightWidth={1}
                   borderColor="gray.200"
                 >
@@ -229,7 +223,7 @@ const MigrationProgressTable = ({
                 </Table.Cell>
                 <Table.Cell
                   color="gray.700"
-                  py={2}
+                  py={0.5}
                   borderRightWidth={1}
                   borderColor="gray.200"
                 >
@@ -237,13 +231,13 @@ const MigrationProgressTable = ({
                 </Table.Cell>
                 <Table.Cell
                   color="gray.700"
-                  py={2}
+                  py={0.5}
                   borderRightWidth={1}
                   borderColor="gray.200"
                 >
                   {endTime}
                 </Table.Cell>
-                <Table.Cell textAlign="left" color="gray.700" py={2}>
+                <Table.Cell textAlign="center" color="gray.700" py={0.5}>
                   {stagingRecordsDisplay}
                 </Table.Cell>
               </Table.Row>

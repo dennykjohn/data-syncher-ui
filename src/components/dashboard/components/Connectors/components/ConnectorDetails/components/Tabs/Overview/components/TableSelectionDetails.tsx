@@ -46,7 +46,7 @@ const TableSelectionDetails = ({ changes }: TableSelectionDetailsProps) => {
               color="gray.600"
               borderRightWidth={1}
               borderColor="gray.200"
-              py={3}
+              py={1}
             >
               <Box display="flex" alignItems="center" gap={2}>
                 Tables Added
@@ -70,7 +70,7 @@ const TableSelectionDetails = ({ changes }: TableSelectionDetailsProps) => {
               color="gray.600"
               borderRightWidth={1}
               borderColor="gray.200"
-              py={3}
+              py={1}
             >
               <Box display="flex" alignItems="center" gap={2}>
                 Tables Removed
@@ -92,7 +92,7 @@ const TableSelectionDetails = ({ changes }: TableSelectionDetailsProps) => {
               width="33%"
               fontWeight="bold"
               color="gray.600"
-              py={3}
+              py={1}
             >
               <Box display="flex" alignItems="center" gap={2}>
                 Tables Reordered
@@ -121,7 +121,7 @@ const TableSelectionDetails = ({ changes }: TableSelectionDetailsProps) => {
             return (
               <Table.Row key={index} bg="white" _hover={{ bg: "gray.50" }}>
                 <Table.Cell
-                  py={2}
+                  py={0.5}
                   borderRightWidth={1}
                   borderColor="gray.200"
                   verticalAlign="top"
@@ -133,7 +133,7 @@ const TableSelectionDetails = ({ changes }: TableSelectionDetailsProps) => {
                   ) : null}
                 </Table.Cell>
                 <Table.Cell
-                  py={2}
+                  py={0.5}
                   borderRightWidth={1}
                   borderColor="gray.200"
                   verticalAlign="top"
@@ -144,7 +144,7 @@ const TableSelectionDetails = ({ changes }: TableSelectionDetailsProps) => {
                     </Text>
                   ) : null}
                 </Table.Cell>
-                <Table.Cell py={2} verticalAlign="top">
+                <Table.Cell py={0.5} verticalAlign="top">
                   {reorderedItem ? (
                     <Box>
                       <Text fontSize="sm" color="gray.700" fontWeight="medium">

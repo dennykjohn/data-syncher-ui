@@ -284,9 +284,7 @@ const SelectedTable = ({
               </Flex>
               <Flex gap={3} alignItems="center">
                 <Flex justifyContent="center" minW="40px">
-                  {isThisTableReloading ? (
-                    <Image src={CheckIcon} />
-                  ) : (
+                  {isThisTableReloading ? null : (
                     <>
                       {status === "in_progress" && <Image src={SandtimeIcon} />}
                       {status === "completed" && <Image src={CheckIcon} />}
@@ -298,7 +296,7 @@ const SelectedTable = ({
                   <Tooltip
                     content={
                       isRefreshDisabled
-                        ? "Migration in progress. Please wait."
+                        ? "Another migration is currently in progress. Please wait until it completes."
                         : ""
                     }
                     disabled={!isRefreshDisabled}
@@ -317,7 +315,8 @@ const SelectedTable = ({
                         if (isRefreshDisabled) {
                           toaster.warning({
                             title: "Operation in progress",
-                            description: "Migration in progress. Please wait.",
+                            description:
+                              "Another migration is currently in progress. Please wait until it completes.",
                           });
                           return;
                         }
