@@ -33,6 +33,7 @@ const Item = ({
     session_id,
     migration_id,
     ui_state,
+    trigger_type,
   } = log;
 
   // Prioritize log_id for uniqueness, fallback to migration_id or session_id
@@ -87,6 +88,11 @@ const Item = ({
           <Text fontSize="xs" color="gray.500">
             {displayUser}
           </Text>
+          {trigger_type && (
+            <Text fontSize="xs" color="gray.500">
+              {trigger_type}
+            </Text>
+          )}
         </Flex>
       </Flex>
     </Flex>

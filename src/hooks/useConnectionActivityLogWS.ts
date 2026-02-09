@@ -127,6 +127,9 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                     message: message.message || updatedLogs[logIndex].message,
                     timestamp:
                       message.timestamp || updatedLogs[logIndex].timestamp,
+                    trigger_type:
+                      message.trigger_type ||
+                      updatedLogs[logIndex].trigger_type,
                   };
                 } else {
                   updatedLogs = [
@@ -139,6 +142,7 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                       timestamp: message.timestamp || new Date().toISOString(),
                       user_name: message.user_name || "System",
                       is_clickable: true,
+                      trigger_type: message.trigger_type,
                     },
                     ...logs,
                   ];
