@@ -12,6 +12,7 @@ import CheckIcon from "@/assets/icons/check-icon.svg";
 import ErrorIcon from "@/assets/icons/error-icon.svg";
 import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import { dateTimeFormat } from "@/constants/common";
+import { getUiState } from "@/helpers/log";
 import { type ConnectorActivityLog } from "@/types/connectors";
 
 const Item = ({
@@ -34,7 +35,11 @@ const Item = ({
     migration_id,
     ui_state,
     trigger_type,
+    status,
   } = log;
+
+  // Use the helper to determine the UI state if not provided
+  const derivedUiState = getUiState(ui_state, status, message);
 
   // Prioritize log_id for uniqueness, fallback to migration_id or session_id
   const idToCompare = log.log_id ?? migration_id ?? session_id;
@@ -56,18 +61,22 @@ const Item = ({
       transition="background-color 0.2s"
     >
       <Box pt={0.5}>
-        {ui_state === "success" && (
+        {derivedUiState === "success" && (
           <Image src={CheckIcon} w="16px" h="16px" objectFit="contain" />
         )}
-        {ui_state === "in_progress" && (
+        {derivedUiState === "in_progress" && (
           <Image src={SandtimeIcon} w="16px" h="16px" objectFit="contain" />
         )}
-        {ui_state === "paused" && <FaPauseCircle color="#DD6B20" size={16} />}
-        {ui_state === "active" && <FaPlayCircle color="#38A169" size={16} />}
-        {ui_state === "error" && (
+        {derivedUiState === "paused" && (
+          <FaPauseCircle color="#DD6B20" size={16} />
+        )}
+        {derivedUiState === "active" && (
+          <FaPlayCircle color="#38A169" size={16} />
+        )}
+        {derivedUiState === "error" && (
           <Image src={ErrorIcon} w="16px" h="16px" objectFit="contain" />
         )}
-        {ui_state === "warning" && (
+        {derivedUiState === "warning" && (
           <FaExclamationTriangle color="#DD6B20" size={16} />
         )}
       </Box>
