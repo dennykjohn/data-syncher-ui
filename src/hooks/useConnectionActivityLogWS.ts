@@ -1,5 +1,6 @@
 import useWebSocket from "react-use-websocket";
 
+import { getUiState } from "@/helpers/log";
 import { ConnectorActivityLog, Status } from "@/types/connectors";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -41,9 +42,11 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
 
                 const newLogs = message.logs.map(
                   (log: ConnectorActivityLog & { ui_state?: string }) => {
-                    const uiState = log.ui_state
-                      ? log.ui_state.toLowerCase()
-                      : "";
+                    const uiState = getUiState(
+                      log.ui_state,
+                      log.status,
+                      log.message,
+                    );
 
                     return {
                       ...log,
@@ -113,9 +116,11 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                 )
                   newStatus = "E";
 
-                const uiState = message.ui_state
-                  ? message.ui_state.toLowerCase()
-                  : "";
+                const uiState = getUiState(
+                  message.ui_state,
+                  rawStatus,
+                  message.message,
+                );
 
                 let updatedLogs: ConnectorActivityLog[];
                 if (logIndex > -1) {
@@ -127,6 +132,9 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                     message: message.message || updatedLogs[logIndex].message,
                     timestamp:
                       message.timestamp || updatedLogs[logIndex].timestamp,
+                    trigger_type:
+                      message.trigger_type ||
+                      updatedLogs[logIndex].trigger_type,
                   };
                 } else {
                   updatedLogs = [
@@ -139,6 +147,7 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                       timestamp: message.timestamp || new Date().toISOString(),
                       user_name: message.user_name || "System",
                       is_clickable: true,
+                      trigger_type: message.trigger_type,
                     },
                     ...logs,
                   ];

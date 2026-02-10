@@ -60,6 +60,29 @@ const SelectedTable = ({
     true,
   );
 
+  const [lastKnownStatus, setLastKnownStatus] = useState<
+    Record<string, string>
+  >({});
+
+  useEffect(() => {
+    if (tableStatusData?.tables) {
+      const timer = setTimeout(() => {
+        setLastKnownStatus((prev) => {
+          let hasChanges = false;
+          const next = { ...prev };
+          tableStatusData.tables.forEach((t) => {
+            if (t.status === "completed" && prev[t.table] !== "completed") {
+              next[t.table] = "completed";
+              hasChanges = true;
+            }
+          });
+          return hasChanges ? next : prev;
+        });
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [tableStatusData]);
+
   useEffect(() => {
     refreshingTables.forEach((table) => {
       if (!refreshTimestamps.current[table]) {
@@ -284,13 +307,34 @@ const SelectedTable = ({
               </Flex>
               <Flex gap={3} alignItems="center">
                 <Flex justifyContent="center" minW="40px">
-                  {isThisTableReloading ? null : (
-                    <>
-                      {status === "in_progress" && <Image src={SandtimeIcon} />}
-                      {status === "completed" && <Image src={CheckIcon} />}
-                      {status === "failed" && <Image src={ErrorIcon} />}
-                    </>
-                  )}
+                  {(() => {
+                    // Logic to persist "Green Tick" (completed) during reload
+                    const savedStatus = lastKnownStatus[table.table];
+                    const effectiveStatus =
+                      isThisTableReloading && savedStatus === "completed"
+                        ? "completed"
+                        : status;
+
+                    const shouldShow = !(
+                      isThisTableReloading && effectiveStatus !== "completed"
+                    );
+
+                    if (!shouldShow) return null;
+
+                    return (
+                      <>
+                        {effectiveStatus === "in_progress" && (
+                          <Image src={SandtimeIcon} />
+                        )}
+                        {effectiveStatus === "completed" && (
+                          <Image src={CheckIcon} />
+                        )}
+                        {effectiveStatus === "failed" && (
+                          <Image src={ErrorIcon} />
+                        )}
+                      </>
+                    );
+                  })()}
                 </Flex>
                 <Flex justifyContent="center" minW="40px">
                   <Tooltip
