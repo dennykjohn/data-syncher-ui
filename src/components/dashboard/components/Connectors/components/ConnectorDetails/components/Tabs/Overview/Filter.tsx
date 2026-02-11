@@ -17,7 +17,7 @@ const Filter = ({
         <option value="" disabled hidden>
           Select option
         </option>
-        <option value="1">Last 1 hour</option>
+        <option value="2">Last 2 days</option>
         <option value="7">Last 7 days</option>
         <option value="30">Last 30 days</option>
       </NativeSelect.Field>

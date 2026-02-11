@@ -163,7 +163,7 @@ const Form = (props: Connector) => {
         </Field.Root>
 
         <Field.Root maxW="sm" disabled={!canEdit}>
-          <Field.Label>Transfer order count</Field.Label>
+          <Field.Label>Transfer packet size</Field.Label>
           <NumberInput.Root
             defaultValue="10"
             disabled={!canEdit}

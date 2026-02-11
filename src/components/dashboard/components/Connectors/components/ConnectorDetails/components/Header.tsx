@@ -4,7 +4,6 @@ import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
 
 import { CiPause1 } from "react-icons/ci";
 import { IoMdCheckmark } from "react-icons/io";
-import { LuDot } from "react-icons/lu";
 
 import Arrow from "@/assets/images/arrow-cool-down.svg";
 import {
@@ -19,7 +18,7 @@ import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSche
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
 
-import { formatTimeFrequency, getStatusMessage } from "../helpers";
+import { getStatusMessage } from "../helpers";
 import { useIsMutating } from "@tanstack/react-query";
 
 const Header = ({ connector }: { connector: Connector }) => {
@@ -228,14 +227,6 @@ const Header = ({ connector }: { connector: Connector }) => {
             </Flex>
             <Flex flexWrap={"wrap"} gap={1} alignItems="center">
               <Text fontSize="sm">Destination</Text>
-              {status === "A" && time_frequency !== "None" && (
-                <>
-                  <LuDot size={24} />
-                  <Text fontSize="sm">
-                    Loads every {formatTimeFrequency(time_frequency)}
-                  </Text>
-                </>
-              )}
             </Flex>
           </Box>
         </Flex>

@@ -37,7 +37,7 @@ const MigrationProgressTable = ({
         <Table.Header bg="gray.50">
           <Table.Row>
             <Table.ColumnHeader
-              width="10%"
+              width="50px"
               textAlign="center"
               fontWeight="bold"
               color="gray.600"
@@ -50,7 +50,6 @@ const MigrationProgressTable = ({
             <Table.ColumnHeader
               fontWeight="bold"
               color="gray.600"
-              width="25%"
               borderRightWidth={1}
               borderColor="gray.200"
               py={1}
@@ -60,7 +59,7 @@ const MigrationProgressTable = ({
             <Table.ColumnHeader
               fontWeight="bold"
               color="gray.600"
-              width="25%"
+              width="180px"
               borderRightWidth={1}
               borderColor="gray.200"
               py={1}
@@ -70,7 +69,7 @@ const MigrationProgressTable = ({
             <Table.ColumnHeader
               fontWeight="bold"
               color="gray.600"
-              width="25%"
+              width="180px"
               borderRightWidth={1}
               borderColor="gray.200"
               py={1}
@@ -81,7 +80,7 @@ const MigrationProgressTable = ({
               fontWeight="bold"
               color="gray.600"
               textAlign="left"
-              width="15%"
+              width="100px"
               py={1}
             >
               Records
@@ -237,7 +236,7 @@ const MigrationProgressTable = ({
                 >
                   {endTime}
                 </Table.Cell>
-                <Table.Cell textAlign="center" color="gray.700" py={0.5}>
+                <Table.Cell textAlign="right" color="gray.700" py={0.5}>
                   {stagingRecordsDisplay}
                 </Table.Cell>
               </Table.Row>

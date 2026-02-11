@@ -27,7 +27,8 @@ export const getUiState = (
     lowerMessage.includes("initiate") ||
     lowerMessage.includes("initiated") ||
     lowerMessage.includes("delta refresh") ||
-    lowerMessage.includes("schema refresh in progress")
+    lowerMessage.includes("schema refresh in progress") ||
+    lowerMessage.includes("update schema in progress")
   )
     return "in_progress";
 

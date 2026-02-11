@@ -69,10 +69,12 @@ const Usage = () => {
       flex="1 1 auto"
       minH="0"
     >
-      <UsageSelector
-        selectedRange={selectedRange}
-        setSelectedRange={setSelectedRange}
-      />
+      <Flex justifyContent="flex-end" w="100%">
+        <UsageSelector
+          selectedRange={selectedRange}
+          setSelectedRange={setSelectedRange}
+        />
+      </Flex>
       {/* container that fills remaining space at the bottom of the page */}
       <Flex flex="1 1 auto" minH="0" overflowY="auto">
         <Chart.Root chart={chart} h="100%" w="100%">

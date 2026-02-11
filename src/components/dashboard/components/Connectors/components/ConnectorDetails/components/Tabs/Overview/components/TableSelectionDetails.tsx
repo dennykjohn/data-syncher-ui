@@ -11,9 +11,9 @@ const TableSelectionDetails = ({ changes }: TableSelectionDetailsProps) => {
   const removed = changes.filter((c) =>
     c.action.toLowerCase().includes("removed"),
   );
-  const reordered = changes.filter((c) =>
-    c.action.toLowerCase().includes("reordered"),
-  );
+  const reordered = changes
+    .filter((c) => c.action.toLowerCase().includes("reordered"))
+    .sort((a, b) => (a.new_sequence ?? 0) - (b.new_sequence ?? 0));
 
   const maxRows = Math.max(added.length, removed.length, reordered.length);
   const rows = Array.from({ length: maxRows });
