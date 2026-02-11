@@ -22,7 +22,7 @@ const ConnectorDetails = () => {
   useConnectionTableStatusWS(Number(connectionId));
   useUpdateSchemaStatusWS(Number(connectionId));
 
-  const [filterDays, setFilterDays] = useState<number>(1);
+  const [filterDays, setFilterDays] = useState<number>(2);
 
   const storageKey = `reloading_tables_${Number(connectionId) || 0}`;
   const [reloadingTables, setReloadingTables] = useState<string[]>(() => {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { Box, Flex, Grid, Text } from "@chakra-ui/react";
+import { Box, Flex, Grid, NativeSelect, Text } from "@chakra-ui/react";
 
 import { useOutletContext } from "react-router";
 
@@ -9,6 +9,7 @@ import useConnectionActivityLogWS from "@/hooks/useConnectionActivityLogWS";
 import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
+import useFetchFilteredConnectorActivity from "@/queryOptions/connector/useFetchFilteredConnectorActivity";
 import { type Connector } from "@/types/connectors";
 
 import Filter from "./Filter";
@@ -20,10 +21,23 @@ const Overview = () => {
   const context = useOutletContext<
     Connector & { filterDays: number; setFilterDays: (_days: number) => void }
   >();
-  const { data, isLoading } = useFetchConnectorActivity(
+
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const { data: allLogs, isLoading: isLoadingAll } = useFetchConnectorActivity(
     context.connection_id,
     context.filterDays,
   );
+
+  const { data: filteredLogs, isLoading: isLoadingFiltered } =
+    useFetchFilteredConnectorActivity(
+      context.connection_id,
+      context.filterDays,
+      statusFilter,
+    );
+
+  const data = statusFilter ? filteredLogs : allLogs;
+  const isLoading = statusFilter ? isLoadingFiltered : isLoadingAll;
 
   // Real-time WebSocket Updates
   useConnectionActivityLogWS(context.connection_id);
@@ -91,7 +105,7 @@ const Overview = () => {
       </Flex>
 
       <Grid
-        templateColumns={{ base: "1fr", lg: "450px 1fr" }}
+        templateColumns={{ base: "1fr", lg: "0.9fr 1.1fr" }}
         gap={6}
         flex={1}
         minH="0"
@@ -116,6 +130,17 @@ const Overview = () => {
             <Text fontWeight="bold" fontSize="md" color="gray.700">
               Logs
             </Text>
+            <NativeSelect.Root size="sm" width="130px">
+              <NativeSelect.Field
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.currentTarget.value)}
+              >
+                <option value="">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+              </NativeSelect.Field>
+              <NativeSelect.Indicator />
+            </NativeSelect.Root>
           </Flex>
 
           <Flex direction="column" overflowY="auto" flex={1}>
@@ -128,7 +153,11 @@ const Overview = () => {
                 padding={8}
                 h="100%"
               >
-                <Text color="gray.500">No logs available</Text>
+                <Text color="gray.500">
+                  {statusFilter
+                    ? "No matching logs found"
+                    : "No logs available"}
+                </Text>
               </Flex>
             )}
             {data?.logs?.map((log, index) => (

@@ -75,7 +75,21 @@ const ServerRoutes = {
       id: number;
       filterDays: number;
     }) =>
-      `connection/${id}/activity/?${filterDays < 7 ? `hour=${filterDays}` : `days=${filterDays}`}`,
+      `connection/${id}/activity/?${
+        filterDays === 1 ? `hour=${filterDays}` : `days=${filterDays}`
+      }`,
+    fetchConnectionActivityWithStatus: ({
+      id,
+      filterDays,
+      status,
+    }: {
+      id: number;
+      filterDays: number;
+      status: string;
+    }) =>
+      `connection/${id}/activity/?${
+        filterDays === 1 ? `hour=${filterDays}` : `days=${filterDays}`
+      }&status=${status}`,
     fetchConnectionActivityDetails: ({
       connectionId,
       sessionId,
