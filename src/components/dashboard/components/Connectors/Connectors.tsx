@@ -8,7 +8,6 @@ import { useNavigate } from "react-router";
 import TableWrapper from "@/components/dashboard/wrapper/TableWrapper";
 import ClientRoutes from "@/constants/client-routes";
 import { dateTimeFormat } from "@/constants/common";
-import { VIEW_CONFIG } from "@/constants/view-config";
 import usePermissions from "@/hooks/usePermissions";
 import { useFetchConnectorsListByPage } from "@/queryOptions/connector/useFetchConnectorsListByPage";
 import Table, { type Column } from "@/shared/Table";
@@ -129,7 +128,7 @@ const Connectors = () => {
 
   //if (data?.totalElements === 0) return <NoConnections />;
   return (
-    <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
+    <Flex flexDirection="column" gap={4} h="100%">
       <PageHeader
         breadcrumbs={[
           {

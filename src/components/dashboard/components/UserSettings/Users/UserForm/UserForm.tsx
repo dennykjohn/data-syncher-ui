@@ -1,6 +1,14 @@
 import { useEffect, useReducer, useState } from "react";
 
-import { Button, Field, Fieldset, Flex, Input, Stack } from "@chakra-ui/react";
+import {
+  Button,
+  Field,
+  Fieldset,
+  Flex,
+  Input,
+  Stack,
+  chakra,
+} from "@chakra-ui/react";
 
 import { useNavigate, useParams } from "react-router";
 
@@ -18,6 +26,13 @@ import { useUpdateUser } from "@/queryOptions/user/useUpdateUserById";
 import RoleDropdown from "./Role";
 import { BreadcrumbsForEditUser, BreadcrumbsForNewUser } from "./helper";
 import { type UserState, initialState, userReducer } from "./reducer";
+
+interface ApiErrorResponse {
+  non_field_errors?: string[];
+  error?: string;
+  message?: string;
+  [key: string]: string | string[] | undefined;
+}
 
 const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
   const navigate = useNavigate();
@@ -114,10 +129,52 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
               `${ClientRoutes.DASHBOARD}/${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
             );
           },
-          onError: (error) => {
+          onError: (err: unknown) => {
+            const data = err as ApiErrorResponse;
+            let errorMessage =
+              data?.non_field_errors?.[0] ||
+              data?.error ||
+              data?.message ||
+              "Error creating member";
+
+            if (
+              !data?.non_field_errors &&
+              !data?.error &&
+              !data?.message &&
+              typeof data === "object"
+            ) {
+              const keys = Object.keys(data);
+              if (keys.length > 0) {
+                const firstError = data[keys[0]];
+                errorMessage = Array.isArray(firstError)
+                  ? firstError[0]
+                  : (firstError ?? "Error creating member");
+              }
+            }
+
             toaster.error({
-              title: error?.message || "Error creating member",
-              description: error.message,
+              title: errorMessage,
+            });
+
+            // Map backend fields to frontend state keys
+            const fieldMap: Record<string, keyof UserState> = {
+              company_email: "companyEmail",
+              first_name: "firstName",
+              last_name: "lastName",
+              role: "role",
+              password: "password",
+            };
+
+            Object.keys(data).forEach((key) => {
+              if (fieldMap[key]) {
+                const message = Array.isArray(data[key])
+                  ? data[key][0]
+                  : (data[key] ?? "Error");
+                setError({
+                  message: message,
+                  field: fieldMap[key],
+                });
+              }
             });
           },
         },
@@ -143,6 +200,48 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
               `${ClientRoutes.DASHBOARD}/${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
             );
           },
+          onError: (err: unknown) => {
+            const error = err as ApiErrorResponse;
+            let errorMessage =
+              error?.message || error?.error || "Error updating member";
+
+            // Check if error is a field error object
+            if (!error?.message && !error?.error && typeof error === "object") {
+              const keys = Object.keys(error);
+              if (keys.length > 0) {
+                const firstError = error[keys[0]];
+                errorMessage = Array.isArray(firstError)
+                  ? firstError[0]
+                  : (firstError ?? "Error updating member");
+              }
+            }
+
+            toaster.error({
+              title: errorMessage,
+            });
+
+            // Map backend fields to frontend state keys
+            const fieldMap: Record<string, keyof UserState> = {
+              company_email: "companyEmail",
+              first_name: "firstName",
+              last_name: "lastName",
+              role: "role",
+              password: "password",
+            };
+
+            Object.keys(error).forEach((key) => {
+              if (fieldMap[key]) {
+                const errVal = error[key];
+                const message = Array.isArray(errVal)
+                  ? errVal[0]
+                  : (errVal ?? "Error");
+                setError({
+                  message: message,
+                  field: fieldMap[key],
+                });
+              }
+            });
+          },
         },
       );
     }
@@ -164,99 +263,107 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
         }
         title={mode === "add" ? `Add member` : `Edit member`}
       />
-      <Stack
-        as="form"
-        gap={4}
+      <chakra.form
         onSubmit={onSubmit}
         maxW={{ base: "100%", md: "500px" }}
+        autoComplete="off"
+        width="100%"
+        display="flex"
+        flexDirection="column"
+        gap={4}
       >
-        <Fieldset.Root size="md" gap={4}>
-          <Fieldset.Content>
-            {/** Company email */}
-            <Field.Root required>
-              <Field.Label>
-                Company email <Field.RequiredIndicator />
-              </Field.Label>
-              <Input
-                type="email"
-                placeholder="Enter your company email"
-                value={formState.companyEmail}
-                onChange={handleInputChange("companyEmail")}
-                disabled={mode === "edit"}
-                readOnly={mode === "edit"}
-              />
-            </Field.Root>
-            {/** First Name */}
-            <Field.Root required>
-              <Field.Label>
-                First Name <Field.RequiredIndicator />
-              </Field.Label>
-              <Input
-                type="text"
-                placeholder="Enter your first name"
-                value={formState.firstName}
-                onChange={handleInputChange("firstName")}
-              />
-            </Field.Root>
-            {/** Last Name */}
-            <Field.Root required>
-              <Field.Label>
-                Last Name <Field.RequiredIndicator />
-              </Field.Label>
-              <Input
-                type="text"
-                placeholder="Enter your last name"
-                value={formState.lastName}
-                onChange={handleInputChange("lastName")}
-              />
-            </Field.Root>
-            {/** Password */}
-            {mode === "add" && (
-              <Field.Root required invalid={error?.field === "password"}>
+        <Stack gap={4}>
+          <Fieldset.Root size="md" gap={4}>
+            <Fieldset.Content>
+              {/** Company email */}
+              <Field.Root required invalid={error?.field === "companyEmail"}>
                 <Field.Label>
-                  Password <Field.RequiredIndicator />
+                  Company email <Field.RequiredIndicator />
                 </Field.Label>
-                <PasswordInput
-                  placeholder="Enter your password"
-                  value={formState.password}
-                  onChange={handleInputChange("password")}
-                  onBlur={() => handlePasswordBlur({ field: "password" })}
+                <Input
+                  type="email"
+                  placeholder="Enter your company email"
+                  value={formState.companyEmail}
+                  onChange={handleInputChange("companyEmail")}
+                  disabled={mode === "edit"}
+                  readOnly={mode === "edit"}
                 />
-                <Field.ErrorText>{error?.message}</Field.ErrorText>
               </Field.Root>
-            )}
-            {/** Confirm Password */}
-            {mode === "add" && (
-              <Field.Root required invalid={error?.field === "confirmPassword"}>
+              {/** First Name */}
+              <Field.Root required invalid={error?.field === "firstName"}>
                 <Field.Label>
-                  Confirm Password <Field.RequiredIndicator />
+                  First Name <Field.RequiredIndicator />
                 </Field.Label>
-                <PasswordInput
-                  placeholder="Confirm your password"
-                  value={formState.confirmPassword}
-                  onChange={handleInputChange("confirmPassword")}
-                  onBlur={() => handlePasswordBlur({ field: "password" })}
+                <Input
+                  type="text"
+                  placeholder="Enter your first name"
+                  value={formState.firstName}
+                  onChange={handleInputChange("firstName")}
                 />
-                <Field.ErrorText>{error?.message}</Field.ErrorText>
               </Field.Root>
-            )}
-            <RoleDropdown
-              handleRoleChange={handleRoleChange}
-              formState={formState}
-              error={error}
-            />
-          </Fieldset.Content>
-        </Fieldset.Root>
-        <Button
-          type="submit"
-          colorPalette="brand"
-          alignSelf="flex-end"
-          mt={2}
-          loading={isCreateUserPending || isUpdateUserPending}
-        >
-          {mode === "add" ? "Add Member" : "Update"}
-        </Button>
-      </Stack>
+              {/** Last Name */}
+              <Field.Root required invalid={error?.field === "lastName"}>
+                <Field.Label>
+                  Last Name <Field.RequiredIndicator />
+                </Field.Label>
+                <Input
+                  type="text"
+                  placeholder="Enter your last name"
+                  value={formState.lastName}
+                  onChange={handleInputChange("lastName")}
+                />
+              </Field.Root>
+              {/** Password */}
+              {mode === "add" && (
+                <Field.Root required invalid={error?.field === "password"}>
+                  <Field.Label>
+                    Password <Field.RequiredIndicator />
+                  </Field.Label>
+                  <PasswordInput
+                    placeholder="Enter your password"
+                    value={formState.password}
+                    onChange={handleInputChange("password")}
+                    onBlur={() => handlePasswordBlur({ field: "password" })}
+                  />
+                  <Field.ErrorText>{error?.message}</Field.ErrorText>
+                </Field.Root>
+              )}
+              {/** Confirm Password */}
+              {mode === "add" && (
+                <Field.Root
+                  required
+                  invalid={error?.field === "confirmPassword"}
+                >
+                  <Field.Label>
+                    Confirm Password <Field.RequiredIndicator />
+                  </Field.Label>
+                  <PasswordInput
+                    placeholder="Confirm your password"
+                    value={formState.confirmPassword}
+                    onChange={handleInputChange("confirmPassword")}
+                    onBlur={() => handlePasswordBlur({ field: "password" })}
+                  />
+                  <Field.ErrorText>{error?.message}</Field.ErrorText>
+                </Field.Root>
+              )}
+              <RoleDropdown
+                handleRoleChange={handleRoleChange}
+                formState={formState}
+                error={error}
+              />
+            </Fieldset.Content>
+          </Fieldset.Root>
+          <Button
+            type="submit"
+            colorPalette="brand"
+            alignSelf="flex-end"
+            mt={2}
+            loading={isCreateUserPending || isUpdateUserPending}
+          >
+            {mode === "add" ? "Add Member" : "Update"}
+          </Button>
+        </Stack>
+      </chakra.form>
     </Flex>
   );
 };

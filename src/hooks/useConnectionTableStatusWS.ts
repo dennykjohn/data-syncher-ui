@@ -8,6 +8,7 @@ interface TableStatusCache {
   tables: ConnectorSelectedTable[];
   schema_refresh_in_progress?: boolean;
   readable_time_frequency?: string;
+  next_sync_time?: string;
   last_updated?: string;
   _updateId?: number;
 }
@@ -21,6 +22,7 @@ interface WSMessage {
   table_statuses?: RawTableStatus[];
   schema_refresh_in_progress?: boolean;
   readable_time_frequency?: string;
+  next_sync_time?: string;
 }
 
 export const useConnectionTableStatusWS = (connectionId: number | null) => {
@@ -39,7 +41,9 @@ export const useConnectionTableStatusWS = (connectionId: number | null) => {
 
         if (
           data.table_statuses ||
-          data.schema_refresh_in_progress !== undefined
+          data.schema_refresh_in_progress !== undefined ||
+          data.next_sync_time ||
+          data.readable_time_frequency
         ) {
           queryClient.setQueryData(
             ["TableStatus", connectionId],
@@ -66,6 +70,7 @@ export const useConnectionTableStatusWS = (connectionId: number | null) => {
                 readable_time_frequency:
                   data.readable_time_frequency ||
                   oldData?.readable_time_frequency,
+                next_sync_time: data.next_sync_time || oldData?.next_sync_time,
                 last_updated: new Date().toISOString(),
                 _updateId: Math.random(),
               };

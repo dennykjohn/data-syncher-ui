@@ -156,11 +156,13 @@ const Header = ({ connector }: { connector: Connector }) => {
     schemaStatus?.is_in_progress === true;
 
   // Determine the message to show based on the active operation
+  // Use next_sync_time from tableStatusData (updated via WebSocket) if available,
+  // otherwise fallback to initial connector data
   const statusMessage = getStatusMessage({
     isUpdateSchemaInProgress,
     isRefreshSchemaInProgress,
     isAnyOperationInProgress,
-    next_sync_time,
+    next_sync_time: tableStatusData?.next_sync_time || next_sync_time,
     time_frequency,
     dateTimeFmt: dateTimeFormat,
     schemaStatus,
