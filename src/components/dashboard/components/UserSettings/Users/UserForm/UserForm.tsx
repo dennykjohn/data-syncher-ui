@@ -1,6 +1,14 @@
 import { useEffect, useReducer, useState } from "react";
 
-import { Button, Field, Fieldset, Flex, Input, Stack } from "@chakra-ui/react";
+import {
+  Button,
+  Field,
+  Fieldset,
+  Flex,
+  Input,
+  Stack,
+  chakra,
+} from "@chakra-ui/react";
 
 import { useNavigate, useParams } from "react-router";
 
@@ -255,100 +263,107 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
         }
         title={mode === "add" ? `Add member` : `Edit member`}
       />
-      <Stack
-        as="form"
-        gap={4}
+      <chakra.form
         onSubmit={onSubmit}
         maxW={{ base: "100%", md: "500px" }}
         autoComplete="off"
+        width="100%"
+        display="flex"
+        flexDirection="column"
+        gap={4}
       >
-        <Fieldset.Root size="md" gap={4}>
-          <Fieldset.Content>
-            {/** Company email */}
-            <Field.Root required invalid={error?.field === "companyEmail"}>
-              <Field.Label>
-                Company email <Field.RequiredIndicator />
-              </Field.Label>
-              <Input
-                type="email"
-                placeholder="Enter your company email"
-                value={formState.companyEmail}
-                onChange={handleInputChange("companyEmail")}
-                disabled={mode === "edit"}
-                readOnly={mode === "edit"}
-              />
-            </Field.Root>
-            {/** First Name */}
-            <Field.Root required invalid={error?.field === "firstName"}>
-              <Field.Label>
-                First Name <Field.RequiredIndicator />
-              </Field.Label>
-              <Input
-                type="text"
-                placeholder="Enter your first name"
-                value={formState.firstName}
-                onChange={handleInputChange("firstName")}
-              />
-            </Field.Root>
-            {/** Last Name */}
-            <Field.Root required invalid={error?.field === "lastName"}>
-              <Field.Label>
-                Last Name <Field.RequiredIndicator />
-              </Field.Label>
-              <Input
-                type="text"
-                placeholder="Enter your last name"
-                value={formState.lastName}
-                onChange={handleInputChange("lastName")}
-              />
-            </Field.Root>
-            {/** Password */}
-            {mode === "add" && (
-              <Field.Root required invalid={error?.field === "password"}>
+        <Stack gap={4}>
+          <Fieldset.Root size="md" gap={4}>
+            <Fieldset.Content>
+              {/** Company email */}
+              <Field.Root required invalid={error?.field === "companyEmail"}>
                 <Field.Label>
-                  Password <Field.RequiredIndicator />
+                  Company email <Field.RequiredIndicator />
                 </Field.Label>
-                <PasswordInput
-                  placeholder="Enter your password"
-                  value={formState.password}
-                  onChange={handleInputChange("password")}
-                  onBlur={() => handlePasswordBlur({ field: "password" })}
+                <Input
+                  type="email"
+                  placeholder="Enter your company email"
+                  value={formState.companyEmail}
+                  onChange={handleInputChange("companyEmail")}
+                  disabled={mode === "edit"}
+                  readOnly={mode === "edit"}
                 />
-                <Field.ErrorText>{error?.message}</Field.ErrorText>
               </Field.Root>
-            )}
-            {/** Confirm Password */}
-            {mode === "add" && (
-              <Field.Root required invalid={error?.field === "confirmPassword"}>
+              {/** First Name */}
+              <Field.Root required invalid={error?.field === "firstName"}>
                 <Field.Label>
-                  Confirm Password <Field.RequiredIndicator />
+                  First Name <Field.RequiredIndicator />
                 </Field.Label>
-                <PasswordInput
-                  placeholder="Confirm your password"
-                  value={formState.confirmPassword}
-                  onChange={handleInputChange("confirmPassword")}
-                  onBlur={() => handlePasswordBlur({ field: "password" })}
+                <Input
+                  type="text"
+                  placeholder="Enter your first name"
+                  value={formState.firstName}
+                  onChange={handleInputChange("firstName")}
                 />
-                <Field.ErrorText>{error?.message}</Field.ErrorText>
               </Field.Root>
-            )}
-            <RoleDropdown
-              handleRoleChange={handleRoleChange}
-              formState={formState}
-              error={error}
-            />
-          </Fieldset.Content>
-        </Fieldset.Root>
-        <Button
-          type="submit"
-          colorPalette="brand"
-          alignSelf="flex-end"
-          mt={2}
-          loading={isCreateUserPending || isUpdateUserPending}
-        >
-          {mode === "add" ? "Add Member" : "Update"}
-        </Button>
-      </Stack>
+              {/** Last Name */}
+              <Field.Root required invalid={error?.field === "lastName"}>
+                <Field.Label>
+                  Last Name <Field.RequiredIndicator />
+                </Field.Label>
+                <Input
+                  type="text"
+                  placeholder="Enter your last name"
+                  value={formState.lastName}
+                  onChange={handleInputChange("lastName")}
+                />
+              </Field.Root>
+              {/** Password */}
+              {mode === "add" && (
+                <Field.Root required invalid={error?.field === "password"}>
+                  <Field.Label>
+                    Password <Field.RequiredIndicator />
+                  </Field.Label>
+                  <PasswordInput
+                    placeholder="Enter your password"
+                    value={formState.password}
+                    onChange={handleInputChange("password")}
+                    onBlur={() => handlePasswordBlur({ field: "password" })}
+                  />
+                  <Field.ErrorText>{error?.message}</Field.ErrorText>
+                </Field.Root>
+              )}
+              {/** Confirm Password */}
+              {mode === "add" && (
+                <Field.Root
+                  required
+                  invalid={error?.field === "confirmPassword"}
+                >
+                  <Field.Label>
+                    Confirm Password <Field.RequiredIndicator />
+                  </Field.Label>
+                  <PasswordInput
+                    placeholder="Confirm your password"
+                    value={formState.confirmPassword}
+                    onChange={handleInputChange("confirmPassword")}
+                    onBlur={() => handlePasswordBlur({ field: "password" })}
+                  />
+                  <Field.ErrorText>{error?.message}</Field.ErrorText>
+                </Field.Root>
+              )}
+              <RoleDropdown
+                handleRoleChange={handleRoleChange}
+                formState={formState}
+                error={error}
+              />
+            </Fieldset.Content>
+          </Fieldset.Root>
+          <Button
+            type="submit"
+            colorPalette="brand"
+            alignSelf="flex-end"
+            mt={2}
+            loading={isCreateUserPending || isUpdateUserPending}
+          >
+            {mode === "add" ? "Add Member" : "Update"}
+          </Button>
+        </Stack>
+      </chakra.form>
     </Flex>
   );
 };
