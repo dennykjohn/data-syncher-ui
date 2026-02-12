@@ -19,6 +19,13 @@ import RoleDropdown from "./Role";
 import { BreadcrumbsForEditUser, BreadcrumbsForNewUser } from "./helper";
 import { type UserState, initialState, userReducer } from "./reducer";
 
+interface ApiErrorResponse {
+  non_field_errors?: string[];
+  error?: string;
+  message?: string;
+  [key: string]: string | string[] | undefined;
+}
+
 const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
   const navigate = useNavigate();
   const [formState, dispatch] = useReducer(userReducer, initialState);
@@ -114,10 +121,52 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
               `${ClientRoutes.DASHBOARD}/${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
             );
           },
-          onError: (error) => {
+          onError: (err: unknown) => {
+            const data = err as ApiErrorResponse;
+            let errorMessage =
+              data?.non_field_errors?.[0] ||
+              data?.error ||
+              data?.message ||
+              "Error creating member";
+
+            if (
+              !data?.non_field_errors &&
+              !data?.error &&
+              !data?.message &&
+              typeof data === "object"
+            ) {
+              const keys = Object.keys(data);
+              if (keys.length > 0) {
+                const firstError = data[keys[0]];
+                errorMessage = Array.isArray(firstError)
+                  ? firstError[0]
+                  : (firstError ?? "Error creating member");
+              }
+            }
+
             toaster.error({
-              title: error?.message || "Error creating member",
-              description: error.message,
+              title: errorMessage,
+            });
+
+            // Map backend fields to frontend state keys
+            const fieldMap: Record<string, keyof UserState> = {
+              company_email: "companyEmail",
+              first_name: "firstName",
+              last_name: "lastName",
+              role: "role",
+              password: "password",
+            };
+
+            Object.keys(data).forEach((key) => {
+              if (fieldMap[key]) {
+                const message = Array.isArray(data[key])
+                  ? data[key][0]
+                  : (data[key] ?? "Error");
+                setError({
+                  message: message,
+                  field: fieldMap[key],
+                });
+              }
             });
           },
         },
@@ -142,6 +191,48 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
             navigate(
               `${ClientRoutes.DASHBOARD}/${ClientRoutes.USER_SETTINGS.ROOT}/${ClientRoutes.USER_SETTINGS.USERS}`,
             );
+          },
+          onError: (err: unknown) => {
+            const error = err as ApiErrorResponse;
+            let errorMessage =
+              error?.message || error?.error || "Error updating member";
+
+            // Check if error is a field error object
+            if (!error?.message && !error?.error && typeof error === "object") {
+              const keys = Object.keys(error);
+              if (keys.length > 0) {
+                const firstError = error[keys[0]];
+                errorMessage = Array.isArray(firstError)
+                  ? firstError[0]
+                  : (firstError ?? "Error updating member");
+              }
+            }
+
+            toaster.error({
+              title: errorMessage,
+            });
+
+            // Map backend fields to frontend state keys
+            const fieldMap: Record<string, keyof UserState> = {
+              company_email: "companyEmail",
+              first_name: "firstName",
+              last_name: "lastName",
+              role: "role",
+              password: "password",
+            };
+
+            Object.keys(error).forEach((key) => {
+              if (fieldMap[key]) {
+                const errVal = error[key];
+                const message = Array.isArray(errVal)
+                  ? errVal[0]
+                  : (errVal ?? "Error");
+                setError({
+                  message: message,
+                  field: fieldMap[key],
+                });
+              }
+            });
           },
         },
       );
@@ -169,11 +260,12 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
         gap={4}
         onSubmit={onSubmit}
         maxW={{ base: "100%", md: "500px" }}
+        autoComplete="off"
       >
         <Fieldset.Root size="md" gap={4}>
           <Fieldset.Content>
             {/** Company email */}
-            <Field.Root required>
+            <Field.Root required invalid={error?.field === "companyEmail"}>
               <Field.Label>
                 Company email <Field.RequiredIndicator />
               </Field.Label>
@@ -187,7 +279,7 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
               />
             </Field.Root>
             {/** First Name */}
-            <Field.Root required>
+            <Field.Root required invalid={error?.field === "firstName"}>
               <Field.Label>
                 First Name <Field.RequiredIndicator />
               </Field.Label>
@@ -199,7 +291,7 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
               />
             </Field.Root>
             {/** Last Name */}
-            <Field.Root required>
+            <Field.Root required invalid={error?.field === "lastName"}>
               <Field.Label>
                 Last Name <Field.RequiredIndicator />
               </Field.Label>

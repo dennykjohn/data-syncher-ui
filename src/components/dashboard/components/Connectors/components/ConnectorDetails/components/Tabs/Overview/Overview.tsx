@@ -97,7 +97,7 @@ const Overview = () => {
   return (
     <Flex flexDirection="column" gap={2} w="100%" h="full">
       {/* Top Level Filter */}
-      <Flex justifyContent="flex-end" mt={0}>
+      <Flex justifyContent="flex-end">
         <Filter
           filterDays={context.filterDays}
           setFilterDays={context.setFilterDays}
@@ -123,7 +123,7 @@ const Overview = () => {
           <Flex
             justifyContent="space-between"
             alignItems="center"
-            p={4}
+            p={2.5}
             borderBottom="1px solid"
             borderColor="gray.200"
           >
