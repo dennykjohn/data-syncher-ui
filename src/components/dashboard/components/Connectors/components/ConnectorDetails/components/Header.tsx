@@ -162,8 +162,14 @@ const Header = ({ connector }: { connector: Connector }) => {
     isUpdateSchemaInProgress,
     isRefreshSchemaInProgress,
     isAnyOperationInProgress,
-    next_sync_time: tableStatusData?.next_sync_time || next_sync_time,
-    time_frequency,
+    next_sync_time:
+      tableStatusData?.next_sync_time !== undefined
+        ? tableStatusData.next_sync_time
+        : next_sync_time,
+    time_frequency:
+      tableStatusData?.readable_time_frequency !== undefined
+        ? (tableStatusData.readable_time_frequency ?? time_frequency)
+        : time_frequency,
     dateTimeFmt: dateTimeFormat,
     schemaStatus,
   });
@@ -211,7 +217,7 @@ const Header = ({ connector }: { connector: Connector }) => {
           <Box>
             <Flex gap={2} alignItems="center">
               <Text>{destination_title}</Text>
-              <Flex gap={2} alignItems="center" ml={2}>
+              <Flex gap={2} alignItems="center" ml={6}>
                 {isAnyOperationInProgress ? (
                   <Tooltip content={statusMessage}>
                     <Box>

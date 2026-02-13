@@ -7,8 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 type FetchTableStatusResponse = {
   tables: ConnectorSelectedTable[];
   schema_refresh_in_progress?: boolean;
-  readable_time_frequency?: string;
-  next_sync_time?: string;
+  readable_time_frequency?: string | null;
+  next_sync_time?: string | null;
 };
 
 type GetTableStatusResponse = {
@@ -17,8 +17,8 @@ type GetTableStatusResponse = {
     status: string;
   }>;
   schema_refresh_in_progress?: boolean;
-  readable_time_frequency?: string;
-  next_sync_time?: string;
+  readable_time_frequency?: string | null;
+  next_sync_time?: string | null;
 };
 
 const fetchTableStatus = async (
