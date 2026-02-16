@@ -9,7 +9,6 @@ import useConnectionActivityLogWS from "@/hooks/useConnectionActivityLogWS";
 import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
-import useFetchFilteredConnectorActivity from "@/queryOptions/connector/useFetchFilteredConnectorActivity";
 import { type Connector } from "@/types/connectors";
 
 import Filter from "./Filter";
@@ -22,22 +21,13 @@ const Overview = () => {
     Connector & { filterDays: number; setFilterDays: (_days: number) => void }
   >();
 
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  const { data: allLogs, isLoading: isLoadingAll } = useFetchConnectorActivity(
+  const { data, isLoading } = useFetchConnectorActivity(
     context.connection_id,
     context.filterDays,
+    statusFilter,
   );
-
-  const { data: filteredLogs, isLoading: isLoadingFiltered } =
-    useFetchFilteredConnectorActivity(
-      context.connection_id,
-      context.filterDays,
-      statusFilter,
-    );
-
-  const data = statusFilter ? filteredLogs : allLogs;
-  const isLoading = statusFilter ? isLoadingFiltered : isLoadingAll;
 
   // Real-time WebSocket Updates
   useConnectionActivityLogWS(context.connection_id);
@@ -135,7 +125,7 @@ const Overview = () => {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.currentTarget.value)}
               >
-                <option value="">All Status</option>
+                <option value="all">All Status</option>
                 <option value="completed">Completed</option>
                 <option value="failed">Failed</option>
               </NativeSelect.Field>
@@ -154,8 +144,8 @@ const Overview = () => {
                 h="100%"
               >
                 <Text color="gray.500">
-                  {statusFilter
-                    ? "No matching logs found"
+                  {statusFilter !== "all"
+                    ? `No matching logs found`
                     : "No logs available"}
                 </Text>
               </Flex>

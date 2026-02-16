@@ -39,13 +39,13 @@ const Settings = () => {
         gap={4}
       >
         <Flex gap={4}>
-          <Flex>
+          <Flex gap={1}>
             <Text fontSize="sm">Connected by:</Text>
             <Text fontSize="sm" fontWeight="semibold">
               {connector?.company_name}
             </Text>
           </Flex>
-          <Flex>
+          <Flex gap={1}>
             <Text fontSize="sm">Connected on:</Text>
             <Text fontSize="sm" fontWeight="semibold">
               {connector?.connected_on

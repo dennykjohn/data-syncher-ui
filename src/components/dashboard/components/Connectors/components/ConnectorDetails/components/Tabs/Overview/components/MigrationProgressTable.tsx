@@ -141,7 +141,12 @@ const MigrationProgressTable = ({
                               !
                             </Text>
                           </Box>
-                          <Text fontSize="xs" fontWeight="medium" flex={1}>
+                          <Text
+                            fontSize="xs"
+                            fontWeight="medium"
+                            flex={1}
+                            wordBreak="break-word"
+                          >
                             Error: {table.error_message}
                           </Text>
                           <Box
@@ -182,7 +187,7 @@ const MigrationProgressTable = ({
                         color: "white",
                         p: 3,
                         borderRadius: "md",
-                        maxW: "300px",
+                        maxW: "90vw",
                       }}
                     >
                       <Box cursor={table.error_message ? "pointer" : "default"}>

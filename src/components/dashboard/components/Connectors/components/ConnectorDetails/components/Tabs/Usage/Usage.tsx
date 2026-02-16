@@ -76,7 +76,7 @@ const Usage = () => {
         />
       </Flex>
       {/* container that fills remaining space at the bottom of the page */}
-      <Flex flex="1 1 auto" minH="0" overflowY="auto">
+      <Flex flex="1 1 auto" minH="300px" minW="0" w="100%" overflowY="auto">
         <Chart.Root chart={chart} h="100%" w="100%">
           <BarChart data={chart.data}>
             <CartesianGrid

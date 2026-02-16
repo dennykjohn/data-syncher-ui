@@ -21,8 +21,6 @@ import {
   type ConnectorTable,
 } from "@/types/connectors";
 
-import { useQueryClient } from "@tanstack/react-query";
-
 const SelectedTable = ({
   selectedTablesFromMain,
   reloadingTables,
@@ -41,7 +39,6 @@ const SelectedTable = ({
   setRefreshingTables: React.Dispatch<React.SetStateAction<string[]>>;
 }) => {
   const context = useOutletContext<Connector>();
-  const queryClient = useQueryClient();
 
   const refreshTimestamps = useRef<Record<string, number>>({});
   const hasSeenInProgressRef = useRef<Record<string, boolean>>({});
@@ -375,15 +372,7 @@ const SelectedTable = ({
                             table_name: table.table,
                           },
                           {
-                            onSuccess: () => {
-                              // Trigger immediate refetch of get_table_status API
-                              queryClient.invalidateQueries({
-                                queryKey: [
-                                  "TableStatus",
-                                  context.connection_id,
-                                ],
-                              });
-                            },
+                            onSuccess: () => {},
                             onError: () => {
                               setRefreshingTables((prev) =>
                                 prev.filter((t) => t !== table.table),

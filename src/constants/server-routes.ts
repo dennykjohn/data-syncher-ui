@@ -49,7 +49,7 @@ const ServerRoutes = {
       size: number;
       searchTerm?: string;
     }) =>
-      `home?page=${page}&size=${size}${searchTerm ? `&name=${searchTerm}` : ""}`,
+      `home/?page=${page}&size=${size}${searchTerm ? `&name=${searchTerm}` : ""}`,
     fetchConnectorById: (id: number) => `connection/setup/${id}/`,
     fetchConnectorConfig: ({ type, id }: { type: string; id: number }) =>
       `source-config/${type}/${id}/`,
@@ -71,25 +71,15 @@ const ServerRoutes = {
     fetchConnectionActivity: ({
       id,
       filterDays,
-    }: {
-      id: number;
-      filterDays: number;
-    }) =>
-      `connection/${id}/activity/?${
-        filterDays === 1 ? `hour=${filterDays}` : `days=${filterDays}`
-      }`,
-    fetchConnectionActivityWithStatus: ({
-      id,
-      filterDays,
       status,
     }: {
       id: number;
       filterDays: number;
-      status: string;
+      status?: string;
     }) =>
       `connection/${id}/activity/?${
         filterDays === 1 ? `hour=${filterDays}` : `days=${filterDays}`
-      }&status=${status}`,
+      }${status ? `&status=${status}` : ""}`,
     fetchConnectionActivityDetails: ({
       connectionId,
       sessionId,
