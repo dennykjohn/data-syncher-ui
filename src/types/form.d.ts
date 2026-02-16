@@ -1,7 +1,12 @@
 export type FieldConfig = {
   name: string;
   label: string;
-  type: "CharField" | "ChoiceField" | "PasswordInput";
+  type:
+    | "CharField"
+    | "ChoiceField"
+    | "PasswordInput"
+    | "DateField"
+    | "DateTimeField";
 
   /**
    * Optional choices for dropdown fields.
@@ -10,6 +15,7 @@ export type FieldConfig = {
   choices?: Array<{ value: string; display: string }>;
   required: boolean;
   read_only?: boolean; // If true, field will be read-only in edit mode
+  widget?: string | null;
 };
 
 export interface KeyPair {

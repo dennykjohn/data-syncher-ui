@@ -76,6 +76,16 @@ const columns: Column<ConnectorTableItem>[] = [
     },
   },
   {
+    header: "Next sync in",
+    accessor: "next_sync_time",
+    render: (_, { next_sync_time }) => {
+      if (!next_sync_time || next_sync_time === "None") return "--";
+      const d = new Date(next_sync_time);
+      if (Number.isNaN(d.getTime())) return next_sync_time;
+      return format(d, dateTimeFormat);
+    },
+  },
+  {
     header: "Status",
     accessor: "status",
     render: (_, { status }) => (
