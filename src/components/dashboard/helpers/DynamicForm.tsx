@@ -170,7 +170,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   ]);
 
   const renderInput = (field: FieldConfig) => {
-    const inputType = "text";
+    let inputType = "text";
+
+    if (field.type === "DateField") {
+      inputType = "date";
+    } else if (field.type === "DateTimeField") {
+      inputType = "datetime-local";
+    }
 
     // Check if field should be read-only in edit mode
     // read_only: true means non-editable in edit mode
@@ -280,7 +286,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           )}
         </Field.Root>
       );
-    } else if (field.type === "PasswordInput") {
+    } else if (
+      field.type === "PasswordInput" ||
+      field.widget === "PasswordInput"
+    ) {
       return (
         <Field.Root
           key={field.name}
