@@ -517,14 +517,6 @@ const Schema = () => {
           setCopyOfInitialCheckedTables(savedTables);
           setUserCheckedTables(savedTables);
           shouldSkipUpdateRef.current = false;
-
-          await queryClient.refetchQueries({
-            queryKey: ["ConnectorTable", context.connection_id],
-          });
-
-          queryClient.invalidateQueries({
-            queryKey: ["TableStatus", context.connection_id],
-          });
         },
       },
     );

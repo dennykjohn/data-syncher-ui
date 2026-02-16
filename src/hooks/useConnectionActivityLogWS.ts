@@ -40,7 +40,7 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                   return oldData;
                 }
 
-                const newLogs = message.logs.map(
+                const newLogs: ConnectorActivityLog[] = message.logs.map(
                   (log: ConnectorActivityLog & { ui_state?: string }) => {
                     const uiState = getUiState(
                       log.ui_state,
@@ -55,9 +55,46 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                   },
                 );
 
+                // Merge new logs with existing logs to prevent data loss
+                const existingLogs = oldData.logs || [];
+                const mergedLogsMap = new Map<
+                  string | number,
+                  ConnectorActivityLog
+                >();
+
+                // Helper to get unique ID for a log
+                const getLogId = (log: ConnectorActivityLog) =>
+                  log.log_id ?? log.migration_id ?? log.session_id;
+
+                // Add existing logs to map
+                existingLogs.forEach((log) => {
+                  const id = getLogId(log);
+                  if (id !== null && id !== undefined) {
+                    mergedLogsMap.set(id, log);
+                  }
+                });
+
+                // Add or update with new logs
+                newLogs.forEach((log) => {
+                  const id = getLogId(log);
+                  if (id !== null && id !== undefined) {
+                    mergedLogsMap.set(id, log);
+                  }
+                });
+
+                // Convert back to array and sort by timestamp descending
+                const mergedLogs = Array.from(
+                  mergedLogsMap.values(),
+                ) as ConnectorActivityLog[];
+                mergedLogs.sort(
+                  (a, b) =>
+                    new Date(b.timestamp).getTime() -
+                    new Date(a.timestamp).getTime(),
+                );
+
                 const newData: ActivityCache = {
                   ...oldData,
-                  logs: newLogs,
+                  logs: mergedLogs,
                   last_updated: new Date().toISOString(),
                   _updateId: Math.random(),
                 };
@@ -168,10 +205,10 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
     },
     onError: (_error) => {},
     onClose: (_event) => {},
-    shouldReconnect: () => true,
+    shouldReconnect: (closeEvent) => closeEvent.code !== 1000,
     reconnectInterval: 3000,
     reconnectAttempts: 10,
-    share: false,
+    share: true,
     retryOnError: true,
   });
 };

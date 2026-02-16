@@ -96,7 +96,7 @@ export const useConnectionTableStatusWS = (connectionId: number | null) => {
     onClose: () => {
       void 0;
     },
-    shouldReconnect: () => true,
+    shouldReconnect: (closeEvent) => closeEvent.code !== 1000,
     reconnectInterval: 3000,
     reconnectAttempts: 10,
     share: true,

@@ -53,18 +53,35 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
             ""
           ).toLowerCase();
 
+          let derivedStatus: string | undefined;
+
           if (
             rawStatus.includes("success") ||
             rawStatus.includes("completed")
           ) {
-            updated.overall_status = "completed";
+            derivedStatus = "completed";
           } else if (
             rawStatus.includes("failed") ||
             rawStatus.includes("error")
           ) {
-            updated.overall_status = "failed";
+            derivedStatus = "failed";
           } else if (rawStatus.includes("progress")) {
-            updated.overall_status = "in_progress";
+            derivedStatus = "in_progress";
+          }
+
+          if (derivedStatus) {
+            const isImplicitUpdate = !message.overall_status;
+            const currentIsFailed = oldData?.overall_status === "failed";
+
+            if (
+              isImplicitUpdate &&
+              currentIsFailed &&
+              derivedStatus === "in_progress"
+            ) {
+              updated.overall_status = "failed";
+            } else {
+              updated.overall_status = derivedStatus;
+            }
           }
 
           return updated;
