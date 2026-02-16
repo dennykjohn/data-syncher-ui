@@ -273,8 +273,14 @@ const Schema = () => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const reloadingTables = context.reloadingTables ?? [];
-  const setReloadingTables = context.setReloadingTables ?? (() => {});
+  const reloadingTables = useMemo(
+    () => context.reloadingTables ?? [],
+    [context.reloadingTables],
+  );
+  const setReloadingTables = useMemo(
+    () => context.setReloadingTables ?? (() => {}),
+    [context.setReloadingTables],
+  );
   const [refreshingTables, setRefreshingTables] = useState<string[]>([]); // Hoist Refresh State
   const reloadTimestamps = useRef<Record<string, number>>({});
 

@@ -372,9 +372,7 @@ const SelectedTable = ({
                             table_name: table.table,
                           },
                           {
-                            onSuccess: () => {
-                              // Handled by the hook
-                            },
+                            onSuccess: () => {},
                             onError: () => {
                               setRefreshingTables((prev) =>
                                 prev.filter((t) => t !== table.table),
