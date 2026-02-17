@@ -224,7 +224,7 @@ const S3ConnectorConfiguration = ({
               name: table.table_name,
               columns: table.columns.map((col) => ({
                 name: col.column_name,
-                isPrimaryKey: col.is_suggested_pk,
+                isPrimaryKey: col.is_selected ?? col.is_suggested_pk,
                 cardinality: col.uniqueness_score / 100,
                 warning:
                   col.warnings.length > 0 ? col.warnings.join(". ") : undefined,
@@ -284,7 +284,7 @@ const S3ConnectorConfiguration = ({
               name: table.table_name,
               columns: table.columns.map((col) => ({
                 name: col.column_name,
-                isPrimaryKey: col.is_suggested_pk,
+                isPrimaryKey: col.is_selected ?? col.is_suggested_pk,
                 cardinality: col.uniqueness_score / 100,
                 warning:
                   col.warnings.length > 0 ? col.warnings.join(". ") : undefined,

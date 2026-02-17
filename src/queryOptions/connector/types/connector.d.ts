@@ -71,6 +71,7 @@ export interface ColumnSuggestion {
   sample_values: unknown[];
   is_suggested_pk: boolean;
   warnings: string[];
+  is_selected?: boolean;
 }
 
 export interface TableSuggestion {

@@ -364,7 +364,6 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     setValues((prev) => ({
       ...prev,
 
-      file_type: "",
       file_mapping_method: "",
 
       mapping_config: "",
@@ -765,7 +764,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     onCancel={handleFileMappingCancel}
                     onSaveMappings={handleFileMappingSave}
                     loading={loading}
-                    readOnly={mode === "edit"}
+                    readOnly={
+                      schema.find((f) => f.name === "file_mapping_method")
+                        ?.read_only === true
+                    }
                   />
                 ) : isMultiFilesSingleTable ? (
                   <MultipleMapping
@@ -792,7 +794,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     }}
                     onCancel={handleFileMappingCancel}
                     loading={loading}
-                    readOnly={mode === "edit"}
+                    readOnly={
+                      schema.find((f) => f.name === "file_mapping_method")
+                        ?.read_only === true
+                    }
                   />
                 ) : null}
               </Dialog.Content>
