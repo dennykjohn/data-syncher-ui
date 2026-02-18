@@ -6,6 +6,7 @@ import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
 
+import LoadingSpinner from "@/components/shared/Spinner";
 import { type ReverseSchemaResponse } from "@/queryOptions/connector/reverseSchema/useFetchReverseSchema";
 
 import { isPrimaryKey } from "../../utils/validation";
@@ -13,10 +14,11 @@ import { isPrimaryKey } from "../../utils/validation";
 interface DestinationProps {
   onDrop: (_sourceTable: string, _destinationTable: string) => void;
   reverseSchemaData: ReverseSchemaResponse | null;
+  isFetching?: boolean;
 }
 
 const Destination = (props: DestinationProps) => {
-  const { onDrop, reverseSchemaData } = props;
+  const { onDrop, reverseSchemaData, isFetching } = props;
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -72,8 +74,12 @@ const Destination = (props: DestinationProps) => {
       </Flex>
 
       {!hasTables && (
-        <Flex direction="column" alignItems="center">
-          <Text>No Destination Tables available</Text>
+        <Flex direction="column" alignItems="center" py={8}>
+          {isFetching ? (
+            <LoadingSpinner />
+          ) : (
+            <Text>No Destination Tables available</Text>
+          )}
         </Flex>
       )}
 

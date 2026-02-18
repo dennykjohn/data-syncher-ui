@@ -89,7 +89,7 @@ const MigrationProgressTable = ({
         </Table.Header>
         <Table.Body>
           {tables?.map((table, index: number) => {
-            const statusLower = table.status.toLowerCase();
+            const statusLower = (table.status || "").toLowerCase();
             const isSuccess =
               statusLower === "success" || statusLower === "completed";
             const isFailed =
@@ -147,7 +147,7 @@ const MigrationProgressTable = ({
                             flex={1}
                             wordBreak="break-word"
                           >
-                            Error: {table.error_message}
+                            Error: {table.error_message || "Unknown error"}
                           </Text>
                           <Box
                             as="button"

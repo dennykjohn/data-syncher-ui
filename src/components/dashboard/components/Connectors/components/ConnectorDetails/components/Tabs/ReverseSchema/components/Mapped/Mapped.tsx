@@ -23,6 +23,7 @@ export interface MappedRef {
 
 interface MappedProps {
   reverseSchemaData: ReverseSchemaResponse | null;
+  isDisabled?: boolean;
 }
 
 const normalizeMappings = (raw: unknown): TableMapping[] => {
@@ -49,7 +50,7 @@ const normalizeMappings = (raw: unknown): TableMapping[] => {
 };
 
 const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
-  const { reverseSchemaData } = props;
+  const { reverseSchemaData, isDisabled } = props;
   const context = useOutletContext<Connector>();
   const [mappings, setMappings] = useState<TableMapping[]>([]);
 
@@ -95,6 +96,14 @@ const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
 
   // Handle drop action
   const handleDrop = (sourceTable: string, destinationTable: string) => {
+    if (isDisabled) {
+      toaster.warning({
+        title: "Operation in progress",
+        description: "Please wait for the current operation to complete.",
+      });
+      return;
+    }
+
     if (!sourceTable || sourceTable.trim() === "") {
       toaster.error({
         title: "Error",
@@ -178,6 +187,14 @@ const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
 
   // Handle remove mapping
   const handleRemoveMapping = (mappingToRemove: TableMapping) => {
+    if (isDisabled) {
+      toaster.warning({
+        title: "Operation in progress",
+        description: "Please wait for the current operation to complete.",
+      });
+      return;
+    }
+
     const updatedMappings = mappings.filter(
       (m) =>
         !(
@@ -187,7 +204,7 @@ const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
     );
 
     saveMappings(updatedMappings, () => {
-      toaster.warning({
+      toaster.success({
         title: "Mapping Deleted",
         description: `The mapping "${mappingToRemove.sourceTable} → ${mappingToRemove.destinationTable}" has been deleted.`,
       });
@@ -242,9 +259,11 @@ const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
             <Box
               as="button"
               onClick={() => handleRemoveMapping(mapping)}
-              cursor="pointer"
-              color="red.500"
-              _hover={{ color: "red.700" }}
+              cursor={isDisabled ? "not-allowed" : "pointer"}
+              color={isDisabled ? "gray.400" : "red.500"}
+              opacity={isDisabled ? 0.5 : 1}
+              filter={isDisabled ? "grayscale(100%)" : "none"}
+              _hover={{ color: isDisabled ? "gray.400" : "red.700" }}
               p={1}
               display="flex"
               alignItems="center"

@@ -1,3 +1,5 @@
+import { startTransition, useEffect, useState } from "react";
+
 import { Button, Flex } from "@chakra-ui/react";
 
 import { MdRefresh } from "react-icons/md";
@@ -8,7 +10,10 @@ import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import useRefreshSchema from "@/queryOptions/connector/schema/useRefreshSchema";
 import useUpdateSchema from "@/queryOptions/connector/schema/useUpdateSchema";
+import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import { type Connector } from "@/types/connectors";
+
+import { useQueryClient } from "@tanstack/react-query";
 
 const Actions = ({
   shouldShowDisabledState,
@@ -19,8 +24,13 @@ const Actions = ({
   setShouldShowDisabledState: (_value: boolean) => void;
   onUpdateSchemaStart?: () => void;
 }) => {
+  const queryClient = useQueryClient();
   const context = useOutletContext<Connector>();
   const { connection_id } = context;
+
+  const [activeOperation, setActiveOperation] = useState<
+    "refresh" | "update" | null
+  >(null);
 
   const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
     connectorId: connection_id,
@@ -29,7 +39,50 @@ const Actions = ({
     connectorId: connection_id,
   });
 
-  const createButtonProps = (isPending: boolean, onAction: () => void) => {
+  // Get schema status - rely on global WS update via cache
+  const { status: schemaStatus } = useUpdateSchemaStatus(
+    connection_id,
+    true,
+    false, // No polling, rely on WS
+  );
+
+  // Track if schema update/refresh is in progress via WebSocket or API
+  const isSchemaOperationInProgress = schemaStatus?.is_in_progress || false;
+
+  // Auto-enable and show success message when schema operation completes
+  useEffect(() => {
+    if (
+      !isSchemaOperationInProgress &&
+      !isUpdating &&
+      !isRefreshing &&
+      activeOperation !== null
+    ) {
+      if (activeOperation === "update") {
+        toaster.success({ title: "Schema updated successfully" });
+      }
+      // Refresh message is handled in onSuccess for manual clicks
+      startTransition(() => {
+        setActiveOperation(null);
+        setShouldShowDisabledState(false);
+      });
+    }
+  }, [
+    isSchemaOperationInProgress,
+    isUpdating,
+    isRefreshing,
+    activeOperation,
+    setShouldShowDisabledState,
+  ]);
+
+  const createButtonProps = (
+    isPending: boolean,
+    onAction: () => void,
+    showGlobalLoading: boolean = false,
+  ) => {
+    // Show loading if the mutation is pending
+    // For Update Schema, also show loading if a background operation is in progress
+    const isLoading =
+      isPending || (showGlobalLoading && isSchemaOperationInProgress);
     const isDisabled = shouldShowDisabledState && !isPending;
 
     return {
@@ -45,7 +98,7 @@ const Actions = ({
         setShouldShowDisabledState(true);
         onAction();
       },
-      loading: isPending,
+      loading: isLoading,
       disabled: isDisabled,
     };
   };
@@ -73,13 +126,29 @@ const Actions = ({
         <Button
           variant="outline"
           colorPalette="brand"
-          {...createButtonProps(isRefreshing, () => {
-            refreshSchema(undefined, {
-              onSettled: () => {
-                setShouldShowDisabledState(false);
-              },
-            });
-          })}
+          {...createButtonProps(
+            isRefreshing,
+            () => {
+              setActiveOperation("refresh");
+              refreshSchema(undefined, {
+                onSuccess: () => {
+                  // Immediately invalidate ReverseSchema on successful refresh with a delay
+                  setTimeout(() => {
+                    queryClient.invalidateQueries({
+                      queryKey: ["ReverseSchema", connection_id],
+                      refetchType: "active",
+                    });
+                  }, 500);
+                  toaster.success({ title: "Schema refreshed successfully" });
+                },
+                onError: () => {
+                  setActiveOperation(null);
+                  setShouldShowDisabledState(false);
+                },
+              });
+            },
+            false,
+          )}
         >
           <MdRefresh />
           Refresh schema
@@ -90,14 +159,20 @@ const Actions = ({
         <Button
           variant="outline"
           colorPalette="brand"
-          {...createButtonProps(isUpdating, () => {
-            onUpdateSchemaStart?.();
-            updateSchema(undefined, {
-              onSettled: () => {
-                setShouldShowDisabledState(false);
-              },
-            });
-          })}
+          {...createButtonProps(
+            isUpdating,
+            () => {
+              setActiveOperation("update");
+              onUpdateSchemaStart?.();
+              updateSchema(undefined, {
+                onError: () => {
+                  setActiveOperation(null);
+                  setShouldShowDisabledState(false);
+                },
+              });
+            },
+            true,
+          )}
         >
           <MdRefresh />
           Update schema

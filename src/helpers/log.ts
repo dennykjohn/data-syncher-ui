@@ -40,7 +40,10 @@ export const getUiState = (
     lowerMessage.includes("completed successfully") ||
     lowerMessage.includes("updated fields") ||
     lowerMessage.includes("table selection updated") ||
-    lowerMessage.includes("schema refresh completed")
+    lowerMessage.includes("schema refresh completed") ||
+    lowerMessage.includes("schema updated") ||
+    lowerMessage.includes("update completed") ||
+    lowerMessage.includes("fetch tables completed")
   )
     return "success";
 
