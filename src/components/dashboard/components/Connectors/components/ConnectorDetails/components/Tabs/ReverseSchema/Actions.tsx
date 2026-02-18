@@ -57,10 +57,6 @@ const Actions = ({
       !isRefreshing &&
       activeOperation !== null
     ) {
-      if (activeOperation === "update") {
-        toaster.success({ title: "Schema updated successfully" });
-      }
-      // Refresh message is handled in onSuccess for manual clicks
       startTransition(() => {
         setActiveOperation(null);
         setShouldShowDisabledState(false);

@@ -32,7 +32,7 @@ const MigrationProgressTable = ({
   }
 
   return (
-    <Box w="100%">
+    <Box w="100%" overflowX="auto">
       <Table.Root>
         <Table.Header bg="gray.50">
           <Table.Row>
@@ -59,20 +59,22 @@ const MigrationProgressTable = ({
             <Table.ColumnHeader
               fontWeight="bold"
               color="gray.600"
-              width="180px"
               borderRightWidth={1}
               borderColor="gray.200"
               py={1}
+              whiteSpace="nowrap"
+              minW="200px"
             >
               Start Time
             </Table.ColumnHeader>
             <Table.ColumnHeader
               fontWeight="bold"
               color="gray.600"
-              width="180px"
               borderRightWidth={1}
               borderColor="gray.200"
               py={1}
+              whiteSpace="nowrap"
+              minW="200px"
             >
               End Time
             </Table.ColumnHeader>
@@ -231,7 +233,9 @@ const MigrationProgressTable = ({
                   borderRightWidth={1}
                   borderColor="gray.200"
                 >
-                  {startTime}
+                  <Text whiteSpace="nowrap" fontSize="xs">
+                    {startTime}
+                  </Text>
                 </Table.Cell>
                 <Table.Cell
                   color="gray.700"
@@ -239,7 +243,9 @@ const MigrationProgressTable = ({
                   borderRightWidth={1}
                   borderColor="gray.200"
                 >
-                  {endTime}
+                  <Text whiteSpace="nowrap" fontSize="xs">
+                    {endTime}
+                  </Text>
                 </Table.Cell>
                 <Table.Cell textAlign="right" color="gray.700" py={0.5}>
                   {stagingRecordsDisplay}
