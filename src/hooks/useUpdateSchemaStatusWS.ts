@@ -12,17 +12,28 @@ interface SchemaStatusCache extends SchemaStatusResponse {
 export const useUpdateSchemaStatusWS = (connectionId: number | null) => {
   const queryClient = useQueryClient();
 
-  const socketUrl = connectionId
+  const isValidId =
+    connectionId !== null && !isNaN(connectionId) && connectionId !== 0;
+
+  const socketUrl = isValidId
     ? `wss://qa.datasyncher.com/ws/update_schema_status/${connectionId}/`
     : null;
 
   useWebSocket(socketUrl, {
     onOpen: () => {
-      // Connected
+      console.warn(
+        `[WS Schema Status] ✅ Connected to: ${socketUrl}`,
+        `Connection ID: ${connectionId}`,
+      );
     },
     onMessage: (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.warn(
+          `[WS Schema Status] 📨 Message received for connection ${connectionId}:`,
+          data,
+        );
+
         if (!connectionId) return;
 
         // Deep clone to ensure React detects the change
@@ -31,44 +42,77 @@ export const useUpdateSchemaStatusWS = (connectionId: number | null) => {
         // data is { is_in_progress: boolean, current_job: string, ... }
         queryClient.setQueryData(
           ["SchemaStatus", connectionId],
-          (oldData: SchemaStatusCache | undefined) => ({
-            ...(oldData || { is_in_progress: false, current_job: null }),
-            ...clonedData,
-            last_updated: new Date().toISOString(),
-            _updateId: Math.random(),
-          }),
+          (oldData: SchemaStatusCache | undefined) => {
+            const newData = {
+              ...(oldData || { is_in_progress: false, current_job: null }),
+              ...clonedData,
+              last_updated: new Date().toISOString(),
+              _updateId: Math.random(),
+            };
+            console.warn(
+              `[WS Schema Status] 💾 Cache updated:`,
+              `Old:`,
+              oldData,
+              `New:`,
+              newData,
+            );
+            return newData;
+          },
         );
 
         // Force invalidation to trigger re-render
+        console.warn(
+          `[WS Schema Status] 🔄 Invalidating queries for connection ${connectionId}`,
+        );
         queryClient.invalidateQueries({
           queryKey: ["SchemaStatus", connectionId],
-          refetchType: "none",
+          refetchType: "active",
         });
 
-        // If job completed, invalidate ConnectorTable to fetch fresh schema
+        // Global Invalidation: If job completes, refresh all related data
         if (data.is_in_progress === false) {
-          queryClient.invalidateQueries({
-            queryKey: ["ConnectorTable", connectionId],
-          });
+          console.warn(
+            `[WS Schema Status] ✅ Job completed for ${connectionId}. Refreshing all lists.`,
+          );
+
+          // Small delay to ensure DB is updated before we refetch
+          setTimeout(() => {
+            const keysToInvalidate = [
+              ["ReverseSchema", connectionId],
+              ["ConnectorTable", connectionId],
+              ["TableStatus", connectionId],
+              ["SchemaStatus", connectionId],
+            ];
+
+            keysToInvalidate.forEach((queryKey) => {
+              queryClient.invalidateQueries({
+                queryKey,
+                refetchType: "active",
+              });
+            });
+          }, 500);
         }
-      } catch {
-        // console.warn("[WS Schema Status] Parse error", e);
+      } catch (e) {
+        console.warn("[WS Schema Status] ⚠️ Parse error:", e);
       }
     },
-    onError: (_error) => {
-      // console.error(`[WS Schema Status] ❌ Error:`, error);
+    onError: (error) => {
+      console.error(
+        `[WS Schema Status] ❌ Error for connection ${connectionId}:`,
+        error,
+      );
     },
-    onClose: (_event) => {
-      // console.warn(
-      //   `[WS Schema Status] 🔌 Connection closed:`,
-      //   event.code,
-      //   event.reason,
-      // );
+    onClose: (event) => {
+      console.warn(
+        `[WS Schema Status] 🔌 Connection closed for ${connectionId}:`,
+        `Code: ${event.code}`,
+        `Reason: ${event.reason}`,
+      );
     },
     shouldReconnect: () => true,
     reconnectInterval: 3000,
     reconnectAttempts: 10,
-    share: false, // Disable sharing to prevent message buffering
+    share: true, // Enable sharing for better reliability across observers
     retryOnError: true,
   });
 };

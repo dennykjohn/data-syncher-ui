@@ -10,7 +10,8 @@ export const isPrimaryKey = (
   ) {
     return fieldInfo.is_primary_key;
   }
-  const primaryKeyPatterns = [/^id$/i, /_id$/i, /^pk_/i, /primary_key/i];
+
+  const primaryKeyPatterns = [/^id$/, /_id$/, /^pk_/, /primary_key/];
   return primaryKeyPatterns.some((pattern) => pattern.test(fieldName));
 };
 
@@ -31,9 +32,7 @@ export const hasMatchingFields = (
   const destinationFields = Object.keys(destinationTableData.table_fields);
 
   return sourceFields.some((sourceField) =>
-    destinationFields.some(
-      (destField) => sourceField.toLowerCase() === destField.toLowerCase(),
-    ),
+    destinationFields.some((destField) => sourceField === destField),
   );
 };
 
@@ -65,12 +64,13 @@ export const validateTableMapping = (
     };
   }
 
-  if (sourcePK.toLowerCase() !== destinationPK.toLowerCase()) {
+  // Strict case sensitivity: ID !== Id
+  if (sourcePK !== destinationPK) {
     return {
       isValid: false,
       error: {
         title: "Primary Key Mismatch",
-        description: `Primary keys do not match. Source: "${sourcePK}", Destination: "${destinationPK}".`,
+        description: `Primary keys do not match exactly. Source: "${sourcePK}", Destination: "${destinationPK}".`,
       },
     };
   }
@@ -137,16 +137,15 @@ export const validateTableToTableMapping = (
     };
   }
 
-  const primaryKeyMatch = destinationPKs.some(
-    (destPK) => destPK.toLowerCase() === sourcePK.toLowerCase(),
-  );
+  // Strict case sensitivity for PK matching
+  const primaryKeyMatch = destinationPKs.some((destPK) => destPK === sourcePK);
 
   if (!primaryKeyMatch) {
     return {
       isValid: false,
       error: {
         title: "Primary Key Mismatch",
-        description: `At least one primary key must match in both tables. Source: "${sourcePK}", Destination: "${destinationPKs.join(", ")}".`,
+        description: `At least one primary key must match exactly in both tables. Source: "${sourcePK}", Destination: "${destinationPKs.join(", ")}".`,
       },
     };
   }
@@ -160,10 +159,9 @@ export const validateTableToTableMapping = (
     (field) => !isPrimaryKey(field, destinationTableData.table_fields[field]),
   );
 
+  // Strict case sensitivity for common fields
   const hasCommonField = sourceFields.some((sourceField) =>
-    destinationFields.some(
-      (destField) => sourceField.toLowerCase() === destField.toLowerCase(),
-    ),
+    destinationFields.some((destField) => sourceField === destField),
   );
 
   if (!hasCommonField) {
@@ -172,7 +170,7 @@ export const validateTableToTableMapping = (
       error: {
         title: "No Matching Fields",
         description:
-          "At least one other field (excluding primary keys) must be the same in both tables.",
+          "At least one other field (excluding primary keys) must have an exact matching name in both tables.",
       },
     };
   }

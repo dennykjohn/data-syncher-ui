@@ -23,6 +23,8 @@ const useUpdateSchemaStatus = (
     queryFn: () => checkSchemaStatus(connectionId),
     enabled: !!connectionId && enabled,
     refetchInterval: isPolling ? 3000 : false,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   return { ...query, status: query.data };

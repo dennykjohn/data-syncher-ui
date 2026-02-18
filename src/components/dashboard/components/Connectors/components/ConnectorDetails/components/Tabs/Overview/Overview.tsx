@@ -5,7 +5,6 @@ import { Box, Flex, Grid, NativeSelect, Text } from "@chakra-ui/react";
 import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
-import useConnectionActivityLogWS from "@/hooks/useConnectionActivityLogWS";
 import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
@@ -28,9 +27,6 @@ const Overview = () => {
     context.filterDays,
     statusFilter,
   );
-
-  // Real-time WebSocket Updates
-  useConnectionActivityLogWS(context.connection_id);
 
   const [userSelectedLog, setUserSelectedLog] = useState<number | null>(null);
 

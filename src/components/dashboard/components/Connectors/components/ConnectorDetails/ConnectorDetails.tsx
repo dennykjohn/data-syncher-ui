@@ -5,6 +5,7 @@ import { Flex } from "@chakra-ui/react";
 import { Outlet, useParams } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
+import useConnectionActivityLogWS from "@/hooks/useConnectionActivityLogWS";
 import useConnectionTableStatusWS from "@/hooks/useConnectionTableStatusWS";
 import useUpdateSchemaStatusWS from "@/hooks/useUpdateSchemaStatusWS";
 import { useFetchConnectorById } from "@/queryOptions/connector/useFetchConnectorDetailsById";
@@ -21,6 +22,7 @@ const ConnectorDetails = () => {
   // Initialize WebSockets at the parent level to persist across tabs
   useConnectionTableStatusWS(Number(connectionId));
   useUpdateSchemaStatusWS(Number(connectionId));
+  useConnectionActivityLogWS(Number(connectionId));
 
   const [filterDays, setFilterDays] = useState<number>(2);
 

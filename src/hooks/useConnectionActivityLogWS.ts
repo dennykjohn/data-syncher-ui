@@ -20,10 +20,19 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
     : null;
 
   useWebSocket(socketUrl, {
-    onOpen: () => {},
+    onOpen: () => {
+      console.warn(
+        `[WS Activity Log] ✅ Connected to: ${socketUrl}`,
+        `Connection ID: ${connectionId}`,
+      );
+    },
     onMessage: (event) => {
       try {
         const message = JSON.parse(event.data);
+        console.warn(
+          `[WS Activity Log] 📨 Message received for connection ${connectionId}:`,
+          message,
+        );
         if (!connectionId) return;
 
         if (message.logs && Array.isArray(message.logs)) {
@@ -102,6 +111,17 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                 return newData;
               },
             );
+          });
+
+          console.warn(
+            `[WS Activity Log] 💾 Bulk logs updated, invalidating queries`,
+          );
+
+          // Force invalidation to trigger re-render
+          queryClient.invalidateQueries({
+            queryKey: ["connectorActivity", Number(connectionId)],
+            exact: false,
+            refetchType: "none",
           });
         }
 
@@ -197,6 +217,17 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                 return newData;
               },
             );
+          });
+
+          console.warn(
+            `[WS Activity Log] 💾 Individual log updated for session ${numericSessionId}, invalidating queries`,
+          );
+
+          // Force invalidation to trigger re-render
+          queryClient.invalidateQueries({
+            queryKey: ["connectorActivity", Number(connectionId)],
+            exact: false,
+            refetchType: "none",
           });
         }
       } catch {

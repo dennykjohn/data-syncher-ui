@@ -28,15 +28,28 @@ interface WSMessage {
 export const useConnectionTableStatusWS = (connectionId: number | null) => {
   const queryClient = useQueryClient();
 
-  const socketUrl = connectionId
+  const isValidId =
+    connectionId !== null && !isNaN(connectionId) && connectionId !== 0;
+
+  const socketUrl = isValidId
     ? `wss://qa.datasyncher.com/ws/connection_table_status/${connectionId}/`
     : null;
 
   useWebSocket(socketUrl, {
-    onOpen: () => {},
+    onOpen: () => {
+      console.warn(
+        `[WS Table Status] ✅ Connected to: ${socketUrl}`,
+        `Connection ID: ${connectionId}`,
+      );
+    },
     onMessage: (event) => {
       try {
         const data = JSON.parse(event.data) as WSMessage;
+        console.warn(
+          `[WS Table Status] 📨 Message received for connection ${connectionId}:`,
+          data,
+        );
+
         if (!connectionId) return;
 
         if (
@@ -60,7 +73,7 @@ export const useConnectionTableStatusWS = (connectionId: number | null) => {
                   }))
                 : currentTables;
 
-              return {
+              const newData = {
                 ...(oldData || { tables: [] }),
                 tables: newTables,
                 schema_refresh_in_progress:
@@ -78,23 +91,79 @@ export const useConnectionTableStatusWS = (connectionId: number | null) => {
                 last_updated: new Date().toISOString(),
                 _updateId: Math.random(),
               };
+
+              console.warn(
+                `[WS Table Status] 💾 Cache updated for connection ${connectionId}:`,
+                `Tables: ${newTables.length}`,
+                `Schema Refresh: ${newData.schema_refresh_in_progress}`,
+                `Next Sync: ${newData.next_sync_time}`,
+              );
+
+              return newData;
             },
           );
 
+          console.warn(
+            `[WS Table Status] 🔄 Invalidating queries for connection ${connectionId}`,
+          );
           queryClient.invalidateQueries({
             queryKey: ["TableStatus", connectionId],
-            refetchType: "none",
+            refetchType: "active",
           });
+
+          // Sync SchemaStatus if table status indicates refresh is complete
+          // This prevents the spinner from getting stuck if SchemaStatus WS message is missed
+          if (data.schema_refresh_in_progress === false) {
+            console.warn(
+              `[WS Table Status] 🔄 Syncing SchemaStatus to false and refreshing lists for ${connectionId}`,
+            );
+            queryClient.setQueryData(
+              ["SchemaStatus", connectionId],
+              (old: unknown) => ({
+                ...(typeof old === "object" && old !== null ? old : {}),
+                is_in_progress: false,
+                current_job: null,
+                last_updated: new Date().toISOString(),
+                _updateId: Math.random(),
+              }),
+            );
+
+            // Refresh everything related to the schema refresh
+            setTimeout(() => {
+              const keys = [
+                ["SchemaStatus", connectionId],
+                ["TableStatus", connectionId],
+                ["ReverseSchema", connectionId],
+                ["ConnectorTable", connectionId],
+              ];
+              keys.forEach((queryKey) => {
+                queryClient.invalidateQueries({
+                  queryKey,
+                  refetchType: "active",
+                });
+              });
+            }, 500);
+          }
         }
-      } catch {
-        void 0;
+      } catch (e) {
+        console.warn(
+          `[WS Table Status] ⚠️ Parse error for connection ${connectionId}:`,
+          e,
+        );
       }
     },
-    onError: () => {
-      void 0;
+    onError: (error) => {
+      console.error(
+        `[WS Table Status] ❌ Error for connection ${connectionId}:`,
+        error,
+      );
     },
-    onClose: () => {
-      void 0;
+    onClose: (event) => {
+      console.warn(
+        `[WS Table Status] 🔌 Connection closed for connection ${connectionId}:`,
+        `Code: ${event.code}`,
+        `Reason: ${event.reason}`,
+      );
     },
     shouldReconnect: (closeEvent) => closeEvent.code !== 1000,
     reconnectInterval: 3000,

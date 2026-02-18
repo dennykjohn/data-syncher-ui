@@ -165,12 +165,10 @@ const Form = (props: Connector) => {
         <Field.Root maxW="sm" disabled={!canEdit}>
           <Field.Label>Transfer packet size</Field.Label>
           <NumberInput.Root
-            defaultValue="10"
             disabled={!canEdit}
-            min={dst_min_count || 10000}
-            max={dst_max_count || 1000000}
-            step={10000}
-            value={String(formState.chunk_count)}
+            min={dst_min_count ?? 1}
+            max={dst_max_count ?? 1000000}
+            value={String(formState.chunk_count ?? 10)}
             onValueChange={(e) => {
               dispatch({
                 type: "SET_FIELD",
