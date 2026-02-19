@@ -69,7 +69,16 @@ const Overview = () => {
       ? activeLog.log_id
       : undefined;
 
-  useMigrationStatusWS(migrationIdToFetch || null);
+  // Only connect WS for in-progress migrations — not for historical completed/failed logs
+  const isLogInProgress =
+    activeLog?.status === "P" ||
+    (typeof activeLog?.ui_state === "string" &&
+      activeLog.ui_state.toLowerCase().includes("progress"));
+
+  const migrationIdForWS =
+    migrationIdToFetch && isLogInProgress ? migrationIdToFetch : null;
+
+  useMigrationStatusWS(migrationIdForWS);
 
   const { data: logDetails, isLoading: isLoadingDetails } =
     useFetchConnectorActivityDetails({

@@ -2,6 +2,7 @@ import { lazy } from "react";
 
 import { Navigate, createBrowserRouter } from "react-router";
 
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import ConnectorConfiguration from "@/components/dashboard/components/Connectors/components/NewConnector/components/ConnectorConfiguration/ConnectorConfiguration";
 import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
@@ -32,8 +33,6 @@ import {
   NewDestination,
 } from "./DestinationRoutes";
 import { AuthLayout, DashboardLayout } from "./LayoutRoutes";
-
-const ProtectedRoute = lazy(() => import("@/components/auth/ProtectedRoute"));
 
 const Plans = lazy(
   () => import("@/components/dashboard/components/Plans/Plans"),

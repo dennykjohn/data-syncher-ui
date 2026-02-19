@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 import { Button, Flex, Text } from "@chakra-ui/react";
 
@@ -45,30 +45,17 @@ const Actions = ({
     mutationKey: ["updateSchema", connection_id],
   });
 
-  const [shouldPollSchemaStatus, setShouldPollSchemaStatus] = useState(false);
-
-  // The hook's refetchInterval will handle stopping if not in progress.
-  const { data: schemaStatus } = useUpdateSchemaStatus(
-    connection_id,
-    true,
-    shouldPollSchemaStatus,
-  );
+  const { data: schemaStatus } = useUpdateSchemaStatus(connection_id, true);
 
   const isRefreshDeltaTableInProgress = useIsMutating({
     mutationKey: ["refreshDeltaTable", connection_id],
   });
 
-  const [shouldPollRefreshStatus, setShouldPollRefreshStatus] = useState(false);
-
   const isReloadSingleTableInProgress = useIsMutating({
     mutationKey: ["reloadSingleTable", connection_id],
   });
 
-  const { data: tableStatusData } = useFetchTableStatus(
-    connection_id,
-    true,
-    shouldPollRefreshStatus,
-  );
+  const { data: tableStatusData } = useFetchTableStatus(connection_id, true);
 
   const hasAnyTableInProgress = useMemo(() => {
     const hasTableInProgress =
@@ -88,135 +75,6 @@ const Actions = ({
     reloadingTables,
   ]);
 
-  useEffect(() => {
-    if (shouldPollRefreshStatus && tableStatusData) {
-      const isSchemaRefreshFinished =
-        tableStatusData.schema_refresh_in_progress === false;
-      const isSchemaRefreshActive =
-        tableStatusData.schema_refresh_in_progress === true;
-
-      if (
-        isSchemaRefreshFinished ||
-        (!hasAnyTableInProgress && !isSchemaRefreshActive)
-      ) {
-        startTransition(() => {
-          setShouldPollRefreshStatus(false);
-          setShouldShowDisabledState(false);
-        });
-      }
-    }
-  }, [
-    hasAnyTableInProgress,
-    shouldPollRefreshStatus,
-    tableStatusData,
-    setShouldShowDisabledState,
-  ]);
-
-  useEffect(() => {
-    if (isUpdateSchemaInProgress > 0 || isUpdating) {
-      startTransition(() => {
-        setShouldPollSchemaStatus(true);
-      });
-    }
-  }, [isUpdateSchemaInProgress, isUpdating]);
-
-  const hasCheckedRefreshRef = useRef(false);
-  useEffect(() => {
-    if (hasCheckedRefreshRef.current) return;
-
-    if (isRefreshSchemaInProgress > 0 || isRefreshing) {
-      hasCheckedRefreshRef.current = true;
-      startTransition(() => {
-        setShouldPollRefreshStatus(true);
-        setShouldShowDisabledState(true);
-      });
-    }
-  }, [isRefreshSchemaInProgress, isRefreshing, setShouldShowDisabledState]);
-
-  const hasCheckedUpdateRef = useRef(false);
-  useEffect(() => {
-    if (hasCheckedUpdateRef.current) return;
-
-    if (
-      isUpdateSchemaInProgress > 0 ||
-      isUpdating ||
-      schemaStatus?.is_in_progress ||
-      hasAnyTableInProgress
-    ) {
-      hasCheckedUpdateRef.current = true;
-      startTransition(() => {
-        if (schemaStatus?.is_in_progress) {
-          setShouldPollSchemaStatus(true);
-        }
-        if (hasAnyTableInProgress) {
-          setShouldPollRefreshStatus(true);
-        }
-        setShouldShowDisabledState(true);
-      });
-    }
-  }, [
-    isUpdateSchemaInProgress,
-    isUpdating,
-    schemaStatus,
-    hasAnyTableInProgress,
-    setShouldShowDisabledState,
-  ]);
-
-  useEffect(() => {
-    if (
-      isUpdateSchemaInProgress === 0 &&
-      !isUpdating &&
-      shouldShowDisabledState &&
-      isRefreshSchemaInProgress === 0 &&
-      !isRefreshing &&
-      !hasAnyTableInProgress &&
-      tableStatusData?.schema_refresh_in_progress !== true
-    ) {
-      const timer = setTimeout(() => {
-        if (
-          isUpdateSchemaInProgress === 0 &&
-          !isUpdating &&
-          shouldShowDisabledState
-        ) {
-          startTransition(() => {
-            setShouldShowDisabledState(false);
-            setShouldPollSchemaStatus(false);
-          });
-        }
-      }, 1500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [
-    isUpdateSchemaInProgress,
-    isUpdating,
-    shouldShowDisabledState,
-    setShouldShowDisabledState,
-    isRefreshSchemaInProgress,
-    isRefreshing,
-    hasAnyTableInProgress,
-    tableStatusData?.schema_refresh_in_progress,
-  ]);
-
-  useEffect(() => {
-    if (
-      shouldPollSchemaStatus &&
-      schemaStatus &&
-      !schemaStatus.is_in_progress
-    ) {
-      startTransition(() => {
-        setShouldPollSchemaStatus(false);
-        setShouldShowDisabledState(false);
-        onUpdateSchemaComplete?.();
-      });
-    }
-  }, [
-    shouldPollSchemaStatus,
-    schemaStatus,
-    setShouldShowDisabledState,
-    onUpdateSchemaComplete,
-  ]);
-
   const isRefreshButtonLoading = isRefreshing || isRefreshSchemaInProgress > 0;
 
   const isAnyOperationInProgress =
@@ -229,7 +87,33 @@ const Actions = ({
     hasAnyTableInProgress;
 
   const isUpdateSchemaFlowInProgress =
-    isUpdating || !!(shouldPollSchemaStatus && schemaStatus?.is_in_progress);
+    isUpdating || (schemaStatus?.is_in_progress ?? false);
+
+  useEffect(() => {
+    if (
+      !isAnyOperationInProgress &&
+      shouldShowDisabledState &&
+      !isUpdating &&
+      !isRefreshing &&
+      isUpdateSchemaInProgress === 0 &&
+      isRefreshSchemaInProgress === 0
+    ) {
+      const timer = setTimeout(() => {
+        setShouldShowDisabledState(false);
+        onUpdateSchemaComplete?.();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    isAnyOperationInProgress,
+    shouldShowDisabledState,
+    isUpdating,
+    isRefreshing,
+    isUpdateSchemaInProgress,
+    isRefreshSchemaInProgress,
+    onUpdateSchemaComplete,
+    setShouldShowDisabledState,
+  ]);
 
   const createButtonProps = (
     isButtonLoading: boolean,
@@ -299,11 +183,7 @@ const Actions = ({
             colorPalette="brand"
             {...createButtonProps(isRefreshButtonLoading, () => {
               refreshSchema(undefined, {
-                onSuccess: () => {
-                  setShouldPollRefreshStatus(true);
-                },
                 onError: () => {
-                  setShouldPollRefreshStatus(false);
                   setShouldShowDisabledState(false);
                 },
               });
@@ -337,12 +217,8 @@ const Actions = ({
               }
               setShouldShowDisabledState(true);
               updateSchema(undefined, {
-                onSuccess: () => {
-                  setShouldPollSchemaStatus(true);
-                },
                 onError: () => {
                   setShouldShowDisabledState(false);
-                  setShouldPollSchemaStatus(false);
                 },
               });
             }}

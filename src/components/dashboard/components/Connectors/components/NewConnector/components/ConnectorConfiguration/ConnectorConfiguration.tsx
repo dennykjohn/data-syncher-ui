@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { Flex } from "@chakra-ui/react";
 
 import { useNavigate, useParams } from "react-router";
@@ -104,16 +106,6 @@ const GenericConnectorConfiguration = ({
     }
   };
 
-  if (
-    (mode === "create" && (isLoading || !formSchema)) ||
-    (mode === "edit" &&
-      (isFetchConnectorByIdPending ||
-        isFetchConnectorConfigPending ||
-        (!connectorConfig?.source_schema && (isLoading || !formSchema))))
-  ) {
-    return <LoadingSpinner />;
-  }
-
   // Determine the source name
   const sourceName = state?.source || connectorData?.source_name || "";
 
@@ -125,6 +117,24 @@ const GenericConnectorConfiguration = ({
         formSchema ||
         []
       : formSchema || [];
+
+  const defaultValues = useMemo(
+    () =>
+      mode === "edit" && connectorConfig
+        ? { ...connectorConfig.initial_data }
+        : undefined,
+    [mode, connectorConfig],
+  );
+
+  if (
+    (mode === "create" && (isLoading || !formSchema)) ||
+    (mode === "edit" &&
+      (isFetchConnectorByIdPending ||
+        isFetchConnectorConfigPending ||
+        (!connectorConfig?.source_schema && (isLoading || !formSchema))))
+  ) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
@@ -156,13 +166,7 @@ const GenericConnectorConfiguration = ({
         }}
         loading={isCreateConnectorPending || isUpdateConnectorConfigPending}
         handleBackButtonClick={handlePrevious}
-        defaultValues={
-          mode === "edit" && connectorConfig
-            ? {
-                ...connectorConfig?.initial_data,
-              }
-            : undefined
-        }
+        defaultValues={defaultValues}
       />
     </Flex>
   );

@@ -71,20 +71,28 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
 
   const valuesRef = useRef(values);
-  const defaultValuesRef = useRef(defaultValues);
+  const defaultValuesSerializedRef = useRef<string | null>(
+    defaultValues ? JSON.stringify(defaultValues) : null,
+  );
+  const isDirtyRef = useRef(false);
 
   useEffect(() => {
     valuesRef.current = values;
     onValuesChange?.(values);
   }, [values, onValuesChange]);
-  // 👇 when defaultValues changes (edit mode), update state
+
   useEffect(() => {
-    if (defaultValues && defaultValuesRef.current !== defaultValues) {
-      defaultValuesRef.current = defaultValues;
-      startTransition(() => {
-        setValues((prev) => ({ ...prev, ...defaultValues }));
-      });
-    }
+    if (!defaultValues) return;
+
+    const incoming = JSON.stringify(defaultValues);
+    if (incoming === defaultValuesSerializedRef.current) return;
+    defaultValuesSerializedRef.current = incoming;
+
+    if (isDirtyRef.current) return;
+
+    startTransition(() => {
+      setValues((prev) => ({ ...prev, ...defaultValues }));
+    });
   }, [defaultValues]);
 
   const handleChange = (
@@ -99,6 +107,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       console.warn(`Attempted to change read-only field: ${name}`);
       return;
     }
+
+    // Mark the form as dirty so the defaultValues effect doesn't overwrite
+    // the user's in-progress edits during a background refetch.
+    isDirtyRef.current = true;
 
     setValues((prev) => {
       const newValues = { ...prev, [name]: value };
@@ -120,6 +132,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       setErrors(newErrors);
       return;
     }
+
+    // Reset dirty flag so the next defaultValues update (fresh server data)
+    // is allowed to sync into the form after the successful save.
+    isDirtyRef.current = false;
 
     onSubmit(values);
   };

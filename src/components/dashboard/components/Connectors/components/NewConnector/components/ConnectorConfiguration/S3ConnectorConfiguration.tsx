@@ -197,6 +197,14 @@ const S3ConnectorConfiguration = ({
         []
       : formSchema || [];
 
+  const s3DefaultValues = useMemo(
+    () =>
+      mode === "edit" && connectorConfig
+        ? { ...connectorConfig.initial_data }
+        : pendingFormData?.form_data || undefined,
+    [mode, connectorConfig, pendingFormData?.form_data],
+  );
+
   // ------------------- Loading state -------------------
   if (
     (mode === "create" && (isLoading || !formSchema)) ||
@@ -341,11 +349,7 @@ const S3ConnectorConfiguration = ({
         onSubmit={handleFormSubmit}
         loading={isCreateConnectorPending || isUpdateConnectorConfigPending}
         handleBackButtonClick={handlePrevious}
-        defaultValues={
-          mode === "edit" && connectorConfig
-            ? { ...connectorConfig.initial_data }
-            : pendingFormData?.form_data || undefined
-        }
+        defaultValues={s3DefaultValues}
         mode={mode}
         sourceName={sourceName}
       />

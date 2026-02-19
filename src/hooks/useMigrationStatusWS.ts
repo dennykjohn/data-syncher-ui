@@ -12,22 +12,11 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
     : null;
 
   useWebSocket(socketUrl, {
-    onOpen: () => {
-      console.warn(
-        `[WS Migration Status] ✅ Connected to: ${socketUrl}`,
-        `Migration ID: ${migrationId}`,
-      );
-    },
+    onOpen: () => {},
     onMessage: (event) => {
-      const message = JSON.parse(event.data);
-      console.warn(
-        `[WS Migration Status] 📨 Message received for migration ${migrationId}:`,
-        message,
-      );
-
       if (!migrationId) return;
 
-      // Ensure migrationId is treated as a number for consistency with query keys
+      const message = JSON.parse(event.data);
       const numericMigrationId = Number(migrationId);
 
       queryClient.setQueryData(
@@ -38,35 +27,19 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
           // Preserve tables if backend didn't send them
           if (!message.tables && oldData?.tables) {
             updated.tables = [...oldData.tables];
-          } else if (message.tables) {
-            console.warn(
-              `[WS Migration Status] 📦 Received full table list update with ${message.tables.length} tables.`,
-              message.tables.map(
-                (t: { table_name: string; staging_records_count: number }) =>
-                  `${t.table_name}: ${t.staging_records_count}`,
-              ),
-            );
           }
 
           // Handle partial table updates (if flat structure used)
           if (message.table_name && updated.tables) {
-            // ... (rest of logic)
             const tableIndex = updated.tables.findIndex(
               (t: { table_name: string }) =>
                 t.table_name.toLowerCase() === message.table_name.toLowerCase(),
-            );
-
-            console.warn(
-              `[WS Migration Status] 🔍 Searching for table '${message.table_name}' in cache. Found index: ${tableIndex}`,
             );
 
             if (tableIndex !== -1) {
               const updatedTable = { ...updated.tables[tableIndex] };
 
               if (message.staging_records_count !== undefined) {
-                console.warn(
-                  `[WS Migration Status] 🔢 Updating record count for '${message.table_name}' to ${message.staging_records_count}`,
-                );
                 updatedTable.staging_records_count =
                   message.staging_records_count;
               }
@@ -82,12 +55,8 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
                 updatedTable,
                 ...updated.tables.slice(tableIndex + 1),
               ];
-            } else {
-              console.warn(
-                `[WS Migration Status] ⚠️ Table '${message.table_name}' not found in cache. Available tables:`,
-                updated.tables.map((t: { table_name: string }) => t.table_name),
-              );
             }
+            // Table not found in cache — skip update
           }
 
           if (message.message && !message.logs) {
@@ -147,39 +116,29 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
             }
           }
 
-          console.warn(
-            `[WS Migration Status] 💾 Cache updated for migration ${migrationId}:`,
-            `Status: ${updated.overall_status}`,
-            `Tables: ${updated.tables?.length || 0}`,
-            `Logs: ${updated.logs?.length || 0}`,
-          );
-
           return updated;
         },
       );
-
-      console.warn(
-        `[WS Migration Status] 🔄 Cache updated for migration ${migrationId}`,
-      );
     },
     onError: (error) => {
+      if (!migrationId) return;
       console.error(
-        `[WS Migration Status] ❌ Error for migration ${migrationId}:`,
+        `[WS Migration Status] Error for migration ${migrationId}:`,
         error,
       );
     },
     onClose: (event) => {
-      console.warn(
-        `[WS Migration Status] 🔌 Connection closed for migration ${migrationId}:`,
-        `Code: ${event.code}`,
-        `Reason: ${event.reason}`,
-      );
+      if (!migrationId) return;
+      // Only log unexpected closes (not normal 1000/1005 no-op closes)
+      if (event.code !== 1000 && event.code !== 1005) {
+        console.error(
+          `[WS Migration Status] Unexpected close for migration ${migrationId}: Code ${event.code}`,
+        );
+      }
     },
-    shouldReconnect: () => true,
-    reconnectInterval: 3000,
-    reconnectAttempts: 10,
+    shouldReconnect: () => false,
+    reconnectAttempts: 0,
     share: true,
-    retryOnError: true,
   });
 };
 

@@ -20,99 +20,74 @@ export const useUpdateSchemaStatusWS = (connectionId: number | null) => {
     : null;
 
   useWebSocket(socketUrl, {
-    onOpen: () => {
-      console.warn(
-        `[WS Schema Status] ✅ Connected to: ${socketUrl}`,
-        `Connection ID: ${connectionId}`,
-      );
-    },
+    onOpen: () => {},
     onMessage: (event) => {
       try {
-        const data = JSON.parse(event.data);
-        console.warn(
-          `[WS Schema Status] 📨 Message received for connection ${connectionId}:`,
-          data,
-        );
+        const message = JSON.parse(event.data);
+        const connectionIdNum = Number(connectionId);
 
-        if (!connectionId) return;
+        if (!connectionIdNum) return;
 
-        // Deep clone to ensure React detects the change
-        const clonedData = JSON.parse(JSON.stringify(data));
+        // The message might be the data itself or wrapped in a data property
+        const statusData = message.data || message;
 
-        // data is { is_in_progress: boolean, current_job: string, ... }
-        queryClient.setQueryData(
-          ["SchemaStatus", connectionId],
-          (oldData: SchemaStatusCache | undefined) => {
-            const newData = {
-              ...(oldData || { is_in_progress: false, current_job: null }),
-              ...clonedData,
-              last_updated: new Date().toISOString(),
-              _updateId: Math.random(),
-            };
-            console.warn(
-              `[WS Schema Status] 💾 Cache updated:`,
-              `Old:`,
-              oldData,
-              `New:`,
-              newData,
-            );
-            return newData;
-          },
-        );
-
-        // Force invalidation to trigger re-render
-        console.warn(
-          `[WS Schema Status] 🔄 Invalidating queries for connection ${connectionId}`,
-        );
-        queryClient.invalidateQueries({
-          queryKey: ["SchemaStatus", connectionId],
-          refetchType: "active",
-        });
-
-        // Global Invalidation: If job completes, refresh all related data
-        if (data.is_in_progress === false) {
-          console.warn(
-            `[WS Schema Status] ✅ Job completed for ${connectionId}. Refreshing all lists.`,
+        // Ensure we have the critical field
+        if (statusData.is_in_progress !== undefined) {
+          queryClient.setQueryData(
+            ["SchemaStatus", connectionIdNum],
+            (oldData: SchemaStatusCache | undefined) => {
+              const newData = {
+                ...(oldData || { is_in_progress: false, current_job: null }),
+                ...statusData,
+                last_updated: new Date().toISOString(),
+                _updateId: Math.random(),
+              };
+              return newData;
+            },
           );
 
-          // Small delay to ensure DB is updated before we refetch
-          setTimeout(() => {
-            const keysToInvalidate = [
-              ["ReverseSchema", connectionId],
-              ["ConnectorTable", connectionId],
-              ["TableStatus", connectionId],
-              ["SchemaStatus", connectionId],
-            ];
+          // If job completes, refresh all related data
+          if (statusData.is_in_progress === false) {
+            // Small delay to ensure DB is updated
+            setTimeout(() => {
+              const keysToInvalidate = [
+                ["ReverseSchema", connectionIdNum],
+                ["ConnectorTable", connectionIdNum],
+                ["TableStatus", connectionIdNum],
+                ["SchemaStatus", connectionIdNum],
+                ["SelectedTables", connectionIdNum],
+              ];
 
-            keysToInvalidate.forEach((queryKey) => {
-              queryClient.invalidateQueries({
-                queryKey,
-                refetchType: "active",
+              keysToInvalidate.forEach((queryKey) => {
+                queryClient.invalidateQueries({
+                  queryKey,
+                  refetchType: "active",
+                });
               });
+            }, 500);
+          } else {
+            // Even if in progress, invalidate to ensure UI sees the update
+            queryClient.invalidateQueries({
+              queryKey: ["SchemaStatus", connectionIdNum],
+              refetchType: "active",
             });
-          }, 500);
+          }
         }
       } catch (e) {
-        console.warn("[WS Schema Status] ⚠️ Parse error:", e);
+        console.error("[WS Schema Status] Parse error:", e);
       }
     },
     onError: (error) => {
       console.error(
-        `[WS Schema Status] ❌ Error for connection ${connectionId}:`,
+        `[WS Schema Status] Error for connection ${connectionId}:`,
         error,
       );
     },
-    onClose: (event) => {
-      console.warn(
-        `[WS Schema Status] 🔌 Connection closed for ${connectionId}:`,
-        `Code: ${event.code}`,
-        `Reason: ${event.reason}`,
-      );
-    },
+    onClose: () => {},
     shouldReconnect: () => true,
     reconnectInterval: 3000,
     reconnectAttempts: 10,
-    share: true, // Enable sharing for better reliability across observers
+    share: true,
     retryOnError: true,
   });
 };
