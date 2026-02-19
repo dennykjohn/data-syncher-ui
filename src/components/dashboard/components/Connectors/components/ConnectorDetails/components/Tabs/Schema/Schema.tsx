@@ -324,7 +324,6 @@ const Schema = () => {
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
     true,
-    false,
   );
 
   const hasAnyTableInProgress = useMemo(() => {

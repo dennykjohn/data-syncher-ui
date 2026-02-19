@@ -39,12 +39,7 @@ const Actions = ({
     connectorId: connection_id,
   });
 
-  // Get schema status - rely on global WS update via cache
-  const { status: schemaStatus } = useUpdateSchemaStatus(
-    connection_id,
-    true,
-    false, // No polling, rely on WS
-  );
+  const { status: schemaStatus } = useUpdateSchemaStatus(connection_id, true);
 
   // Track if schema update/refresh is in progress via WebSocket or API
   const isSchemaOperationInProgress = schemaStatus?.is_in_progress || false;
@@ -135,7 +130,6 @@ const Actions = ({
                       refetchType: "active",
                     });
                   }, 500);
-                  toaster.success({ title: "Schema refreshed successfully" });
                 },
                 onError: () => {
                   setActiveOperation(null);

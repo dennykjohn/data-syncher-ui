@@ -28,6 +28,7 @@ const useFetchConnectorConfig = ({
     queryKey: ["connectorConfig", id],
     queryFn: () => fetchConnectorConfig({ type, id }),
     enabled: !!id && !!type,
+    staleTime: 30_000,
   });
 };
 

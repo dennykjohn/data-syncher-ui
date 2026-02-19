@@ -116,7 +116,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
 
   const valuesRef = useRef(values);
-  const defaultValuesRef = useRef(defaultValues);
+  const defaultValuesSerializedRef = useRef<string | null>(
+    defaultValues ? JSON.stringify(defaultValues) : null,
+  );
+  const isDirtyRef = useRef(false);
 
   useEffect(() => {
     valuesRef.current = values;
@@ -124,26 +127,30 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   }, [values, onValuesChange]);
 
   useEffect(() => {
-    if (defaultValues && defaultValuesRef.current !== defaultValues) {
-      defaultValuesRef.current = defaultValues;
-      startTransition(() => {
-        setValues((prev) => {
-          const updated = { ...prev };
-          schema.forEach((field) => {
-            if (defaultValues[field.name] !== undefined) {
-              updated[field.name] = defaultValues[field.name];
-            }
-          });
-          // Also update hidden fields
-          HIDDEN_FIELDS.forEach((fieldName) => {
-            if (defaultValues[fieldName] !== undefined) {
-              updated[fieldName] = defaultValues[fieldName];
-            }
-          });
-          return updated;
+    if (!defaultValues) return;
+
+    const incoming = JSON.stringify(defaultValues);
+    if (incoming === defaultValuesSerializedRef.current) return;
+    defaultValuesSerializedRef.current = incoming;
+
+    if (isDirtyRef.current) return;
+
+    startTransition(() => {
+      setValues((prev) => {
+        const updated = { ...prev };
+        schema.forEach((field) => {
+          if (defaultValues[field.name] !== undefined) {
+            updated[field.name] = defaultValues[field.name];
+          }
         });
+        HIDDEN_FIELDS.forEach((fieldName) => {
+          if (defaultValues[fieldName] !== undefined) {
+            updated[fieldName] = defaultValues[fieldName];
+          }
+        });
+        return updated;
       });
-    }
+    });
   }, [defaultValues, schema]);
 
   const handleChange = (
@@ -159,6 +166,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       console.warn(`Attempted to change read-only field: ${name}`);
       return;
     }
+
+    // Mark the form as dirty so the defaultValues effect doesn't overwrite
+    // the user's in-progress edits during a background refetch.
+    isDirtyRef.current = true;
 
     setValues((prev) => {
       const newValues = { ...prev, [name]: value };
@@ -247,6 +258,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
         normalizedValues[key] = value;
       }
     });
+
+    // Reset dirty flag so the next defaultValues update (fresh server data)
+    // is allowed to sync into the form after the successful save.
+    isDirtyRef.current = false;
 
     onSubmit(normalizedValues as Record<string, unknown>);
   };

@@ -22,16 +22,13 @@ const ReverseSchema = () => {
 
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
 
-  const {
-    data: reverseSchemaData,
-    isLoading,
-    isFetching,
-  } = useFetchReverseSchema(context.connection_id);
+  const { data: reverseSchemaData, isLoading } = useFetchReverseSchema(
+    context.connection_id,
+  );
 
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
     true,
-    false,
   );
 
   const { status: schemaStatus } = useUpdateSchemaStatus(
@@ -117,14 +114,10 @@ const ReverseSchema = () => {
         style={{ overflow: "visible" }}
         w="100%"
       >
-        <Source
-          reverseSchemaData={reverseSchemaData || null}
-          isFetching={isFetching}
-        />
+        <Source reverseSchemaData={reverseSchemaData || null} />
         <Destination
           onDrop={handleDrop}
           reverseSchemaData={reverseSchemaData || null}
-          isFetching={isFetching}
         />
         <Mapped
           ref={mappedRef}

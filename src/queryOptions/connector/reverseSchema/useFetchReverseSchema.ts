@@ -24,9 +24,9 @@ export default function useFetchReverseSchema(id: number) {
     queryKey: ["ReverseSchema", id],
     queryFn: () => fetchReverseSchema(id),
     enabled: !!id,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: "always",
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
   });
 }
 
