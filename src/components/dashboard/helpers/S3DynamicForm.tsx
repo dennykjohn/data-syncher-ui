@@ -374,7 +374,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   }, [currentMappings, currentMultipleFiles]);
 
   const handleClearMapping = () => {
-    defaultValuesRef.current = {};
+    defaultValuesSerializedRef.current = null;
 
     setValues((prev) => ({
       ...prev,
