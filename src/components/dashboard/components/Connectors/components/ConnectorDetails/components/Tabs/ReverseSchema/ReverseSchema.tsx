@@ -114,7 +114,10 @@ const ReverseSchema = () => {
         style={{ overflow: "visible" }}
         w="100%"
       >
-        <Source reverseSchemaData={reverseSchemaData || null} />
+        <Source
+          reverseSchemaData={reverseSchemaData || null}
+          isFetching={isFetching}
+        />
         <Destination
           onDrop={handleDrop}
           reverseSchemaData={reverseSchemaData || null}
