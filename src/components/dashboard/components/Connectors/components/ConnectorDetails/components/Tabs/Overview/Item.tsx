@@ -91,7 +91,7 @@ const Item = ({
           {message}
         </Text>
         <Flex gap={4} alignItems="center">
-          <Text fontSize="xs" color="gray.500">
+          <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">
             {timestamp ? format(new Date(timestamp), dateTimeFormat) : ""}
           </Text>
           <Text fontSize="xs" color="gray.500">

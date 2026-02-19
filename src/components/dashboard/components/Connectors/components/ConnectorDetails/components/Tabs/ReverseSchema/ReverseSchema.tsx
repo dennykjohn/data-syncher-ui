@@ -18,17 +18,9 @@ import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 
 const ReverseSchema = () => {
   const context = useOutletContext<Connector>();
-  const queryClient = useQueryClient();
   const mappedRef = useRef<MappedRef>(null);
 
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
-
-  useEffect(() => {
-    // Strict refresh: invalidate on mount to ensure we always get fresh source tables
-    queryClient.invalidateQueries({
-      queryKey: ["ReverseSchema", context.connection_id],
-    });
-  }, [context.connection_id, queryClient]);
 
   const {
     data: reverseSchemaData,
@@ -39,13 +31,36 @@ const ReverseSchema = () => {
   const { data: tableStatusData } = useFetchTableStatus(
     context.connection_id,
     true,
-    false, // Stop aggressive polling, rely on WS
+    false,
   );
 
   const { status: schemaStatus } = useUpdateSchemaStatus(
     context.connection_id,
     true,
   );
+
+  const queryClient = useQueryClient();
+  const isCheckingSchemaStatus = !!schemaStatus?.is_in_progress;
+  const prevIsCheckingRef = useRef(false);
+
+  // Track the transition from in_progress=true to in_progress=false
+  useEffect(() => {
+    if (isCheckingSchemaStatus && !prevIsCheckingRef.current) {
+      prevIsCheckingRef.current = true;
+    } else if (!isCheckingSchemaStatus && prevIsCheckingRef.current) {
+      // Transition from true to false: schema refresh just finished
+      prevIsCheckingRef.current = false;
+      // Refetch the reverse schema data to show updated source and destination tables
+      queryClient.invalidateQueries({
+        queryKey: ["ReverseSchema", context.connection_id],
+      });
+      queryClient.refetchQueries({
+        queryKey: ["ReverseSchema", context.connection_id],
+      });
+    } else if (!isCheckingSchemaStatus) {
+      prevIsCheckingRef.current = false;
+    }
+  }, [isCheckingSchemaStatus, context.connection_id, queryClient]);
 
   const isRefreshSchemaInProgress = useIsMutating({
     mutationKey: ["refreshSchema", context.connection_id],
@@ -102,7 +117,10 @@ const ReverseSchema = () => {
         style={{ overflow: "visible" }}
         w="100%"
       >
-        <Source reverseSchemaData={reverseSchemaData || null} />
+        <Source
+          reverseSchemaData={reverseSchemaData || null}
+          isFetching={isFetching}
+        />
         <Destination
           onDrop={handleDrop}
           reverseSchemaData={reverseSchemaData || null}

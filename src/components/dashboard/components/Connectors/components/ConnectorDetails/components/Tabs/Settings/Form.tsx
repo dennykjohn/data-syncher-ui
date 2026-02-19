@@ -53,7 +53,13 @@ const Form = (props: Connector) => {
     time_frequency: time_frequency ?? "",
     safety_interval: safety_interval ?? "",
     execution_order: execution_order ?? "",
-    chunk_count: typeof chunk_count === "number" ? chunk_count : undefined,
+    chunk_count:
+      typeof chunk_count === "number"
+        ? Math.min(
+            Math.max(chunk_count, dst_min_count ?? 0),
+            dst_max_count ?? 1000000,
+          )
+        : (dst_min_count ?? 10),
   };
 
   const [formState, dispatch] = useReducer(reducer, initialFormState);
@@ -170,10 +176,16 @@ const Form = (props: Connector) => {
             max={dst_max_count ?? 1000000}
             value={String(formState.chunk_count ?? 10)}
             onValueChange={(e) => {
+              const value = Number(e.value);
+              if (isNaN(value)) return;
+
+              const min = dst_min_count ?? 1;
+              const max = dst_max_count ?? 1000000;
+
               dispatch({
                 type: "SET_FIELD",
                 field: "chunk_count",
-                value: Number(e.value),
+                value: Math.min(Math.max(value, min), max),
               });
             }}
           >

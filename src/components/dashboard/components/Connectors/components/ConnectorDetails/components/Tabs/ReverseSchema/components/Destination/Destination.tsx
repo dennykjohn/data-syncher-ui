@@ -53,9 +53,12 @@ const Destination = (props: DestinationProps) => {
       overflow="hidden"
     >
       <Flex mb={4} justifyContent="space-between" alignItems="center">
-        <Text fontSize="sm" fontWeight="semibold">
-          Destination Tables
-        </Text>
+        <Flex alignItems="center" gap={2}>
+          <Text fontSize="sm" fontWeight="semibold">
+            Destination Tables
+          </Text>
+          {isFetching && <LoadingSpinner size="xs" />}
+        </Flex>
       </Flex>
 
       <Flex mb={4}>

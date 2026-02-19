@@ -6,15 +6,17 @@ import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
 
+import LoadingSpinner from "@/components/shared/Spinner";
 import { type ReverseSchemaResponse } from "@/types/connectors";
 
 import { isPrimaryKey } from "../../utils/validation";
 
-const Source = ({
-  reverseSchemaData,
-}: {
+interface SourceProps {
   reverseSchemaData: ReverseSchemaResponse | null;
-}) => {
+  isFetching?: boolean;
+}
+
+const Source = ({ reverseSchemaData, isFetching }: SourceProps) => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -44,15 +46,16 @@ const Source = ({
       borderRadius="lg"
       padding={4}
       bgColor="white"
-      h="100%"
       w="100%"
       maxW="100%"
-      style={{ overflow: "hidden" }}
     >
       <Flex mb={4} justifyContent="space-between" alignItems="center">
-        <Text fontSize="sm" fontWeight="semibold">
-          Source Tables
-        </Text>
+        <Flex alignItems="center" gap={2}>
+          <Text fontSize="sm" fontWeight="semibold">
+            Source Tables
+          </Text>
+          {isFetching && <LoadingSpinner size="xs" />}
+        </Flex>
       </Flex>
 
       <Flex mb={4}>
@@ -68,19 +71,15 @@ const Source = ({
 
       {!filteredTables?.length && (
         <Flex direction="column" alignItems="center">
-          <Text>No Source Tables available</Text>
+          {isFetching ? (
+            <LoadingSpinner />
+          ) : (
+            <Text>No Source Tables available</Text>
+          )}
         </Flex>
       )}
 
-      <Flex
-        direction="column"
-        gap={2}
-        style={{
-          maxHeight: "calc(100vh - 300px)",
-          overflowY: "auto",
-          overflowX: "hidden",
-        }}
-      >
+      <Flex direction="column" gap={2}>
         {filteredTables.map((item) => {
           const { table, table_fields } = item;
           const isEven = filteredTables.indexOf(item) % 2 === 0;
