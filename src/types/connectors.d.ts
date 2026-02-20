@@ -1,6 +1,6 @@
 import { type FieldConfig } from "./form";
 
-export type ConnectorStatus = "A" | "P" | "E" | "L" | "B";
+export type ConnectorStatus = "A" | "P" | "E" | "S" | "B";
 
 export interface CreateConnectionPayload {
   connection_name: string;
