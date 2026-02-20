@@ -116,7 +116,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     if (mappings.length > 0 && !_selectedFileName) {
       setSelectedFileName(mappings[0].fileName);
     }
-  }, [mappings]);
+  }, [mappings, _selectedFileName]);
 
   // Sync state with S3 files when they arrive
   React.useEffect(() => {
