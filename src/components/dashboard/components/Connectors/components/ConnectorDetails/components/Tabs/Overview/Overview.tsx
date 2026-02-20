@@ -5,6 +5,7 @@ import { Box, Flex, Grid, NativeSelect, Text } from "@chakra-ui/react";
 import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
+import { getUiState } from "@/helpers/log";
 import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
