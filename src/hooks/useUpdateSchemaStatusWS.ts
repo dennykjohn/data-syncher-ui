@@ -1,5 +1,6 @@
 import useWebSocket from "react-use-websocket";
 
+import { getWebSocketUrl } from "@/helpers/websocket";
 import { SchemaStatusResponse } from "@/types/connectors";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,9 +16,9 @@ export const useUpdateSchemaStatusWS = (connectionId: number | null) => {
   const isValidId =
     connectionId !== null && !isNaN(connectionId) && connectionId !== 0;
 
-  const socketUrl = isValidId
-    ? `wss://qa.datasyncher.com/ws/update_schema_status/${connectionId}/`
-    : null;
+  const socketUrl = getWebSocketUrl(
+    isValidId ? `/ws/update_schema_status/${connectionId}/` : "",
+  );
 
   useWebSocket(socketUrl, {
     onOpen: () => {},

@@ -1,6 +1,7 @@
 import Cookies from "js-cookie";
 import { Navigate, Outlet, useLocation } from "react-router";
 
+import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
 import useAuth from "@/context/Auth/useAuth";
 import usePermissions from "@/hooks/usePermissions";
@@ -29,6 +30,10 @@ const ProtectedRoute = ({ permission, children }: ProtectedRouteProps) => {
 
   if (!isAuthenticated()) {
     return <Navigate to={ClientRoutes.AUTH} replace />;
+  }
+
+  if (!user) {
+    return <LoadingSpinner />;
   }
 
   // Check trial expiration

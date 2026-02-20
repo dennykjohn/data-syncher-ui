@@ -1,6 +1,7 @@
 import useWebSocket from "react-use-websocket";
 
 import { getUiState } from "@/helpers/log";
+import { getWebSocketUrl } from "@/helpers/websocket";
 import { ConnectorActivityLog, Status } from "@/types/connectors";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,9 +16,9 @@ interface ActivityCache {
 export const useConnectionActivityLogWS = (connectionId: number | null) => {
   const queryClient = useQueryClient();
 
-  const socketUrl = connectionId
-    ? `wss://qa.datasyncher.com/ws/connection_activity_log/${connectionId}/`
-    : null;
+  const socketUrl = getWebSocketUrl(
+    connectionId ? `/ws/connection_activity_log/${connectionId}/` : "",
+  );
 
   useWebSocket(socketUrl, {
     onOpen: () => {},

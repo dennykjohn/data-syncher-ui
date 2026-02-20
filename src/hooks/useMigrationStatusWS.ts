@@ -1,5 +1,6 @@
 import useWebSocket from "react-use-websocket";
 
+import { getWebSocketUrl } from "@/helpers/websocket";
 import { ConnectorActivityDetailResponse } from "@/types/connectors";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -7,9 +8,9 @@ import { useQueryClient } from "@tanstack/react-query";
 export const useMigrationStatusWS = (migrationId: number | null) => {
   const queryClient = useQueryClient();
 
-  const socketUrl = migrationId
-    ? `wss://qa.datasyncher.com/ws/migration_status/${migrationId}/`
-    : null;
+  const socketUrl = getWebSocketUrl(
+    migrationId ? `/ws/migration_status/${migrationId}/` : "",
+  );
 
   useWebSocket(socketUrl, {
     onOpen: () => {},
