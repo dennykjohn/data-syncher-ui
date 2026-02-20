@@ -171,7 +171,7 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
       onMessage,
       onError,
       onClose,
-      shouldReconnect: (closeEvent) => closeEvent.code !== 1000,
+      shouldReconnect: (closeEvent: CloseEvent) => closeEvent.code !== 1000,
       reconnectInterval: 3000,
       reconnectAttempts: 10,
       share: true,
