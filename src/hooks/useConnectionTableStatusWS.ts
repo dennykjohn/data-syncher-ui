@@ -1,5 +1,6 @@
 import useWebSocket from "react-use-websocket";
 
+import { getWebSocketUrl } from "@/helpers/websocket";
 import { ConnectorSelectedTable } from "@/types/connectors";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,9 +25,9 @@ export const useConnectionTableStatusWS = (connectionId: number | null) => {
   const isValidId =
     connectionId !== null && !isNaN(connectionId) && connectionId !== 0;
 
-  const socketUrl = isValidId
-    ? `wss://qa.datasyncher.com/ws/connection_table_status/${connectionId}/`
-    : null;
+  const socketUrl = getWebSocketUrl(
+    isValidId ? `/ws/connection_table_status/${connectionId}/` : "",
+  );
 
   useWebSocket(socketUrl, {
     onOpen: () => {},
