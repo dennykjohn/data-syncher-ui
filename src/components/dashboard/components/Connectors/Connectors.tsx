@@ -27,8 +27,10 @@ const getStatusColor = (status: ConnectorStatus) => {
       return "green";
     case "P":
       return "yellow";
-    case "B":
+    case "E":
       return "red";
+    case "L":
+      return "blue";
     default:
       return "gray";
   }

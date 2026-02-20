@@ -1,3 +1,5 @@
+import { useCallback, useMemo } from "react";
+
 import useWebSocket from "react-use-websocket";
 
 import { getWebSocketUrl } from "@/helpers/websocket";
@@ -12,9 +14,8 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
     migrationId ? `/ws/migration_status/${migrationId}/` : "",
   );
 
-  useWebSocket(socketUrl, {
-    onOpen: () => {},
-    onMessage: (event) => {
+  const onMessage = useCallback(
+    (event: WebSocketEventMap["message"]) => {
       if (!migrationId) return;
 
       const message = JSON.parse(event.data);
@@ -25,12 +26,10 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
         (oldData: ConnectorActivityDetailResponse | undefined) => {
           const updated = { ...(oldData || { tables: [] }), ...message };
 
-          // Preserve tables if backend didn't send them
           if (!message.tables && oldData?.tables) {
             updated.tables = [...oldData.tables];
           }
 
-          // Handle partial table updates (if flat structure used)
           if (message.table_name && updated.tables) {
             const tableIndex = updated.tables.findIndex(
               (t: { table_name: string }) =>
@@ -57,7 +56,6 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
                 ...updated.tables.slice(tableIndex + 1),
               ];
             }
-            // Table not found in cache — skip update
           }
 
           if (message.message && !message.logs) {
@@ -121,14 +119,22 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
         },
       );
     },
-    onError: (error) => {
+    [migrationId, queryClient],
+  );
+
+  const onError = useCallback(
+    (error: WebSocketEventMap["error"]) => {
       if (!migrationId) return;
       console.error(
         `[WS Migration Status] Error for migration ${migrationId}:`,
         error,
       );
     },
-    onClose: (event) => {
+    [migrationId],
+  );
+
+  const onClose = useCallback(
+    (event: WebSocketEventMap["close"]) => {
       if (!migrationId) return;
       // Only log unexpected closes (not normal 1000/1005 no-op closes)
       if (event.code !== 1000 && event.code !== 1005) {
@@ -137,10 +143,23 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
         );
       }
     },
-    shouldReconnect: () => false,
-    reconnectAttempts: 0,
-    share: true,
-  });
+    [migrationId],
+  );
+
+  const options = useMemo(
+    () => ({
+      onOpen: () => {},
+      onMessage,
+      onError,
+      onClose,
+      shouldReconnect: () => false,
+      reconnectAttempts: 0,
+      share: true,
+    }),
+    [onMessage, onError, onClose],
+  );
+
+  useWebSocket(socketUrl, options);
 };
 
 export default useMigrationStatusWS;

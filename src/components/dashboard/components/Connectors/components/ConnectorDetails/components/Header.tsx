@@ -167,7 +167,7 @@ const Header = ({ connector }: { connector: Connector }) => {
 
         {/* Status Buttons */}
         <Flex ml="auto" gap={2}>
-          {(status === "P" || status === "B") && (
+          {(status === "P" || status === "E") && (
             <Button
               colorPalette="yellow"
               size="xs"
