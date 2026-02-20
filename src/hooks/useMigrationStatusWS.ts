@@ -1,9 +1,23 @@
+import { useCallback, useMemo } from "react";
+
 import useWebSocket from "react-use-websocket";
 
 import { getWebSocketUrl } from "@/helpers/websocket";
 import { ConnectorActivityDetailResponse } from "@/types/connectors";
 
 import { useQueryClient } from "@tanstack/react-query";
+
+interface MigrationWSMessage {
+  table_name?: string;
+  status?: string;
+  overall_status?: string;
+  staging_records_count?: number;
+  error_message?: string;
+  message?: string;
+  timestamp?: string;
+  tables?: ConnectorActivityDetailResponse["tables"];
+  logs?: ConnectorActivityDetailResponse["logs"];
+}
 
 export const useMigrationStatusWS = (migrationId: number | null) => {
   const queryClient = useQueryClient();
@@ -12,12 +26,16 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
     migrationId ? `/ws/migration_status/${migrationId}/` : "",
   );
 
-  useWebSocket(socketUrl, {
-    onOpen: () => {},
-    onMessage: (event) => {
+  const onMessage = useCallback(
+    (event: WebSocketEventMap["message"]) => {
       if (!migrationId) return;
 
-      const message = JSON.parse(event.data);
+      let message: MigrationWSMessage;
+      try {
+        message = JSON.parse(event.data) as MigrationWSMessage;
+      } catch {
+        return;
+      }
       const numericMigrationId = Number(migrationId);
 
       queryClient.setQueryData(
@@ -25,16 +43,15 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
         (oldData: ConnectorActivityDetailResponse | undefined) => {
           const updated = { ...(oldData || { tables: [] }), ...message };
 
-          // Preserve tables if backend didn't send them
           if (!message.tables && oldData?.tables) {
             updated.tables = [...oldData.tables];
           }
 
-          // Handle partial table updates (if flat structure used)
           if (message.table_name && updated.tables) {
+            const tableName = message.table_name;
             const tableIndex = updated.tables.findIndex(
               (t: { table_name: string }) =>
-                t.table_name.toLowerCase() === message.table_name.toLowerCase(),
+                t.table_name.toLowerCase() === tableName.toLowerCase(),
             );
 
             if (tableIndex !== -1) {
@@ -121,14 +138,22 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
         },
       );
     },
-    onError: (error) => {
+    [migrationId, queryClient],
+  );
+
+  const onError = useCallback(
+    (error: WebSocketEventMap["error"]) => {
       if (!migrationId) return;
       console.error(
         `[WS Migration Status] Error for migration ${migrationId}:`,
         error,
       );
     },
-    onClose: (event) => {
+    [migrationId],
+  );
+
+  const onClose = useCallback(
+    (event: WebSocketEventMap["close"]) => {
       if (!migrationId) return;
       // Only log unexpected closes (not normal 1000/1005 no-op closes)
       if (event.code !== 1000 && event.code !== 1005) {
@@ -137,10 +162,25 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
         );
       }
     },
-    shouldReconnect: () => false,
-    reconnectAttempts: 0,
-    share: true,
-  });
+    [migrationId],
+  );
+
+  const options = useMemo(
+    () => ({
+      onOpen: () => {},
+      onMessage,
+      onError,
+      onClose,
+      shouldReconnect: (closeEvent: CloseEvent) => closeEvent.code !== 1000,
+      reconnectInterval: 3000,
+      reconnectAttempts: 10,
+      share: true,
+      retryOnError: true,
+    }),
+    [onMessage, onError, onClose],
+  );
+
+  useWebSocket(socketUrl, options);
 };
 
 export default useMigrationStatusWS;

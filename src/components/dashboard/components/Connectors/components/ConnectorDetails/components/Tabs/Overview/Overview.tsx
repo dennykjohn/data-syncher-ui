@@ -5,6 +5,7 @@ import { Box, Flex, Grid, NativeSelect, Text } from "@chakra-ui/react";
 import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
+import { getUiState } from "@/helpers/log";
 import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
@@ -69,11 +70,17 @@ const Overview = () => {
       ? activeLog.log_id
       : undefined;
 
-  // Only connect WS for in-progress migrations — not for historical completed/failed logs
+  // Only connect WS for in-progress migrations, not historical completed/failed logs.
+  const activeStatus = String(activeLog?.status ?? "").toLowerCase();
+  const activeUiState = getUiState(
+    activeLog?.ui_state,
+    activeLog?.status,
+    activeLog?.message,
+  );
   const isLogInProgress =
-    activeLog?.status === "P" ||
-    (typeof activeLog?.ui_state === "string" &&
-      activeLog.ui_state.toLowerCase().includes("progress"));
+    ["p", "i", "in_progress", "running"].includes(activeStatus) ||
+    activeUiState === "in_progress" ||
+    activeUiState.includes("progress");
 
   const migrationIdForWS =
     migrationIdToFetch && isLogInProgress ? migrationIdToFetch : null;

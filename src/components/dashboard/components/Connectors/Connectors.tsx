@@ -27,8 +27,10 @@ const getStatusColor = (status: ConnectorStatus) => {
       return "green";
     case "P":
       return "yellow";
-    case "B":
+    case "E":
       return "red";
+    case "L":
+      return "blue";
     default:
       return "gray";
   }
@@ -96,8 +98,10 @@ const columns: Column<ConnectorTableItem>[] = [
               return "Active";
             case "P":
               return "Paused";
-            case "B":
-              return "Broken";
+            case "E":
+              return "Error";
+            case "L":
+              return "Syncing";
             default:
               return "Unknown";
           }

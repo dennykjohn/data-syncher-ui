@@ -3,7 +3,18 @@ export const getUiState = (
   status: string | undefined | null,
   message: string | undefined | null,
 ): string => {
-  if (uiState) return uiState.toLowerCase();
+  if (uiState) {
+    const normalizedUiState = uiState.toLowerCase();
+    if (["s", "success", "completed"].includes(normalizedUiState))
+      return "success";
+    if (["e", "error", "failed"].includes(normalizedUiState)) return "error";
+    if (["p", "i", "in_progress", "running"].includes(normalizedUiState))
+      return "in_progress";
+    if (["w", "warning"].includes(normalizedUiState)) return "warning";
+    if (["paused", "active"].includes(normalizedUiState))
+      return normalizedUiState;
+    return normalizedUiState;
+  }
 
   const lowerStatus = (status || "").toLowerCase();
   const lowerMessage = (message || "").toLowerCase();
@@ -12,8 +23,12 @@ export const getUiState = (
   if (lowerMessage.includes("paused")) return "paused";
   if (lowerMessage.includes("active")) return "active";
 
-  // Explicit warning status check (prioritize over "failed" text in message)
-  if (["w", "warning", "p"].includes(lowerStatus)) return "warning";
+  // Explicit status checks
+  if (["s", "success", "completed"].includes(lowerStatus)) return "success";
+  if (["e", "error", "failed"].includes(lowerStatus)) return "error";
+  if (["p", "i", "in_progress", "running"].includes(lowerStatus))
+    return "in_progress";
+  if (["w", "warning"].includes(lowerStatus)) return "warning";
 
   // Check for error/failure in message first to avoid overriding with "in_progress" if keywords overlap
   if (lowerMessage.includes("failed") || lowerMessage.includes("error"))
@@ -32,10 +47,6 @@ export const getUiState = (
   )
     return "in_progress";
 
-  // Explicit status checks
-  if (["s", "success", "completed"].includes(lowerStatus)) return "success";
-  if (["e", "error", "failed"].includes(lowerStatus)) return "error";
-
   if (
     lowerMessage.includes("completed successfully") ||
     lowerMessage.includes("updated fields") ||
@@ -46,10 +57,6 @@ export const getUiState = (
     lowerMessage.includes("fetch tables completed")
   )
     return "success";
-
-  // Ambiguous status checks
-  if (["running", "in_progress", "i"].includes(lowerStatus))
-    return "in_progress";
 
   // Low priority in-progress checks
   if (lowerMessage.includes("processing") || lowerMessage.includes("started"))
