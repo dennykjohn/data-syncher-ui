@@ -168,7 +168,7 @@ const Header = ({ connector }: { connector: Connector }) => {
 
         {/* Status Buttons */}
         <Flex ml="auto" gap={2}>
-          {status === "L" && (
+          {status === "S" && (
             <Button colorPalette="blue" size="xs" variant="solid" disabled>
               <MdSync />
               Syncing
