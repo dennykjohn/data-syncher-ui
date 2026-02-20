@@ -81,17 +81,29 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         sameSite: "Strict",
       });
 
+      // Fetch latest profile so permissions/role-based redirects are stable.
+      let profile = user;
+      try {
+        const { data }: { data: User } = await AxiosInstance({
+          method: "GET",
+          url: ServerRoutes.auth.profile(),
+        });
+        profile = data;
+      } catch (error) {
+        console.error("Failed to fetch profile after login:", error);
+      }
+
       setAuthState({
         isAuthenticated: true,
-        user: user,
+        user: profile,
         access_token,
         refresh_token,
       });
-
-      // Redirect to Dashboard after successful login
-      window.location.href = ClientRoutes.DASHBOARD;
     } catch (error) {
       console.error("Login failed:", error);
+      Cookies.remove("access_token");
+      Cookies.remove("refresh_token");
+      throw error;
     }
   };
 

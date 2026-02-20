@@ -7,6 +7,18 @@ import { ConnectorActivityDetailResponse } from "@/types/connectors";
 
 import { useQueryClient } from "@tanstack/react-query";
 
+interface MigrationWSMessage {
+  table_name?: string;
+  status?: string;
+  overall_status?: string;
+  staging_records_count?: number;
+  error_message?: string;
+  message?: string;
+  timestamp?: string;
+  tables?: ConnectorActivityDetailResponse["tables"];
+  logs?: ConnectorActivityDetailResponse["logs"];
+}
+
 export const useMigrationStatusWS = (migrationId: number | null) => {
   const queryClient = useQueryClient();
 
@@ -18,7 +30,12 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
     (event: WebSocketEventMap["message"]) => {
       if (!migrationId) return;
 
-      const message = JSON.parse(event.data);
+      let message: MigrationWSMessage;
+      try {
+        message = JSON.parse(event.data) as MigrationWSMessage;
+      } catch {
+        return;
+      }
       const numericMigrationId = Number(migrationId);
 
       queryClient.setQueryData(
@@ -31,9 +48,10 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
           }
 
           if (message.table_name && updated.tables) {
+            const tableName = message.table_name;
             const tableIndex = updated.tables.findIndex(
               (t: { table_name: string }) =>
-                t.table_name.toLowerCase() === message.table_name.toLowerCase(),
+                t.table_name.toLowerCase() === tableName.toLowerCase(),
             );
 
             if (tableIndex !== -1) {
@@ -153,9 +171,11 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
       onMessage,
       onError,
       onClose,
-      shouldReconnect: () => false,
-      reconnectAttempts: 0,
+      shouldReconnect: (closeEvent) => closeEvent.code !== 1000,
+      reconnectInterval: 3000,
+      reconnectAttempts: 10,
       share: true,
+      retryOnError: true,
     }),
     [onMessage, onError, onClose],
   );

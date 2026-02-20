@@ -5,7 +5,7 @@ export type LoginResponse = {
 };
 
 export interface AuthContextType {
-  login: (_arg0: LoginResponse) => void;
+  login: (_arg0: LoginResponse) => Promise<void>;
   logout: () => void;
   authState: AuthState;
 }

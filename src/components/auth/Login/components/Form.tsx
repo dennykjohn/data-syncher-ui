@@ -57,7 +57,8 @@ export default function Form() {
         url: ServerRoutes.auth.login(),
         data,
       });
-      login(respData);
+      await login(respData);
+      navigate(ClientRoutes.DASHBOARD, { replace: true });
     } catch {
       setHasError(true);
       setIsLoading(false);

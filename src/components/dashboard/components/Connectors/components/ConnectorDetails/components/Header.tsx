@@ -4,6 +4,7 @@ import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
 
 import { CiPause1 } from "react-icons/ci";
 import { IoMdCheckmark } from "react-icons/io";
+import { MdErrorOutline, MdSync } from "react-icons/md";
 
 import Arrow from "@/assets/images/arrow-cool-down.svg";
 import {
@@ -167,7 +168,25 @@ const Header = ({ connector }: { connector: Connector }) => {
 
         {/* Status Buttons */}
         <Flex ml="auto" gap={2}>
-          {(status === "P" || status === "E") && (
+          {status === "L" && (
+            <Button colorPalette="blue" size="xs" variant="solid" disabled>
+              <MdSync />
+              Syncing
+            </Button>
+          )}
+          {status === "E" && (
+            <Button
+              colorPalette="red"
+              size="xs"
+              variant="solid"
+              loading={isPending}
+              onClick={() => toggleConnectionStatus()}
+            >
+              <MdErrorOutline />
+              Error
+            </Button>
+          )}
+          {status === "P" && (
             <Button
               colorPalette="yellow"
               size="xs"

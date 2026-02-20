@@ -98,8 +98,10 @@ const columns: Column<ConnectorTableItem>[] = [
               return "Active";
             case "P":
               return "Paused";
-            case "B":
-              return "Broken";
+            case "E":
+              return "Error";
+            case "L":
+              return "Syncing";
             default:
               return "Unknown";
           }
