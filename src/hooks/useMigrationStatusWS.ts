@@ -56,6 +56,7 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
                 ...updated.tables.slice(tableIndex + 1),
               ];
             }
+            // Table not found in cache — skip update
           }
 
           if (message.message && !message.logs) {
