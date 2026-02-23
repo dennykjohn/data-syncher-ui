@@ -352,6 +352,7 @@ const S3ConnectorConfiguration = ({
         defaultValues={s3DefaultValues}
         mode={mode}
         sourceName={sourceName}
+        connectionId={Number(connectionId)}
       />
     </Flex>
   );

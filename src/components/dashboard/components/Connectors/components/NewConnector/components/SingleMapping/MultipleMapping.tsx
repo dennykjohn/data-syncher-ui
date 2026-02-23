@@ -28,6 +28,7 @@ interface MultipleMappingProps {
   onCancel?: () => void;
   loading?: boolean;
   readOnly?: boolean;
+  connectionId?: number;
 }
 
 const MultipleMapping: React.FC<MultipleMappingProps> = ({
@@ -38,15 +39,25 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
   onCancel,
   loading: saveLoading,
   readOnly = false,
+  connectionId,
 }) => {
   const [tableName, setTableName] = useState(initialTableName);
-  const [prefix, setPrefix] = useState("");
+  const [prefix, setPrefix] = useState(
+    (formValues?.multi_files_prefix as string) || "",
+  );
   const [shouldFetchPreview, setShouldFetchPreview] = useState(false);
+  // useState instead of useRef so the value change triggers a re-render.
+  // useRef cannot be read during render (inside useMemo) per ESLint react-hooks/refs.
+  const [hasEverPreviewed, setHasEverPreviewed] = useState(false);
 
-  const hasRequiredCreds =
-    !!formValues?.s3_bucket &&
-    !!formValues?.aws_access_key_id &&
-    !!formValues?.aws_secret_access_key;
+  const hasRequiredCreds = useMemo(() => {
+    if (connectionId) return true;
+    return (
+      !!formValues?.s3_bucket &&
+      !!formValues?.aws_access_key_id &&
+      !!formValues?.aws_secret_access_key
+    );
+  }, [formValues, connectionId]);
 
   // Preview pattern params for server-side filtering
   const previewParams = useMemo(() => {
@@ -60,8 +71,9 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       base_folder_path: formValues?.base_folder_path as string | undefined,
       file_type: formValues?.file_type as string | undefined,
       multi_files_prefix: prefix.trim(),
+      connection_id: connectionId,
     } as PreviewPatternRequest;
-  }, [hasRequiredCreds, formValues, prefix, shouldFetchPreview]);
+  }, [hasRequiredCreds, formValues, prefix, shouldFetchPreview, connectionId]);
 
   // Fetch matching tables based on pattern (server-side filtering)
   const { data: previewData } = usePreviewPatternTables(
@@ -74,17 +86,37 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
 
   // Derived state for matched tables
   const matchedTables = useMemo(() => {
-    if (prefix.trim() && previewData?.matched_tables) {
+    // If the user has never previewed, show saved files (handles initial edit mode load)
+    if (!hasEverPreviewed) {
+      return initialSelectedFiles;
+    }
+
+    // Once preview has been used:
+    // - Show nothing if prefix is cleared (user reset the filter)
+    if (!prefix.trim()) {
+      return [];
+    }
+
+    // - Show nothing if waiting for user to click Preview again
+    if (!shouldFetchPreview) {
+      return [];
+    }
+
+    // - Show the preview results
+    if (previewData?.matched_tables) {
       return previewData.matched_tables
         .map((t) => t.file_key || t.file_name || t.table)
         .filter((name): name is string => !!name);
-    } else if (prefix.trim() && previewData && !previewData.matched_tables) {
-      return [];
-    } else if (!prefix.trim()) {
-      return initialSelectedFiles;
     }
-    return initialSelectedFiles;
-  }, [prefix, previewData, initialSelectedFiles]);
+
+    return [];
+  }, [
+    previewData,
+    initialSelectedFiles,
+    shouldFetchPreview,
+    prefix,
+    hasEverPreviewed,
+  ]);
 
   const handleSave = () => {
     onSave({
@@ -180,6 +212,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                   onClick={() => {
                     // Trigger the preview API call
                     if (tableName.trim() && prefix.trim()) {
+                      setHasEverPreviewed(true);
                       setShouldFetchPreview(true);
                     }
                   }}
@@ -319,7 +352,10 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
           <Button
             colorPalette="brand"
             onClick={handleSave}
-            disabled={!tableName.trim() || matchedTables.length === 0}
+            disabled={
+              !tableName.trim() ||
+              (!prefix.trim() && matchedTables.length === 0)
+            }
             loading={saveLoading}
           >
             <MdOutlineSave />
