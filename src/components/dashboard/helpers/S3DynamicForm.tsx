@@ -63,6 +63,7 @@ interface S3DynamicFormProps {
   leftButtons?: React.ReactNode;
   rightButtons?: React.ReactNode;
   onValuesChange?: (_values: Record<string, unknown>) => void;
+  connectionId?: number;
 }
 
 // Fields that should always be hidden - these will NEVER be shown
@@ -87,6 +88,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   leftButtons,
   rightButtons,
   onValuesChange,
+  connectionId,
 }) => {
   // Initialize form values from schema and defaultValues
   const initialValues = useMemo(() => {
@@ -172,7 +174,27 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     isDirtyRef.current = true;
 
     setValues((prev) => {
-      const newValues = { ...prev, [name]: value };
+      let newValues = { ...prev, [name]: value };
+
+      // If base_folder_path is changed after file mapping, reset the mapping
+      if (
+        name === "base_folder_path" &&
+        value !== prev.base_folder_path &&
+        (prev.single_file_table_mapping || prev.table_to_files_mapping)
+      ) {
+        newValues = {
+          ...newValues,
+          file_mapping_method: "",
+          mapping_config: "",
+          mapping_id: "",
+          mappings: "",
+          single_file_table_mapping: "",
+          table_to_files_mapping: "",
+          multi_files_table_name: "",
+          multi_files_prefix: "",
+        };
+      }
+
       valuesRef.current = newValues;
       return newValues;
     });
@@ -258,6 +280,20 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
         normalizedValues[key] = value;
       }
     });
+
+    // Normalize base_folder_path: remove leading slash, add trailing slash if not empty
+    if (normalizedValues.base_folder_path) {
+      let basePath = String(normalizedValues.base_folder_path).trim();
+      if (basePath) {
+        if (basePath.startsWith("/")) {
+          basePath = basePath.substring(1);
+        }
+        if (!basePath.endsWith("/")) {
+          basePath += "/";
+        }
+        normalizedValues.base_folder_path = basePath;
+      }
+    }
 
     // Reset dirty flag so the next defaultValues update (fresh server data)
     // is allowed to sync into the form after the successful save.
@@ -519,14 +555,14 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                   Clear Mapping
                 </Button>
               )}
-              {/* Enable button even if read-only, to allow viewing mapping */}
+              {/* Always allow configuring the mapping, even in edit mode */}
               <Button
                 size="xs"
                 variant="outline"
                 onClick={() => setIsMappingModalOpen(true)}
                 disabled={false}
               >
-                {fieldReadOnly ? "View Mapping" : "Configure Mapping"}
+                Configure Mapping
               </Button>
             </Flex>
           )}
@@ -547,6 +583,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             name={field.name}
             value={fieldValue}
             onChange={handleChange}
+            autoComplete="off"
             placeholder={
               !field.depend_on
                 ? field.placeholder || `Enter ${field.label.toLowerCase()}`
@@ -588,6 +625,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             size="sm"
             value={fieldValue}
             onChange={handleChange}
+            autoComplete="off"
             placeholder={
               !field.depend_on
                 ? field.placeholder || `Enter ${field.label.toLowerCase()}`
@@ -624,6 +662,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             size="sm"
             value={fieldValue}
             onChange={handleChange}
+            autoComplete="new-password"
             placeholder={
               !field.depend_on
                 ? field.placeholder || `Enter ${field.label.toLowerCase()}`
@@ -660,6 +699,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
           size="sm"
           value={fieldValue}
           onChange={handleChange}
+          autoComplete="off"
           placeholder={
             !field.depend_on
               ? field.placeholder || `Enter ${field.label.toLowerCase()}`
@@ -724,42 +764,44 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
   return (
     <>
-      <VStack
-        gap={3}
-        align="stretch"
-        as="form"
-        maxW="lg"
-        opacity={isMappingModalOpen ? 0.5 : 1}
-        pointerEvents={isMappingModalOpen ? "none" : "auto"}
-        transition="opacity 0.2s"
-      >
-        {renderFieldsWithDependencies()}
-        <Flex justifyContent="space-between">
-          <Flex gap={4}>
-            {handleBackButtonClick && (
-              <Button variant="outline" onClick={handleBackButtonClick}>
-                <IoMdArrowBack />
-                Back
-              </Button>
-            )}
-            {leftButtons}
+      <form autoComplete="off" style={{ display: "contents" }}>
+        <VStack
+          gap={3}
+          align="stretch"
+          as="div"
+          maxW="lg"
+          opacity={isMappingModalOpen ? 0.5 : 1}
+          pointerEvents={isMappingModalOpen ? "none" : "auto"}
+          transition="opacity 0.2s"
+        >
+          {renderFieldsWithDependencies()}
+          <Flex justifyContent="space-between">
+            <Flex gap={4}>
+              {handleBackButtonClick && (
+                <Button variant="outline" onClick={handleBackButtonClick}>
+                  <IoMdArrowBack />
+                  Back
+                </Button>
+              )}
+              {leftButtons}
+            </Flex>
+            <Flex gap={4}>
+              {rightButtons}
+              {!hideSubmitButton && (
+                <Button
+                  colorPalette="brand"
+                  onClick={handleSubmit}
+                  loading={loading}
+                  disabled={loading}
+                >
+                  <MdOutlineSave />
+                  {mode === "create" ? "Create" : "Save"}
+                </Button>
+              )}
+            </Flex>
           </Flex>
-          <Flex gap={4}>
-            {rightButtons}
-            {!hideSubmitButton && (
-              <Button
-                colorPalette="brand"
-                onClick={handleSubmit}
-                loading={loading}
-                disabled={loading}
-              >
-                <MdOutlineSave />
-                {mode === "create" ? "Create" : "Save"}
-              </Button>
-            )}
-          </Flex>
-        </Flex>
-      </VStack>
+        </VStack>
+      </form>
 
       {isMappingModalOpen && (
         <Dialog.Root open={isMappingModalOpen} closeOnInteractOutside={false}>
@@ -776,19 +818,18 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                   <SingleMapping
                     formValues={values}
                     mappings={currentMappings}
+                    connectionId={connectionId}
                     onCancel={handleFileMappingCancel}
                     onSaveMappings={handleFileMappingSave}
                     loading={loading}
-                    readOnly={
-                      schema.find((f) => f.name === "file_mapping_method")
-                        ?.read_only === true
-                    }
+                    readOnly={false}
                   />
                 ) : isMultiFilesSingleTable ? (
                   <MultipleMapping
                     formValues={values}
                     tableName={values.multi_files_table_name || ""}
                     selectedFiles={currentMultipleFiles}
+                    connectionId={connectionId}
                     onSave={(data) => {
                       // Format table_to_files_mapping as object: { "TABLE_NAME": ["file1", "file2"] }
                       const tableToFilesMapping = {

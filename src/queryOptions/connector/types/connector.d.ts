@@ -1,4 +1,5 @@
 export interface S3ListFilesRequest {
+  connection_id?: number;
   s3_bucket: string;
   aws_access_key_id: string;
   aws_secret_access_key: string;
@@ -19,6 +20,7 @@ export interface S3ListFilesResponse {
 }
 
 export interface PreviewPatternRequest {
+  connection_id?: number;
   s3_bucket: string;
   aws_access_key_id: string;
   aws_secret_access_key: string;

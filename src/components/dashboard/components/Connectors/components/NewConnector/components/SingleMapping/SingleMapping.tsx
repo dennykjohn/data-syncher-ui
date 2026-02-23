@@ -32,6 +32,7 @@ interface SingleMappingProps {
   onSaveMappings: (_mappings: Mapping[]) => void;
   loading?: boolean;
   readOnly?: boolean;
+  connectionId?: number;
 }
 
 const extractTableName = (fileName: string) =>
@@ -44,6 +45,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
   onSaveMappings,
   loading,
   readOnly = false,
+  connectionId,
 }) => {
   const [searchFiles, setSearchFiles] = useState("");
   const [searchMappings, setSearchMappings] = useState("");
@@ -54,13 +56,14 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     null,
   );
 
-  const hasRequiredCreds = useMemo(
-    () =>
+  const hasRequiredCreds = useMemo(() => {
+    if (connectionId) return true;
+    return (
       !!formValues?.s3_bucket &&
       !!formValues?.aws_access_key_id &&
-      !!formValues?.aws_secret_access_key,
-    [formValues],
-  );
+      !!formValues?.aws_secret_access_key
+    );
+  }, [formValues, connectionId]);
 
   const s3Params = useMemo(() => {
     if (!hasRequiredCreds) return null;
@@ -70,6 +73,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       aws_secret_access_key: (formValues.aws_secret_access_key || "").trim(),
       base_folder_path: formValues.base_folder_path || undefined,
       file_type: formValues.file_type || undefined,
+      connection_id: connectionId,
     } as S3ListFilesRequest;
   }, [
     hasRequiredCreds,
@@ -78,6 +82,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     formValues.aws_secret_access_key,
     formValues.base_folder_path,
     formValues.file_type,
+    connectionId,
   ]);
 
   const { data: s3Files, isPending: isS3Loading } = useFetchS3Files(

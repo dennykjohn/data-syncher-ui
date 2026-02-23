@@ -19,16 +19,25 @@ export const getUiState = (
   const lowerStatus = (status || "").toLowerCase();
   const lowerMessage = (message || "").toLowerCase();
 
-  // Message content checks (Override ambiguous status codes like "P", and even "Success" for Paused/Active states)
+  // Strict check for status 'p' (Partial/Paused) to show warning symbol as requested
+  if (lowerStatus === "p") return "warning";
+
+  // Message content checks (Override ambiguous status codes like "Success" for Paused/Active states)
   if (lowerMessage.includes("paused")) return "paused";
   if (lowerMessage.includes("active")) return "active";
 
   // Check for error/failure in message early to override ambiguous status codes
   if (lowerMessage.includes("failed") || lowerMessage.includes("error")) {
-    if (
-      lowerMessage.includes("successful") ||
-      lowerMessage.includes("completed")
-    ) {
+    const isPartialSuccess =
+      (lowerMessage.includes("successful") ||
+        lowerMessage.includes("completed")) &&
+      !lowerMessage.includes("0 tables") &&
+      !lowerMessage.includes("0/0 successful") &&
+      !lowerMessage.includes("0/1 successful") &&
+      !lowerMessage.includes(": 0 successful") &&
+      !lowerMessage.includes(" 0 successful");
+
+    if (isPartialSuccess) {
       return "warning";
     }
     return "error";
@@ -39,7 +48,7 @@ export const getUiState = (
   if (["e", "error", "failed"].includes(lowerStatus)) return "error";
   if (["i", "in_progress", "running"].includes(lowerStatus))
     return "in_progress";
-  if (["p", "w", "warning"].includes(lowerStatus)) return "warning";
+  if (["w", "warning"].includes(lowerStatus)) return "warning";
 
   // High priority in-progress overrides (Specific requested phrases)
   if (
