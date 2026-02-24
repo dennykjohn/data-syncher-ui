@@ -12,6 +12,8 @@ interface MigrationWSMessage {
   status?: string;
   overall_status?: string;
   staging_records_count?: number;
+  start_time?: string | null;
+  end_time?: string | null;
   error_message?: string;
   message?: string;
   timestamp?: string;
@@ -41,9 +43,39 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
       queryClient.setQueryData(
         ["connectorActivityDetails", numericMigrationId, undefined, undefined],
         (oldData: ConnectorActivityDetailResponse | undefined) => {
-          const updated = { ...(oldData || { tables: [] }), ...message };
+          // Spread top-level fields but handle 'tables' separately to avoid overwriting
+          const { tables: _wsTablesIgnored, ...messageWithoutTables } = message;
+          const updated = {
+            ...(oldData || { tables: [] }),
+            ...messageWithoutTables,
+          };
 
-          if (!message.tables && oldData?.tables) {
+          // Preserve existing tables from cache; if WS sends a full tables list,
+          // deep-merge each entry to retain start_time / end_time from cached data.
+          if (message.tables && message.tables.length > 0) {
+            const existingTables = oldData?.tables || [];
+            updated.tables = message.tables.map((wsTable) => {
+              const cached = existingTables.find(
+                (t) =>
+                  t.table_name.toLowerCase() ===
+                  wsTable.table_name.toLowerCase(),
+              );
+              // Merge: cached data first, then WS data on top — preserving times if WS omits them
+              return {
+                ...(cached || {}),
+                ...wsTable,
+                start_time:
+                  wsTable.start_time !== undefined &&
+                  wsTable.start_time !== null
+                    ? wsTable.start_time
+                    : (cached?.start_time ?? null),
+                end_time:
+                  wsTable.end_time !== undefined && wsTable.end_time !== null
+                    ? wsTable.end_time
+                    : (cached?.end_time ?? null),
+              };
+            });
+          } else if (!message.tables && oldData?.tables) {
             updated.tables = [...oldData.tables];
           }
 
@@ -66,6 +98,13 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
               }
               if (message.error_message) {
                 updatedTable.error_message = message.error_message;
+              }
+              // Apply start_time / end_time from WS when explicitly provided
+              if (message.start_time !== undefined) {
+                updatedTable.start_time = message.start_time;
+              }
+              if (message.end_time !== undefined) {
+                updatedTable.end_time = message.end_time;
               }
 
               updated.tables = [
@@ -137,6 +176,32 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
           return updated;
         },
       );
+
+      // When the migration reaches a terminal state, do a fresh fetch after a
+      // short delay so the definitive end_time (written by the backend on
+      // completion) comes through without requiring a manual page refresh.
+      const terminalStatus = (
+        message.overall_status ||
+        message.status ||
+        ""
+      ).toLowerCase();
+      if (
+        terminalStatus.includes("success") ||
+        terminalStatus.includes("completed") ||
+        terminalStatus.includes("failed") ||
+        terminalStatus.includes("error")
+      ) {
+        setTimeout(() => {
+          void queryClient.invalidateQueries({
+            queryKey: [
+              "connectorActivityDetails",
+              numericMigrationId,
+              undefined,
+              undefined,
+            ],
+          });
+        }, 2000); // 2 s buffer for the backend to commit the final record
+      }
     },
     [migrationId, queryClient],
   );

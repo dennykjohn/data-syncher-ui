@@ -7,6 +7,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 interface UpdateConnectionResponse {
   message: string;
   auth_url?: string;
+  requires_primary_key_selection?: boolean;
+  pending_primary_key_tables?: string[];
+  connection_id?: number;
+  source_config_id?: number;
 }
 
 const updateConnectorConfig = async (
