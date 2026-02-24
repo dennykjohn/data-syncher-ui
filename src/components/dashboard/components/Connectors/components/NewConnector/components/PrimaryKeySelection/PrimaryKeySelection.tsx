@@ -27,6 +27,8 @@ interface Column {
 interface TableType {
   name: string;
   columns: Column[];
+  /** When true, primary keys are already set and cannot be changed. */
+  pkLocked?: boolean;
 }
 
 interface SchemaData {
@@ -81,6 +83,10 @@ const PrimaryKeySelection: React.FC<PrimaryKeySelectionProps> = ({
   }, [searchQuery, defaultSchema.tables]);
 
   const togglePrimaryKey = (tableName: string, columnName: string) => {
+    // Don't allow toggling if the table is locked
+    const table = defaultSchema.tables.find((t) => t.name === tableName);
+    if (table?.pkLocked) return;
+
     setPrimaryKeys((prev) => {
       const currentTablePKs = prev[tableName] || {};
 
@@ -233,7 +239,11 @@ const PrimaryKeySelection: React.FC<PrimaryKeySelectionProps> = ({
                       cursor="pointer"
                       onClick={() => setSelectedTable(table.name)}
                     >
-                      <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                      <Text
+                        fontSize="sm"
+                        fontWeight="medium"
+                        color={table.pkLocked ? "gray.400" : "gray.700"}
+                      >
                         {table.name}
                       </Text>
                     </Box>
@@ -288,13 +298,15 @@ const PrimaryKeySelection: React.FC<PrimaryKeySelectionProps> = ({
               fontSize="xs"
               fontWeight="bold"
               textTransform="uppercase"
-              color="gray.500"
+              color={currentTable?.pkLocked ? "gray.400" : "gray.500"}
             >
               Edit Primary Keys
             </Text>
-            <Text fontSize="xs" color="gray.500">
-              {currentTable?.name || "Select a table"}
-            </Text>
+            <Flex align="center" gap={2}>
+              <Text fontSize="xs" color="gray.500">
+                {currentTable?.name || "Select a table"}
+              </Text>
+            </Flex>
           </Flex>
 
           <Box flex={1} overflowY="auto">
@@ -344,17 +356,34 @@ const PrimaryKeySelection: React.FC<PrimaryKeySelectionProps> = ({
                               colorPalette="brand"
                               size="sm"
                               checked={isChecked}
+                              disabled={!!currentTable.pkLocked}
                               onCheckedChange={() =>
+                                !currentTable.pkLocked &&
                                 togglePrimaryKey(currentTable.name, column.name)
                               }
                             >
                               <Checkbox.HiddenInput />
-                              <Checkbox.Control cursor="pointer" />
+                              <Checkbox.Control
+                                cursor={
+                                  currentTable.pkLocked
+                                    ? "not-allowed"
+                                    : "pointer"
+                                }
+                                opacity={currentTable.pkLocked ? 0.5 : 1}
+                              />
                               <Checkbox.Label
                                 fontSize="xs"
                                 fontWeight="medium"
-                                color="gray.600"
-                                cursor="pointer"
+                                color={
+                                  currentTable.pkLocked
+                                    ? "gray.400"
+                                    : "gray.600"
+                                }
+                                cursor={
+                                  currentTable.pkLocked
+                                    ? "not-allowed"
+                                    : "pointer"
+                                }
                               >
                                 Primary key
                               </Checkbox.Label>

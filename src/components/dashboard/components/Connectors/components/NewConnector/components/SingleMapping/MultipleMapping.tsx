@@ -334,7 +334,6 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 <Text fontSize="sm" fontWeight="medium">
                   No files found
                 </Text>
-                <Text fontSize="xs">No files match the prefix "{prefix}"</Text>
               </VStack>
             )}
           </Box>

@@ -12,6 +12,8 @@ export interface S3FileItem {
   file_key?: string;
   size?: number;
   last_modified?: string;
+  already_mapped?: boolean;
+  mapped_table?: string | null;
 }
 
 export interface S3ListFilesResponse {
@@ -84,6 +86,7 @@ export interface TableSuggestion {
   recommended_pk: string;
   use_custom_pk: boolean;
   fallback_to_file_row: boolean;
+  pk_locked: boolean;
 }
 
 export interface SuggestPrimaryKeysResponse {

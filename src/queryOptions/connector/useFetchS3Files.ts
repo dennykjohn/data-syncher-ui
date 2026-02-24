@@ -25,6 +25,6 @@ export default function useFetchS3Files(
   return useQuery<S3ListFilesResponse>({
     queryKey: ["S3Files", data],
     queryFn: () => fetchS3Files(data),
-    enabled: enabled && !!data.s3_bucket,
+    enabled: enabled && (!!data.s3_bucket || !!data.connection_id),
   });
 }

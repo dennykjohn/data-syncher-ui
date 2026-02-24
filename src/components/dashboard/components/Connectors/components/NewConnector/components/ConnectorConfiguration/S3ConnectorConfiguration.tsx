@@ -48,6 +48,15 @@ const S3ConnectorConfiguration = ({
     destination_schema: string;
     form_data: Record<string, string>;
   } | null>(null);
+  // For edit mode: store the last submitted form payload so we can re-submit
+  // it with custom_primary_key once the user finishes primary key selection.
+  const [editPendingPayload, setEditPendingPayload] = useState<{
+    connection_name: string;
+    destination_schema: string;
+    form_data: Record<string, string>;
+  } | null>(null);
+  // Tables that still need a custom primary key (from the update API response).
+  const [pendingKeyTables, setPendingKeyTables] = useState<string[]>([]);
 
   // Query hooks
   const { data: connectorData, isPending: isFetchConnectorByIdPending } =
@@ -64,6 +73,7 @@ const S3ConnectorConfiguration = ({
 
   // Prepare params for suggest primary keys API
   const suggestPrimaryKeysParams = useMemo(() => {
+    // Create mode: pendingFormData holds the full S3 form fields
     if (pendingFormData?.form_data) {
       const formData = pendingFormData.form_data;
       return {
@@ -74,11 +84,37 @@ const S3ConnectorConfiguration = ({
         file_type: formData.file_type,
         ...formData,
       };
-    } else if (createdConnectionId) {
+    }
+    // Edit mode: editPendingPayload holds the full submitted form; send it
+    // together with the connection_id so the API has full context to analyse
+    // only the pending (newly mapped) tables.
+    if (editPendingPayload?.form_data && createdConnectionId) {
+      const formData = editPendingPayload.form_data;
+      return {
+        connection_id: createdConnectionId,
+        s3_bucket: formData.s3_bucket,
+        aws_access_key_id: formData.aws_access_key_id,
+        aws_secret_access_key: formData.aws_secret_access_key,
+        base_folder_path: formData.base_folder_path,
+        file_type: formData.file_type,
+        // Tell the backend which tables still need primary key analysis.
+        ...(pendingKeyTables.length > 0
+          ? { pending_primary_key_tables: pendingKeyTables }
+          : {}),
+        ...formData,
+      };
+    }
+    // Fallback: only connection_id available
+    if (createdConnectionId) {
       return { connection_id: createdConnectionId };
     }
     return null;
-  }, [pendingFormData, createdConnectionId]);
+  }, [
+    pendingFormData,
+    editPendingPayload,
+    pendingKeyTables,
+    createdConnectionId,
+  ]);
 
   // Fetch suggested primary keys when showing primary key selection
   const { data: suggestedPrimaryKeys, isPending: isSuggestPrimaryKeysPending } =
@@ -163,25 +199,31 @@ const S3ConnectorConfiguration = ({
         },
       );
     } else {
-      updateConnectorConfig(
-        {
-          connection_name: connectionName,
-          destination_schema: connectorConfig?.destination_config.name || "",
-          form_data: stringifiedValues,
+      const editPayload = {
+        connection_name: connectionName,
+        destination_schema: connectorConfig?.destination_config.name || "",
+        form_data: stringifiedValues,
+      };
+      updateConnectorConfig(editPayload, {
+        onSuccess: (response) => {
+          if (response.auth_url) {
+            window.location.href = response.auth_url;
+          } else if (response.requires_primary_key_selection) {
+            // Backend says primary key selection is needed for newly mapped tables.
+            setEditPendingPayload(editPayload);
+            setCreatedConnectionId(
+              response.connection_id ?? Number(connectionId),
+            );
+            setPendingKeyTables(response.pending_primary_key_tables ?? []);
+            setShowPrimaryKeySelection(true);
+          } else {
+            toaster.success({
+              title: "S3 Connector updated successfully",
+              description: "The S3 connector has been updated.",
+            });
+          }
         },
-        {
-          onSuccess: (response) => {
-            if (response.auth_url) {
-              window.location.href = response.auth_url;
-            } else {
-              toaster.success({
-                title: "S3 Connector updated successfully",
-                description: "The S3 connector has been updated.",
-              });
-            }
-          },
-        },
-      );
+      });
     }
   };
   // -----------------------------------------------------------------
@@ -230,6 +272,7 @@ const S3ConnectorConfiguration = ({
               "Schema",
             tables: suggestedPrimaryKeys.tables.map((table) => ({
               name: table.table_name,
+              pkLocked: table.pk_locked,
               columns: table.columns.map((col) => ({
                 name: col.column_name,
                 isPrimaryKey: col.is_selected ?? col.is_suggested_pk,
@@ -290,6 +333,7 @@ const S3ConnectorConfiguration = ({
             schemaName: "Schema",
             tables: suggestedPrimaryKeys.tables.map((table) => ({
               name: table.table_name,
+              pkLocked: table.pk_locked,
               columns: table.columns.map((col) => ({
                 name: col.column_name,
                 isPrimaryKey: col.is_selected ?? col.is_suggested_pk,
@@ -301,6 +345,72 @@ const S3ConnectorConfiguration = ({
           }
         : undefined;
 
+      // Edit mode: re-submit config with chosen primary keys
+      if (mode === "edit" && editPendingPayload) {
+        return (
+          <PrimaryKeySelection
+            schemaData={schemaData}
+            loading={isUpdateConnectorConfigPending}
+            onBack={() => {
+              setShowPrimaryKeySelection(false);
+              setCreatedConnectionId(null);
+              setEditPendingPayload(null);
+              setPendingKeyTables([]);
+            }}
+            onSaveAndContinue={(primaryKeys) => {
+              // Merge existing custom_primary_key (for already-configured tables)
+              // with the newly selected keys (for pending tables like LOGS).
+              // New selections win on any key collision.
+              let existingPrimaryKeys: Record<string, string[]> = {};
+              try {
+                const raw = editPendingPayload.form_data.custom_primary_key;
+                if (raw) {
+                  existingPrimaryKeys = JSON.parse(raw) as Record<
+                    string,
+                    string[]
+                  >;
+                }
+              } catch {
+                // ignore parse errors; fall back to empty
+              }
+              const mergedPrimaryKeys: Record<string, string[]> = {
+                ...existingPrimaryKeys,
+                ...primaryKeys,
+              };
+              updateConnectorConfig(
+                {
+                  ...editPendingPayload,
+                  form_data: {
+                    ...editPendingPayload.form_data,
+                    custom_primary_key: JSON.stringify(mergedPrimaryKeys),
+                  },
+                },
+                {
+                  onSuccess: () => {
+                    toaster.success({
+                      title: "S3 Connector updated successfully",
+                      description: "Primary keys have been configured.",
+                    });
+                    setShowPrimaryKeySelection(false);
+                    setCreatedConnectionId(null);
+                    setEditPendingPayload(null);
+                    setPendingKeyTables([]);
+                  },
+                  onError: (error) => {
+                    toaster.error({
+                      title: "Failed to save primary keys",
+                      description:
+                        (error as Error).message || "An error occurred",
+                    });
+                  },
+                },
+              );
+            }}
+          />
+        );
+      }
+
+      // Create mode: navigate away after selecting keys
       return (
         <PrimaryKeySelection
           schemaData={schemaData}
@@ -352,7 +462,7 @@ const S3ConnectorConfiguration = ({
         defaultValues={s3DefaultValues}
         mode={mode}
         sourceName={sourceName}
-        connectionId={Number(connectionId)}
+        connectionId={shouldFetch ? Number(connectionId) : undefined}
       />
     </Flex>
   );

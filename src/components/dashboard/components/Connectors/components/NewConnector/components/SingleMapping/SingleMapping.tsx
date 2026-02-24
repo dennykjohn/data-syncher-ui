@@ -23,6 +23,8 @@ export type Mapping = {
   fileName: string;
   tableName: string;
   isSelected?: boolean;
+  /** True when the backend indicates this mapping is already active and should be locked. */
+  alreadyMapped?: boolean;
 };
 
 interface SingleMappingProps {
@@ -47,11 +49,13 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
   readOnly = false,
   connectionId,
 }) => {
-  const [searchFiles, setSearchFiles] = useState("");
-  const [searchMappings, setSearchMappings] = useState("");
-  const [localMappings, setLocalMappings] = useState<Mapping[]>(
-    mappings.map((m) => ({ ...m, isSelected: m.isSelected ?? true })),
-  );
+  const [localMappings, setLocalMappings] = useState<Mapping[]>(() => {
+    // Initialize with props; scan will reconcile this later
+    return mappings.map((m) => ({
+      ...m,
+      isSelected: m.isSelected ?? true,
+    }));
+  });
   const [_selectedFileName, setSelectedFileName] = useState<string | null>(
     null,
   );
@@ -98,51 +102,41 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     return [];
   }, [s3Files]);
 
-  // Sync state with props when they change
+  const [searchFiles, setSearchFiles] = useState("");
+  const [searchMappings, setSearchMappings] = useState("");
+
+  // 1. Initial selection
   React.useEffect(() => {
-    setLocalMappings((prev) => {
-      // Mappings from props are always selected
-      const propMappings = mappings.map((m) => ({
-        ...m,
-        isSelected: m.isSelected ?? true,
-      }));
-
-      const propFileNames = new Set(propMappings.map((m) => m.fileName));
-
-      // Preserve files that were found via scanning but aren't in props yet,
-      // regardless of their selection state.
-      const remainingScanned = prev.filter(
-        (p) => !propFileNames.has(p.fileName),
-      );
-
-      return [...propMappings, ...remainingScanned];
-    });
-
     if (mappings.length > 0 && !_selectedFileName) {
       setSelectedFileName(mappings[0].fileName);
     }
-  }, [mappings, _selectedFileName]);
+  }, [mappings]);
 
-  // Sync state with S3 files when they arrive
+  // 2. Reconcile state with S3 Scan results: Strictly only show files found in S3
   React.useEffect(() => {
     if (s3TableList.length > 0) {
-      setLocalMappings((prev) => {
-        const existing = new Set(prev.map((m) => m.fileName));
+      setLocalMappings(() => {
+        // Build the current list strictly based on what S3 API returned
+        return s3TableList.map((t) => {
+          const fileName = (t.file_key || t.table) as string;
+          const suggestedTableName = t.table || extractTableName(fileName);
 
-        const additions = s3TableList
-          .filter((t) => {
-            const name = t.file_key || t.table;
-            return name && !existing.has(name);
-          })
-          .map((t) => ({
-            fileName: (t.file_key || t.table) as string,
+          // Check if this file was in the initial mappings (saved configuration)
+          const savedMapping = mappings.find((m) => m.fileName === fileName);
+
+          return {
+            fileName,
+            // Use mapped_table if it exists and it's already mapped, otherwise suggested table name
             tableName:
-              t.table || extractTableName((t.file_key || t.table) as string),
-            isSelected: false,
-          }));
-
-        if (additions.length === 0) return prev;
-        return [...prev, ...additions];
+              t.already_mapped && t.mapped_table
+                ? t.mapped_table
+                : suggestedTableName,
+            // If it was in the saved config OR backend says it's already mapped, select it
+            isSelected: !!savedMapping || !!t.already_mapped,
+            // Lock the mapping based on the correct backend field
+            alreadyMapped: !!t.already_mapped,
+          };
+        });
       });
 
       setSelectedFileName((prev) => {
@@ -153,7 +147,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
         return (firstName as string) || null;
       });
     }
-  }, [s3TableList, mappings.length]);
+  }, [s3TableList, mappings]);
 
   const filteredFiles = useMemo(() => {
     if (!searchFiles.trim()) return localMappings;
@@ -374,42 +368,51 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                   </Text>
                 </VStack>
               ) : (
-                filteredMappings.map((mapping) => (
-                  <Flex
-                    key={mapping.fileName}
-                    align="center"
-                    justify="space-between"
-                    h="44px"
-                    px={4}
-                    bg="white"
-                    borderBottomWidth={1}
-                    borderBottomColor="gray.100"
-                  >
-                    <Text
-                      fontSize="sm"
-                      fontWeight="medium"
-                      truncate
-                      flex="1"
-                      mr={3}
-                      title={mapping.fileName}
+                filteredMappings.map((mapping) => {
+                  const isLocked = !!mapping.alreadyMapped;
+                  return (
+                    <Flex
+                      key={mapping.fileName}
+                      align="center"
+                      justify="space-between"
+                      h="44px"
+                      px={4}
+                      bg={isLocked ? "gray.50" : "white"}
+                      borderBottomWidth={1}
+                      borderBottomColor="gray.100"
                     >
-                      {mapping.fileName}
-                    </Text>
+                      <Text
+                        fontSize="sm"
+                        fontWeight="medium"
+                        truncate
+                        w="100%"
+                        color={isLocked ? "gray.500" : "gray.900"}
+                        title={mapping.fileName}
+                      >
+                        {mapping.fileName}
+                      </Text>
 
-                    <Input
-                      size="sm"
-                      placeholder="Enter table name"
-                      value={mapping.tableName}
-                      onChange={(e) =>
-                        updateTableName(mapping.fileName, e.target.value)
-                      }
-                      disabled={readOnly}
-                      w="280px"
-                      h="32px"
-                      fontSize="sm"
-                    />
-                  </Flex>
-                ))
+                      <Input
+                        size="sm"
+                        placeholder="Enter table name"
+                        value={mapping.tableName}
+                        onChange={(e) =>
+                          !isLocked &&
+                          updateTableName(mapping.fileName, e.target.value)
+                        }
+                        readOnly={isLocked}
+                        disabled={readOnly}
+                        bg={isLocked ? "gray.100" : undefined}
+                        color={isLocked ? "gray.500" : undefined}
+                        cursor={isLocked ? "not-allowed" : undefined}
+                        borderColor={isLocked ? "gray.200" : undefined}
+                        w="280px"
+                        h="32px"
+                        fontSize="sm"
+                      />
+                    </Flex>
+                  );
+                })
               )}
             </Box>
           </Box>

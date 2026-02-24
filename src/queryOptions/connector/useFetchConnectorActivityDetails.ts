@@ -44,6 +44,10 @@ const useFetchConnectorActivityDetails = ({
       return Promise.reject(new Error("Missing required parameters"));
     },
     enabled: !!migrationId || (!!connectionId && !!logId),
+    // Prevent React Query from re-fetching on window focus and overwriting
+    // the WebSocket-patched cache (which has up-to-date end_time values).
+    refetchOnWindowFocus: false,
+    staleTime: 30_000, // treat data as fresh for 30s so WS updates are not clobbered
   });
 };
 

@@ -361,6 +361,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
         const entries = Object.entries(parsed as Record<string, string>);
         if (entries.length === 0) return [];
 
+        // Object format comes from the backend — these are already saved mappings
         return entries.map(([fileName, tableName]) => ({
           fileName,
           tableName: tableName as string,
