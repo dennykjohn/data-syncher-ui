@@ -68,6 +68,7 @@ interface S3DynamicFormProps {
 
 // Fields that should always be hidden - these will NEVER be shown
 const HIDDEN_FIELDS = [
+  "custom_primary",
   "custom_primary_key",
   "single_file_table_mapping",
   "table_to_files_mapping",
