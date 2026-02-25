@@ -204,6 +204,15 @@ const S3ConnectorConfiguration = ({
         destination_schema: connectorConfig?.destination_config.name || "",
         form_data: stringifiedValues,
       };
+
+      // If user chose custom primary key method, show selection UI before updating
+      if (requiresPrimaryKeySelection && !showPrimaryKeySelection) {
+        setEditPendingPayload(editPayload);
+        setCreatedConnectionId(Number(connectionId));
+        setShowPrimaryKeySelection(true);
+        return;
+      }
+
       updateConnectorConfig(editPayload, {
         onSuccess: (response) => {
           if (response.auth_url) {
@@ -275,7 +284,11 @@ const S3ConnectorConfiguration = ({
               pkLocked: table.pk_locked,
               columns: table.columns.map((col) => ({
                 name: col.column_name,
-                isPrimaryKey: col.is_selected ?? col.is_suggested_pk,
+                isPrimaryKey:
+                  table.existing_primary_keys &&
+                  table.existing_primary_keys.length > 0
+                    ? table.existing_primary_keys.includes(col.column_name)
+                    : (col.is_selected ?? col.is_suggested_pk),
                 cardinality: col.uniqueness_score / 100,
                 warning:
                   col.warnings.length > 0 ? col.warnings.join(". ") : undefined,
@@ -296,7 +309,7 @@ const S3ConnectorConfiguration = ({
               ...pendingFormData,
               form_data: {
                 ...formData,
-                custom_primary_key: primaryKeys,
+                custom_primary_key: JSON.stringify(primaryKeys),
               },
             };
 
@@ -336,7 +349,11 @@ const S3ConnectorConfiguration = ({
               pkLocked: table.pk_locked,
               columns: table.columns.map((col) => ({
                 name: col.column_name,
-                isPrimaryKey: col.is_selected ?? col.is_suggested_pk,
+                isPrimaryKey:
+                  table.existing_primary_keys &&
+                  table.existing_primary_keys.length > 0
+                    ? table.existing_primary_keys.includes(col.column_name)
+                    : (col.is_selected ?? col.is_suggested_pk),
                 cardinality: col.uniqueness_score / 100,
                 warning:
                   col.warnings.length > 0 ? col.warnings.join(". ") : undefined,
@@ -365,10 +382,14 @@ const S3ConnectorConfiguration = ({
               try {
                 const raw = editPendingPayload.form_data.custom_primary_key;
                 if (raw) {
-                  existingPrimaryKeys = JSON.parse(raw) as Record<
-                    string,
-                    string[]
-                  >;
+                  if (typeof raw === "string") {
+                    existingPrimaryKeys = JSON.parse(raw) as Record<
+                      string,
+                      string[]
+                    >;
+                  } else if (typeof raw === "object") {
+                    existingPrimaryKeys = raw as Record<string, string[]>;
+                  }
                 }
               } catch {
                 // ignore parse errors; fall back to empty

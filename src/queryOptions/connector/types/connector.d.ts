@@ -87,6 +87,7 @@ export interface TableSuggestion {
   use_custom_pk: boolean;
   fallback_to_file_row: boolean;
   pk_locked: boolean;
+  existing_primary_keys?: string[];
 }
 
 export interface SuggestPrimaryKeysResponse {
