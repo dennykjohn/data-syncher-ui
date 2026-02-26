@@ -64,7 +64,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <form style={{ width: "100%" }} onSubmit={handleSubmit}>
+    <form style={{ width: "100%" }} onSubmit={handleSubmit} autoComplete="off">
       <Flex justifyContent="center" alignItems="center">
         <Fieldset.Root
           size="lg"
@@ -106,6 +106,7 @@ export default function ForgotPassword() {
                 type="email"
                 placeholder="Enter your email id"
                 autoFocus
+                autoComplete="off"
               />
             </Field.Root>
           </Fieldset.Content>

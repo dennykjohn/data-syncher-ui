@@ -210,6 +210,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
               size="sm"
               placeholder="Search source files..."
               value={searchFiles}
+              autoComplete="off"
               onChange={(e) => setSearchFiles(e.target.value)}
               bg="white"
             />
@@ -320,6 +321,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
               size="sm"
               placeholder="Search mapped tables..."
               value={searchMappings}
+              autoComplete="off"
               onChange={(e) => setSearchMappings(e.target.value)}
               bg="white"
             />
@@ -396,6 +398,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                         size="sm"
                         placeholder="Enter table name"
                         value={mapping.tableName}
+                        autoComplete="off"
                         onChange={(e) =>
                           !isLocked &&
                           updateTableName(mapping.fileName, e.target.value)
@@ -405,7 +408,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                         bg={isLocked ? "gray.100" : undefined}
                         color={isLocked ? "gray.500" : undefined}
                         cursor={isLocked ? "not-allowed" : undefined}
-                        borderColor={isLocked ? "gray.200" : undefined}
+                        borderColor={isLocked ? "gray.100" : undefined}
                         w="280px"
                         h="32px"
                         fontSize="sm"

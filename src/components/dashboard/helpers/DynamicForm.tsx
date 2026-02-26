@@ -25,6 +25,15 @@ import { type FieldConfig, type KeyPair } from "@/types/form";
 
 import KeyPairGenerator from "./KeyPairGenerator";
 
+const SCHEMA_VALIDATION_MESSAGE =
+  "Invalid schema name. Schema name shouldn't be empty, should contain only letters, numbers, or underscores, and cannot begin with a number.";
+
+const validateSchemaName = (value: string): string => {
+  const trimmed = value.trim();
+  const schemaRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
+  return schemaRegex.test(trimmed) ? "" : SCHEMA_VALIDATION_MESSAGE;
+};
+
 type FormConfig = {
   fields: FieldConfig[];
 };
@@ -117,7 +126,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       valuesRef.current = newValues;
       return newValues;
     });
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+    setErrors((prev) => {
+      if (name === "destination_schema") {
+        return { ...prev, [name]: validateSchemaName(value) };
+      }
+      return { ...prev, [name]: "" };
+    });
   };
 
   const handleSubmit = () => {
@@ -125,6 +139,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     config.fields.forEach((field) => {
       if (field.required && !values[field.name]) {
         newErrors[field.name] = `${field.label} is required`;
+      }
+      if (field.name === "destination_schema") {
+        const schemaError = validateSchemaName(values[field.name] || "");
+        if (schemaError) {
+          newErrors[field.name] = schemaError;
+        }
       }
     });
 
@@ -320,9 +340,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             onChange={handleChange}
             placeholder={`Enter ${field.label.toLowerCase()}`}
             readOnly={isReadOnly}
-            bg={isReadOnly ? "gray.200" : undefined}
-            color={isReadOnly ? "gray.400" : undefined}
-            borderColor={isReadOnly ? "gray.300" : undefined}
+            bg={isReadOnly ? "gray.50" : undefined}
+            color={isReadOnly ? "gray.700" : undefined}
+            borderColor={isReadOnly ? "gray.200" : undefined}
           />
           {errors[field.name] && (
             <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
@@ -344,11 +364,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           type={inputType}
           value={values[field.name]}
           onChange={handleChange}
+          autoComplete="off"
           placeholder={`Enter ${field.label.toLowerCase()}`}
           readOnly={isReadOnly}
-          bg={isReadOnly ? "gray.200" : undefined}
-          color={isReadOnly ? "gray.400" : undefined}
-          borderColor={isReadOnly ? "gray.300" : undefined}
+          bg={isReadOnly ? "gray.50" : undefined}
+          color={isReadOnly ? "gray.700" : undefined}
+          borderColor={isReadOnly ? "gray.200" : undefined}
         />
         {field.name === "passphrase" && (
           <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
@@ -364,110 +385,112 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   return (
-    <VStack gap={4} align="stretch" as="form" maxW="lg">
-      {sortedFields.map((field) => {
-        const input = renderInput(field);
-        if (!input) return null;
+    <form autoComplete="off" style={{ display: "contents" }}>
+      <VStack gap={4} align="stretch" maxW="lg">
+        {sortedFields.map((field) => {
+          const input = renderInput(field);
+          if (!input) return null;
 
-        return (
-          <React.Fragment key={field.name}>
-            <Box>{input}</Box>
-            {(field.name === "authentication_type" ||
-              field.name === "authenticationType") && (
-              <>
-                {passphraseField &&
-                  values.authentication_type === "key_pair" && (
-                    <Box key={passphraseField.name}>
-                      <Field.Root
-                        required={passphraseField.required}
-                        invalid={!!errors[passphraseField.name]}
-                      >
-                        <Field.Label htmlFor={passphraseField.name}>
-                          {passphraseField.label}
-                        </Field.Label>
-                        {passphraseField.type === "PasswordInput" ? (
-                          <PasswordInput
-                            id={passphraseField.name}
-                            name={passphraseField.name}
-                            value={values[passphraseField.name] || ""}
-                            onChange={handleChange}
-                            placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
-                          />
-                        ) : (
-                          <Input
-                            id={passphraseField.name}
-                            name={passphraseField.name}
-                            type="text"
-                            value={values[passphraseField.name] || ""}
-                            onChange={handleChange}
-                            placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
-                          />
-                        )}
-                        {errors[passphraseField.name] && (
-                          <Field.ErrorText>
-                            {errors[passphraseField.name]}
-                          </Field.ErrorText>
-                        )}
-                      </Field.Root>
-                    </Box>
-                  )}
-                <KeyPairGenerator
-                  formValues={values}
-                  mode={mode}
-                  destinationName={destinationName}
-                  sourceName={sourceName}
-                  hasPassphraseField={config.fields.some(
-                    (f) => f.name === "passphrase",
-                  )}
-                  existingKeys={existingKeys}
-                  onKeysGenerated={(keys: KeyPair) =>
-                    setValues((prev) => ({
-                      ...prev,
-                      public_key: keys.publicKey,
-                      private_key: keys.privateKey,
-                      ...(keys.passphrase && { passphrase: keys.passphrase }),
-                    }))
-                  }
-                  onClearKeys={() =>
-                    setValues((prev) => ({
-                      ...prev,
-                      public_key: "",
-                      private_key: "",
-                    }))
-                  }
-                  onModeChange={setKeyMode}
-                />
-              </>
+          return (
+            <React.Fragment key={field.name}>
+              <Box>{input}</Box>
+              {(field.name === "authentication_type" ||
+                field.name === "authenticationType") && (
+                <>
+                  {passphraseField &&
+                    values.authentication_type === "key_pair" && (
+                      <Box key={passphraseField.name}>
+                        <Field.Root
+                          required={passphraseField.required}
+                          invalid={!!errors[passphraseField.name]}
+                        >
+                          <Field.Label htmlFor={passphraseField.name}>
+                            {passphraseField.label}
+                          </Field.Label>
+                          {passphraseField.type === "PasswordInput" ? (
+                            <PasswordInput
+                              id={passphraseField.name}
+                              name={passphraseField.name}
+                              value={values[passphraseField.name] || ""}
+                              onChange={handleChange}
+                              placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
+                            />
+                          ) : (
+                            <Input
+                              id={passphraseField.name}
+                              name={passphraseField.name}
+                              type="text"
+                              value={values[passphraseField.name] || ""}
+                              onChange={handleChange}
+                              placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
+                            />
+                          )}
+                          {errors[passphraseField.name] && (
+                            <Field.ErrorText>
+                              {errors[passphraseField.name]}
+                            </Field.ErrorText>
+                          )}
+                        </Field.Root>
+                      </Box>
+                    )}
+                  <KeyPairGenerator
+                    formValues={values}
+                    mode={mode}
+                    destinationName={destinationName}
+                    sourceName={sourceName}
+                    hasPassphraseField={config.fields.some(
+                      (f) => f.name === "passphrase",
+                    )}
+                    existingKeys={existingKeys}
+                    onKeysGenerated={(keys: KeyPair) =>
+                      setValues((prev) => ({
+                        ...prev,
+                        public_key: keys.publicKey,
+                        private_key: keys.privateKey,
+                        ...(keys.passphrase && { passphrase: keys.passphrase }),
+                      }))
+                    }
+                    onClearKeys={() =>
+                      setValues((prev) => ({
+                        ...prev,
+                        public_key: "",
+                        private_key: "",
+                      }))
+                    }
+                    onModeChange={setKeyMode}
+                  />
+                </>
+              )}
+            </React.Fragment>
+          );
+        })}
+        <Flex justifyContent="space-between">
+          <Flex gap={4}>
+            {handleBackButtonClick && (
+              <Button variant="outline" onClick={handleBackButtonClick}>
+                <IoMdArrowBack />
+                Back
+              </Button>
             )}
-          </React.Fragment>
-        );
-      })}
-      <Flex justifyContent="space-between">
-        <Flex gap={4}>
-          {handleBackButtonClick && (
-            <Button variant="outline" onClick={handleBackButtonClick}>
-              <IoMdArrowBack />
-              Back
-            </Button>
-          )}
-          {leftButtons}
+            {leftButtons}
+          </Flex>
+          <Flex gap={4}>
+            {rightButtons}
+            {!hideSubmitButton && (
+              <Button
+                colorPalette="brand"
+                onClick={handleSubmit}
+                loading={loading}
+                disabled={loading}
+              >
+                <MdOutlineSave />
+                {mode === "create" ? "Create" : "Save"}
+              </Button>
+            )}
+          </Flex>
         </Flex>
-        <Flex gap={4}>
-          {rightButtons}
-          {!hideSubmitButton && (
-            <Button
-              colorPalette="brand"
-              onClick={handleSubmit}
-              loading={loading}
-              disabled={loading}
-            >
-              <MdOutlineSave />
-              {mode === "create" ? "Create" : "Save"}
-            </Button>
-          )}
-        </Flex>
-      </Flex>
-    </VStack>
+      </VStack>
+    </form>
   );
 };
 
