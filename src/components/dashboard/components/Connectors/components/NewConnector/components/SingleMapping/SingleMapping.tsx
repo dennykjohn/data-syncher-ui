@@ -110,7 +110,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     if (mappings.length > 0 && !_selectedFileName) {
       setSelectedFileName(mappings[0].fileName);
     }
-  }, [mappings]);
+  }, [mappings, _selectedFileName]);
 
   // 2. Reconcile state with S3 Scan results: Strictly only show files found in S3
   React.useEffect(() => {
