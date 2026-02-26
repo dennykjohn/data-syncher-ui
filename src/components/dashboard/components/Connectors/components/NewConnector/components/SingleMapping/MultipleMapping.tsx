@@ -175,6 +175,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 name="tableName"
                 placeholder="Enter table name"
                 value={tableName}
+                autoComplete="off"
                 onChange={(e) => setTableName(e.target.value)}
                 size="sm"
                 readOnly={readOnly}
@@ -191,6 +192,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 id="prefix"
                 name="prefix"
                 value={prefix}
+                autoComplete="off"
                 onChange={(e) => {
                   setPrefix(e.target.value);
                   setShouldFetchPreview(false);

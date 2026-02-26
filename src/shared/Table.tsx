@@ -21,6 +21,8 @@ type Column<T> = {
   accessor: keyof T | "actions" | "index";
   render?: RenderFunction<T>;
   hideOnMobile?: boolean;
+  textAlign?: "left" | "center" | "right";
+  width?: string | number;
 };
 
 type TableProps<T> = {
@@ -90,6 +92,7 @@ const Table = <T,>({
           variant="outline"
           striped
           colorPalette="gray"
+          tableLayout="fixed"
         >
           <ChakraTable.Header h={12} bg="white">
             <ChakraTable.Row>
@@ -100,6 +103,8 @@ const Table = <T,>({
                     base: column.hideOnMobile ? "none" : "table-cell",
                     md: "table-cell",
                   }}
+                  textAlign={column.textAlign || "left"}
+                  width={column.width}
                 >
                   {column.header}
                 </ChakraTable.ColumnHeader>
@@ -123,6 +128,8 @@ const Table = <T,>({
                       base: column.hideOnMobile ? "none" : "table-cell",
                       md: "table-cell",
                     }}
+                    textAlign={column.textAlign || "left"}
+                    width={column.width}
                   >
                     {column.render
                       ? column.render(item[column.accessor as keyof T], item)

@@ -29,6 +29,9 @@ export interface ConnectorTableItem {
   last_synced_new: string;
   next_sync_time: string;
   connected_on: number;
+  migration_status: string;
+  migration_status_name: string;
+  error_message?: string | null;
 }
 
 export interface Connector {
@@ -53,6 +56,7 @@ export interface Connector {
   next_sync_time: string;
   is_reverse_etl: boolean;
   connected_on: number | string;
+  migration_status?: string;
   reloadingTables?: string[];
   setReloadingTables?: React.Dispatch<React.SetStateAction<string[]>>;
 }
@@ -91,6 +95,7 @@ export type ConnectorSettingsApiResponse = {
   source_title: string;
   destination_title: string;
   company_name: string;
+  migration_status?: string;
 };
 
 export type ConnectorTable = {

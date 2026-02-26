@@ -5,16 +5,19 @@ import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router";
 
+import CheckIcon from "@/assets/icons/check-icon.svg";
+import ErrorIcon from "@/assets/icons/error-icon.svg";
 import TableWrapper from "@/components/dashboard/wrapper/TableWrapper";
+import LoadingSpinner from "@/components/shared/Spinner";
+import { Tooltip } from "@/components/ui/tooltip";
 import ClientRoutes from "@/constants/client-routes";
 import { dateTimeFormat } from "@/constants/common";
+import useAuth from "@/context/Auth/useAuth";
+import useCompanyConnectionsStatusWS from "@/hooks/useCompanyConnectionsStatusWS";
 import usePermissions from "@/hooks/usePermissions";
 import { useFetchConnectorsListByPage } from "@/queryOptions/connector/useFetchConnectorsListByPage";
 import Table, { type Column } from "@/shared/Table";
-import {
-  type ConnectorStatus,
-  type ConnectorTableItem,
-} from "@/types/connectors";
+import type { ConnectorStatus, ConnectorTableItem } from "@/types/connectors";
 
 import { getDestinationImage, getSourceImage } from "../../utils/getImage";
 import PageHeader from "../../wrapper/PageHeader";
@@ -27,20 +30,17 @@ const getStatusColor = (status: ConnectorStatus) => {
       return "green";
     case "P":
       return "yellow";
-    case "E":
-      return "red";
-    case "S":
-      return "blue";
     default:
       return "gray";
   }
 };
 
 const columns: Column<ConnectorTableItem>[] = [
-  { header: "Name", accessor: "connector_name" },
+  { header: "Name", accessor: "connector_name", width: "14.285%" },
   {
     header: "Source",
     accessor: "source_name",
+    width: "18%",
     render: (_, { source_name, display_name }) => (
       <HStack gap={1} align="center">
         <Image
@@ -56,6 +56,7 @@ const columns: Column<ConnectorTableItem>[] = [
   {
     header: "Destination",
     accessor: "destination_name",
+    width: "14.285%",
     render: (_, { destination_name }) => (
       <HStack gap={1} align="center">
         <Image
@@ -71,6 +72,7 @@ const columns: Column<ConnectorTableItem>[] = [
   {
     header: "Last sync",
     accessor: "last_synced_new",
+    width: "14.285%",
     render: (_, { last_synced_new }) => {
       const d = new Date(last_synced_new as string | number);
       if (Number.isNaN(d.getTime())) return String(last_synced_new ?? "");
@@ -78,8 +80,47 @@ const columns: Column<ConnectorTableItem>[] = [
     },
   },
   {
+    header: "Migration status",
+    accessor: "migration_status_name",
+    textAlign: "center",
+    width: "14.285%",
+    render: (_, { migration_status, error_message }) => {
+      return (
+        <HStack gap={2} w="100%" justify="center">
+          {migration_status === "S" && (
+            <LoadingSpinner
+              size="sm"
+              containerProps={{ h: "16px", w: "16px" }}
+              spinnerProps={{ color: "blue.500" }}
+            />
+          )}
+          {migration_status === "E" && (
+            <Tooltip
+              content={error_message || "Unknown error"}
+              disabled={!error_message}
+              showArrow
+            >
+              <Image
+                src={ErrorIcon}
+                w="16px"
+                h="16px"
+                objectFit="contain"
+                cursor={error_message ? "help" : "default"}
+              />
+            </Tooltip>
+          )}
+          {migration_status === "C" && (
+            <Image src={CheckIcon} w="16px" h="16px" objectFit="contain" />
+          )}
+        </HStack>
+      );
+    },
+  },
+
+  {
     header: "Next sync in",
     accessor: "next_sync_time",
+    width: "14.285%",
     render: (_, { next_sync_time }) => {
       if (!next_sync_time || next_sync_time === "None") return "--";
       const d = new Date(next_sync_time);
@@ -88,8 +129,10 @@ const columns: Column<ConnectorTableItem>[] = [
     },
   },
   {
-    header: "Status",
+    header: "Connection status",
     accessor: "status",
+    textAlign: "center",
+    width: "14.285%",
     render: (_, { status }) => (
       <Badge colorPalette={getStatusColor(status)} variant="solid" size="sm">
         {(() => {
@@ -98,10 +141,6 @@ const columns: Column<ConnectorTableItem>[] = [
               return "Active";
             case "P":
               return "Paused";
-            case "E":
-              return "Error";
-            case "S":
-              return "Syncing";
             default:
               return "Unknown";
           }
@@ -116,7 +155,11 @@ const Connectors = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const { authState } = useAuth();
   const { can } = usePermissions();
+
+  const cmpId = authState.user?.company?.cmp_id ?? null;
+  useCompanyConnectionsStatusWS(cmpId);
 
   const canCreate = can("can_create_connectors");
 
