@@ -9,6 +9,7 @@ import React, {
 import {
   Box,
   Button,
+  Checkbox,
   Dialog,
   Field,
   Flex,
@@ -35,7 +36,7 @@ export interface S3FieldSchema {
   label: string;
   type: "CharField" | "ChoiceField" | "TextField" | "IntegerField";
   required: boolean;
-  widget?: "PasswordInput" | null;
+  widget?: "PasswordInput" | "Checkbox" | null;
   is_visible?: boolean;
   choices?: Array<{
     value: string;
@@ -106,15 +107,22 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       (acc, field) => ({
         ...acc,
         // Priority: defaultValues (from API) > default_value (from schema) > empty string
-        [field.name]: defaultValues?.[field.name] ?? field.default_value ?? "",
+        [field.name]:
+          defaultValues?.[field.name] !== undefined &&
+          defaultValues?.[field.name] !== null
+            ? String(defaultValues[field.name])
+            : (field.default_value ?? ""),
       }),
       {} as Record<string, string>,
     );
 
     // Also include hidden fields from defaultValues
     HIDDEN_FIELDS.forEach((fieldName) => {
-      if (defaultValues?.[fieldName] !== undefined) {
-        initial[fieldName] = defaultValues[fieldName];
+      if (
+        defaultValues?.[fieldName] !== undefined &&
+        defaultValues?.[fieldName] !== null
+      ) {
+        initial[fieldName] = String(defaultValues[fieldName]);
       }
     });
 
@@ -151,13 +159,22 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       setValues((prev) => {
         const updated = { ...prev };
         schema.forEach((field) => {
-          if (defaultValues[field.name] !== undefined) {
-            updated[field.name] = defaultValues[field.name];
+          // Priority: defaultValues > existing value > default_value from schema
+          if (
+            defaultValues[field.name] !== undefined &&
+            defaultValues[field.name] !== null
+          ) {
+            updated[field.name] = String(defaultValues[field.name]);
+          } else if (updated[field.name] === undefined) {
+            updated[field.name] = field.default_value ?? "";
           }
         });
         HIDDEN_FIELDS.forEach((fieldName) => {
-          if (defaultValues[fieldName] !== undefined) {
-            updated[fieldName] = defaultValues[fieldName];
+          if (
+            defaultValues[fieldName] !== undefined &&
+            defaultValues[fieldName] !== null
+          ) {
+            updated[fieldName] = String(defaultValues[fieldName]);
           }
         });
         return updated;
@@ -275,7 +292,12 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       // Include if:
       // 1. Field is visible AND has a value, OR
       // 2. Field is in HIDDEN_FIELDS (always sent even if empty)
-      if ((isVisible && hasValue) || isHiddenField) {
+      // 3. Field is include_subfolders (important for S3)
+      if (
+        (isVisible && hasValue) ||
+        isHiddenField ||
+        key === "include_subfolders"
+      ) {
         filteredValues[key] = values[key];
       } else {
         excludedFields.push(key);
@@ -454,6 +476,53 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     const fieldReadOnly = isReadOnly(field);
     const fieldValue = values[field.name] || "";
 
+    if (field.widget === "Checkbox" || field.name === "include_subfolders") {
+      return (
+        <Field.Root
+          key={field.name}
+          required={field.required}
+          invalid={!!errors[field.name]}
+        >
+          <Flex align="center" gap={2}>
+            <Checkbox.Root
+              id={field.name}
+              checked={fieldValue === "true"}
+              onCheckedChange={(e) => {
+                const syntheticEvent = {
+                  target: {
+                    name: field.name,
+                    value: e.checked ? "true" : "false",
+                  },
+                } as React.ChangeEvent<HTMLInputElement>;
+                handleChange(syntheticEvent);
+              }}
+              disabled={fieldReadOnly}
+              colorPalette="brand"
+              size="sm"
+            >
+              <Checkbox.HiddenInput />
+              <Checkbox.Control />
+              <Checkbox.Label fontSize="sm" mt="1">
+                {field.label}
+              </Checkbox.Label>
+            </Checkbox.Root>
+          </Flex>
+          {field.description && (
+            <Field.HelperText
+              className="checkbox"
+              fontSize="xs"
+              color="gray.600"
+            >
+              {field.description}
+            </Field.HelperText>
+          )}
+          {errors[field.name] && (
+            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+          )}
+        </Field.Root>
+      );
+    }
+
     if (field.type === "ChoiceField") {
       const choiceItems =
         field.choices?.map((choice) => ({
@@ -491,26 +560,16 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             disabled={fieldReadOnly}
             value={fieldValue ? [fieldValue] : []}
             onValueChange={handleSelectChange}
-            bg="white"
+            bg={fieldReadOnly ? "gray.200 !important" : "white"}
           >
             <Select.HiddenSelect id={field.name} name={field.name} />
 
             <Select.Control>
               <Select.Trigger
-                _disabled={{
-                  bg: fieldReadOnly ? "gray.50 !important" : "white !important",
-                  cursor: "not-allowed",
-                  color: fieldReadOnly ? "gray.700" : undefined,
-                  borderColor: fieldReadOnly ? "gray.200" : undefined,
-                }}
-                _readOnly={{
-                  bg: fieldReadOnly ? "gray.50 !important" : "white !important",
-                  color: fieldReadOnly ? "gray.700" : undefined,
-                  borderColor: fieldReadOnly ? "gray.200" : undefined,
-                }}
-                bg={fieldReadOnly ? "gray.50 !important" : "white !important"}
-                color={fieldReadOnly ? "gray.700" : undefined}
-                borderColor={fieldReadOnly ? "gray.200" : undefined}
+                bg={fieldReadOnly ? "gray.200 !important" : "white"}
+                color={fieldReadOnly ? "black !important" : undefined}
+                borderColor={fieldReadOnly ? "gray.300 !important" : undefined}
+                opacity={fieldReadOnly ? "1 !important" : undefined}
               >
                 <Select.ValueText
                   placeholder={
@@ -612,9 +671,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             fontSize="xs"
             resize="vertical"
             readOnly={fieldReadOnly}
-            bg={fieldReadOnly ? "gray.50" : undefined}
-            color={fieldReadOnly ? "gray.700" : undefined}
-            borderColor={fieldReadOnly ? "gray.200" : undefined}
+            bg={fieldReadOnly ? "gray.200 !important" : undefined}
+            color={fieldReadOnly ? "black !important" : undefined}
+            borderColor={fieldReadOnly ? "gray.300 !important" : undefined}
+            opacity={fieldReadOnly ? "1 !important" : undefined}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -650,9 +710,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                 : undefined
             }
             readOnly={fieldReadOnly}
-            bg={fieldReadOnly ? "gray.50" : undefined}
-            color={fieldReadOnly ? "gray.700" : undefined}
-            borderColor={fieldReadOnly ? "gray.200" : undefined}
+            bg={fieldReadOnly ? "gray.200 !important" : undefined}
+            color={fieldReadOnly ? "black !important" : undefined}
+            borderColor={fieldReadOnly ? "gray.300 !important" : undefined}
+            opacity={fieldReadOnly ? "1 !important" : undefined}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -687,9 +748,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                 : undefined
             }
             readOnly={fieldReadOnly}
-            bg={fieldReadOnly ? "gray.50" : undefined}
-            color={fieldReadOnly ? "gray.700" : undefined}
-            borderColor={fieldReadOnly ? "gray.200" : undefined}
+            bg={fieldReadOnly ? "gray.200 !important" : undefined}
+            color={fieldReadOnly ? "black !important" : undefined}
+            borderColor={fieldReadOnly ? "gray.300 !important" : undefined}
+            opacity={fieldReadOnly ? "1 !important" : undefined}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -724,9 +786,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
               : undefined
           }
           readOnly={fieldReadOnly}
-          bg={fieldReadOnly ? "gray.50" : undefined}
-          color={fieldReadOnly ? "gray.700" : undefined}
-          borderColor={fieldReadOnly ? "gray.200" : undefined}
+          bg={fieldReadOnly ? "gray.200 !important" : undefined}
+          color={fieldReadOnly ? "black !important" : undefined}
+          borderColor={fieldReadOnly ? "gray.300 !important" : undefined}
+          opacity={fieldReadOnly ? "1 !important" : undefined}
         />
         {field.description && (
           <Field.HelperText fontSize="xs" color="gray.600">

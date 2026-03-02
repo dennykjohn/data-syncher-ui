@@ -280,9 +280,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               fontSize="xs"
               resize="none"
               readOnly={isReadOnly}
-              bg={isReadOnly ? "gray.200" : undefined}
-              color={isReadOnly ? "gray.400" : undefined}
-              borderColor={isReadOnly ? "gray.300" : undefined}
+              bg={isReadOnly ? "gray.200 !important" : undefined}
+              color={isReadOnly ? "black !important" : undefined}
+              borderColor={isReadOnly ? "gray.300 !important" : undefined}
             />
             {errors[field.name] && (
               <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
@@ -308,6 +308,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               placeholder="Select option"
               onChange={handleChange}
               value={values[field.name]}
+              bg={isReadOnly ? "gray.200 !important" : undefined}
+              color={isReadOnly ? "black !important" : undefined}
+              borderColor={isReadOnly ? "gray.300 !important" : undefined}
             >
               {(field.choices ?? []).map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -340,9 +343,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             onChange={handleChange}
             placeholder={`Enter ${field.label.toLowerCase()}`}
             readOnly={isReadOnly}
-            bg={isReadOnly ? "gray.50" : undefined}
-            color={isReadOnly ? "gray.700" : undefined}
-            borderColor={isReadOnly ? "gray.200" : undefined}
+            bg={isReadOnly ? "gray.200 !important" : undefined}
+            color={isReadOnly ? "black !important" : undefined}
+            borderColor={isReadOnly ? "gray.300 !important" : undefined}
           />
           {errors[field.name] && (
             <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
@@ -367,9 +370,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           autoComplete="off"
           placeholder={`Enter ${field.label.toLowerCase()}`}
           readOnly={isReadOnly}
-          bg={isReadOnly ? "gray.50" : undefined}
-          color={isReadOnly ? "gray.700" : undefined}
-          borderColor={isReadOnly ? "gray.200" : undefined}
+          bg={isReadOnly ? "gray.200 !important" : undefined}
+          color={isReadOnly ? "black !important" : undefined}
+          borderColor={isReadOnly ? "gray.300 !important" : undefined}
         />
         {field.name === "passphrase" && (
           <Field.HelperText fontSize="xs" color="gray.600" mt={1}>

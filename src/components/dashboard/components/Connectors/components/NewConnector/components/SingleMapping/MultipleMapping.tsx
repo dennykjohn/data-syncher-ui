@@ -71,6 +71,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       base_folder_path: formValues?.base_folder_path as string | undefined,
       file_type: formValues?.file_type as string | undefined,
       multi_files_prefix: prefix.trim(),
+      include_subfolders: String(formValues?.include_subfolders || "false"),
       connection_id: connectionId,
     } as PreviewPatternRequest;
   }, [hasRequiredCreds, formValues, prefix, shouldFetchPreview, connectionId]);

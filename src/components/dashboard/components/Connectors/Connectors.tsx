@@ -105,7 +105,7 @@ const columns: Column<ConnectorTableItem>[] = [
                 w="16px"
                 h="16px"
                 objectFit="contain"
-                cursor={error_message ? "help" : "default"}
+                cursor={error_message ? "pointer" : "default"}
               />
             </Tooltip>
           )}
@@ -120,6 +120,7 @@ const columns: Column<ConnectorTableItem>[] = [
   {
     header: "Next sync in",
     accessor: "next_sync_time",
+    textAlign: "center",
     width: "14.285%",
     render: (_, { next_sync_time }) => {
       if (!next_sync_time || next_sync_time === "None") return "--";
