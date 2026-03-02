@@ -144,6 +144,14 @@ const GenericConnectorConfiguration = ({
             label: "Connector",
             route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
           },
+          ...(mode === "edit"
+            ? [
+                {
+                  label: "Settings",
+                  route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+                },
+              ]
+            : []),
           { label: mode === "edit" ? "Edit Connector" : "Configure" },
         ]}
         title={

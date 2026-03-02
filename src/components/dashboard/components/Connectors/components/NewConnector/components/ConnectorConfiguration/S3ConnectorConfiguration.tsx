@@ -240,13 +240,67 @@ const S3ConnectorConfiguration = ({
   const sourceName = state?.source || connectorData?.source_name || "";
 
   // Get the schema fields - Priority: Backend Config (Edit) > Form Schema (Create)
-  const schemaFields =
+  const baseSchemaFields =
     mode === "edit"
       ? connectorConfig?.source_schema ||
         connectorConfig?.fields ||
         formSchema ||
         []
       : formSchema || [];
+
+  const schemaFields = useMemo(() => {
+    const fields = baseSchemaFields as S3FieldSchema[];
+    if (!fields || fields.length === 0) return fields;
+
+    // Check if include_subfolders is already in the schema
+    const hasIncludeSubfolders = fields.some(
+      (f) => f.name === "include_subfolders",
+    );
+    if (hasIncludeSubfolders) return fields;
+
+    const includeSubfoldersField: S3FieldSchema = {
+      name: "include_subfolders",
+      label: "Include Subfolders",
+      type: "CharField",
+      required: true,
+      widget: "Checkbox",
+      is_visible: true,
+      description: "Check to recursively search for files in subfolders.",
+      choices: [
+        { value: "true", display: "Yes" },
+        { value: "false", display: "No" },
+      ],
+      default_value: "false",
+    };
+
+    // Find the index of the base folder path field to insert after it
+    const baseFolderIndex = fields.findIndex(
+      (f) =>
+        f.name === "base_folder_path" ||
+        f.name === "basefolder" ||
+        f.name === "folder_path" ||
+        f.label?.toLowerCase().includes("base folder") ||
+        f.label?.toLowerCase().includes("folder path"),
+    );
+
+    if (baseFolderIndex !== -1) {
+      const newSchema = [...fields];
+      newSchema.splice(baseFolderIndex + 1, 0, includeSubfoldersField);
+      return newSchema;
+    }
+
+    // Default to putting it after the first few fields or at the end
+    const bucketIndex = fields.findIndex((f) =>
+      f.name.toLowerCase().includes("bucket"),
+    );
+    if (bucketIndex !== -1) {
+      const newSchema = [...fields];
+      newSchema.splice(bucketIndex + 1, 0, includeSubfoldersField);
+      return newSchema;
+    }
+
+    return [...fields, includeSubfoldersField];
+  }, [baseSchemaFields]);
 
   const s3DefaultValues = useMemo(
     () =>
@@ -462,6 +516,14 @@ const S3ConnectorConfiguration = ({
             label: "Connector",
             route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
           },
+          ...(mode === "edit"
+            ? [
+                {
+                  label: "Settings",
+                  route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+                },
+              ]
+            : []),
           { label: mode === "edit" ? "Edit S3 Connector" : "Configure S3" },
         ]}
         title={

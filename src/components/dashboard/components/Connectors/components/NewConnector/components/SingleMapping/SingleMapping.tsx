@@ -77,6 +77,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       aws_secret_access_key: (formValues.aws_secret_access_key || "").trim(),
       base_folder_path: formValues.base_folder_path || undefined,
       file_type: formValues.file_type || undefined,
+      include_subfolders: formValues.include_subfolders || "false",
       connection_id: connectionId,
     } as S3ListFilesRequest;
   }, [

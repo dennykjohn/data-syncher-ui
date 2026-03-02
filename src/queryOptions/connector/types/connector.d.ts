@@ -5,6 +5,7 @@ export interface S3ListFilesRequest {
   aws_secret_access_key: string;
   base_folder_path?: string;
   file_type?: string;
+  include_subfolders?: string;
 }
 
 export interface S3FileItem {
@@ -29,6 +30,7 @@ export interface PreviewPatternRequest {
   base_folder_path?: string;
   file_type?: string;
   multi_files_prefix?: string;
+  include_subfolders?: string;
 }
 
 export interface MatchedTable {
