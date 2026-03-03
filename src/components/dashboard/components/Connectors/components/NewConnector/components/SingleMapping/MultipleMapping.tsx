@@ -239,7 +239,6 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                   colorPalette="brand"
                   mt={2}
                   onClick={() => {
-                    // Trigger the preview API call
                     if (tableName.trim() && prefix.trim()) {
                       setHasEverPreviewed(true);
                       setShouldFetchPreview(true);
@@ -298,7 +297,6 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 </Text>
               </VStack>
             ) : !hasRequiredCreds && matchedTables.length > 0 ? (
-              // Edit mode: Show saved files without preview
               <>
                 <VStack
                   gap={2}

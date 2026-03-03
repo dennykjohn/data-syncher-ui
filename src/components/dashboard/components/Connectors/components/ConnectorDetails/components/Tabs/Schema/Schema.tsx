@@ -475,7 +475,6 @@ const Schema = () => {
   useEffect(() => {
     if (!shouldSkipUpdateRef.current) {
       setTimeout(() => {
-        // If disable_update_schema (S3), auto-select all tables
         setUserCheckedTables(
           disable_update_schema ? (AllTableList ?? []) : checkedTables,
         );

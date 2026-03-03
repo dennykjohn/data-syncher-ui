@@ -525,7 +525,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
         >
           <Flex align="center" gap={2}>
             {isSubfoldersField && hasMappings ? (
-              <Tooltip content="To enable this, clear mapping " showArrow>
+              <Tooltip content="To enable this, clear the mapping " showArrow>
                 <Box>{checkboxElement}</Box>
               </Tooltip>
             ) : (
