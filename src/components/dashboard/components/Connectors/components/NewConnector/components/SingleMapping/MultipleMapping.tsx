@@ -196,6 +196,11 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 onChange={(e) => setTableName(e.target.value)}
                 size="sm"
                 readOnly={readOnly}
+                disabled={readOnly}
+                bg={readOnly ? "gray.200" : undefined}
+                color={readOnly ? "gray.700" : undefined}
+                cursor={readOnly ? "not-allowed" : undefined}
+                opacity={readOnly ? 0.8 : 1}
               />
               <Field.HelperText>
                 All selected files will be mapped to this table
@@ -216,12 +221,17 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 }}
                 size="sm"
                 readOnly={readOnly}
+                disabled={readOnly}
+                bg={readOnly ? "gray.200" : undefined}
+                color={readOnly ? "gray.700" : undefined}
+                cursor={readOnly ? "not-allowed" : undefined}
+                opacity={readOnly ? 0.8 : 1}
               />
               <Field.HelperText>
                 Filter files by prefix to preview matching tables
               </Field.HelperText>
 
-              {/* Preview Button */}
+              {/* Preview Button - only shown when not read-only */}
               {!readOnly && (
                 <Button
                   size="sm"
@@ -229,7 +239,6 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                   colorPalette="brand"
                   mt={2}
                   onClick={() => {
-                    // Trigger the preview API call
                     if (tableName.trim() && prefix.trim()) {
                       setHasEverPreviewed(true);
                       setShouldFetchPreview(true);
@@ -288,7 +297,6 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 </Text>
               </VStack>
             ) : !hasRequiredCreds && matchedTables.length > 0 ? (
-              // Edit mode: Show saved files without preview
               <>
                 <VStack
                   gap={2}

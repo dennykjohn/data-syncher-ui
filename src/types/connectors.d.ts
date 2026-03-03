@@ -59,6 +59,7 @@ export interface Connector {
   migration_status?: string;
   reloadingTables?: string[];
   setReloadingTables?: React.Dispatch<React.SetStateAction<string[]>>;
+  disable_update_schema?: boolean;
 }
 
 export interface ConnectorTabsProps {
