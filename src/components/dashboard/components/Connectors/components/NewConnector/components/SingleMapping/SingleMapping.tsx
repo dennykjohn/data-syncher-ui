@@ -78,6 +78,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       base_folder_path: formValues.base_folder_path || undefined,
       file_type: formValues.file_type || undefined,
       include_subfolders: formValues.include_subfolders || "false",
+      file_mapping_method: formValues.file_mapping_method || undefined,
       connection_id: connectionId,
     } as S3ListFilesRequest;
   }, [
@@ -87,6 +88,8 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     formValues.aws_secret_access_key,
     formValues.base_folder_path,
     formValues.file_type,
+    formValues.include_subfolders,
+    formValues.file_mapping_method,
     connectionId,
   ]);
 
@@ -111,7 +114,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     if (mappings.length > 0 && !_selectedFileName) {
       setSelectedFileName(mappings[0].fileName);
     }
-  }, [mappings]);
+  }, [mappings, _selectedFileName]);
 
   // 2. Reconcile state with S3 Scan results: Strictly only show files found in S3
   React.useEffect(() => {

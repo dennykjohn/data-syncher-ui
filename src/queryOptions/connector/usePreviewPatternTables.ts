@@ -26,7 +26,10 @@ const fetchPreviewPattern = async (data: PreviewPatternRequest) => {
 
   return {
     ...responseData,
-    matched_tables: responseData.matched_files || responseData.matched_tables,
+    matched_tables:
+      responseData.matched_files ||
+      responseData.matched_tables ||
+      responseData.tables,
   } as PreviewPatternResponse;
 };
 
