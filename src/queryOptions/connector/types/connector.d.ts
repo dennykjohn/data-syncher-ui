@@ -6,6 +6,7 @@ export interface S3ListFilesRequest {
   base_folder_path?: string;
   file_type?: string;
   include_subfolders?: string;
+  file_mapping_method?: string;
 }
 
 export interface S3FileItem {
@@ -31,6 +32,7 @@ export interface PreviewPatternRequest {
   file_type?: string;
   multi_files_prefix?: string;
   include_subfolders?: string;
+  file_mapping_method?: string;
 }
 
 export interface MatchedTable {
@@ -52,6 +54,11 @@ export interface PreviewPatternResponse {
   matched_files_count?: number;
   matched_files?: MatchedTable[];
   matched_tables?: MatchedTable[];
+  tables?: MatchedTable[];
+  results?: MatchedTable[];
+  data?: MatchedTable[];
+  sample_non_matched_files?: MatchedTable[];
+  non_matched_files?: MatchedTable[];
   total_count?: number;
   pattern_used?: string;
 }

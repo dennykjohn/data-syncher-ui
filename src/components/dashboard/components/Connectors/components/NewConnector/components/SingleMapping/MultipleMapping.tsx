@@ -46,8 +46,6 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
     (formValues?.multi_files_prefix as string) || "",
   );
   const [shouldFetchPreview, setShouldFetchPreview] = useState(false);
-  // useState instead of useRef so the value change triggers a re-render.
-  // useRef cannot be read during render (inside useMemo) per ESLint react-hooks/refs.
   const [hasEverPreviewed, setHasEverPreviewed] = useState(false);
 
   const hasRequiredCreds = useMemo(() => {
@@ -57,9 +55,13 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       !!formValues?.aws_access_key_id &&
       !!formValues?.aws_secret_access_key
     );
-  }, [formValues, connectionId]);
+  }, [
+    formValues?.s3_bucket,
+    formValues?.aws_access_key_id,
+    formValues?.aws_secret_access_key,
+    connectionId,
+  ]);
 
-  // Preview pattern params for server-side filtering
   const previewParams = useMemo(() => {
     if (!hasRequiredCreds || !prefix.trim() || !shouldFetchPreview) return null;
     return {
@@ -72,11 +74,25 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       file_type: formValues?.file_type as string | undefined,
       multi_files_prefix: prefix.trim(),
       include_subfolders: String(formValues?.include_subfolders || "false"),
+      file_mapping_method: formValues?.file_mapping_method as
+        | string
+        | undefined,
       connection_id: connectionId,
     } as PreviewPatternRequest;
-  }, [hasRequiredCreds, formValues, prefix, shouldFetchPreview, connectionId]);
+  }, [
+    hasRequiredCreds,
+    formValues?.s3_bucket,
+    formValues?.aws_access_key_id,
+    formValues?.aws_secret_access_key,
+    formValues?.base_folder_path,
+    formValues?.file_type,
+    formValues?.include_subfolders,
+    formValues?.file_mapping_method,
+    prefix,
+    shouldFetchPreview,
+    connectionId,
+  ]);
 
-  // Fetch matching tables based on pattern (server-side filtering)
   const { data: previewData } = usePreviewPatternTables(
     previewParams ?? ({} as PreviewPatternRequest),
     !!previewParams &&
@@ -85,39 +101,39 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       shouldFetchPreview,
   );
 
-  // Derived state for matched tables
   const matchedTables = useMemo(() => {
-    // If the user has never previewed, show saved files (handles initial edit mode load)
+    const results =
+      previewData?.matched_tables ||
+      previewData?.matched_files ||
+      previewData?.tables ||
+      previewData?.results ||
+      previewData?.data ||
+      (Array.isArray(previewData) ? previewData : null);
+
+    if (results && Array.isArray(results) && results.length > 0) {
+      return results
+        .map((t) =>
+          typeof t === "string" ? t : t.file_key || t.file_name || t.table,
+        )
+        .filter((name): name is string => !!name);
+    }
+
+    const nonMatched =
+      previewData?.sample_non_matched_files || previewData?.non_matched_files;
+    if (nonMatched && Array.isArray(nonMatched) && nonMatched.length > 0) {
+      return nonMatched
+        .map((t) =>
+          typeof t === "string" ? t : t.file_key || t.file_name || t.table,
+        )
+        .filter((name): name is string => !!name);
+    }
+
     if (!hasEverPreviewed) {
       return initialSelectedFiles;
     }
 
-    // Once preview has been used:
-    // - Show nothing if prefix is cleared (user reset the filter)
-    if (!prefix.trim()) {
-      return [];
-    }
-
-    // - Show nothing if waiting for user to click Preview again
-    if (!shouldFetchPreview) {
-      return [];
-    }
-
-    // - Show the preview results
-    if (previewData?.matched_tables) {
-      return previewData.matched_tables
-        .map((t) => t.file_key || t.file_name || t.table)
-        .filter((name): name is string => !!name);
-    }
-
     return [];
-  }, [
-    previewData,
-    initialSelectedFiles,
-    shouldFetchPreview,
-    prefix,
-    hasEverPreviewed,
-  ]);
+  }, [previewData, initialSelectedFiles, hasEverPreviewed]);
 
   const handleSave = () => {
     onSave({

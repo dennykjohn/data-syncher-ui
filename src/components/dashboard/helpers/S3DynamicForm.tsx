@@ -55,7 +55,7 @@ interface S3DynamicFormProps {
   schema: S3FieldSchema[];
   onSubmit: (_values: Record<string, unknown>) => void;
   loading?: boolean;
-  defaultValues?: Record<string, string>;
+  defaultValues?: Record<string, unknown>;
   handleBackButtonClick?: () => void;
   mode?: "create" | "edit";
   destinationName?: string;
@@ -104,25 +104,31 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   // Initialize form values from schema and defaultValues
   const initialValues = useMemo(() => {
     const initial = schema.reduce(
-      (acc, field) => ({
-        ...acc,
-        // Priority: defaultValues (from API) > default_value (from schema) > empty string
-        [field.name]:
-          defaultValues?.[field.name] !== undefined &&
-          defaultValues?.[field.name] !== null
-            ? String(defaultValues[field.name])
-            : (field.default_value ?? ""),
-      }),
+      (acc, field) => {
+        const val = defaultValues?.[field.name];
+        let finalizedValue = "";
+
+        if (val !== undefined && val !== null) {
+          finalizedValue =
+            typeof val === "object" ? JSON.stringify(val) : String(val);
+        } else {
+          finalizedValue = field.default_value ?? "";
+        }
+
+        return {
+          ...acc,
+          [field.name]: finalizedValue,
+        };
+      },
       {} as Record<string, string>,
     );
 
     // Also include hidden fields from defaultValues
     HIDDEN_FIELDS.forEach((fieldName) => {
-      if (
-        defaultValues?.[fieldName] !== undefined &&
-        defaultValues?.[fieldName] !== null
-      ) {
-        initial[fieldName] = String(defaultValues[fieldName]);
+      const val = defaultValues?.[fieldName];
+      if (val !== undefined && val !== null) {
+        initial[fieldName] =
+          typeof val === "object" ? JSON.stringify(val) : String(val);
       }
     });
 
@@ -159,22 +165,20 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       setValues((prev) => {
         const updated = { ...prev };
         schema.forEach((field) => {
+          const val = defaultValues[field.name];
           // Priority: defaultValues > existing value > default_value from schema
-          if (
-            defaultValues[field.name] !== undefined &&
-            defaultValues[field.name] !== null
-          ) {
-            updated[field.name] = String(defaultValues[field.name]);
+          if (val !== undefined && val !== null) {
+            updated[field.name] =
+              typeof val === "object" ? JSON.stringify(val) : String(val);
           } else if (updated[field.name] === undefined) {
             updated[field.name] = field.default_value ?? "";
           }
         });
         HIDDEN_FIELDS.forEach((fieldName) => {
-          if (
-            defaultValues[fieldName] !== undefined &&
-            defaultValues[fieldName] !== null
-          ) {
-            updated[fieldName] = String(defaultValues[fieldName]);
+          const val = defaultValues[fieldName];
+          if (val !== undefined && val !== null) {
+            updated[fieldName] =
+              typeof val === "object" ? JSON.stringify(val) : String(val);
           }
         });
         return updated;
