@@ -28,7 +28,12 @@ const Actions = ({
   reloadingTables: string[];
 }) => {
   const context = useOutletContext<Connector>();
-  const { connection_id, target_database, target_schema } = context;
+  const {
+    connection_id,
+    target_database,
+    target_schema,
+    disable_update_schema,
+  } = context;
 
   const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
     connectorId: connection_id,
@@ -194,39 +199,41 @@ const Actions = ({
           </Button>
         </Tooltip>
 
-        <Tooltip {...createTooltipProps(isUpdateSchemaFlowInProgress)}>
-          <Button
-            variant="outline"
-            colorPalette="brand"
-            loading={isUpdateSchemaFlowInProgress}
-            disabled={
-              (shouldShowDisabledState || isAnyOperationInProgress) &&
-              !isUpdateSchemaFlowInProgress
-            }
-            onClick={() => {
-              if (
+        {!disable_update_schema && (
+          <Tooltip {...createTooltipProps(isUpdateSchemaFlowInProgress)}>
+            <Button
+              variant="outline"
+              colorPalette="brand"
+              loading={isUpdateSchemaFlowInProgress}
+              disabled={
                 (shouldShowDisabledState || isAnyOperationInProgress) &&
                 !isUpdateSchemaFlowInProgress
-              ) {
-                toaster.warning({
-                  title: "Operation in progress",
-                  description:
-                    "Another migration is currently in progress. Please wait until it completes.",
-                });
-                return;
               }
-              setShouldShowDisabledState(true);
-              updateSchema(undefined, {
-                onError: () => {
-                  setShouldShowDisabledState(false);
-                },
-              });
-            }}
-          >
-            <MdRefresh />
-            Update schema
-          </Button>
-        </Tooltip>
+              onClick={() => {
+                if (
+                  (shouldShowDisabledState || isAnyOperationInProgress) &&
+                  !isUpdateSchemaFlowInProgress
+                ) {
+                  toaster.warning({
+                    title: "Operation in progress",
+                    description:
+                      "Another migration is currently in progress. Please wait until it completes.",
+                  });
+                  return;
+                }
+                setShouldShowDisabledState(true);
+                updateSchema(undefined, {
+                  onError: () => {
+                    setShouldShowDisabledState(false);
+                  },
+                });
+              }}
+            >
+              <MdRefresh />
+              Update schema
+            </Button>
+          </Tooltip>
+        )}
       </Flex>
     </Flex>
   );

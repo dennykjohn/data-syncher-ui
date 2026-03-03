@@ -196,6 +196,11 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 onChange={(e) => setTableName(e.target.value)}
                 size="sm"
                 readOnly={readOnly}
+                disabled={readOnly}
+                bg={readOnly ? "gray.200" : undefined}
+                color={readOnly ? "gray.700" : undefined}
+                cursor={readOnly ? "not-allowed" : undefined}
+                opacity={readOnly ? 0.8 : 1}
               />
               <Field.HelperText>
                 All selected files will be mapped to this table
@@ -216,12 +221,17 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 }}
                 size="sm"
                 readOnly={readOnly}
+                disabled={readOnly}
+                bg={readOnly ? "gray.200" : undefined}
+                color={readOnly ? "gray.700" : undefined}
+                cursor={readOnly ? "not-allowed" : undefined}
+                opacity={readOnly ? 0.8 : 1}
               />
               <Field.HelperText>
                 Filter files by prefix to preview matching tables
               </Field.HelperText>
 
-              {/* Preview Button */}
+              {/* Preview Button - only shown when not read-only */}
               {!readOnly && (
                 <Button
                   size="sm"

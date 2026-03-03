@@ -230,6 +230,7 @@ const TableRow = ({
 const Schema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
+  const { disable_update_schema } = context;
 
   const { data: allTableData, isLoading: isAllTableListLoading } =
     useFetchConnectorTableById(context.connection_id);
@@ -474,10 +475,13 @@ const Schema = () => {
   useEffect(() => {
     if (!shouldSkipUpdateRef.current) {
       setTimeout(() => {
-        setUserCheckedTables(checkedTables);
+        // If disable_update_schema (S3), auto-select all tables
+        setUserCheckedTables(
+          disable_update_schema ? (AllTableList ?? []) : checkedTables,
+        );
       }, 0);
     }
-  }, [checkedTables]);
+  }, [checkedTables, disable_update_schema, AllTableList]);
 
   const hasCheckedTablesChanged = useMemo(() => {
     return (

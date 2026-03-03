@@ -30,6 +30,7 @@ import SingleMapping, {
   Mapping,
 } from "@/components/dashboard/components/Connectors/components/NewConnector/components/SingleMapping/SingleMapping";
 import { PasswordInput } from "@/components/ui/password-input";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export interface S3FieldSchema {
   name: string;
@@ -481,6 +482,41 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     const fieldValue = values[field.name] || "";
 
     if (field.widget === "Checkbox" || field.name === "include_subfolders") {
+      const isSubfoldersField = field.name === "include_subfolders";
+      const isActuallyDisabled =
+        fieldReadOnly || (isSubfoldersField && hasMappings);
+
+      const checkboxElement = (
+        <Checkbox.Root
+          id={field.name}
+          checked={fieldValue === "true"}
+          onCheckedChange={(e) => {
+            const syntheticEvent = {
+              target: {
+                name: field.name,
+                value: e.checked ? "true" : "false",
+              },
+            } as React.ChangeEvent<HTMLInputElement>;
+            handleChange(syntheticEvent);
+          }}
+          disabled={isActuallyDisabled}
+          colorPalette="brand"
+          size="sm"
+        >
+          <Checkbox.HiddenInput />
+          <Checkbox.Control
+            cursor={isActuallyDisabled ? "not-allowed" : "pointer"}
+          />
+          <Checkbox.Label
+            fontSize="sm"
+            mt="1"
+            cursor={isActuallyDisabled ? "not-allowed" : "pointer"}
+          >
+            {field.label}
+          </Checkbox.Label>
+        </Checkbox.Root>
+      );
+
       return (
         <Field.Root
           key={field.name}
@@ -488,28 +524,13 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
           invalid={!!errors[field.name]}
         >
           <Flex align="center" gap={2}>
-            <Checkbox.Root
-              id={field.name}
-              checked={fieldValue === "true"}
-              onCheckedChange={(e) => {
-                const syntheticEvent = {
-                  target: {
-                    name: field.name,
-                    value: e.checked ? "true" : "false",
-                  },
-                } as React.ChangeEvent<HTMLInputElement>;
-                handleChange(syntheticEvent);
-              }}
-              disabled={fieldReadOnly}
-              colorPalette="brand"
-              size="sm"
-            >
-              <Checkbox.HiddenInput />
-              <Checkbox.Control />
-              <Checkbox.Label fontSize="sm" mt="1">
-                {field.label}
-              </Checkbox.Label>
-            </Checkbox.Root>
+            {isSubfoldersField && hasMappings ? (
+              <Tooltip content="To enable this, clear mapping " showArrow>
+                <Box>{checkboxElement}</Box>
+              </Tooltip>
+            ) : (
+              checkboxElement
+            )}
           </Flex>
           {field.description && (
             <Field.HelperText
@@ -936,6 +957,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     onCancel={handleFileMappingCancel}
                     loading={loading}
                     readOnly={
+                      mode === "edit" ||
                       schema.find((f) => f.name === "file_mapping_method")
                         ?.read_only === true
                     }

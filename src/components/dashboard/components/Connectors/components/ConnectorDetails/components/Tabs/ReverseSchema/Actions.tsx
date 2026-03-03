@@ -26,7 +26,7 @@ const Actions = ({
 }) => {
   const queryClient = useQueryClient();
   const context = useOutletContext<Connector>();
-  const { connection_id } = context;
+  const { connection_id, disable_update_schema } = context;
 
   const [activeOperation, setActiveOperation] = useState<
     "refresh" | "update" | null
@@ -145,29 +145,31 @@ const Actions = ({
         </Button>
       </Tooltip>
 
-      <Tooltip {...createTooltipProps(isUpdating)}>
-        <Button
-          variant="outline"
-          colorPalette="brand"
-          {...createButtonProps(
-            isUpdating,
-            () => {
-              setActiveOperation("update");
-              onUpdateSchemaStart?.();
-              updateSchema(undefined, {
-                onError: () => {
-                  setActiveOperation(null);
-                  setShouldShowDisabledState(false);
-                },
-              });
-            },
-            true,
-          )}
-        >
-          <MdRefresh />
-          Update schema
-        </Button>
-      </Tooltip>
+      {!disable_update_schema && (
+        <Tooltip {...createTooltipProps(isUpdating)}>
+          <Button
+            variant="outline"
+            colorPalette="brand"
+            {...createButtonProps(
+              isUpdating,
+              () => {
+                setActiveOperation("update");
+                onUpdateSchemaStart?.();
+                updateSchema(undefined, {
+                  onError: () => {
+                    setActiveOperation(null);
+                    setShouldShowDisabledState(false);
+                  },
+                });
+              },
+              true,
+            )}
+          >
+            <MdRefresh />
+            Update schema
+          </Button>
+        </Tooltip>
+      )}
     </Flex>
   );
 };
