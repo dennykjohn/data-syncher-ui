@@ -454,19 +454,6 @@ const Schema = () => {
   const [copyOfInitialCheckedTables, setCopyOfInitialCheckedTables] = useState<
     ConnectorTable[]
   >([]);
-  const hasInitializedRef = useRef(false);
-
-  useEffect(() => {
-    if (AllTableList?.length && !hasInitializedRef.current) {
-      setTimeout(() => {
-        setCopyOfInitialCheckedTables(
-          AllTableList.filter((t: ConnectorTable) => t.selected),
-        );
-      }, 0);
-      hasInitializedRef.current = true;
-    }
-  }, [AllTableList]);
-
   const [userCheckedTables, setUserCheckedTables] = useState<ConnectorTable[]>(
     () => checkedTables,
   );
@@ -475,9 +462,8 @@ const Schema = () => {
   useEffect(() => {
     if (!shouldSkipUpdateRef.current) {
       setTimeout(() => {
-        setUserCheckedTables(
-          disable_update_schema ? (AllTableList ?? []) : checkedTables,
-        );
+        setCopyOfInitialCheckedTables(checkedTables);
+        setUserCheckedTables(checkedTables);
       }, 0);
     }
   }, [checkedTables, disable_update_schema, AllTableList]);

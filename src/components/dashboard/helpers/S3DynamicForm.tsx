@@ -672,6 +672,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                 color={fieldReadOnly ? "black !important" : undefined}
                 borderColor={fieldReadOnly ? "gray.300 !important" : undefined}
                 opacity={fieldReadOnly ? "1 !important" : undefined}
+                cursor={fieldReadOnly ? "not-allowed" : undefined}
               >
                 <Select.ValueText
                   placeholder={
@@ -777,6 +778,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             color={fieldReadOnly ? "black !important" : undefined}
             borderColor={fieldReadOnly ? "gray.300 !important" : undefined}
             opacity={fieldReadOnly ? "1 !important" : undefined}
+            cursor={fieldReadOnly ? "not-allowed" : undefined}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -816,6 +818,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             color={fieldReadOnly ? "black !important" : undefined}
             borderColor={fieldReadOnly ? "gray.300 !important" : undefined}
             opacity={fieldReadOnly ? "1 !important" : undefined}
+            cursor={fieldReadOnly ? "not-allowed" : undefined}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -854,6 +857,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             color={fieldReadOnly ? "black !important" : undefined}
             borderColor={fieldReadOnly ? "gray.300 !important" : undefined}
             opacity={fieldReadOnly ? "1 !important" : undefined}
+            cursor={fieldReadOnly ? "not-allowed" : undefined}
           />
           {field.description && (
             <Field.HelperText fontSize="xs" color="gray.600">
@@ -892,6 +896,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
           color={fieldReadOnly ? "black !important" : undefined}
           borderColor={fieldReadOnly ? "gray.300 !important" : undefined}
           opacity={fieldReadOnly ? "1 !important" : undefined}
+          cursor={fieldReadOnly ? "not-allowed" : undefined}
         />
         {field.description && (
           <Field.HelperText fontSize="xs" color="gray.600">

@@ -88,11 +88,13 @@ const columns: Column<ConnectorTableItem>[] = [
       return (
         <HStack gap={2} w="100%" justify="center">
           {migration_status === "S" && (
-            <LoadingSpinner
-              size="sm"
-              containerProps={{ h: "16px", w: "16px" }}
-              spinnerProps={{ color: "blue.500" }}
-            />
+            <Tooltip content="Sync in progress" showArrow>
+              <LoadingSpinner
+                size="sm"
+                containerProps={{ h: "16px", w: "16px" }}
+                spinnerProps={{ color: "blue.500" }}
+              />
+            </Tooltip>
           )}
           {migration_status === "E" && (
             <Tooltip
