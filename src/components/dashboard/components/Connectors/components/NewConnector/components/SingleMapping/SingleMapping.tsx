@@ -407,12 +407,16 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                           !isLocked &&
                           updateTableName(mapping.fileName, e.target.value)
                         }
-                        readOnly={isLocked}
+                        readOnly={isLocked || readOnly}
                         disabled={readOnly}
-                        bg={isLocked ? "gray.100" : undefined}
-                        color={isLocked ? "gray.500" : undefined}
-                        cursor={isLocked ? "not-allowed" : undefined}
-                        borderColor={isLocked ? "gray.100" : undefined}
+                        bg={isLocked || readOnly ? "gray.100" : undefined}
+                        color={isLocked || readOnly ? "gray.500" : undefined}
+                        cursor={
+                          isLocked || readOnly ? "not-allowed" : undefined
+                        }
+                        borderColor={
+                          isLocked || readOnly ? "gray.100" : undefined
+                        }
                         w="280px"
                         h="32px"
                         fontSize="sm"
