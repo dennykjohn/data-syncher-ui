@@ -379,12 +379,6 @@ const S3ConnectorConfiguration = ({
                     `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
                   );
                 },
-                onError: (error) => {
-                  toaster.error({
-                    title: "Failed to create S3 connector",
-                    description: error.message || "An error occurred",
-                  });
-                },
               },
             );
           }}
@@ -470,13 +464,6 @@ const S3ConnectorConfiguration = ({
                     setCreatedConnectionId(null);
                     setEditPendingPayload(null);
                     setPendingKeyTables([]);
-                  },
-                  onError: (error) => {
-                    toaster.error({
-                      title: "Failed to save primary keys",
-                      description:
-                        (error as Error).message || "An error occurred",
-                    });
                   },
                 },
               );

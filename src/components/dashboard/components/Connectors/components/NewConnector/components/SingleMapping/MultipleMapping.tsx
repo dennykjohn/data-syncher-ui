@@ -41,9 +41,16 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
   readOnly = false,
   connectionId,
 }) => {
+  const getDefaultPrefix = (fileType: string | undefined): string => {
+    if (!fileType) return "";
+    const ext = fileType.replace(/^\*\./, "").replace(/^\./, "").trim();
+    return ext ? `*.${ext}` : "";
+  };
+
   const [tableName, setTableName] = useState(initialTableName);
   const [prefix, setPrefix] = useState(
-    (formValues?.multi_files_prefix as string) || "",
+    (formValues?.multi_files_prefix as string) ||
+      getDefaultPrefix(formValues?.file_type as string | undefined),
   );
   const [shouldFetchPreview, setShouldFetchPreview] = useState(false);
   const [hasEverPreviewed, setHasEverPreviewed] = useState(false);

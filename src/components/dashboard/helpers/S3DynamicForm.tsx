@@ -30,7 +30,7 @@ import SingleMapping, {
   Mapping,
 } from "@/components/dashboard/components/Connectors/components/NewConnector/components/SingleMapping/SingleMapping";
 import { PasswordInput } from "@/components/ui/password-input";
-import { Tooltip } from "@/components/ui/tooltip";
+import { toaster } from "@/components/ui/toaster";
 
 export interface S3FieldSchema {
   name: string;
@@ -205,18 +205,96 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     // the user's in-progress edits during a background refetch.
     isDirtyRef.current = true;
 
+    const currentVals = valuesRef.current;
+
+    // Check if a mapping actually has data (ignore empty stringified JSON from backend)
+    const hasAnyMapping = (vals: Record<string, string>) => {
+      const isPresent = (v?: string) => v && v !== "[]" && v !== "{}";
+      return (
+        isPresent(vals.single_file_table_mapping) ||
+        isPresent(vals.table_to_files_mapping)
+      );
+    };
+
+    const mappingsExist = hasAnyMapping(currentVals);
+
+    let clearedReason:
+      | "base_folder_path"
+      | "include_subfolders"
+      | "file_type"
+      | "s3_bucket"
+      | null = null;
+
+    if (
+      name === "base_folder_path" &&
+      value !== currentVals.base_folder_path &&
+      mappingsExist
+    ) {
+      clearedReason = "base_folder_path";
+    } else if (
+      name === "include_subfolders" &&
+      value !== currentVals.include_subfolders &&
+      mappingsExist
+    ) {
+      clearedReason = "include_subfolders";
+    } else if (
+      name === "file_type" &&
+      value !== currentVals.file_type &&
+      mappingsExist
+    ) {
+      clearedReason = "file_type";
+    } else if (
+      name === "s3_bucket" &&
+      value !== currentVals.s3_bucket &&
+      mappingsExist
+    ) {
+      clearedReason = "s3_bucket";
+    }
+
     setValues((prev) => {
       let newValues = { ...prev, [name]: value };
-
-      // If base_folder_path is changed after file mapping, reset the mapping
-      if (
-        name === "base_folder_path" &&
-        value !== prev.base_folder_path &&
-        (prev.single_file_table_mapping || prev.table_to_files_mapping)
-      ) {
+      if (clearedReason === "base_folder_path") {
         newValues = {
           ...newValues,
-          file_mapping_method: "",
+          mapping_config: "",
+          mapping_id: "",
+          mappings: "",
+          single_file_table_mapping: "",
+          table_to_files_mapping: "",
+          multi_files_table_name: "",
+          multi_files_prefix: "",
+        };
+      }
+
+      if (clearedReason === "include_subfolders") {
+        newValues = {
+          ...newValues,
+          mapping_config: "",
+          mapping_id: "",
+          mappings: "",
+          single_file_table_mapping: "",
+          table_to_files_mapping: "",
+          multi_files_table_name: "",
+          multi_files_prefix: "",
+        };
+      }
+
+      if (clearedReason === "file_type") {
+        newValues = {
+          ...newValues,
+          mapping_config: "",
+          mapping_id: "",
+          mappings: "",
+          single_file_table_mapping: "",
+          table_to_files_mapping: "",
+          multi_files_table_name: "",
+          multi_files_prefix: "",
+        };
+      }
+
+      if (clearedReason === "s3_bucket") {
+        newValues = {
+          ...newValues,
           mapping_config: "",
           mapping_id: "",
           mappings: "",
@@ -230,6 +308,21 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       valuesRef.current = newValues;
       return newValues;
     });
+    if (clearedReason) {
+      const descriptions: Record<typeof clearedReason, string> = {
+        base_folder_path:
+          "Base folder path changed. Please configure the mapping again.",
+        include_subfolders:
+          "Include Subfolders changed. Please configure the mapping again.",
+        file_type: "File type changed. Please configure the mapping again.",
+        s3_bucket: "S3 bucket changed. Please configure the mapping again.",
+      };
+      toaster.warning({
+        title: "Mapping cleared",
+        description: descriptions[clearedReason],
+      });
+    }
+
     setErrors((prev) => {
       if (name === "destination_schema") {
         return { ...prev, [name]: validateSchemaName(value) };
@@ -294,10 +387,6 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       const hasValue =
         value && (typeof value === "string" ? value.trim() !== "" : true);
 
-      // Include if:
-      // 1. Field is visible AND has a value, OR
-      // 2. Field is in HIDDEN_FIELDS (always sent even if empty)
-      // 3. Field is include_subfolders (important for S3)
       if (
         (isVisible && hasValue) ||
         isHiddenField ||
@@ -461,15 +550,13 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   const handleClearMapping = () => {
     defaultValuesSerializedRef.current = null;
 
+    // Keep file_mapping_method so the user's chosen method stays selected;
+    // only wipe the actual mapping payload.
     setValues((prev) => ({
       ...prev,
-
-      file_mapping_method: "",
-
       mapping_config: "",
       mapping_id: "",
       mappings: "",
-
       single_file_table_mapping: "",
       table_to_files_mapping: "",
       multi_files_table_name: "",
@@ -482,10 +569,6 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     const fieldValue = values[field.name] || "";
 
     if (field.widget === "Checkbox" || field.name === "include_subfolders") {
-      const isSubfoldersField = field.name === "include_subfolders";
-      const isActuallyDisabled =
-        fieldReadOnly || (isSubfoldersField && hasMappings);
-
       const checkboxElement = (
         <Checkbox.Root
           id={field.name}
@@ -499,18 +582,18 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             } as React.ChangeEvent<HTMLInputElement>;
             handleChange(syntheticEvent);
           }}
-          disabled={isActuallyDisabled}
+          disabled={fieldReadOnly}
           colorPalette="brand"
           size="sm"
         >
           <Checkbox.HiddenInput />
           <Checkbox.Control
-            cursor={isActuallyDisabled ? "not-allowed" : "pointer"}
+            cursor={fieldReadOnly ? "not-allowed" : "pointer"}
           />
           <Checkbox.Label
             fontSize="sm"
             mt="1"
-            cursor={isActuallyDisabled ? "not-allowed" : "pointer"}
+            cursor={fieldReadOnly ? "not-allowed" : "pointer"}
           >
             {field.label}
           </Checkbox.Label>
@@ -524,13 +607,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
           invalid={!!errors[field.name]}
         >
           <Flex align="center" gap={2}>
-            {isSubfoldersField && hasMappings ? (
-              <Tooltip content="To enable this, clear the mapping " showArrow>
-                <Box>{checkboxElement}</Box>
-              </Tooltip>
-            ) : (
-              checkboxElement
-            )}
+            {checkboxElement}
           </Flex>
           {field.description && (
             <Field.HelperText
@@ -957,7 +1034,6 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     onCancel={handleFileMappingCancel}
                     loading={loading}
                     readOnly={
-                      mode === "edit" ||
                       schema.find((f) => f.name === "file_mapping_method")
                         ?.read_only === true
                     }
