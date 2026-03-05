@@ -1034,6 +1034,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     onCancel={handleFileMappingCancel}
                     loading={loading}
                     readOnly={
+                      mode === "edit" ||
                       schema.find((f) => f.name === "file_mapping_method")
                         ?.read_only === true
                     }
