@@ -533,6 +533,7 @@ const S3ConnectorConfiguration = ({
         mode={mode}
         sourceName={sourceName}
         connectionId={shouldFetch ? Number(connectionId) : undefined}
+        migrationStatus={connectorData?.migration_status}
       />
     </Flex>
   );

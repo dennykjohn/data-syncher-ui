@@ -66,6 +66,7 @@ interface S3DynamicFormProps {
   rightButtons?: React.ReactNode;
   onValuesChange?: (_values: Record<string, unknown>) => void;
   connectionId?: number;
+  migrationStatus?: string;
 }
 
 // Fields that should always be hidden - these will NEVER be shown
@@ -101,6 +102,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   rightButtons,
   onValuesChange,
   connectionId,
+  migrationStatus,
 }) => {
   // Initialize form values from schema and defaultValues
   const initialValues = useMemo(() => {
@@ -950,6 +952,11 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     });
   };
 
+  // Determine if mapping should be locked (read-only)
+  const isMappingReadOnly =
+    schema.find((f) => f.name === "file_mapping_method")?.read_only === true ||
+    migrationStatus === "C";
+
   return (
     <>
       <form autoComplete="off" style={{ display: "contents" }}>
@@ -1010,7 +1017,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     onCancel={handleFileMappingCancel}
                     onSaveMappings={handleFileMappingSave}
                     loading={loading}
-                    readOnly={false}
+                    readOnly={isMappingReadOnly}
                   />
                 ) : isMultiFilesSingleTable ? (
                   <MultipleMapping
@@ -1038,7 +1045,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     }}
                     onCancel={handleFileMappingCancel}
                     loading={loading}
-                    readOnly={false}
+                    readOnly={isMappingReadOnly}
                   />
                 ) : null}
               </Dialog.Content>
