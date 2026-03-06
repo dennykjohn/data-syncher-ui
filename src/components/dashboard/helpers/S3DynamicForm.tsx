@@ -1017,7 +1017,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     onCancel={handleFileMappingCancel}
                     onSaveMappings={handleFileMappingSave}
                     loading={loading}
-                    readOnly={isMappingReadOnly}
+                    readOnly={false}
                   />
                 ) : isMultiFilesSingleTable ? (
                   <MultipleMapping
