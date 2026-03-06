@@ -952,9 +952,9 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     });
   };
 
-  // Determine if mapping should be locked (read-only)
+  // Apply file_mapping_method read_only only where needed (MultipleMapping fields).
   const isMappingReadOnly =
-    schema.find((f) => f.name === "file_mapping_method")?.read_only === true ||
+    !!schema.find((f) => f.name === "file_mapping_method")?.read_only ||
     migrationStatus === "C";
 
   return (

@@ -52,8 +52,13 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
     (formValues?.multi_files_prefix as string) ||
       getDefaultPrefix(formValues?.file_type as string | undefined),
   );
-  const [shouldFetchPreview, setShouldFetchPreview] = useState(false);
-  const [hasEverPreviewed, setHasEverPreviewed] = useState(false);
+  const isEditMode = !!connectionId;
+  const [shouldFetchPreview, setShouldFetchPreview] = useState(
+    () => isEditMode && !!prefix.trim(),
+  );
+  const [hasEverPreviewed, setHasEverPreviewed] = useState(
+    () => isEditMode && !!prefix.trim(),
+  );
 
   const hasRequiredCreds = useMemo(() => {
     if (connectionId) return true;
