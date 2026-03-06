@@ -102,7 +102,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   rightButtons,
   onValuesChange,
   connectionId,
-  migrationStatus: _migrationStatus,
+  migrationStatus,
 }) => {
   // Initialize form values from schema and defaultValues
   const initialValues = useMemo(() => {
@@ -953,9 +953,9 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   };
 
   // Apply file_mapping_method read_only only where needed (MultipleMapping fields).
-  const isMappingReadOnly = !!schema.find(
-    (f) => f.name === "file_mapping_method",
-  )?.read_only;
+  const isMappingReadOnly =
+    !!schema.find((f) => f.name === "file_mapping_method")?.read_only ||
+    migrationStatus === "C";
 
   return (
     <>
@@ -1017,7 +1017,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     onCancel={handleFileMappingCancel}
                     onSaveMappings={handleFileMappingSave}
                     loading={loading}
-                    readOnly={false}
+                    readOnly={isMappingReadOnly}
                   />
                 ) : isMultiFilesSingleTable ? (
                   <MultipleMapping
