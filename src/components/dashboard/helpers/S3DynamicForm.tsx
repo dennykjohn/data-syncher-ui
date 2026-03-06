@@ -952,6 +952,11 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     });
   };
 
+  // Apply file_mapping_method read_only only where needed (MultipleMapping fields).
+  const isMappingReadOnly = !!schema.find(
+    (f) => f.name === "file_mapping_method",
+  )?.read_only;
+
   return (
     <>
       <form autoComplete="off" style={{ display: "contents" }}>
@@ -1040,7 +1045,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     }}
                     onCancel={handleFileMappingCancel}
                     loading={loading}
-                    readOnly={false}
+                    readOnly={isMappingReadOnly}
                   />
                 ) : null}
               </Dialog.Content>
