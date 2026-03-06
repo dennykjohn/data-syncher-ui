@@ -124,11 +124,12 @@ const MigrationProgressTable = ({
                   <Flex alignItems="center" justifyContent="center">
                     <Tooltip
                       content={
-                        <Flex alignItems="center" gap={2}>
+                        <Flex alignItems="flex-start" gap={2}>
                           <Box
                             bg="red.500"
                             borderRadius="full"
                             p={1}
+                            mt={0.5}
                             minW="16px"
                             h="16px"
                             display="flex"
@@ -189,7 +190,7 @@ const MigrationProgressTable = ({
                         color: "white",
                         p: 3,
                         borderRadius: "md",
-                        maxW: "90vw",
+                        maxW: "500px",
                       }}
                     >
                       <Box cursor={table.error_message ? "pointer" : "default"}>

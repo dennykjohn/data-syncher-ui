@@ -408,7 +408,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                           updateTableName(mapping.fileName, e.target.value)
                         }
                         readOnly={isLocked || readOnly}
-                        disabled={readOnly}
+                        disabled={isLocked || readOnly}
                         bg={isLocked || readOnly ? "gray.100" : undefined}
                         color={isLocked || readOnly ? "gray.500" : undefined}
                         cursor={
