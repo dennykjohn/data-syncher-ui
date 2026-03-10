@@ -130,15 +130,17 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
 
           return {
             fileName,
-            // Use mapped_table if it exists and it's already mapped, otherwise suggested table name
+            // Lock the mapping if already_mapped is true OR if the table name is explicitly locked
             tableName:
-              t.already_mapped && t.mapped_table
-                ? t.mapped_table
+              (t.already_mapped === true || t.table_name_locked === true) &&
+              (t.mapped_table || t.locked_table_name)
+                ? t.mapped_table || t.locked_table_name
                 : suggestedTableName,
-            // If it was in the saved config OR backend says it's already mapped, select it
-            isSelected: !!savedMapping || !!t.already_mapped,
-            // Lock the mapping based on the correct backend field
-            alreadyMapped: !!t.already_mapped,
+            // Only select if it was already in the saved configuration
+            isSelected: !!savedMapping,
+            // Lock flag used for disabling inputs
+            alreadyMapped:
+              t.already_mapped === true || t.table_name_locked === true,
           };
         });
       });

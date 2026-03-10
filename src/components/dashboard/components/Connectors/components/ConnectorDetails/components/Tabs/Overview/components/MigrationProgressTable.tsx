@@ -1,5 +1,6 @@
 import { Box, Flex, Image, Table, Text } from "@chakra-ui/react";
 
+import { FaExclamationTriangle } from "react-icons/fa";
 import { LuCopy } from "react-icons/lu";
 
 import { format } from "date-fns";
@@ -91,12 +92,12 @@ const MigrationProgressTable = ({
         </Table.Header>
         <Table.Body>
           {tables?.map((table, index: number) => {
-            const statusLower = (table.status || "").toLowerCase();
+            const iconLower = (table.status_icon || "").toLowerCase();
             const isSuccess =
-              statusLower === "success" || statusLower === "completed";
-            const isFailed =
-              statusLower === "failed" || statusLower === "error";
-            const isPending = !isSuccess && !isFailed;
+              iconLower === "success" || iconLower === "completed";
+            const isFailed = iconLower === "failed" || iconLower === "error";
+            const isWarning = iconLower === "warning";
+            const isPending = iconLower === "in_progress";
 
             // Format times if available
             const startTime = table.start_time
@@ -207,6 +208,11 @@ const MigrationProgressTable = ({
                             boxSize="20px"
                             objectFit="contain"
                           />
+                        )}
+                        {isWarning && (
+                          <Box color="orange.500">
+                            <FaExclamationTriangle size="20px" />
+                          </Box>
                         )}
                         {isPending && (
                           <Image

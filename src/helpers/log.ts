@@ -11,71 +11,51 @@ export const getUiState = (
     if (["i", "in_progress", "running"].includes(normalizedUiState))
       return "in_progress";
     if (["p", "w", "warning"].includes(normalizedUiState)) return "warning";
-    if (["paused", "active"].includes(normalizedUiState))
-      return normalizedUiState;
     return normalizedUiState;
   }
 
-  const lowerStatus = (status || "").toLowerCase();
-  const lowerMessage = (message || "").toLowerCase();
+  const s = (status || "").toLowerCase();
+  const m = (message || "").toLowerCase();
 
-  // Strict check for status 'p' (Partial/Paused) to show warning symbol as requested
-  if (lowerStatus === "p") return "warning";
+  if (
+    s === "s" &&
+    (m.includes("initiated") ||
+      m.includes("initite") ||
+      m.includes("in progress") ||
+      m.includes("started") ||
+      m.includes("processing"))
+  ) {
+    return "in_progress";
+  }
 
-  // Message content checks (Override ambiguous status codes like "Success" for Paused/Active states)
-  if (lowerMessage.includes("paused")) return "paused";
-  if (lowerMessage.includes("active")) return "active";
+  // Condition 3: Status "P" -> warning
+  if (s === "p") {
+    return "warning";
+  }
 
-  // Check for error/failure in message early to override ambiguous status codes
-  if (lowerMessage.includes("failed") || lowerMessage.includes("error")) {
-    const isPartialSuccess =
-      (lowerMessage.includes("successful") ||
-        lowerMessage.includes("completed")) &&
-      !lowerMessage.includes("0 tables") &&
-      !lowerMessage.includes("0/0 successful") &&
-      !lowerMessage.includes("0/1 successful") &&
-      !lowerMessage.includes(": 0 successful") &&
-      !lowerMessage.includes(" 0 successful");
+  // Condition 4: Status "S" AND ("completed" OR "successfully" OR "updated") -> success
+  if (
+    s === "s" &&
+    (m.includes("completed") ||
+      m.includes("successfully") ||
+      m.includes("updated") ||
+      m.includes("established"))
+  ) {
+    return "success";
+  }
 
-    if (isPartialSuccess) {
-      return "warning";
-    }
+  if (
+    (s === "f" || s === "e") &&
+    (m.includes("error") || m.includes("fail") || m.includes("failed"))
+  ) {
     return "error";
   }
 
-  // Explicit status checks
-  if (["s", "success", "completed"].includes(lowerStatus)) return "success";
-  if (["e", "error", "failed"].includes(lowerStatus)) return "error";
-  if (["i", "in_progress", "running"].includes(lowerStatus))
-    return "in_progress";
-  if (["w", "warning"].includes(lowerStatus)) return "warning";
-
-  // High priority in-progress overrides (Specific requested phrases)
-  if (
-    lowerMessage.includes("drop and reload") ||
-    lowerMessage.includes("migration in progress") ||
-    lowerMessage.includes("reloading") ||
-    lowerMessage.includes("initiate") ||
-    lowerMessage.includes("initiated") ||
-    lowerMessage.includes("delta refresh") ||
-    lowerMessage.includes("schema refresh in progress") ||
-    lowerMessage.includes("update schema in progress")
-  )
-    return "in_progress";
-
-  if (
-    lowerMessage.includes("completed successfully") ||
-    lowerMessage.includes("updated fields") ||
-    lowerMessage.includes("table selection updated") ||
-    lowerMessage.includes("schema refresh completed") ||
-    lowerMessage.includes("schema updated") ||
-    lowerMessage.includes("update completed") ||
-    lowerMessage.includes("fetch tables completed")
-  )
-    return "success";
-
-  // Low priority in-progress checks
-  if (lowerMessage.includes("processing") || lowerMessage.includes("started"))
+  // Generic Fallbacks
+  if (s === "s" || s === "success" || s === "completed") return "success";
+  if (s === "f" || s === "e" || s === "error" || s === "failed") return "error";
+  if (s === "p" || s === "w" || s === "warning") return "warning";
+  if (s === "i" || s === "in_progress" || m.includes("progress"))
     return "in_progress";
 
   return "";
