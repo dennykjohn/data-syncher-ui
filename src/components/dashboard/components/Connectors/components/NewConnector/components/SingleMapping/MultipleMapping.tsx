@@ -6,6 +6,7 @@ import {
   Field,
   Flex,
   Input,
+  Spinner,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -48,7 +49,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
   };
 
   const [tableName, setTableName] = useState(initialTableName);
-  const [prefix, setPrefix] = useState(
+  const [prefix] = useState(
     (formValues?.multi_files_prefix as string) ||
       getDefaultPrefix(formValues?.file_type as string | undefined),
   );
@@ -105,13 +106,14 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
     connectionId,
   ]);
 
-  const { data: previewData } = usePreviewPatternTables(
-    previewParams ?? ({} as PreviewPatternRequest),
-    !!previewParams &&
-      hasRequiredCreds &&
-      !!prefix.trim() &&
-      shouldFetchPreview,
-  );
+  const { data: previewData, isLoading: isPreviewLoading } =
+    usePreviewPatternTables(
+      previewParams ?? ({} as PreviewPatternRequest),
+      !!previewParams &&
+        hasRequiredCreds &&
+        !!prefix.trim() &&
+        shouldFetchPreview,
+    );
 
   const matchedTables = useMemo(() => {
     const results =
@@ -226,22 +228,14 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 id="prefix"
                 name="prefix"
                 value={prefix}
-                autoComplete="off"
-                onChange={(e) => {
-                  setPrefix(e.target.value);
-                  setShouldFetchPreview(false);
-                }}
                 size="sm"
-                readOnly={readOnly}
-                disabled={readOnly}
-                bg={readOnly ? "gray.200" : undefined}
-                color={readOnly ? "gray.700" : undefined}
-                cursor={readOnly ? "not-allowed" : undefined}
-                opacity={readOnly ? 0.8 : 1}
+                readOnly={true}
+                disabled={true}
+                bg="gray.200"
+                color="gray.700"
+                cursor="not-allowed"
+                opacity={0.8}
               />
-              <Field.HelperText>
-                Filter files by prefix to preview matching tables
-              </Field.HelperText>
 
               {/* Preview Button - only shown when not read-only */}
               {!readOnly && (
@@ -288,7 +282,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
             align="center"
           >
             <Text fontWeight="semibold" fontSize="sm">
-              Matching Files Preview
+              Files
             </Text>
             {matchedTables.length > 0 && (
               <Text fontSize="sm" color="gray.600">
@@ -298,7 +292,12 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
           </Flex>
 
           <Box overflowY="auto" flex="1">
-            {!hasRequiredCreds && matchedTables.length === 0 ? (
+            {isPreviewLoading ? (
+              <VStack gap={3} align="center" py={12}>
+                <Spinner size="sm" color="brand.500" />
+                <Text fontSize="sm" color="gray.500" fontWeight="medium"></Text>
+              </VStack>
+            ) : !hasRequiredCreds && matchedTables.length === 0 ? (
               <VStack gap={2} align="center" py={6} color="gray.500">
                 <Text fontSize="sm" fontWeight="medium">
                   No files configured
