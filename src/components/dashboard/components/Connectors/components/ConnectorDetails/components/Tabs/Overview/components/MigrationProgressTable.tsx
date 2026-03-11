@@ -1,6 +1,7 @@
 import { Box, Flex, Image, Table, Text } from "@chakra-ui/react";
 
 import { LuCopy } from "react-icons/lu";
+import { MdWarning } from "react-icons/md";
 
 import { format } from "date-fns";
 
@@ -91,12 +92,19 @@ const MigrationProgressTable = ({
         </Table.Header>
         <Table.Body>
           {tables?.map((table, index: number) => {
-            const statusLower = (table.status || "").toLowerCase();
+            const statusRaw = (
+              table.status_icon ||
+              table.status ||
+              ""
+            ).toLowerCase();
             const isSuccess =
-              statusLower === "success" || statusLower === "completed";
-            const isFailed =
-              statusLower === "failed" || statusLower === "error";
-            const isPending = !isSuccess && !isFailed;
+              statusRaw === "success" || statusRaw === "completed";
+            const isFailed = statusRaw === "failed" || statusRaw === "error";
+            const isWarning = statusRaw === "warning";
+            const isPending =
+              statusRaw === "in_progress" ||
+              statusRaw === "pending" ||
+              (!isSuccess && !isFailed && !isWarning);
 
             // Format times if available
             const startTime = table.start_time
@@ -207,6 +215,11 @@ const MigrationProgressTable = ({
                             boxSize="20px"
                             objectFit="contain"
                           />
+                        )}
+                        {isWarning && (
+                          <Box color="orange.500">
+                            <MdWarning size={20} />
+                          </Box>
                         )}
                         {isPending && (
                           <Image

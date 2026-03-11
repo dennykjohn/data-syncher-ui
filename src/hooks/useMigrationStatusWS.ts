@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 interface MigrationWSMessage {
   table_name?: string;
   status?: string;
+  status_icon?: string;
   overall_status?: string;
   staging_records_count?: number;
   start_time?: string | null;
@@ -96,6 +97,9 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
               if (message.status) {
                 updatedTable.status = message.status;
               }
+              if (message.status_icon) {
+                updatedTable.status_icon = message.status_icon;
+              }
               if (message.error_message) {
                 updatedTable.error_message = message.error_message;
               }
@@ -129,7 +133,7 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
                 message: message.message,
                 timestamp: message.timestamp || new Date().toISOString(),
                 table: message.table_name || "",
-                status: (message.status as string) || "I",
+                status: message.status_icon || message.status || "I",
               };
               updated.logs = [newLog, ...logs];
             }
@@ -138,6 +142,7 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
           // Normalize status
           const rawStatus = (
             message.overall_status ||
+            message.status_icon ||
             message.status ||
             ""
           ).toLowerCase();
