@@ -17,6 +17,7 @@ export interface S3FileItem {
   already_mapped?: boolean;
   mapped_table?: string | null;
   table_name_locked?: boolean;
+  locked_table_name?: string | null;
 }
 
 export interface S3ListFilesResponse {
