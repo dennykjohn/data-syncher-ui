@@ -131,11 +131,10 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
           const isLocked = !!t.already_mapped || !!t.table_name_locked;
           return {
             fileName,
-
             tableName:
-              isLocked && t.mapped_table ? t.mapped_table : suggestedTableName,
-
-            isSelected: !!savedMapping || isLocked,
+              (isLocked ? t.mapped_table || t.locked_table_name : null) ||
+              suggestedTableName,
+            isSelected: !!savedMapping || !!t.already_mapped,
             alreadyMapped: isLocked,
           };
         });

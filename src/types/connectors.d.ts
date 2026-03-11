@@ -181,6 +181,7 @@ export interface ConnectorActivityDetailResponse {
     already_mapped?: boolean;
     table_name_locked?: boolean;
     mapped_table?: string;
+    locked_table_name?: string | null;
   }[];
   total_tables?: number;
   logs?: {
