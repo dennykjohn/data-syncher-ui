@@ -3,6 +3,34 @@ export const getUiState = (
   status: string | undefined | null,
   message: string | undefined | null,
 ): string => {
+  const lowerStatus = (status || "").toLowerCase();
+  const lowerMessage = (message || "").toLowerCase();
+
+  // STRICT CHECKS based on User Request
+  if (lowerStatus === "s") {
+    if (
+      lowerMessage.includes("in progress") ||
+      lowerMessage.includes("initiated") ||
+      lowerMessage.includes("initiate")
+    ) {
+      return "in_progress";
+    }
+    if (lowerMessage.includes("completed")) {
+      return "success";
+    }
+  }
+
+  if (lowerStatus === "f" || lowerStatus === "e") {
+    if (lowerMessage.includes("error") || lowerMessage.includes("failed")) {
+      return "error";
+    }
+  }
+
+  if (lowerStatus === "p") {
+    return "warning";
+  }
+
+  // Fallback / Existing high priority overrides
   if (uiState) {
     const normalizedUiState = uiState.toLowerCase();
     if (["s", "success", "completed"].includes(normalizedUiState))
@@ -11,22 +39,14 @@ export const getUiState = (
     if (["i", "in_progress", "running"].includes(normalizedUiState))
       return "in_progress";
     if (["p", "w", "warning"].includes(normalizedUiState)) return "warning";
-    if (["paused", "active"].includes(normalizedUiState))
-      return normalizedUiState;
     return normalizedUiState;
   }
 
-  const lowerStatus = (status || "").toLowerCase();
-  const lowerMessage = (message || "").toLowerCase();
-
-  // Strict check for status 'p' (Partial/Paused) to show warning symbol as requested
-  if (lowerStatus === "p") return "warning";
-
-  // Message content checks (Override ambiguous status codes like "Success" for Paused/Active states)
+  // General catch-all for message content (e.g. paused/active)
   if (lowerMessage.includes("paused")) return "paused";
   if (lowerMessage.includes("active")) return "active";
 
-  // Check for error/failure in message early to override ambiguous status codes
+  // Check for error/failure in message generally
   if (lowerMessage.includes("failed") || lowerMessage.includes("error")) {
     const isPartialSuccess =
       (lowerMessage.includes("successful") ||
@@ -43,20 +63,17 @@ export const getUiState = (
     return "error";
   }
 
-  // Explicit status checks
+  // General status fallbacks
   if (["s", "success", "completed"].includes(lowerStatus)) return "success";
-  if (["e", "error", "failed"].includes(lowerStatus)) return "error";
+  if (["e", "error", "failed", "f"].includes(lowerStatus)) return "error";
   if (["i", "in_progress", "running"].includes(lowerStatus))
     return "in_progress";
   if (["w", "warning"].includes(lowerStatus)) return "warning";
 
-  // High priority in-progress overrides (Specific requested phrases)
   if (
     lowerMessage.includes("drop and reload") ||
     lowerMessage.includes("migration in progress") ||
     lowerMessage.includes("reloading") ||
-    lowerMessage.includes("initiate") ||
-    lowerMessage.includes("initiated") ||
     lowerMessage.includes("delta refresh") ||
     lowerMessage.includes("schema refresh in progress") ||
     lowerMessage.includes("update schema in progress")
@@ -74,7 +91,6 @@ export const getUiState = (
   )
     return "success";
 
-  // Low priority in-progress checks
   if (lowerMessage.includes("processing") || lowerMessage.includes("started"))
     return "in_progress";
 

@@ -178,6 +178,9 @@ export interface ConnectorActivityDetailResponse {
     message?: string;
     error_message?: string;
     staging_records_count?: number;
+    already_mapped?: boolean;
+    table_name_locked?: boolean;
+    mapped_table?: string;
   }[];
   total_tables?: number;
   logs?: {
