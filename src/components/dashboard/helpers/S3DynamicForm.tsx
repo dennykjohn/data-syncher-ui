@@ -546,8 +546,27 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   }, [values.table_to_files_mapping]);
 
   const hasMappings = useMemo(() => {
-    return currentMappings.length > 0 || currentMultipleFiles.length > 0;
-  }, [currentMappings, currentMultipleFiles]);
+    const hasMultiTableName = !!values.multi_files_table_name?.trim();
+    const hasMultiPrefix = !!values.multi_files_prefix?.trim();
+    const hasMultiMappingValue =
+      !!values.table_to_files_mapping &&
+      values.table_to_files_mapping !== "[]" &&
+      values.table_to_files_mapping !== "{}";
+
+    return (
+      currentMappings.length > 0 ||
+      currentMultipleFiles.length > 0 ||
+      hasMultiTableName ||
+      hasMultiPrefix ||
+      hasMultiMappingValue
+    );
+  }, [
+    currentMappings,
+    currentMultipleFiles,
+    values.multi_files_table_name,
+    values.multi_files_prefix,
+    values.table_to_files_mapping,
+  ]);
 
   const handleClearMapping = () => {
     defaultValuesSerializedRef.current = null;
