@@ -15,6 +15,14 @@ const ProfileForm = ({
     return <LoadingSpinner />;
   }
 
+  const readOnlyInputStyles = {
+    bg: "gray.200",
+    color: "black",
+    borderColor: "gray.300",
+    opacity: 1,
+    cursor: "not-allowed",
+  } as const;
+
   return (
     <Stack gap={4} maxW={{ base: "100%", md: "500px" }}>
       <Fieldset.Root size="md" gap={4}>
@@ -26,9 +34,7 @@ const ProfileForm = ({
               placeholder="Enter your first name"
               value={initialData.firstName}
               readOnly
-              bg="gray.200"
-              color="gray.400"
-              borderColor="gray.300"
+              {...readOnlyInputStyles}
             />
           </Field.Root>
           {/* Last name */}
@@ -38,9 +44,7 @@ const ProfileForm = ({
               placeholder="Enter your last name"
               value={initialData.lastName}
               readOnly
-              bg="gray.200"
-              color="gray.400"
-              borderColor="gray.300"
+              {...readOnlyInputStyles}
             />
           </Field.Root>
           {/* Email */}
@@ -50,9 +54,7 @@ const ProfileForm = ({
               placeholder="Enter your email"
               value={initialData.company_email}
               readOnly
-              bg="gray.200"
-              color="gray.400"
-              borderColor="gray.300"
+              {...readOnlyInputStyles}
             />
           </Field.Root>
           {/* Company name */}
@@ -62,9 +64,7 @@ const ProfileForm = ({
               placeholder="Enter your company name"
               value={initialData.cmp_name}
               readOnly
-              bg="gray.200"
-              color="gray.400"
-              borderColor="gray.300"
+              {...readOnlyInputStyles}
             />
           </Field.Root>
           {/* Valid from */}
@@ -75,9 +75,7 @@ const ProfileForm = ({
               placeholder="Enter your valid from date"
               value={initialData.valid_from}
               readOnly
-              bg="gray.200"
-              color="gray.400"
-              borderColor="gray.300"
+              {...readOnlyInputStyles}
             />
           </Field.Root>
           {/* Valid to */}
@@ -88,9 +86,7 @@ const ProfileForm = ({
               placeholder="Enter your valid to date"
               value={initialData.valid_to}
               readOnly
-              bg="gray.200"
-              color="gray.400"
-              borderColor="gray.300"
+              {...readOnlyInputStyles}
             />
           </Field.Root>
         </Fieldset.Content>
