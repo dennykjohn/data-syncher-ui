@@ -118,37 +118,43 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
 
   // 2. Reconcile state with S3 Scan results: Strictly only show files found in S3
   React.useEffect(() => {
-    if (s3TableList.length > 0) {
-      setLocalMappings(() => {
-        // Build the current list strictly based on what S3 API returned
-        return s3TableList.map((t) => {
-          const fileName = (t.file_key || t.table) as string;
-          const suggestedTableName = t.table || extractTableName(fileName);
+    if (!s3Files) return;
 
-          // Check if this file was in the initial mappings (saved configuration)
-          const savedMapping = mappings.find((m) => m.fileName === fileName);
-
-          const isLocked = !!t.already_mapped || !!t.table_name_locked;
-          return {
-            fileName,
-            tableName:
-              (isLocked ? t.mapped_table || t.locked_table_name : null) ||
-              suggestedTableName,
-            isSelected: !!savedMapping || !!t.already_mapped,
-            alreadyMapped: isLocked,
-          };
-        });
-      });
-
-      setSelectedFileName((prev) => {
-        if (prev) return prev;
-        const firstName = s3TableList.find(
-          (t) => t.file_key || t.table,
-        )?.file_key;
-        return (firstName as string) || null;
-      });
+    if (s3TableList.length === 0) {
+      setLocalMappings([]);
+      setSelectedFileName(null);
+      return;
     }
-  }, [s3TableList, mappings]);
+
+    setLocalMappings(() => {
+      // Build the current list strictly based on what S3 API returned
+      return s3TableList.map((t) => {
+        const fileName = (t.file_key || t.table) as string;
+        const suggestedTableName = t.table || extractTableName(fileName);
+
+        // Check if this file was in the initial mappings (saved configuration)
+        const savedMapping = mappings.find((m) => m.fileName === fileName);
+
+        const isLocked = !!t.already_mapped || !!t.table_name_locked;
+        return {
+          fileName,
+          tableName:
+            (isLocked ? t.mapped_table || t.locked_table_name : null) ||
+            suggestedTableName,
+          isSelected: !!savedMapping || !!t.already_mapped,
+          alreadyMapped: isLocked,
+        };
+      });
+    });
+
+    setSelectedFileName((prev) => {
+      if (prev) return prev;
+      const firstName = s3TableList.find(
+        (t) => t.file_key || t.table,
+      )?.file_key;
+      return (firstName as string) || null;
+    });
+  }, [s3Files, s3TableList, mappings]);
 
   const filteredFiles = useMemo(() => {
     if (!searchFiles.trim()) return localMappings;
