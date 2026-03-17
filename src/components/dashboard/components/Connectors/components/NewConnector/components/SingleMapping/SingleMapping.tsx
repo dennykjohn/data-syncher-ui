@@ -135,13 +135,15 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
         // Check if this file was in the initial mappings (saved configuration)
         const savedMapping = mappings.find((m) => m.fileName === fileName);
 
-        const isLocked = !!t.already_mapped || !!t.table_name_locked;
+        const isLocked = !!t.table_name_locked;
+        const savedTableName = savedMapping?.tableName?.trim();
         return {
           fileName,
           tableName:
             (isLocked ? t.mapped_table || t.locked_table_name : null) ||
+            savedTableName ||
             suggestedTableName,
-          isSelected: !!savedMapping || !!t.already_mapped,
+          isSelected: !!savedMapping,
           alreadyMapped: isLocked,
         };
       });
