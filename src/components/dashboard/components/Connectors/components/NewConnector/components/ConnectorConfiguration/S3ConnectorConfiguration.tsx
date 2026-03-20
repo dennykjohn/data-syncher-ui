@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Flex } from "@chakra-ui/react";
 
@@ -24,6 +24,7 @@ import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 import { type CreateConnectionPayload } from "@/types/connectors";
 
 import { type ConnectorFormState } from "../../type";
+import { useQueryClient } from "@tanstack/react-query";
 
 const S3ConnectorConfiguration = ({
   state,
@@ -35,6 +36,7 @@ const S3ConnectorConfiguration = ({
   mode: "create" | "edit";
 }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { connectionId } = useParams<{ connectionId: string }>();
   const shouldFetch = mode === "edit" && !!connectionId;
 
@@ -123,6 +125,19 @@ const S3ConnectorConfiguration = ({
       showPrimaryKeySelection,
     );
 
+  // Ensure edit-mode primary key selection opens only after payload is ready.
+  useEffect(() => {
+    if (
+      mode === "edit" &&
+      editPendingPayload &&
+      createdConnectionId &&
+      !showPrimaryKeySelection
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowPrimaryKeySelection(true);
+    }
+  }, [mode, editPendingPayload, createdConnectionId, showPrimaryKeySelection]);
+
   // Mutation hooks
   const {
     mutate: updateConnectorConfig,
@@ -161,6 +176,28 @@ const S3ConnectorConfiguration = ({
         stringifiedValues[key] = String(value);
       }
     });
+
+    // Ensure latest mapping fields are preserved as-is from the submitted values.
+    if (values["single_file_table_mapping"] !== undefined) {
+      stringifiedValues.single_file_table_mapping = String(
+        values["single_file_table_mapping"] || "",
+      );
+    }
+    if (values["table_to_files_mapping"] !== undefined) {
+      stringifiedValues.table_to_files_mapping = String(
+        values["table_to_files_mapping"] || "",
+      );
+    }
+    if (values["multi_files_table_name"] !== undefined) {
+      stringifiedValues.multi_files_table_name = String(
+        values["multi_files_table_name"] || "",
+      );
+    }
+    if (values["multi_files_prefix"] !== undefined) {
+      stringifiedValues.multi_files_prefix = String(
+        values["multi_files_prefix"] || "",
+      );
+    }
 
     const requiresPrimaryKeySelection =
       parsedValues["load_method"] === "upsert_custom_key";
@@ -209,7 +246,8 @@ const S3ConnectorConfiguration = ({
       if (requiresPrimaryKeySelection && !showPrimaryKeySelection) {
         setEditPendingPayload(editPayload);
         setCreatedConnectionId(Number(connectionId));
-        setShowPrimaryKeySelection(true);
+        // Defer opening until payload is stored so suggest-primary-keys uses latest mapping
+        setShowPrimaryKeySelection(false);
         return;
       }
 
@@ -230,6 +268,10 @@ const S3ConnectorConfiguration = ({
               title: "S3 Connector updated successfully",
               description: "The S3 connector has been updated.",
             });
+            refreshSchemaStatus(connectionId);
+            navigate(
+              `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+            );
           }
         },
       });
@@ -237,16 +279,36 @@ const S3ConnectorConfiguration = ({
   };
   // -----------------------------------------------------------------
 
+  const refreshSchemaStatus = (id: number | string | null | undefined) => {
+    const connectionIdNum = Number(id);
+    if (!connectionIdNum) return;
+    queryClient.removeQueries({ queryKey: ["SchemaStatus", connectionIdNum] });
+    queryClient.invalidateQueries({
+      queryKey: ["SchemaStatus", connectionIdNum],
+      refetchType: "active",
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["TableStatus", connectionIdNum],
+      refetchType: "active",
+    });
+  };
+
   const sourceName = state?.source || connectorData?.source_name || "";
 
   // Get the schema fields - Priority: Backend Config (Edit) > Form Schema (Create)
-  const baseSchemaFields =
-    mode === "edit"
+  const baseSchemaFields = useMemo(() => {
+    return mode === "edit"
       ? connectorConfig?.source_schema ||
-        connectorConfig?.fields ||
-        formSchema ||
-        []
+          connectorConfig?.fields ||
+          formSchema ||
+          []
       : formSchema || [];
+  }, [
+    mode,
+    connectorConfig?.source_schema,
+    connectorConfig?.fields,
+    formSchema,
+  ]);
 
   const schemaFields = useMemo(() => {
     const fields = baseSchemaFields as S3FieldSchema[];
@@ -333,21 +395,60 @@ const S3ConnectorConfiguration = ({
               formData.multi_files_table_name ||
               formData.destination_schema ||
               "Schema",
-            tables: suggestedPrimaryKeys.tables.map((table) => ({
-              name: table.table_name,
-              pkLocked: table.pk_locked,
-              columns: table.columns.map((col) => ({
-                name: col.column_name,
-                isPrimaryKey:
-                  table.existing_primary_keys &&
-                  table.existing_primary_keys.length > 0
-                    ? table.existing_primary_keys.includes(col.column_name)
-                    : (col.is_selected ?? col.is_suggested_pk),
-                cardinality: col.uniqueness_score / 100,
-                warning:
-                  col.warnings.length > 0 ? col.warnings.join(". ") : undefined,
-              })),
-            })),
+            tables: (() => {
+              const tablesFromApi = suggestedPrimaryKeys.tables.map(
+                (table) => ({
+                  name: table.table_name,
+                  pkLocked: table.pk_locked,
+                  columns: table.columns.map((col) => ({
+                    name: col.column_name,
+                    isPrimaryKey:
+                      table.existing_primary_keys &&
+                      table.existing_primary_keys.length > 0
+                        ? table.existing_primary_keys.includes(col.column_name)
+                        : (col.is_selected ?? col.is_suggested_pk),
+                    cardinality: col.uniqueness_score / 100,
+                    warning:
+                      col.warnings.length > 0
+                        ? col.warnings.join(". ")
+                        : undefined,
+                  })),
+                }),
+              );
+
+              const mappedTables: string[] = [];
+              try {
+                const mappingRaw = formData.single_file_table_mapping;
+                if (mappingRaw) {
+                  const parsed = JSON.parse(mappingRaw) as Record<
+                    string,
+                    string
+                  >;
+                  Object.values(parsed).forEach((tableName) => {
+                    if (tableName) mappedTables.push(tableName);
+                  });
+                }
+              } catch {
+                // ignore parse errors
+              }
+
+              const existing = new Set(
+                tablesFromApi.map((t) => t.name.toLowerCase()),
+              );
+              mappedTables.forEach((tableName) => {
+                const normalized = tableName.toLowerCase();
+                if (!existing.has(normalized)) {
+                  tablesFromApi.push({
+                    name: tableName,
+                    pkLocked: false,
+                    columns: [],
+                  });
+                  existing.add(normalized);
+                }
+              });
+
+              return tablesFromApi;
+            })(),
           }
         : undefined;
 
@@ -392,21 +493,61 @@ const S3ConnectorConfiguration = ({
       const schemaData = suggestedPrimaryKeys?.tables
         ? {
             schemaName: "Schema",
-            tables: suggestedPrimaryKeys.tables.map((table) => ({
-              name: table.table_name,
-              pkLocked: table.pk_locked,
-              columns: table.columns.map((col) => ({
-                name: col.column_name,
-                isPrimaryKey:
-                  table.existing_primary_keys &&
-                  table.existing_primary_keys.length > 0
-                    ? table.existing_primary_keys.includes(col.column_name)
-                    : (col.is_selected ?? col.is_suggested_pk),
-                cardinality: col.uniqueness_score / 100,
-                warning:
-                  col.warnings.length > 0 ? col.warnings.join(". ") : undefined,
-              })),
-            })),
+            tables: (() => {
+              const tablesFromApi = suggestedPrimaryKeys.tables.map(
+                (table) => ({
+                  name: table.table_name,
+                  pkLocked: table.pk_locked,
+                  columns: table.columns.map((col) => ({
+                    name: col.column_name,
+                    isPrimaryKey:
+                      table.existing_primary_keys &&
+                      table.existing_primary_keys.length > 0
+                        ? table.existing_primary_keys.includes(col.column_name)
+                        : (col.is_selected ?? col.is_suggested_pk),
+                    cardinality: col.uniqueness_score / 100,
+                    warning:
+                      col.warnings.length > 0
+                        ? col.warnings.join(". ")
+                        : undefined,
+                  })),
+                }),
+              );
+
+              const mappedTables: string[] = [];
+              try {
+                const mappingRaw =
+                  editPendingPayload?.form_data.single_file_table_mapping;
+                if (mappingRaw) {
+                  const parsed = JSON.parse(mappingRaw) as Record<
+                    string,
+                    string
+                  >;
+                  Object.values(parsed).forEach((tableName) => {
+                    if (tableName) mappedTables.push(tableName);
+                  });
+                }
+              } catch {
+                // ignore parse errors
+              }
+
+              const existing = new Set(
+                tablesFromApi.map((t) => t.name.toLowerCase()),
+              );
+              mappedTables.forEach((tableName) => {
+                const normalized = tableName.toLowerCase();
+                if (!existing.has(normalized)) {
+                  tablesFromApi.push({
+                    name: tableName,
+                    pkLocked: false,
+                    columns: [],
+                  });
+                  existing.add(normalized);
+                }
+              });
+
+              return tablesFromApi;
+            })(),
           }
         : undefined;
 
@@ -464,6 +605,10 @@ const S3ConnectorConfiguration = ({
                     setCreatedConnectionId(null);
                     setEditPendingPayload(null);
                     setPendingKeyTables([]);
+                    refreshSchemaStatus(connectionId);
+                    navigate(
+                      `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+                    );
                   },
                 },
               );

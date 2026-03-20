@@ -12,9 +12,11 @@ import { useFetchConnectorById } from "@/queryOptions/connector/useFetchConnecto
 
 import Header from "./components/Header";
 import Tabs from "./components/Tabs/Tabs";
+import { useQueryClient } from "@tanstack/react-query";
 
 const ConnectorDetails = () => {
   const { connectionId } = useParams<{ connectionId: string }>();
+  const queryClient = useQueryClient();
   const { data: connector, isLoading } = useFetchConnectorById(
     Number(connectionId) || 0,
   );
@@ -39,6 +41,15 @@ const ConnectorDetails = () => {
   useEffect(() => {
     sessionStorage.setItem(storageKey, JSON.stringify(reloadingTables));
   }, [reloadingTables, storageKey]);
+
+  useEffect(() => {
+    const id = Number(connectionId);
+    if (!id) return;
+    queryClient.invalidateQueries({
+      queryKey: ["SchemaStatus", id],
+      refetchType: "active",
+    });
+  }, [connectionId, queryClient]);
 
   if (isLoading) {
     return <LoadingSpinner />;

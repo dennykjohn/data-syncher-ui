@@ -143,8 +143,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
+  const [lastMappingSavedAt, setLastMappingSavedAt] = useState<number>(0);
 
   const valuesRef = useRef(values);
+  const mappingOverridesRef = useRef<Record<string, string>>({});
   const defaultValuesSerializedRef = useRef<string | null>(
     defaultValues ? JSON.stringify(defaultValues) : null,
   );
@@ -358,14 +360,15 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   }, [schema, values]);
 
   const handleSubmit = () => {
+    const latestValues = valuesRef.current;
     const newErrors: Record<string, string> = {};
 
     visibleFields.forEach((field) => {
-      if (field.required && !values[field.name]?.trim()) {
+      if (field.required && !latestValues[field.name]?.trim()) {
         newErrors[field.name] = `${field.label} is required`;
       }
       if (field.name === "destination_schema") {
-        const schemaError = validateSchemaName(values[field.name] || "");
+        const schemaError = validateSchemaName(latestValues[field.name] || "");
         if (schemaError) {
           newErrors[field.name] = schemaError;
         }
@@ -382,10 +385,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     const filteredValues: Record<string, string> = {};
     const excludedFields: string[] = [];
 
-    Object.keys(values).forEach((key) => {
+    Object.keys(latestValues).forEach((key) => {
       const isVisible = visibleFieldNames.has(key);
       const isHiddenField = HIDDEN_FIELDS.includes(key);
-      const value = values[key];
+      const value = latestValues[key];
       const hasValue =
         value && (typeof value === "string" ? value.trim() !== "" : true);
 
@@ -394,7 +397,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
         isHiddenField ||
         key === "include_subfolders"
       ) {
-        filteredValues[key] = values[key];
+        filteredValues[key] = latestValues[key];
       } else {
         excludedFields.push(key);
       }
@@ -420,6 +423,11 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       }
     });
 
+    // Ensure the latest saved mapping values are present even if state lags.
+    Object.entries(mappingOverridesRef.current).forEach(([key, value]) => {
+      normalizedValues[key] = value;
+    });
+
     // Normalize base_folder_path: remove leading slash, add trailing slash if not empty
     if (normalizedValues.base_folder_path) {
       let basePath = String(normalizedValues.base_folder_path).trim();
@@ -437,6 +445,35 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     // Reset dirty flag so the next defaultValues update (fresh server data)
     // is allowed to sync into the form after the successful save.
     isDirtyRef.current = false;
+
+    // If a mapping was just saved, ensure the latest mapping is included.
+    const millisSinceMappingSave = Date.now() - lastMappingSavedAt;
+    if (millisSinceMappingSave >= 0 && millisSinceMappingSave < 300) {
+      setTimeout(() => {
+        const latest = valuesRef.current;
+        const merged = {
+          ...normalizedValues,
+          single_file_table_mapping:
+            mappingOverridesRef.current.single_file_table_mapping ??
+            latest.single_file_table_mapping ??
+            normalizedValues.single_file_table_mapping,
+          table_to_files_mapping:
+            mappingOverridesRef.current.table_to_files_mapping ??
+            latest.table_to_files_mapping ??
+            normalizedValues.table_to_files_mapping,
+          multi_files_table_name:
+            mappingOverridesRef.current.multi_files_table_name ??
+            latest.multi_files_table_name ??
+            normalizedValues.multi_files_table_name,
+          multi_files_prefix:
+            mappingOverridesRef.current.multi_files_prefix ??
+            latest.multi_files_prefix ??
+            normalizedValues.multi_files_prefix,
+        };
+        onSubmit(merged as Record<string, unknown>);
+      }, 0);
+      return;
+    }
 
     onSubmit(normalizedValues as Record<string, unknown>);
   };
@@ -461,11 +498,24 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       {} as Record<string, string>,
     );
 
+    // Mark form dirty so a background defaultValues refresh won't overwrite
+    // the newly saved mapping before submit.
+    isDirtyRef.current = true;
+
     // Update form values without submitting
-    setValues((prev) => ({
-      ...prev,
-      single_file_table_mapping: JSON.stringify(mappingsObject),
-    }));
+    setValues((prev) => {
+      const nextValues = {
+        ...prev,
+        single_file_table_mapping: JSON.stringify(mappingsObject),
+      };
+      valuesRef.current = nextValues;
+      mappingOverridesRef.current = {
+        ...mappingOverridesRef.current,
+        single_file_table_mapping: nextValues.single_file_table_mapping,
+      };
+      setLastMappingSavedAt(Date.now());
+      return nextValues;
+    });
 
     // Close the modal
     setIsMappingModalOpen(false);
@@ -570,19 +620,24 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
   const handleClearMapping = () => {
     defaultValuesSerializedRef.current = null;
+    mappingOverridesRef.current = {};
 
     // Keep file_mapping_method so the user's chosen method stays selected;
     // only wipe the actual mapping payload.
-    setValues((prev) => ({
-      ...prev,
-      mapping_config: "",
-      mapping_id: "",
-      mappings: "",
-      single_file_table_mapping: "",
-      table_to_files_mapping: "",
-      multi_files_table_name: "",
-      multi_files_prefix: "",
-    }));
+    setValues((prev) => {
+      const nextValues = {
+        ...prev,
+        mapping_config: "",
+        mapping_id: "",
+        mappings: "",
+        single_file_table_mapping: "",
+        table_to_files_mapping: "",
+        multi_files_table_name: "",
+        multi_files_prefix: "",
+      };
+      valuesRef.current = nextValues;
+      return nextValues;
+    });
   };
 
   const renderField = (field: S3FieldSchema) => {
@@ -1050,14 +1105,31 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                         [data.tableName]: data.selectedFiles,
                       };
 
+                      // Mark form dirty so a background defaultValues refresh won't overwrite
+                      // the newly saved mapping before submit.
+                      isDirtyRef.current = true;
+
                       // Update form values without submitting
-                      setValues((prev) => ({
-                        ...prev,
-                        multi_files_table_name: data.tableName,
-                        multi_files_prefix: data.prefix,
-                        table_to_files_mapping:
-                          JSON.stringify(tableToFilesMapping),
-                      }));
+                      setValues((prev) => {
+                        const nextValues = {
+                          ...prev,
+                          multi_files_table_name: data.tableName,
+                          multi_files_prefix: data.prefix,
+                          table_to_files_mapping:
+                            JSON.stringify(tableToFilesMapping),
+                        };
+                        valuesRef.current = nextValues;
+                        mappingOverridesRef.current = {
+                          ...mappingOverridesRef.current,
+                          multi_files_table_name:
+                            nextValues.multi_files_table_name,
+                          multi_files_prefix: nextValues.multi_files_prefix,
+                          table_to_files_mapping:
+                            nextValues.table_to_files_mapping,
+                        };
+                        setLastMappingSavedAt(Date.now());
+                        return nextValues;
+                      });
 
                       // Close the modal
                       setIsMappingModalOpen(false);

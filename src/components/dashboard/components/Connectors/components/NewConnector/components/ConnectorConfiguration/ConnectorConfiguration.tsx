@@ -99,6 +99,9 @@ const GenericConnectorConfiguration = ({
                 title: "Connector updated successfully",
                 description: "The connector has been updated.",
               });
+              navigate(
+                `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+              );
             }
           },
         },
