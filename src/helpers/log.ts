@@ -6,29 +6,31 @@ export const getUiState = (
   const lowerStatus = (status || "").toLowerCase();
   const lowerMessage = (message || "").toLowerCase();
 
-  // STRICT CHECKS based on User Request
-  if (lowerStatus === "s") {
-    if (
-      lowerMessage.includes("in progress") ||
-      lowerMessage.includes("initiated") ||
-      lowerMessage.includes("initiate")
-    ) {
-      return "in_progress";
-    }
-    if (lowerMessage.includes("completed")) {
-      return "success";
-    }
-  }
+  const hasInitiated =
+    lowerMessage.includes("initiated") ||
+    lowerMessage.includes("initiate") ||
+    lowerMessage.includes("in progress");
+  const hasCompleted =
+    lowerMessage.includes("completed") ||
+    lowerMessage.includes("successful") ||
+    lowerMessage.includes("successfully");
+  const hasError =
+    lowerMessage.includes("error") || lowerMessage.includes("failed");
 
-  if (lowerStatus === "f" || lowerStatus === "e") {
-    if (lowerMessage.includes("error") || lowerMessage.includes("failed")) {
-      return "error";
-    }
+  if (lowerStatus === "s" && hasInitiated) {
+    return "in_progress";
   }
+  if (lowerStatus === "s" && hasCompleted) {
+    return "success";
+  }
+  if (lowerStatus === "f" && hasError) {
+    return "error";
+  }
+  if (lowerStatus === "p") return "warning";
 
-  if (lowerStatus === "p") {
-    return "warning";
-  }
+  // If status is missing but message says initiated/in progress, treat as in progress
+  if (!lowerStatus && hasInitiated) return "in_progress";
+  if (!lowerStatus && hasCompleted) return "success";
 
   // Fallback / Existing high priority overrides
   if (uiState) {
@@ -47,7 +49,7 @@ export const getUiState = (
   if (lowerMessage.includes("active")) return "active";
 
   // Check for error/failure in message generally
-  if (lowerMessage.includes("failed") || lowerMessage.includes("error")) {
+  if (hasError && !hasInitiated && lowerStatus !== "s") {
     const isPartialSuccess =
       (lowerMessage.includes("successful") ||
         lowerMessage.includes("completed")) &&

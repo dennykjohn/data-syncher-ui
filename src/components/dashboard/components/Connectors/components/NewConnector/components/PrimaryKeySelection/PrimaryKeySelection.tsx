@@ -111,8 +111,19 @@ const PrimaryKeySelection: React.FC<PrimaryKeySelectionProps> = ({
     });
   };
 
+  React.useEffect(() => {
+    if (!defaultSchema.tables.length) return;
+    if (
+      !selectedTable ||
+      !defaultSchema.tables.some((t) => t.name === selectedTable)
+    ) {
+      setSelectedTable(defaultSchema.tables[0].name);
+    }
+  }, [defaultSchema.tables, selectedTable]);
+
   const currentTable = selectedTable
-    ? defaultSchema.tables.find((t) => t.name === selectedTable)
+    ? defaultSchema.tables.find((t) => t.name === selectedTable) ||
+      defaultSchema.tables[0]
     : defaultSchema.tables[0];
 
   const handleSaveAndContinue = () => {

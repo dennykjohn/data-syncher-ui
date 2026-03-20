@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 
 import {
   Box,
@@ -56,6 +56,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       isSelected: m.isSelected ?? true,
     }));
   });
+  const localMappingsRef = useRef<Mapping[]>(localMappings);
   const [_selectedFileName, setSelectedFileName] = useState<string | null>(
     null,
   );
@@ -111,6 +112,10 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
 
   // 1. Initial selection
   React.useEffect(() => {
+    localMappingsRef.current = localMappings;
+  }, [localMappings]);
+
+  React.useEffect(() => {
     if (mappings.length > 0 && !_selectedFileName) {
       setSelectedFileName(mappings[0].fileName);
     }
@@ -128,7 +133,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
 
     setLocalMappings(() => {
       // Build the current list strictly based on what S3 API returned
-      return s3TableList.map((t) => {
+      const next = s3TableList.map((t) => {
         const fileName = (t.file_key || t.table) as string;
         const suggestedTableName = t.table || extractTableName(fileName);
 
@@ -147,6 +152,8 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
           alreadyMapped: isLocked,
         };
       });
+      localMappingsRef.current = next;
+      return next;
     });
 
     setSelectedFileName((prev) => {
@@ -177,21 +184,29 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
 
   const toggleFileSelection = (fileName: string, checked: boolean) => {
     if (readOnly) return;
-    setLocalMappings((prev) =>
-      prev.map((m) =>
+    setLocalMappings((prev) => {
+      const next = prev.map((m) =>
         m.fileName === fileName ? { ...m, isSelected: checked } : m,
-      ),
-    );
+      );
+      localMappingsRef.current = next;
+      return next;
+    });
   };
 
   const updateTableName = (fileName: string, tableName: string) => {
-    setLocalMappings((prev) =>
-      prev.map((m) => (m.fileName === fileName ? { ...m, tableName } : m)),
-    );
+    setLocalMappings((prev) => {
+      const next = prev.map((m) =>
+        m.fileName === fileName ? { ...m, tableName } : m,
+      );
+      localMappingsRef.current = next;
+      return next;
+    });
   };
 
   const handleSave = () => {
-    const selectedMappings = localMappings.filter((m) => m.isSelected);
+    const selectedMappings = localMappingsRef.current.filter(
+      (m) => m.isSelected,
+    );
     onSaveMappings(selectedMappings);
   };
 
