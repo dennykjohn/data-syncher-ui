@@ -4,7 +4,9 @@ import { FaUsers } from "react-icons/fa6";
 import { MdOutlineSettings } from "react-icons/md";
 
 import ClientRoutes from "@/constants/client-routes";
+import useAuth from "@/context/Auth/useAuth";
 import usePermissions from "@/hooks/usePermissions";
+import useFetchBillingUsage from "@/queryOptions/billing/useFetchBillingUsage";
 import { Permissions } from "@/types/auth";
 
 import MenuItem from "./MenuItem";
@@ -18,6 +20,13 @@ const SidebarAccordion = ({
   onMenuItemClick?: () => void;
 }) => {
   const { can } = usePermissions();
+  const {
+    authState: { user },
+  } = useAuth();
+  const { refetch: refetchBillingUsage } = useFetchBillingUsage({
+    companyId: user?.company.cmp_id as number,
+    enabled: false,
+  });
 
   const items: {
     value: string;
@@ -47,7 +56,7 @@ const SidebarAccordion = ({
       icon: <MdOutlineSettings size={24} />,
       links: [
         {
-          label: "Billing",
+          label: "Billing and Usage",
           path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`,
           permission: "can_access_billing",
         },
@@ -87,6 +96,7 @@ const SidebarAccordion = ({
             <Accordion.ItemBody>
               {links.map(({ label, path }) => {
                 const active = isActive(path);
+                const shouldFetchBillingUsage = label === "Billing and Usage";
                 return (
                   <MenuItem
                     key={label}
@@ -94,6 +104,13 @@ const SidebarAccordion = ({
                     path={path}
                     isActive={isActive}
                     onMenuItemClick={onMenuItemClick}
+                    onClick={
+                      shouldFetchBillingUsage
+                        ? () => {
+                            refetchBillingUsage();
+                          }
+                        : undefined
+                    }
                     active={active}
                   />
                 );

@@ -1,53 +1,55 @@
-import { Flex, Portal, Select, createListCollection } from "@chakra-ui/react";
+import { Box, Flex } from "@chakra-ui/react";
+
+interface BillingSelectorProps {
+  selectedRange: string[];
+  setSelectedRange: (_range: string[]) => void;
+}
 
 const BillingSelector = ({
   selectedRange,
   setSelectedRange,
-}: {
-  selectedRange: string[];
-  setSelectedRange: (_range: string[]) => void;
-}) => {
+}: BillingSelectorProps) => {
+  const options = [
+    { value: "current-month", label: "Current Month" },
+    { value: "last-year", label: "Last 12 Months" },
+  ];
+
   return (
-    <Flex justifyContent={"flex-end"}>
-      <Select.Root
-        collection={frameworks}
-        size="sm"
-        width="300px"
-        textAlign={"right"}
-        value={selectedRange}
-        onValueChange={(e) => setSelectedRange(e.value)}
-      >
-        <Select.HiddenSelect />
-        <Select.Control>
-          <Select.Trigger>
-            <Select.ValueText placeholder="Select" />
-          </Select.Trigger>
-          <Select.IndicatorGroup>
-            <Select.Indicator />
-          </Select.IndicatorGroup>
-        </Select.Control>
-        <Portal>
-          <Select.Positioner>
-            <Select.Content>
-              {frameworks.items.map((framework) => (
-                <Select.Item item={framework} key={framework.value}>
-                  {framework.label}
-                  <Select.ItemIndicator />
-                </Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Positioner>
-        </Portal>
-      </Select.Root>
+    <Flex direction="column" gap={1} width="fit-content">
+      <Box fontWeight="bold" fontSize="lg" color="gray.700">
+        Connection Usage Information
+      </Box>
+      <Flex bg="transparent" p="0" width="fit-content" gap="2">
+        {options.map((option) => {
+          const isSelected = selectedRange[0] === option.value;
+          return (
+            <Box
+              key={option.value}
+              as="button"
+              onClick={() => setSelectedRange([option.value])}
+              bg={isSelected ? "purple.600" : "white"}
+              color={isSelected ? "white" : "purple.600"}
+              border="1px solid"
+              borderColor="purple.600"
+              py={1.5}
+              px={4}
+              borderRadius="md"
+              fontSize="sm"
+              fontWeight="bold"
+              shadow="sm"
+              transition="all 0.2s"
+              _hover={{
+                bg: isSelected ? "purple.700" : "purple.50",
+              }}
+              cursor="pointer"
+            >
+              {option.label}
+            </Box>
+          );
+        })}
+      </Flex>
     </Flex>
   );
 };
-
-const frameworks = createListCollection({
-  items: [
-    { label: "Last 30 days", value: "current-month" },
-    { label: "Last year", value: "last-year" },
-  ],
-});
 
 export default BillingSelector;
