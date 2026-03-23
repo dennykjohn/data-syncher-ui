@@ -378,11 +378,13 @@ const UsageTab = () => {
                 borderColor="gray.300"
                 borderRadius="md"
                 px={2}
-                value={selectedMonth ?? usageData?.selected_month ?? ""}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  const nextMonth = Number(e.target.value);
-                  setSelectedMonth(nextMonth);
-                }}
+                {...({
+                  value: selectedMonth ?? usageData?.selected_month ?? "",
+                  onChange: (e: { target: { value: string } }) => {
+                    const nextMonth = Number(e.target.value);
+                    setSelectedMonth(nextMonth);
+                  },
+                } as Record<string, unknown>)}
               >
                 {(usageData?.months ?? []).map(([value, name]) => (
                   <option key={value} value={value}>
@@ -399,11 +401,13 @@ const UsageTab = () => {
                 borderColor="gray.300"
                 borderRadius="md"
                 px={2}
-                value={selectedYear ?? usageData?.selected_year ?? ""}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  const nextYear = Number(e.target.value);
-                  setSelectedYear(nextYear);
-                }}
+                {...({
+                  value: selectedYear ?? usageData?.selected_year ?? "",
+                  onChange: (e: { target: { value: string } }) => {
+                    const nextYear = Number(e.target.value);
+                    setSelectedYear(nextYear);
+                  },
+                } as Record<string, unknown>)}
               >
                 {Array.from(new Set([...(usageData?.years ?? []), 2025]))
                   .sort((a, b) => b - a)
