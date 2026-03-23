@@ -13,12 +13,14 @@ const fetchCurrentMonthBilling = async (companyId: number) => {
 
 export default function useFetchCurrentMonthBilling({
   companyId,
+  enabled = true,
 }: {
   companyId: number;
+  enabled?: boolean;
 }) {
   return useQuery<MonthlyBillingData>({
     queryKey: ["CurrentMonthBilling", companyId],
     queryFn: () => fetchCurrentMonthBilling(companyId),
-    enabled: !!companyId,
+    enabled: enabled && !!companyId,
   });
 }

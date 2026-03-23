@@ -9,6 +9,7 @@ const MenuItem = ({
   icon,
   isActive,
   path,
+  onClick,
   onMenuItemClick,
   active,
 }: {
@@ -16,6 +17,7 @@ const MenuItem = ({
   icon?: JSX.Element;
   isActive: (_path: string) => boolean;
   path: string;
+  onClick?: () => void;
   onMenuItemClick?: () => void;
   active: boolean;
 }) => {
@@ -30,6 +32,7 @@ const MenuItem = ({
       cursor={"pointer"}
       gap={2}
       onClick={() => {
+        onClick?.();
         navigate(path);
         onMenuItemClick?.();
       }}

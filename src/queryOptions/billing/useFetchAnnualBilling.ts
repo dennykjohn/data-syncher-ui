@@ -4,16 +4,23 @@ import { type YearlyBillingData } from "@/types/billing";
 
 import { useQuery } from "@tanstack/react-query";
 
-const fetchAnnualBilling = async () => {
+const fetchAnnualBilling = async (companyId: number) => {
   const { data } = await AxiosInstance.get(
-    ServerRoutes.billing.listAnnualBilling({ companyId: "1" }),
+    ServerRoutes.billing.listAnnualBilling({ companyId: String(companyId) }),
   );
   return data;
 };
 
-export default function useFetchAnnualBilling() {
+export default function useFetchAnnualBilling({
+  companyId,
+  enabled = true,
+}: {
+  companyId: number;
+  enabled?: boolean;
+}) {
   return useQuery<YearlyBillingData>({
-    queryKey: ["AnnualBilling"],
-    queryFn: fetchAnnualBilling,
+    queryKey: ["AnnualBilling", companyId],
+    queryFn: () => fetchAnnualBilling(companyId),
+    enabled: enabled && !!companyId,
   });
 }

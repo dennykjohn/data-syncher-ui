@@ -140,9 +140,22 @@ const ServerRoutes = {
   },
   billing: {
     listCurrentMonthBilling: ({ companyId }: { companyId: number }) =>
-      `billing/summary/${companyId}`,
+      `billing/${companyId}/monthly-usage/`,
     listAnnualBilling: ({ companyId }: { companyId: string }) =>
       `billing/${companyId}/annual-usage/`,
+    monthlyUsage: ({ companyId }: { companyId: number }) =>
+      `billing/${companyId}/monthly-usage/`,
+    usage: ({
+      companyId,
+      billingPeriod,
+    }: {
+      companyId: number;
+      billingPeriod?: string;
+    }) =>
+      `billing/usage/${companyId}/${billingPeriod ? `?billing_period=${billingPeriod}` : ""}`,
+    updateConnectionsUsage: ({ companyId }: { companyId: number }) =>
+      `billing/usage/update-connections/${companyId}/`,
+    downloadInvoice: ({ id }: { id: number }) => `download-invoice/${id}/`,
   },
   communicationSupport: {
     getDetails: () => "account/communication-support/",
