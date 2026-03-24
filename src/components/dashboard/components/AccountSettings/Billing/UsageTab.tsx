@@ -321,6 +321,20 @@ const UsageTab = () => {
 
   const singleConnectionName =
     singleConnection?.src_config__name || "Connection";
+  const selectedSourceTypes = useMemo(() => {
+    if (!selectedConnections.length) return new Set<string>();
+    const selectedSet = new Set(selectedConnections);
+    return new Set(
+      (fullUsageData?.available_connections ?? [])
+        .filter((connection) => selectedSet.has(connection.connection_id))
+        .map((connection) => connection.source_type?.toLowerCase())
+        .filter((sourceType): sourceType is string => !!sourceType),
+    );
+  }, [fullUsageData?.available_connections, selectedConnections]);
+  const hasAmazonS3Source = selectedSourceTypes.has("amazons3");
+  const hasSalesforceSource = selectedSourceTypes.has("salesforce");
+  const hasDynamicsSource = selectedSourceTypes.has("microsoftdynamics365_fo");
+  const hasGoogleReviewsSource = selectedSourceTypes.has("googlereviews");
 
   const usageChartData =
     usageRange === "annually"
@@ -353,10 +367,18 @@ const UsageTab = () => {
       usageRange === "annually"
         ? [{ name: "Total Tokens", color: "purple.300" }]
         : [
-            { name: "AmazonS3", color: "red.200" },
-            { name: "Salesforce", color: "blue.300" },
-            { name: "Dynamics 365 FO", color: "blue.500" },
-            { name: "Google Reviews", color: "green.400" },
+            ...(hasAmazonS3Source
+              ? [{ name: "AmazonS3", color: "red.200" }]
+              : []),
+            ...(hasSalesforceSource
+              ? [{ name: "Salesforce", color: "blue.300" }]
+              : []),
+            ...(hasDynamicsSource
+              ? [{ name: "Dynamics 365 FO", color: "blue.500" }]
+              : []),
+            ...(hasGoogleReviewsSource
+              ? [{ name: "Google Reviews", color: "green.400" }]
+              : []),
           ],
   });
 
@@ -588,30 +610,38 @@ const UsageTab = () => {
                 }}
               />
               <Legend verticalAlign="top" height={36} />
-              <Bar
-                stackId="a"
-                dataKey={usageChart.key("AmazonS3")}
-                name="AmazonS3"
-                fill="#feb2b2"
-              />
-              <Bar
-                stackId="a"
-                dataKey={usageChart.key("Salesforce")}
-                name="Salesforce"
-                fill="#90cdf4"
-              />
-              <Bar
-                stackId="a"
-                dataKey={usageChart.key("Dynamics 365 FO")}
-                name="Dynamics 365 FO"
-                fill="#4299e1"
-              />
-              <Bar
-                stackId="a"
-                dataKey={usageChart.key("Google Reviews")}
-                name="Google Reviews"
-                fill="#68d391"
-              />
+              {hasAmazonS3Source && (
+                <Bar
+                  stackId="a"
+                  dataKey={usageChart.key("AmazonS3")}
+                  name="AmazonS3"
+                  fill="#feb2b2"
+                />
+              )}
+              {hasSalesforceSource && (
+                <Bar
+                  stackId="a"
+                  dataKey={usageChart.key("Salesforce")}
+                  name="Salesforce"
+                  fill="#90cdf4"
+                />
+              )}
+              {hasDynamicsSource && (
+                <Bar
+                  stackId="a"
+                  dataKey={usageChart.key("Dynamics 365 FO")}
+                  name="Dynamics 365 FO"
+                  fill="#4299e1"
+                />
+              )}
+              {hasGoogleReviewsSource && (
+                <Bar
+                  stackId="a"
+                  dataKey={usageChart.key("Google Reviews")}
+                  name="Google Reviews"
+                  fill="#68d391"
+                />
+              )}
             </BarChart>
           </Chart.Root>
         </>
