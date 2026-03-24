@@ -11,6 +11,7 @@ import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { dateTimeFormat } from "@/constants/common";
+import { getUiState } from "@/helpers/log";
 import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 
 const MigrationProgressTable = ({
@@ -97,13 +98,24 @@ const MigrationProgressTable = ({
               table.status ||
               ""
             ).toLowerCase();
-            const isSuccess =
-              statusRaw === "success" || statusRaw === "completed";
-            const isFailed = statusRaw === "failed" || statusRaw === "error";
-            const isWarning = statusRaw === "warning";
+            const uiState = getUiState(
+              table.status_icon,
+              table.status,
+              table.message || table.error_message || "",
+            );
+            const normalizedState = (uiState || statusRaw).toLowerCase();
+            const isSuccess = ["success", "completed", "s"].includes(
+              normalizedState,
+            );
+            const isFailed = ["failed", "error", "f", "e"].includes(
+              normalizedState,
+            );
+            const isWarning = ["warning", "p", "w"].includes(normalizedState);
             const isPending =
-              statusRaw === "in_progress" ||
-              statusRaw === "pending" ||
+              normalizedState === "in_progress" ||
+              normalizedState === "pending" ||
+              normalizedState === "i" ||
+              normalizedState === "running" ||
               (!isSuccess && !isFailed && !isWarning);
 
             // Format times if available
