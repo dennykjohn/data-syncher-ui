@@ -39,12 +39,13 @@ const BillingInfoTab = () => {
   const [detailsTab, setDetailsTab] = useState<"billing_details" | "invoices">(
     "billing_details",
   );
+  const billingPeriod =
+    selectedRange[0] === "last-year" ? "last-12-months" : "current-month";
 
   const { data: BillingUsageData, isLoading: isLoadingUsage } =
     useFetchBillingUsage({
       companyId: user?.company.cmp_id as number,
-      billingPeriod:
-        selectedRange[0] === "last-year" ? "last-12-months" : undefined,
+      billingPeriod,
       enabled: true,
     });
 

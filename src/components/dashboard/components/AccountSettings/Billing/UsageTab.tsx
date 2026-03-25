@@ -25,156 +25,133 @@ import { type MonthlyUsageResponse } from "@/types/billing";
 
 import { Chart, useChart } from "@chakra-ui/charts";
 
+const roundAxisTick = (value: number) => {
+  if (value <= 0) return 0;
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  const normalized = value / magnitude;
+  const roundedNormalized =
+    normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return roundedNormalized * magnitude;
+};
+
 const applyConnectionFilter = (
   base: MonthlyUsageResponse | null,
   connectionIds: number[],
 ) => {
   if (!base) return null;
-  const selectedSet = new Set(connectionIds.map(Number));
-  const anyBase = base as unknown as Record<string, unknown>;
-  const candidates =
-    (anyBase["connection_usage"] as unknown[]) ||
-    (anyBase["connections_usage"] as unknown[]) ||
-    (anyBase["connection_usage_data"] as unknown[]) ||
-    (anyBase["connection_usage_map"] as unknown[]) ||
-    (anyBase["connection_wise_usage"] as unknown[]);
 
-  const sumArrays = (arrays: number[][]) => {
-    if (arrays.length === 0) return [];
-    const length = arrays[0].length;
+  const targetIds =
+    connectionIds.length > 0
+      ? connectionIds
+      : (base.available_connections || []).map((c) => c.connection_id);
+
+  const selectedSet = new Set(targetIds.map((id) => String(id)));
+  const anyBase = base as unknown as Record<string, unknown>;
+
+  const getSourceType = (id: number | string) => {
+    return base.available_connections?.find(
+      (c) => String(c.connection_id) === String(id),
+    )?.source_type;
+  };
+
+  const candidatesRaw =
+    (anyBase["connection_usage"] as unknown) ||
+    (anyBase["connections_usage"] as unknown) ||
+    (anyBase["connection_usage_data"] as unknown) ||
+    (anyBase["connection_usage_map"] as unknown) ||
+    (anyBase["connection_wise_usage"] as unknown);
+
+  const sumArrays = (arrays: number[][]): number[] => {
+    if (!Array.isArray(arrays) || arrays.length === 0) return [];
+    const length = Math.max(...arrays.map((a) => (a && a.length) || 0));
     const totals = new Array<number>(length).fill(0);
     arrays.forEach((arr) => {
+      if (!Array.isArray(arr)) return;
       for (let i = 0; i < length; i += 1) {
-        totals[i] += arr[i] ?? 0;
+        totals[i] += (arr[i] as number) || 0;
       }
     });
     return totals;
   };
 
-  const getSourceType = (id: number) => {
-    return base.available_connections?.find((c) => c.connection_id === id)
-      ?.source_type;
-  };
-
-  if (Array.isArray(candidates)) {
+  if (Array.isArray(candidatesRaw)) {
+    const candidates = candidatesRaw as {
+      connection_id: number;
+      total_rec: number[];
+      daily_labels?: string[];
+    }[];
     const selected = candidates.filter(
       (item) =>
         item &&
         typeof item === "object" &&
-        "connection_id" in item &&
-        selectedSet.has(
-          Number((item as { connection_id: number }).connection_id),
-        ),
+        selectedSet.has(String(item.connection_id)),
     );
-    const arrays = selected
-      .map((item) => (item as { total_rec: number[] }).total_rec)
-      .filter((arr) => Array.isArray(arr));
-    if (arrays.length > 0) {
-      const totals = sumArrays(arrays);
-      const s3Arrays = selected
-        .filter(
-          (item) =>
-            getSourceType(
-              Number((item as { connection_id: number }).connection_id),
-            )?.toLowerCase() === "amazons3",
-        )
-        .map((item) => (item as { total_rec: number[] }).total_rec)
-        .filter((arr) => Array.isArray(arr));
-      const sfArrays = selected
-        .filter(
-          (item) =>
-            getSourceType(
-              Number((item as { connection_id: number }).connection_id),
-            )?.toLowerCase() === "salesforce",
-        )
-        .map((item) => (item as { total_rec: number[] }).total_rec)
-        .filter((arr) => Array.isArray(arr));
-      const dyArrays = selected
-        .filter(
-          (item) =>
-            getSourceType(
-              Number((item as { connection_id: number }).connection_id),
-            )?.toLowerCase() === "microsoftdynamics365_fo",
-        )
-        .map((item) => (item as { total_rec: number[] }).total_rec)
-        .filter((arr) => Array.isArray(arr));
-      const grArrays = selected
-        .filter(
-          (item) =>
-            getSourceType(
-              Number((item as { connection_id: number }).connection_id),
-            )?.toLowerCase() === "googlereviews",
-        )
-        .map((item) => (item as { total_rec: number[] }).total_rec)
-        .filter((arr) => Array.isArray(arr));
-      return {
-        ...base,
-        total_rec: totals,
-        amazon_s3_rec: sumArrays(s3Arrays),
-        salesforce_rec: sumArrays(sfArrays),
-        dynamics_rec: sumArrays(dyArrays),
-        google_reviews_rec: sumArrays(grArrays),
-        selected_connection_ids: connectionIds,
-        daily_labels:
-          base.daily_labels ||
-          (selected[0] as { daily_labels?: string[] })?.daily_labels ||
-          [],
-      } as MonthlyUsageResponse;
-    }
-  }
 
-  if (candidates && typeof candidates === "object") {
-    const candidatesMap = candidates as Record<
-      number,
-      { total_rec?: number[] }
-    >;
-    const arrays = connectionIds
-      .map((id) => candidatesMap[id]?.total_rec)
-      .filter((arr: unknown) => Array.isArray(arr));
-    if (arrays.length > 0) {
-      const totals = sumArrays(arrays as number[][]);
-      const s3Arrays = connectionIds
-        .filter((id) => getSourceType(id)?.toLowerCase() === "amazons3")
-        .map((id) => candidatesMap[id]?.total_rec)
-        .filter((arr) => Array.isArray(arr));
-      const sfArrays = connectionIds
-        .filter((id) => getSourceType(id)?.toLowerCase() === "salesforce")
-        .map((id) => candidatesMap[id]?.total_rec)
-        .filter((arr) => Array.isArray(arr));
-      const dyArrays = connectionIds
+    const filterBySource = (src: string) => {
+      return selected
         .filter(
-          (id) =>
-            getSourceType(id)?.toLowerCase() === "microsoftdynamics365_fo",
+          (item) =>
+            getSourceType(item.connection_id)?.toLowerCase() ===
+            src.toLowerCase(),
         )
-        .map((id) => candidatesMap[id]?.total_rec)
+        .map((item) => item.total_rec)
         .filter((arr) => Array.isArray(arr));
-      const grArrays = connectionIds
-        .filter((id) => getSourceType(id)?.toLowerCase() === "googlereviews")
-        .map((id) => candidatesMap[id]?.total_rec)
-        .filter((arr) => Array.isArray(arr));
-      return {
-        ...base,
-        total_rec: totals,
-        amazon_s3_rec: sumArrays(s3Arrays as number[][]),
-        salesforce_rec: sumArrays(sfArrays as number[][]),
-        dynamics_rec: sumArrays(dyArrays as number[][]),
-        google_reviews_rec: sumArrays(grArrays as number[][]),
-        selected_connection_ids: connectionIds,
-      } as MonthlyUsageResponse;
-    }
-  }
+    };
 
-  if (connectionIds.length === 0 && Array.isArray(anyBase.total_rec)) {
     return {
       ...base,
-      total_rec: new Array((anyBase.total_rec as number[]).length).fill(0),
-      amazon_s3_rec: new Array((anyBase.total_rec as number[]).length).fill(0),
-      salesforce_rec: new Array((anyBase.total_rec as number[]).length).fill(0),
-      dynamics_rec: new Array((anyBase.total_rec as number[]).length).fill(0),
-      google_reviews_rec: new Array(
-        (anyBase.total_rec as number[]).length,
-      ).fill(0),
-      selected_connection_ids: [],
+      total_rec: sumArrays(
+        selected.map((item) => item.total_rec).filter(Array.isArray),
+      ),
+      amazon_s3_rec: sumArrays(filterBySource("amazons3")),
+      salesforce_rec: sumArrays(filterBySource("salesforce")),
+      dynamics_rec: sumArrays(filterBySource("microsoftdynamics365_fo")),
+      google_reviews_rec: sumArrays(filterBySource("googlereviews")),
+      selected_connection_ids: connectionIds,
+      daily_labels:
+        base.daily_labels ||
+        (selected[0] as { daily_labels?: string[] })?.daily_labels ||
+        [],
+    } as MonthlyUsageResponse;
+  }
+
+  if (candidatesRaw && typeof candidatesRaw === "object") {
+    const candidates = candidatesRaw as Record<
+      string,
+      { total_rec?: number[] }
+    >;
+
+    const getDataById = (id: number | string) => {
+      const item =
+        candidates[String(id)] ||
+        (candidates as unknown as Record<number, { total_rec?: number[] }>)[
+          Number(id)
+        ];
+      if (!item) return null;
+      if (Array.isArray(item.total_rec)) return item.total_rec;
+      if (Array.isArray(item)) return item;
+      return null;
+    };
+
+    const filterBySource = (src: string) => {
+      return targetIds
+        .filter((id) => getSourceType(id)?.toLowerCase() === src.toLowerCase())
+        .map((id) => getDataById(id))
+        .filter((arr) => Array.isArray(arr));
+    };
+
+    const allArrays = targetIds
+      .map((id) => getDataById(id))
+      .filter((arr) => Array.isArray(arr));
+
+    return {
+      ...base,
+      total_rec: sumArrays(allArrays as number[][]),
+      amazon_s3_rec: sumArrays(filterBySource("amazons3")),
+      salesforce_rec: sumArrays(filterBySource("salesforce")),
+      dynamics_rec: sumArrays(filterBySource("microsoftdynamics365_fo")),
+      google_reviews_rec: sumArrays(filterBySource("googlereviews")),
+      selected_connection_ids: connectionIds,
     } as MonthlyUsageResponse;
   }
 
@@ -335,6 +312,59 @@ const UsageTab = () => {
   const hasSalesforceSource = selectedSourceTypes.has("salesforce");
   const hasDynamicsSource = selectedSourceTypes.has("microsoftdynamics365_fo");
   const hasGoogleReviewsSource = selectedSourceTypes.has("googlereviews");
+  const monthlyOriginalUsageByDay = useMemo(() => {
+    if (usageRange !== "monthly") return {};
+
+    return (usageData?.daily_labels ?? []).reduce(
+      (acc, label, index) => {
+        acc[String(label)] = {
+          AmazonS3: (usageData?.amazon_s3_rec ?? [])[index] ?? 0,
+          Salesforce: (usageData?.salesforce_rec ?? [])[index] ?? 0,
+          "Dynamics 365 FO": (usageData?.dynamics_rec ?? [])[index] ?? 0,
+          "Google Reviews": (usageData?.google_reviews_rec ?? [])[index] ?? 0,
+        };
+        return acc;
+      },
+      {} as Record<string, Record<string, number>>,
+    );
+  }, [usageData, usageRange]);
+  const monthlyScaleConfig = useMemo(() => {
+    if (usageRange !== "monthly") {
+      return {
+        maxAxisValue: undefined as number | undefined,
+        ticks: undefined as number[] | undefined,
+      };
+    }
+
+    let maxStackTotal = 0;
+
+    Object.values(monthlyOriginalUsageByDay).forEach((seriesValues) => {
+      const values = Object.values(seriesValues);
+      const dayTotal = values.reduce((sum, value) => sum + value, 0);
+      maxStackTotal = Math.max(maxStackTotal, dayTotal);
+    });
+
+    if (maxStackTotal <= 0) {
+      return {
+        maxAxisValue: undefined,
+        ticks: undefined,
+      };
+    }
+
+    const maxAxisValue = roundAxisTick(maxStackTotal * 1.05);
+    const order = Math.max(Math.floor(Math.log10(maxAxisValue)), 0);
+    const lowTick = 5 * 10 ** Math.max(order - 3, 0);
+    const middleTick = roundAxisTick(maxAxisValue / 2);
+    const ticks = [0, lowTick, middleTick, maxAxisValue]
+      .filter((tick) => tick <= maxAxisValue)
+      .filter((tick, index, array) => array.indexOf(tick) === index)
+      .sort((a, b) => a - b);
+
+    return {
+      maxAxisValue,
+      ticks,
+    };
+  }, [monthlyOriginalUsageByDay, usageRange]);
 
   const usageChartData =
     usageRange === "annually"
@@ -371,10 +401,10 @@ const UsageTab = () => {
               ? [{ name: "AmazonS3", color: "red.200" }]
               : []),
             ...(hasSalesforceSource
-              ? [{ name: "Salesforce", color: "blue.300" }]
+              ? [{ name: "Salesforce", color: "#b0d6eeff" }]
               : []),
             ...(hasDynamicsSource
-              ? [{ name: "Dynamics 365 FO", color: "blue.500" }]
+              ? [{ name: "Dynamics 365 FO", color: "#1c39bb" }]
               : []),
             ...(hasGoogleReviewsSource
               ? [{ name: "Google Reviews", color: "green.400" }]
@@ -580,7 +610,23 @@ const UsageTab = () => {
                   offset: -5,
                 }}
               />
-              <YAxis width={90} axisLine={false} tickLine={false}>
+              <YAxis
+                width={90}
+                axisLine={false}
+                tickLine={false}
+                domain={
+                  monthlyScaleConfig.maxAxisValue
+                    ? [0, monthlyScaleConfig.maxAxisValue]
+                    : [0, "auto"]
+                }
+                scale="sqrt"
+                ticks={monthlyScaleConfig.ticks}
+                tickFormatter={(value) =>
+                  typeof value === "number"
+                    ? value.toLocaleString()
+                    : String(value)
+                }
+              >
                 <Label value="Total Tokens" angle={-90} position="insideLeft" />
               </YAxis>
               <Tooltip
@@ -623,7 +669,7 @@ const UsageTab = () => {
                   stackId="a"
                   dataKey={usageChart.key("Salesforce")}
                   name="Salesforce"
-                  fill="#90cdf4"
+                  fill="#b0d6eeff"
                 />
               )}
               {hasDynamicsSource && (
@@ -631,7 +677,7 @@ const UsageTab = () => {
                   stackId="a"
                   dataKey={usageChart.key("Dynamics 365 FO")}
                   name="Dynamics 365 FO"
-                  fill="#4299e1"
+                  fill="#1c39bb"
                 />
               )}
               {hasGoogleReviewsSource && (
