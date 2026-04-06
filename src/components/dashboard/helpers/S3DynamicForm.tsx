@@ -337,7 +337,26 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
   // Filter visible fields based on dependencies and visibility
   const visibleFields = useMemo(() => {
-    const filtered = schema.filter((field) => {
+    // Dynamically filter 'upsert_custom_key' if 'packed' format is selected
+    const dynamicSchema = schema.map((field) => {
+      if (field.name === "load_method") {
+        const hasPackedSelection = Object.values(values).some(
+          (val) => String(val).toLowerCase() === "packed",
+        );
+
+        if (hasPackedSelection) {
+          return {
+            ...field,
+            choices: field.choices?.filter(
+              (choice) => choice.value !== "upsert_custom_key",
+            ),
+          };
+        }
+      }
+      return field;
+    });
+
+    const filtered = dynamicSchema.filter((field) => {
       if (HIDDEN_FIELDS.includes(field.name)) return false;
 
       const hasDependency =
