@@ -329,7 +329,6 @@ const normalizeAddress = (
   const rawSource =
     (raw?.[`${kind}_address`] as Record<string, unknown> | null) ??
     (raw?.[kind] as Record<string, unknown> | null)?.address ??
-    null ??
     null;
   const source =
     (address as Record<string, unknown> | null) ??
