@@ -56,6 +56,10 @@ const AccountSettings = lazy(
 const EmailSettings = lazy(
   () => import("@/components/dashboard/components/AccountSettings/Email/Email"),
 );
+const AccountProfile = lazy(
+  () =>
+    import("@/components/dashboard/components/AccountSettings/Profile/Profile"),
+);
 
 // Pages
 //const HomePage = lazy(() => import("@/pages/website/HomePage"));
@@ -212,6 +216,14 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute permission="can_access_settings">
                 <EmailSettings />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.PROFILE}`,
+            element: (
+              <ProtectedRoute permission="can_access_settings">
+                <AccountProfile />
               </ProtectedRoute>
             ),
           },

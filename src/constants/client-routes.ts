@@ -40,6 +40,7 @@ const ClientRoutes = {
     ROOT: "account",
     BILLING: "billing",
     EMAIL: "communication-support",
+    PROFILE: "profile",
   },
 } as const;
 export default ClientRoutes;
