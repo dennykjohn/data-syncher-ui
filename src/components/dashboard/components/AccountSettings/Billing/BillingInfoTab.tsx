@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Box, Button, Flex, Text } from "@chakra-ui/react";
 
@@ -27,6 +27,7 @@ import {
 } from "@/types/billing";
 
 import BillingSelector from "./BillingSelector";
+import PaymentDialog from "./PaymentDialog";
 import { Chart, useChart } from "@chakra-ui/charts";
 
 const BillingInfoTab = () => {
@@ -39,15 +40,23 @@ const BillingInfoTab = () => {
   const [detailsTab, setDetailsTab] = useState<"billing_details" | "invoices">(
     "billing_details",
   );
-  const billingPeriod =
-    selectedRange[0] === "last-year" ? "last-12-months" : "current-month";
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceItem | null>(
+    null,
+  );
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: BillingUsageData, isLoading: isLoadingUsage } =
-    useFetchBillingUsage({
-      companyId: user?.company.cmp_id as number,
-      billingPeriod,
-      enabled: true,
-    });
+  const {
+    data: BillingUsageData,
+    isLoading: isLoadingUsage,
+    refetch: refetchBillingUsage,
+  } = useFetchBillingUsage({
+    companyId: user?.company.cmp_id as number,
+    billingPeriod:
+      selectedRange[0] === "last-year" ? "last-12-months" : undefined,
+    enabled: true,
+  });
 
   const billingDataMap = BillingUsageData as BillingDataMap;
 
@@ -141,72 +150,163 @@ const BillingInfoTab = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  const isInvoicePaid = (invoice?: InvoiceItem | null) =>
+    ["paid", "succeeded", "success", "completed"].includes(
+      String(invoice?.payment_status || "").toLowerCase(),
+    );
+
+  const stopInvoicePolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  };
+
+  useEffect(() => () => stopInvoicePolling(), []);
+
+  const startInvoicePolling = (invoiceId: number) => {
+    stopInvoicePolling();
+    pollIntervalRef.current = setInterval(async () => {
+      const result = await refetchBillingUsage();
+      const invoicesList = (result.data as BillingDataMap)?.invoices ?? [];
+      const updatedInvoice = invoicesList.find((item) => item.id === invoiceId);
+      if (isInvoicePaid(updatedInvoice)) {
+        stopInvoicePolling();
+      }
+    }, 3000);
+
+    pollTimeoutRef.current = setTimeout(() => {
+      stopInvoicePolling();
+    }, 60000);
+  };
+
+  const handleOpenPayment = (invoice: InvoiceItem) => {
+    setSelectedInvoice(invoice);
+    setIsPaymentOpen(true);
+  };
+
+  const handleClosePayment = () => {
+    setIsPaymentOpen(false);
+    setSelectedInvoice(null);
+  };
+
+  const handlePaymentSuccess = async () => {
+    const invoiceId = selectedInvoice?.id;
+    handleClosePayment();
+    await refetchBillingUsage();
+    if (invoiceId) {
+      startInvoicePolling(invoiceId);
+    }
+  };
+
   const invoiceColumns: Column<InvoiceItem>[] = [
     {
       header: "Invoice Number",
       accessor: "invoice_number",
-      width: "16%",
+      width: "12%",
       textAlign: "left",
     },
     {
       header: "Invoice Date",
       accessor: "created_at",
-      width: "14%",
+      width: "10%",
       textAlign: "left",
       render: (value) => formatDate(value),
     },
     {
       header: "Start Date",
       accessor: "billing_start_date",
-      width: "14%",
+      width: "10%",
       textAlign: "left",
       render: (value) => formatDate(value),
     },
     {
       header: "End Date",
       accessor: "billing_end_date",
-      width: "14%",
+      width: "10%",
       textAlign: "left",
       render: (value) => formatDate(value),
     },
     {
       header: "Amount",
       accessor: "total_amount",
-      width: "14%",
+      width: "10%",
       textAlign: "left",
       render: (value) => formatCurrency(value),
     },
     {
       header: "Payment Status",
       accessor: "payment_status",
-      width: "14%",
+      width: "10%",
       textAlign: "left",
-      render: (value) => String(value || "").toLowerCase(),
+      render: (_, row: InvoiceItem) => {
+        const status = String(row.payment_status || "-").toLowerCase();
+        return (
+          <Text fontSize="sm" fontWeight="normal" textTransform="lowercase">
+            {status}
+          </Text>
+        );
+      },
+    },
+    {
+      header: "Reference No",
+      accessor: "payment_reference",
+      width: "20%",
+      textAlign: "left",
+      render: (value) => (
+        <Text fontSize="sm" lineClamp={1}>
+          {String(value || "-")}
+        </Text>
+      ),
+    },
+    {
+      header: "Payment Date",
+      accessor: "payment_date",
+      width: "10%",
+      textAlign: "left",
+      render: (value) => <Text fontSize="sm">{formatDate(value)}</Text>,
     },
     {
       header: "Actions",
       accessor: "actions",
-      width: "14%",
+      width: "12%",
       textAlign: "center",
       render: (_, row: InvoiceItem) => (
-        <Button
-          size="xs"
-          variant="ghost"
-          bg="transparent"
-          borderWidth="0"
-          _hover={{ bg: "transparent" }}
-          _active={{ bg: "transparent" }}
-          borderRadius="md"
-          minW="24px"
-          h="24px"
-          p={0}
-          onClick={() => row.id && handleDownload(row.id)}
-          disabled={!row.id}
-          aria-label="Download invoice"
-          title="Download"
-        >
-          <FiDownload size={18} color="gray.600" />
-        </Button>
+        <Flex alignItems="center" justifyContent="center" gap={2}>
+          <Button
+            size="xs"
+            variant="ghost"
+            bg="transparent"
+            borderWidth="0"
+            _hover={{ bg: "transparent" }}
+            _active={{ bg: "transparent" }}
+            borderRadius="md"
+            minW="24px"
+            h="24px"
+            p={0}
+            onClick={() => row.id && handleDownload(row.id)}
+            disabled={!row.id}
+            aria-label="Download invoice"
+            title="Download"
+          >
+            <FiDownload size={18} color="gray.600" />
+          </Button>
+          <Button
+            size="xs"
+            variant="outline"
+            borderRadius="md"
+            minW="44px"
+            h="24px"
+            onClick={() => handleOpenPayment(row)}
+            disabled={!row.id || isInvoicePaid(row)}
+          >
+            Pay
+          </Button>
+        </Flex>
       ),
     },
   ];
@@ -380,6 +480,12 @@ const BillingInfoTab = () => {
           )}
         </Box>
       </Flex>
+      <PaymentDialog
+        open={isPaymentOpen}
+        invoice={selectedInvoice}
+        onClose={handleClosePayment}
+        onSuccess={handlePaymentSuccess}
+      />
     </>
   );
 };

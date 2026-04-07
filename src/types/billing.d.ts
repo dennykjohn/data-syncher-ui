@@ -26,6 +26,9 @@ export interface InvoiceItem {
   billing_end_date?: string;
   total_amount?: number;
   payment_status?: string;
+  payment_reference?: string;
+  payment_date?: string;
+  receipt_url?: string;
 }
 
 export interface BillingDataMap {

@@ -156,10 +156,16 @@ const ServerRoutes = {
     updateConnectionsUsage: ({ companyId }: { companyId: number }) =>
       `billing/usage/update-connections/${companyId}/`,
     downloadInvoice: ({ id }: { id: number }) => `download-invoice/${id}/`,
+    createPaymentIntent: ({ id }: { id: number }) => `pay/${id}/`,
   },
   communicationSupport: {
     getDetails: () => "account/communication-support/",
     update: () => "account/communication-support/",
+  },
+  account: {
+    profile: () => "account/profile/",
+    profileUpdate: () => "account/profile/update/",
+    countries: () => "account/countries/",
   },
 } as const;
 
