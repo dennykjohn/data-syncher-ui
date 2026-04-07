@@ -161,6 +161,11 @@ const ServerRoutes = {
     getDetails: () => "account/communication-support/",
     update: () => "account/communication-support/",
   },
+  account: {
+    profile: () => "account/profile/",
+    profileUpdate: () => "account/profile/update/",
+    countries: () => "account/countries/",
+  },
 } as const;
 
 export default ServerRoutes;
