@@ -61,6 +61,11 @@ const SidebarAccordion = ({
           permission: "can_access_billing",
         },
         {
+          label: "Profile",
+          path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.PROFILE}`,
+          permission: "can_access_settings",
+        },
+        {
           label: "Communication Support",
           path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.EMAIL}`,
           permission: "can_access_settings",
