@@ -201,7 +201,10 @@ const S3ConnectorConfiguration = ({
 
     const requiresPrimaryKeySelection =
       parsedValues["load_method"] === "upsert_custom_key" &&
-      String(parsedValues["file_type"] || "").toLowerCase() !== "packed";
+      !(
+        parsedValues["file_type"] === "json" &&
+        parsedValues["json_mode"] === "packed"
+      );
 
     if (mode === "create") {
       if (requiresPrimaryKeySelection) {
