@@ -340,11 +340,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     // Dynamically filter 'upsert_custom_key' if 'packed' format is selected
     const dynamicSchema = schema.map((field) => {
       if (field.name === "load_method") {
-        const hasPackedSelection = Object.values(values).some(
-          (val) => String(val).toLowerCase() === "packed",
-        );
+        const isPackedSelected =
+          String(values.file_type || "").toLowerCase() === "packed";
 
-        if (hasPackedSelection) {
+        if (isPackedSelected) {
           return {
             ...field,
             choices: field.choices?.filter(
