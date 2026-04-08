@@ -56,11 +56,6 @@ const SidebarAccordion = ({
       icon: <MdOutlineSettings size={24} />,
       links: [
         {
-          label: "Billing and Usage",
-          path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`,
-          permission: "can_access_billing",
-        },
-        {
           label: "Profile",
           path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.PROFILE}`,
           permission: "can_access_settings",
@@ -69,6 +64,11 @@ const SidebarAccordion = ({
           label: "Communication Support",
           path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.EMAIL}`,
           permission: "can_access_settings",
+        },
+        {
+          label: "Billing and Usage",
+          path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`,
+          permission: "can_access_billing",
         },
       ],
     },

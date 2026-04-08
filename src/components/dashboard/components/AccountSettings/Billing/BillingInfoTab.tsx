@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { Box, Button, Flex, Text } from "@chakra-ui/react";
 
@@ -27,7 +27,6 @@ import {
 } from "@/types/billing";
 
 import BillingSelector from "./BillingSelector";
-import PaymentDialog from "./PaymentDialog";
 import { Chart, useChart } from "@chakra-ui/charts";
 
 const BillingInfoTab = () => {
@@ -40,23 +39,14 @@ const BillingInfoTab = () => {
   const [detailsTab, setDetailsTab] = useState<"billing_details" | "invoices">(
     "billing_details",
   );
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceItem | null>(
-    null,
-  );
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const {
-    data: BillingUsageData,
-    isLoading: isLoadingUsage,
-    refetch: refetchBillingUsage,
-  } = useFetchBillingUsage({
-    companyId: user?.company.cmp_id as number,
-    billingPeriod:
-      selectedRange[0] === "last-year" ? "last-12-months" : undefined,
-    enabled: true,
-  });
+  const { data: BillingUsageData, isLoading: isLoadingUsage } =
+    useFetchBillingUsage({
+      companyId: user?.company.cmp_id as number,
+      billingPeriod:
+        selectedRange[0] === "last-year" ? "last-12-months" : undefined,
+      enabled: true,
+    });
 
   const billingDataMap = BillingUsageData as BillingDataMap;
 
@@ -150,59 +140,6 @@ const BillingInfoTab = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const isInvoicePaid = (invoice?: InvoiceItem | null) =>
-    ["paid", "succeeded", "success", "completed"].includes(
-      String(invoice?.payment_status || "").toLowerCase(),
-    );
-
-  const stopInvoicePolling = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-    if (pollTimeoutRef.current) {
-      clearTimeout(pollTimeoutRef.current);
-      pollTimeoutRef.current = null;
-    }
-  };
-
-  useEffect(() => () => stopInvoicePolling(), []);
-
-  const startInvoicePolling = (invoiceId: number) => {
-    stopInvoicePolling();
-    pollIntervalRef.current = setInterval(async () => {
-      const result = await refetchBillingUsage();
-      const invoicesList = (result.data as BillingDataMap)?.invoices ?? [];
-      const updatedInvoice = invoicesList.find((item) => item.id === invoiceId);
-      if (isInvoicePaid(updatedInvoice)) {
-        stopInvoicePolling();
-      }
-    }, 3000);
-
-    pollTimeoutRef.current = setTimeout(() => {
-      stopInvoicePolling();
-    }, 60000);
-  };
-
-  const handleOpenPayment = (invoice: InvoiceItem) => {
-    setSelectedInvoice(invoice);
-    setIsPaymentOpen(true);
-  };
-
-  const handleClosePayment = () => {
-    setIsPaymentOpen(false);
-    setSelectedInvoice(null);
-  };
-
-  const handlePaymentSuccess = async () => {
-    const invoiceId = selectedInvoice?.id;
-    handleClosePayment();
-    await refetchBillingUsage();
-    if (invoiceId) {
-      startInvoicePolling(invoiceId);
-    }
-  };
-
   const invoiceColumns: Column<InvoiceItem>[] = [
     {
       header: "Invoice Number",
@@ -294,17 +231,6 @@ const BillingInfoTab = () => {
             title="Download"
           >
             <FiDownload size={18} color="gray.600" />
-          </Button>
-          <Button
-            size="xs"
-            variant="outline"
-            borderRadius="md"
-            minW="44px"
-            h="24px"
-            onClick={() => handleOpenPayment(row)}
-            disabled={!row.id || isInvoicePaid(row)}
-          >
-            Pay
           </Button>
         </Flex>
       ),
@@ -480,12 +406,6 @@ const BillingInfoTab = () => {
           )}
         </Box>
       </Flex>
-      <PaymentDialog
-        open={isPaymentOpen}
-        invoice={selectedInvoice}
-        onClose={handleClosePayment}
-        onSuccess={handlePaymentSuccess}
-      />
     </>
   );
 };

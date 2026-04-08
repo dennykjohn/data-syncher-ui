@@ -13,6 +13,23 @@ const theme = defineConfig({
     ":root": {
       "--brand-500": "{colors.brand.500}",
     },
+    ".stripe-field .StripeElement, .stripe-field .__PrivateStripeElement": {
+      width: "100%",
+      minHeight: "24px",
+      flex: "1 1 auto",
+      display: "block",
+    },
+    ".stripe-field .StripeElement--focus": {
+      outline: "none",
+    },
+    ".stripe-field .StripeElement--invalid": {
+      color: "#e53e3e",
+    },
+    ".stripe-field iframe": {
+      width: "100% !important",
+      minHeight: "24px",
+      display: "block",
+    },
     body: {
       bg: { _light: "white", _dark: "gray.900" },
       color: { _light: "gray.800", _dark: "white" },

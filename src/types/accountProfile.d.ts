@@ -4,13 +4,17 @@ export type AccountBillingDetails = {
   card_expiry?: string | null;
   valid_through?: string | null;
   next_billing_date?: string | null;
+  card_last4?: string | null;
+  card_brand?: string | null;
+  card_exp_month?: string | number | null;
+  card_exp_year?: string | number | null;
 };
 
 export type AccountAddress = {
-  full_name?: string | null;
+  company_name?: string | null;
   phone?: string | null;
-  line1?: string | null;
-  line2?: string | null;
+  address1?: string | null;
+  address2?: string | null;
   city?: string | null;
   state?: string | null;
   zip_code?: string | null;
