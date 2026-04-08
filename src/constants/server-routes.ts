@@ -157,6 +157,7 @@ const ServerRoutes = {
       `billing/usage/update-connections/${companyId}/`,
     downloadInvoice: ({ id }: { id: number }) => `download-invoice/${id}/`,
     createPaymentIntent: ({ id }: { id: number }) => `pay/${id}/`,
+    createSetupIntent: () => "billing/setup-intent/",
   },
   communicationSupport: {
     getDetails: () => "account/communication-support/",
