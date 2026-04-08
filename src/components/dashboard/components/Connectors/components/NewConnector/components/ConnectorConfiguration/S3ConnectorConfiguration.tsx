@@ -204,6 +204,10 @@ const S3ConnectorConfiguration = ({
       !(
         parsedValues["file_type"] === "json" &&
         parsedValues["json_mode"] === "packed"
+      ) &&
+      !(
+        parsedValues["file_type"] === "xml" &&
+        parsedValues["xml_mode"] === "packed"
       );
 
     if (mode === "create") {

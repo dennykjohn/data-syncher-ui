@@ -342,8 +342,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       if (field.name === "load_method") {
         const isJsonPacked =
           values.file_type === "json" && values.json_mode === "packed";
+        const isXmlPacked =
+          values.file_type === "xml" && values.xml_mode === "packed";
 
-        if (isJsonPacked) {
+        if (isJsonPacked || isXmlPacked) {
           return {
             ...field,
             choices: field.choices?.filter(
