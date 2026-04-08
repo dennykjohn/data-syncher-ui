@@ -337,13 +337,13 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
   // Filter visible fields based on dependencies and visibility
   const visibleFields = useMemo(() => {
-    // Dynamically filter 'upsert_custom_key' if 'packed' format is selected
+    // Dynamically filter 'upsert_custom_key' if json packed format is selected
     const dynamicSchema = schema.map((field) => {
       if (field.name === "load_method") {
-        const isPackedSelected =
-          String(values.file_type || "").toLowerCase() === "packed";
+        const isJsonPacked =
+          values.file_type === "json" && values.json_mode === "packed";
 
-        if (isPackedSelected) {
+        if (isJsonPacked) {
           return {
             ...field,
             choices: field.choices?.filter(
