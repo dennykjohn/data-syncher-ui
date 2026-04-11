@@ -7,6 +7,7 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 
+import { BiSupport } from "react-icons/bi";
 import { FaUsers } from "react-icons/fa6";
 import { MdCategory, MdOutlineArrowRightAlt, MdWrapText } from "react-icons/md";
 
@@ -70,6 +71,13 @@ const Sidebar = ({
       isAccordion: false,
       visible: can("can_access_billing"),
     },
+    {
+      label: "Support",
+      icon: <BiSupport size={24} />,
+      path: ClientRoutes.SUPPORT,
+      isAccordion: false,
+      visible: true,
+    },
   ].filter((link) => link.visible);
 
   return (
@@ -129,7 +137,7 @@ const Sidebar = ({
       <Flex flexDirection={"column"} gap={2}>
         {NavLinks.map((props) => {
           const { label, icon, path, isAccordion } = props;
-          const active = isActive(path);
+          const active = path ? isActive(path) : false;
 
           if (isAccordion) {
             return (
@@ -147,7 +155,6 @@ const Sidebar = ({
               key={label}
               label={label}
               icon={icon}
-              isActive={isActive}
               path={path}
               active={active}
               onMenuItemClick={onMenuItemClick}

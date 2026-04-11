@@ -120,6 +120,14 @@ const ServerRoutes = {
     listFiles: () => "s3/list-files/",
     suggestTableName: () => "s3/suggest-table-name/",
   },
+  supportTickets: {
+    list: () => "support-tickets/",
+    create: () => "support-tickets/",
+    choices: () => "support-tickets/choices/",
+    detail: (id: number | string) => `support-tickets-detail/${id}/`,
+    replies: (id: number | string) => `support-tickets-detail/${id}/replies/`,
+    close: (id: number | string) => `support-tickets-detail/${id}/`,
+  },
   user: {
     createUser: () => "users/",
     listUserRoles: () => "roles/",

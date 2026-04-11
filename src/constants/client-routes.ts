@@ -29,6 +29,7 @@ const ClientRoutes = {
     CONFIGURE: "configure",
   },
   PLANS: "plans",
+  SUPPORT: "support",
   USER_SETTINGS: {
     ROOT: "user-settings",
     USERS: "users",

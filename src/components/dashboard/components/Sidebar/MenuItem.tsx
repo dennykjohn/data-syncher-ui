@@ -7,7 +7,6 @@ import { useNavigate } from "react-router";
 const MenuItem = ({
   label,
   icon,
-  isActive,
   path,
   onClick,
   onMenuItemClick,
@@ -15,9 +14,8 @@ const MenuItem = ({
 }: {
   label: string;
   icon?: JSX.Element;
-  isActive: (_path: string) => boolean;
-  path: string;
-  onClick?: () => void;
+  path?: string;
+  onClick?: () => void | Promise<void>;
   onMenuItemClick?: () => void;
   active: boolean;
 }) => {
@@ -32,8 +30,10 @@ const MenuItem = ({
       cursor={"pointer"}
       gap={2}
       onClick={() => {
-        onClick?.();
-        navigate(path);
+        void onClick?.();
+        if (path) {
+          navigate(path);
+        }
         onMenuItemClick?.();
       }}
       color={active ? "brand.accentOrange" : "white"}
@@ -44,7 +44,6 @@ const MenuItem = ({
       transition="background-color 0.2s, color 0.2s"
     >
       {icon}
-      {isActive(path)}
       <Text fontSize="lg">{label}</Text>
     </Flex>
   );
