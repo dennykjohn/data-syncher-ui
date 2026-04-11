@@ -35,6 +35,9 @@ import { AuthLayout, DashboardLayout } from "./LayoutRoutes";
 const Plans = lazy(
   () => import("@/components/dashboard/components/Plans/Plans"),
 );
+const Support = lazy(
+  () => import("@/components/dashboard/components/Support/Support"),
+);
 const Profile = lazy(
   () =>
     import("@/components/dashboard/components/UserSettings/Profile/Profile"),
@@ -178,6 +181,14 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute permission="can_access_billing">
                 <Plans />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: ClientRoutes.SUPPORT,
+            element: (
+              <ProtectedRoute permission="can_access_billing">
+                <Support />
               </ProtectedRoute>
             ),
           },

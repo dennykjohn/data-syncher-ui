@@ -7,12 +7,14 @@ import { FaPlus } from "react-icons/fa6";
 import { useNavigate } from "react-router";
 
 interface PageHeaderProps {
-  breadcrumbs: { label: string; route?: string }[];
+  breadcrumbs: { label: string; route?: string; onClick?: () => void }[];
   buttonLabel?: string;
   onCreateClick?: () => void;
   children?: ReactNode;
   title?: string;
   subtitle?: string;
+  titleBold?: boolean;
+  rightElement?: ReactNode;
 }
 
 const PageHeader = ({
@@ -22,6 +24,8 @@ const PageHeader = ({
   children,
   title,
   subtitle,
+  titleBold = true,
+  rightElement,
 }: PageHeaderProps) => {
   const navigate = useNavigate();
 
@@ -36,9 +40,17 @@ const PageHeader = ({
       <Flex direction="column" gap={1}>
         <Breadcrumb.Root size="lg">
           <Breadcrumb.List flexWrap={"wrap"} gap={2}>
-            {breadcrumbs.map(({ route, label }, idx) => (
-              <Breadcrumb.Item key={idx} cursor={route ? "pointer" : "default"}>
-                <Breadcrumb.Link onClick={() => handleBreadcrumbClick(route)}>
+            {breadcrumbs.map(({ route, label, onClick }, idx) => (
+              <Breadcrumb.Item
+                key={idx}
+                cursor={route || onClick ? "pointer" : "default"}
+              >
+                <Breadcrumb.Link
+                  onClick={() => {
+                    if (onClick) onClick();
+                    else handleBreadcrumbClick(route);
+                  }}
+                >
                   {label}
                 </Breadcrumb.Link>
                 <Breadcrumb.Separator as="span" />
@@ -48,7 +60,7 @@ const PageHeader = ({
         </Breadcrumb.Root>
         <Flex flexDirection={"column"} gap={0.2}>
           {title && (
-            <Text fontSize="2xl" fontWeight="bold">
+            <Text fontSize="2xl" fontWeight={titleBold ? "bold" : "normal"}>
               {title}
             </Text>
           )}
@@ -56,12 +68,15 @@ const PageHeader = ({
           {children}
         </Flex>
       </Flex>
-      {buttonLabel && (
-        <Button colorPalette="brand" onClick={onCreateClick}>
-          <FaPlus />
-          {buttonLabel}
-        </Button>
-      )}
+      <Flex gap={4} align="center">
+        {rightElement}
+        {buttonLabel && (
+          <Button colorPalette="brand" onClick={onCreateClick}>
+            <FaPlus />
+            {buttonLabel}
+          </Button>
+        )}
+      </Flex>
     </Flex>
   );
 };

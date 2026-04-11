@@ -95,7 +95,7 @@ const Table = <T,>({
           tableLayout="fixed"
         >
           <ChakraTable.Header h={12} bg="white">
-            <ChakraTable.Row>
+            <ChakraTable.Row h={12}>
               {columns.map((column) => (
                 <ChakraTable.ColumnHeader
                   key={String(column.accessor)}

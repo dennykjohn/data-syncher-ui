@@ -122,11 +122,11 @@ const ServerRoutes = {
   },
   supportTickets: {
     list: () => "support-tickets/",
-    create: () => "support-tickets/create/",
+    create: () => "support-tickets/",
     choices: () => "support-tickets/choices/",
-    detail: (id: number | string) => `support-tickets/${id}/`,
-    replies: (id: number | string) => `support-tickets/${id}/replies/`,
-    close: (id: number | string) => `support-tickets/${id}/close/`,
+    detail: (id: number | string) => `support-tickets-detail/${id}/`,
+    replies: (id: number | string) => `support-tickets-detail/${id}/replies/`,
+    close: (id: number | string) => `support-tickets-detail/${id}/`,
   },
   user: {
     createUser: () => "users/",
