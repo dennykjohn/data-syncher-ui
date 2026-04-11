@@ -11,7 +11,7 @@ interface PageHeaderProps {
   buttonLabel?: string;
   onCreateClick?: () => void;
   children?: ReactNode;
-  title?: string;
+  title?: ReactNode;
   subtitle?: string;
   titleBold?: boolean;
   rightElement?: ReactNode;

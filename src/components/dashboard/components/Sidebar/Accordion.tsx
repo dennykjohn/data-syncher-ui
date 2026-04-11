@@ -12,6 +12,7 @@ import { Permissions } from "@/types/auth";
 import MenuItem from "./MenuItem";
 
 const SidebarAccordion = ({
+  active,
   isActive,
   onMenuItemClick,
 }: {
@@ -93,7 +94,12 @@ const SidebarAccordion = ({
           >
             <Flex gap={2} alignItems="center">
               {icon}
-              <Text fontSize="lg">{title}</Text>
+              <Text
+                fontSize="lg"
+                color={active ? "brand.accentOrange" : "inherit"}
+              >
+                {title}
+              </Text>
             </Flex>
             <Accordion.ItemIndicator />
           </Accordion.ItemTrigger>
@@ -107,7 +113,6 @@ const SidebarAccordion = ({
                     key={label}
                     label={label}
                     path={path}
-                    isActive={isActive}
                     onMenuItemClick={onMenuItemClick}
                     onClick={
                       shouldFetchBillingUsage
