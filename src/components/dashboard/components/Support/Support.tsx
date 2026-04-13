@@ -48,6 +48,7 @@ const FIELD_LABELS: Record<string, string> = {
   category: "Category",
   issue_type: "Issue Type",
   attachment: "Attachment",
+  attachments: "Attachments",
 };
 
 const formatFieldLabel = (name: string) =>
@@ -157,6 +158,7 @@ const Support = () => {
       "subject",
       "description",
       "attachment",
+      "attachments",
     ];
 
     const orderedFields = order
@@ -260,7 +262,11 @@ const Support = () => {
         return;
       }
 
-      if (field.name === "attachment") {
+      if (
+        field.type === "FileField" ||
+        field.name === "attachment" ||
+        field.name === "attachments"
+      ) {
         if (values.attachments.length === 0) {
           nextErrors[field.name] = `${label} is required`;
         }
@@ -306,6 +312,59 @@ const Support = () => {
 
   const renderField = (field: SupportEditableField) => {
     const label = formatFieldLabel(field.name);
+
+    if (
+      String(field.type).toLowerCase() === "filefield" ||
+      field.name === "attachment" ||
+      field.name === "attachments"
+    ) {
+      return (
+        <Box key={field.name}>
+          <Field.Root required={field.required} invalid={!!errors[field.name]}>
+            <Field.Label>{label}</Field.Label>
+            <Input
+              type="file"
+              p={1}
+              multiple={field.multiple || field.name === "attachments"}
+              onChange={(event) => handleAddAttachments(event.target.files)}
+            />
+            {values.attachments.length > 0 && (
+              <Stack gap={1} mt={2}>
+                {values.attachments.map((file, index) => (
+                  <Flex
+                    key={index}
+                    align="center"
+                    gap={2}
+                    bg="gray.50"
+                    px={2}
+                    py={1}
+                    borderRadius="sm"
+                  >
+                    <LuFile size={14} color="gray.500" />
+                    <Text fontSize="sm" color="gray.600" flex="1" truncate>
+                      {file.name}
+                    </Text>
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      p={0}
+                      h="auto"
+                      color="red.500"
+                      onClick={() => handleRemoveAttachment(index)}
+                    >
+                      <LuX size={14} />
+                    </Button>
+                  </Flex>
+                ))}
+              </Stack>
+            )}
+            {errors[field.name] && (
+              <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+            )}
+          </Field.Root>
+        </Box>
+      );
+    }
 
     const selectedCategoryName = choices?.categories?.find(
       (c) => String(c.category_id) === values.category,
@@ -488,55 +547,6 @@ const Support = () => {
               rows={10}
               resize="vertical"
             />
-            {errors[field.name] && (
-              <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
-            )}
-          </Field.Root>
-        </Box>
-      );
-    }
-
-    if (field.name === "attachment") {
-      return (
-        <Box key={field.name}>
-          <Field.Root required={field.required} invalid={!!errors[field.name]}>
-            <Field.Label>{label}</Field.Label>
-            <Input
-              type="file"
-              p={1}
-              multiple
-              onChange={(event) => handleAddAttachments(event.target.files)}
-            />
-            {values.attachments.length > 0 && (
-              <Stack gap={1} mt={2}>
-                {values.attachments.map((file, index) => (
-                  <Flex
-                    key={index}
-                    align="center"
-                    gap={2}
-                    bg="gray.50"
-                    px={2}
-                    py={1}
-                    borderRadius="sm"
-                  >
-                    <LuFile size={14} color="gray.500" />
-                    <Text fontSize="sm" color="gray.600" flex="1" truncate>
-                      {file.name}
-                    </Text>
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      p={0}
-                      h="auto"
-                      color="red.500"
-                      onClick={() => handleRemoveAttachment(index)}
-                    >
-                      <LuX size={14} />
-                    </Button>
-                  </Flex>
-                ))}
-              </Stack>
-            )}
             {errors[field.name] && (
               <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
             )}

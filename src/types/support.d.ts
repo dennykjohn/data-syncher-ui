@@ -19,6 +19,7 @@ export interface SupportEditableField {
   required: boolean;
   type: "PrimaryKeyRelatedField" | "ChoiceField" | "CharField" | "FileField";
   choices?: (string | number)[];
+  multiple?: boolean;
 }
 
 export interface SupportTicketChoicesResponse {
