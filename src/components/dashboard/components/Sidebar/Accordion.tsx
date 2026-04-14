@@ -12,7 +12,6 @@ import { Permissions } from "@/types/auth";
 import MenuItem from "./MenuItem";
 
 const SidebarAccordion = ({
-  active,
   isActive,
   onMenuItemClick,
 }: {
