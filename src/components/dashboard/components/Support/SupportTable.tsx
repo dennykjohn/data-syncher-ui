@@ -6,6 +6,7 @@ import { LuInbox } from "react-icons/lu";
 
 import { format } from "date-fns";
 
+import { dateTimeFormat } from "@/constants/common";
 import { type SupportTicketResponse } from "@/types/support";
 
 import SupportListTable, { type Column } from "./SupportListTable";
@@ -154,14 +155,14 @@ const SupportTable = ({
       accessor: "created_at",
       width: "13%",
       render: (value: unknown) =>
-        value ? format(new Date(String(value)), "dd MMM yy, h:mm a") : "-",
+        value ? format(new Date(String(value)), dateTimeFormat) : "-",
     },
     {
       header: "Updated At",
       accessor: "updated_at",
       width: "13%",
       render: (value: unknown) =>
-        value ? format(new Date(String(value)), "dd MMM yy, h:mm a") : "-",
+        value ? format(new Date(String(value)), dateTimeFormat) : "-",
     },
     {
       header: "Source Type",

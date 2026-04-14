@@ -143,7 +143,6 @@ const Sidebar = ({
             return (
               <SidebarAccordion
                 key={label}
-                active={active}
                 isActive={isActive}
                 onMenuItemClick={onMenuItemClick}
               />

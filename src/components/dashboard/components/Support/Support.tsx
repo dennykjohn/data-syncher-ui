@@ -23,6 +23,7 @@ import { useSearchParams } from "react-router";
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
+import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useCreateSupportTicket from "@/queryOptions/support/useCreateSupportTicket";
 import useFetchSupportTicketChoices from "@/queryOptions/support/useFetchSupportTicketChoices";
@@ -827,7 +828,7 @@ const Support = () => {
                   </Text>
                   <Text fontSize="xs" color="gray.400">
                     {"<"}
-                    {format(new Date(reply.created_at), "MM/dd/yyyy h:mma")}
+                    {format(new Date(reply.created_at), dateTimeFormat)}
                     {">"}
                   </Text>
                 </Flex>
@@ -958,10 +959,7 @@ const Support = () => {
                 </Text>
                 <Text fontSize="xs" color="gray.400">
                   {"<"}
-                  {format(
-                    new Date(ticketDetail.created_at),
-                    "MM/dd/yyyy h:mma",
-                  )}
+                  {format(new Date(ticketDetail.created_at), dateTimeFormat)}
                   {">"}
                 </Text>
               </Flex>
@@ -995,10 +993,7 @@ const Support = () => {
                 </Text>
                 <Text fontSize="xs" color="gray.400">
                   {"<"}
-                  {format(
-                    new Date(ticketDetail.created_at),
-                    "MM/dd/yyyy h:mma",
-                  )}
+                  {format(new Date(ticketDetail.created_at), dateTimeFormat)}
                   {">"}
                 </Text>
               </Flex>

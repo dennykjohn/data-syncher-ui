@@ -73,7 +73,7 @@ export const useCompanyConnectionsStatusWS = (cmpId: number | null) => {
       share: true,
       retryOnError: true,
     }),
-    [onMessage, onError, onClose, socketUrl],
+    [onMessage, onError, onClose],
   );
 
   useWebSocket(socketUrl, options);
