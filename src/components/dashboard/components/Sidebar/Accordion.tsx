@@ -12,11 +12,9 @@ import { Permissions } from "@/types/auth";
 import MenuItem from "./MenuItem";
 
 const SidebarAccordion = ({
-  active,
   isActive,
   onMenuItemClick,
 }: {
-  active: boolean;
   isActive: (_path: string) => boolean;
   onMenuItemClick?: () => void;
 }) => {
@@ -86,49 +84,52 @@ const SidebarAccordion = ({
 
   return (
     <Accordion.Root collapsible paddingInline={3} variant="plain">
-      {filteredItems.map(({ title, links, value, icon }, index) => (
-        <Accordion.Item key={index} value={value} mt={2}>
-          <Accordion.ItemTrigger
-            justifyContent="space-between"
-            cursor="pointer"
-          >
-            <Flex gap={2} alignItems="center">
-              {icon}
-              <Text
-                fontSize="lg"
-                color={active ? "brand.accentOrange" : "inherit"}
-              >
-                {title}
-              </Text>
-            </Flex>
-            <Accordion.ItemIndicator />
-          </Accordion.ItemTrigger>
-          <Accordion.ItemContent ml={6}>
-            <Accordion.ItemBody>
-              {links.map(({ label, path }) => {
-                const active = isActive(path);
-                const shouldFetchBillingUsage = label === "Billing and Usage";
-                return (
-                  <MenuItem
-                    key={label}
-                    label={label}
-                    path={path}
-                    onMenuItemClick={onMenuItemClick}
-                    onClick={
-                      shouldFetchBillingUsage
-                        ? () => {
-                            refetchBillingUsage();
-                          }
-                        : undefined
-                    }
-                    active={active}
-                  />
-                );
-              })}
-            </Accordion.ItemBody>
-          </Accordion.ItemContent>
-        </Accordion.Item>
-      ))}
+      {filteredItems.map(({ title, links, value, icon }, index) => {
+        const isItemActive = links.some((link) => isActive(link.path));
+        return (
+          <Accordion.Item key={index} value={value} mt={2}>
+            <Accordion.ItemTrigger
+              justifyContent="space-between"
+              cursor="pointer"
+            >
+              <Flex gap={2} alignItems="center">
+                {icon}
+                <Text
+                  fontSize="lg"
+                  color={isItemActive ? "brand.accentOrange" : "inherit"}
+                >
+                  {title}
+                </Text>
+              </Flex>
+              <Accordion.ItemIndicator />
+            </Accordion.ItemTrigger>
+            <Accordion.ItemContent ml={6}>
+              <Accordion.ItemBody>
+                {links.map(({ label, path }) => {
+                  const active = isActive(path);
+                  const shouldFetchBillingUsage = label === "Billing and Usage";
+                  return (
+                    <MenuItem
+                      key={label}
+                      label={label}
+                      path={path}
+                      onMenuItemClick={onMenuItemClick}
+                      onClick={
+                        shouldFetchBillingUsage
+                          ? () => {
+                              refetchBillingUsage();
+                            }
+                          : undefined
+                      }
+                      active={active}
+                    />
+                  );
+                })}
+              </Accordion.ItemBody>
+            </Accordion.ItemContent>
+          </Accordion.Item>
+        );
+      })}
     </Accordion.Root>
   );
 };
