@@ -151,18 +151,17 @@ const SupportTable = ({
       width: "15%",
     },
     {
-      header: "Created At",
-      accessor: "created_at",
-      width: "13%",
+      header: "Category",
+      accessor: "category_detail",
+      width: "11%",
+      filterValue: categoryFilter,
+      filterOptions: ["All", ...uniqueCategories],
+      onFilterChange: (v: string) => {
+        setCategoryFilter(v);
+        setIssueTypeFilter("All");
+      },
       render: (value: unknown) =>
-        value ? format(new Date(String(value)), dateTimeFormat) : "-",
-    },
-    {
-      header: "Updated At",
-      accessor: "updated_at",
-      width: "13%",
-      render: (value: unknown) =>
-        value ? format(new Date(String(value)), dateTimeFormat) : "-",
+        (value as SupportTicketResponse["category_detail"])?.name ?? "-",
     },
     {
       header: "Source Type",
@@ -180,22 +179,9 @@ const SupportTable = ({
       render: (value: unknown) => (value as string) || "-",
     },
     {
-      header: "Category",
-      accessor: "category_detail",
-      width: "11%",
-      filterValue: categoryFilter,
-      filterOptions: ["All", ...uniqueCategories],
-      onFilterChange: (v: string) => {
-        setCategoryFilter(v);
-        setIssueTypeFilter("All");
-      },
-      render: (value: unknown) =>
-        (value as SupportTicketResponse["category_detail"])?.name ?? "-",
-    },
-    {
       header: "Issue Type",
       accessor: "issue_type_detail",
-      width: "16%",
+      width: "14%",
       filterValue: issueTypeFilter,
       filterOptions: ["All", ...uniqueIssueTypes],
       onFilterChange: setIssueTypeFilter,
@@ -215,6 +201,20 @@ const SupportTable = ({
           {String(value)}
         </Text>
       ),
+    },
+    {
+      header: "Created At",
+      accessor: "created_at",
+      width: "10.5%",
+      render: (value: unknown) =>
+        value ? format(new Date(String(value)), dateTimeFormat) : "-",
+    },
+    {
+      header: "Updated At",
+      accessor: "updated_at",
+      width: "10.5%",
+      render: (value: unknown) =>
+        value ? format(new Date(String(value)), dateTimeFormat) : "-",
     },
   ];
 
