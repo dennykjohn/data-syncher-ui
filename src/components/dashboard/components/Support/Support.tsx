@@ -1226,6 +1226,7 @@ const Support = () => {
                       title: "Reply sent",
                       description: "Your reply has been successfully sent.",
                     });
+                    setView("list");
                   } catch {
                     setReplyText(currentText);
                     setReplyAttachments(currentFiles);
