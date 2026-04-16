@@ -24,10 +24,10 @@ const SupportTable = ({
   onSearchChange,
   onViewTicket,
 }: SupportTableProps) => {
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [categoryFilter, setCategoryFilter] = useState("All");
-  const [issueTypeFilter, setIssueTypeFilter] = useState("All");
-  const [sourceTypeFilter, setSourceTypeFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [issueTypeFilter, setIssueTypeFilter] = useState("all");
+  const [sourceTypeFilter, setSourceTypeFilter] = useState("all");
 
   const uniqueCategories = useMemo(() => {
     if (!tickets) return [];
@@ -37,38 +37,17 @@ const SupportTable = ({
   }, [tickets]);
 
   const uniqueIssueTypes = useMemo(() => {
-    const fromTickets = tickets
-      ? (Array.from(
-          new Set(
-            tickets.map((t) => t.issue_type_detail?.name).filter(Boolean),
-          ),
-        ) as string[])
-      : [];
-    const fixed = [
-      "Manage Users/Permissions",
-      "Notifications",
-      "Account Setup",
-      "Dashboard Banner Error",
-      "Payment Issue",
-      "Transformations Pricing",
-      "Invoice Query",
-    ];
-    return Array.from(new Set([...fixed, ...fromTickets]));
+    if (!tickets) return [];
+    return Array.from(
+      new Set(tickets.map((t) => t.issue_type_detail?.name).filter(Boolean)),
+    ) as string[];
   }, [tickets]);
 
   const uniqueSourceTypes = useMemo(() => {
-    const fromTickets = tickets
-      ? (Array.from(
-          new Set(tickets.map((t) => t.source_type).filter(Boolean)),
-        ) as string[])
-      : [];
-    const fixed = [
-      "Salesforce",
-      "Microsoft Dynamics",
-      "Amazon S3",
-      "Google Review",
-    ];
-    return Array.from(new Set([...fixed, ...fromTickets]));
+    if (!tickets) return [];
+    return Array.from(
+      new Set(tickets.map((t) => t.source_type).filter(Boolean)),
+    ) as string[];
   }, [tickets]);
 
   // derive unique statuses from actual data (preserves exact casing from API)
@@ -98,19 +77,19 @@ const SupportTable = ({
 
       // case-insensitive status match
       const matchesStatus =
-        statusFilter === "All" ||
+        statusFilter === "all" ||
         ticket.status?.toLowerCase() === statusFilter.toLowerCase();
 
       const matchesCategory =
-        categoryFilter === "All" ||
+        categoryFilter === "all" ||
         ticket.category_detail?.name === categoryFilter;
 
       const matchesIssueType =
-        issueTypeFilter === "All" ||
+        issueTypeFilter === "all" ||
         ticket.issue_type_detail?.name === issueTypeFilter;
 
       const matchesSourceType =
-        sourceTypeFilter === "All" ||
+        sourceTypeFilter === "all" ||
         (ticket.source_type?.toLowerCase() ?? "") ===
           sourceTypeFilter.toLowerCase();
 
@@ -155,10 +134,10 @@ const SupportTable = ({
       accessor: "category_detail",
       width: "11%",
       filterValue: categoryFilter,
-      filterOptions: ["All", ...uniqueCategories],
+      filterOptions: ["all", ...uniqueCategories],
       onFilterChange: (v: string) => {
         setCategoryFilter(v);
-        setIssueTypeFilter("All");
+        setIssueTypeFilter("all");
       },
       render: (value: unknown) =>
         (value as SupportTicketResponse["category_detail"])?.name ?? "-",
@@ -168,7 +147,7 @@ const SupportTable = ({
       accessor: "source_type",
       width: "10%",
       filterValue: sourceTypeFilter,
-      filterOptions: ["All", ...uniqueSourceTypes],
+      filterOptions: ["all", ...uniqueSourceTypes],
       onFilterChange: setSourceTypeFilter,
       render: (value: unknown) => (value as string) || "-",
     },
@@ -183,7 +162,7 @@ const SupportTable = ({
       accessor: "issue_type_detail",
       width: "14%",
       filterValue: issueTypeFilter,
-      filterOptions: ["All", ...uniqueIssueTypes],
+      filterOptions: ["all", ...uniqueIssueTypes],
       onFilterChange: setIssueTypeFilter,
       render: (value: unknown) =>
         (value as SupportTicketResponse["issue_type_detail"])?.name ?? "-",
@@ -194,7 +173,7 @@ const SupportTable = ({
       width: "9%",
       textAlign: "left",
       filterValue: statusFilter,
-      filterOptions: ["All", ...uniqueStatuses],
+      filterOptions: ["all", ...uniqueStatuses],
       onFilterChange: setStatusFilter,
       render: (value: unknown) => (
         <Text color="gray.700" fontSize="xs" fontWeight="normal">

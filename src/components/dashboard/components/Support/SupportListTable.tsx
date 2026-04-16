@@ -83,11 +83,11 @@ const FilterHeader = ({
           as="span"
           fontSize="xs"
           fontWeight="semibold"
-          color={value !== "All" ? "#6e2fd5" : "gray.700"}
+          color={value !== "all" ? "#6e2fd5" : "gray.700"}
         >
           {label}
         </Text>
-        <LuFilter size={11} color={value !== "All" ? "#6e2fd5" : "#718096"} />
+        <LuFilter size={11} color={value !== "all" ? "#6e2fd5" : "#718096"} />
       </Flex>
 
       {open &&
@@ -120,7 +120,7 @@ const FilterHeader = ({
                   setOpen(false);
                 }}
               >
-                {opt === "All" ? `All ${label}s` : opt}
+                {opt}
               </Box>
             ))}
           </Box>,
