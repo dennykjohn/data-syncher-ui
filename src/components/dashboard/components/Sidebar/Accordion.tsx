@@ -85,7 +85,6 @@ const SidebarAccordion = ({
   return (
     <Accordion.Root collapsible paddingInline={3} variant="plain">
       {filteredItems.map(({ title, links, value, icon }, index) => {
-        const isItemActive = links.some((link) => isActive(link.path));
         return (
           <Accordion.Item key={index} value={value} mt={2}>
             <Accordion.ItemTrigger
@@ -94,12 +93,7 @@ const SidebarAccordion = ({
             >
               <Flex gap={2} alignItems="center">
                 {icon}
-                <Text
-                  fontSize="lg"
-                  color={isItemActive ? "brand.accentOrange" : "inherit"}
-                >
-                  {title}
-                </Text>
+                <Text fontSize="lg">{title}</Text>
               </Flex>
               <Accordion.ItemIndicator />
             </Accordion.ItemTrigger>

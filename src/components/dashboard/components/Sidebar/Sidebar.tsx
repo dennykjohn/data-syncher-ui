@@ -36,8 +36,12 @@ const Sidebar = ({
   const { can } = usePermissions();
   const breakpointDisplay = useBreakpointValue({ base: "none", md: "block" });
   const sidebarDisplay = isDrawer ? "block" : breakpointDisplay;
-  const isActive = (path: string, exact = false) =>
-    exact ? location.pathname === path : location.pathname.includes(path);
+  const isActive = (path: string, exact = false) => {
+    if (exact) return location.pathname === path;
+    if (path.includes("/")) return location.pathname.includes(path);
+    const segments = location.pathname.split("/");
+    return segments.some((seg) => seg === path);
+  };
   const {
     authState: { user },
   } = useAuth();
