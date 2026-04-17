@@ -242,26 +242,40 @@ const Support = () => {
     }));
   };
 
-  const validateForm = () => {
-    const nextErrors: Record<string, string> = {};
-
+  const isFieldRequired = (field: SupportEditableField) => {
     const selectedCategoryName = choices?.categories?.find(
       (c) => String(c.category_id) === values.category,
     )?.name;
+    const isBilling = selectedCategoryName?.toLowerCase() === "billing";
+
+    // These fields are always required in the UI
+    const alwaysRequired = ["category", "subject", "description"];
+    if (alwaysRequired.includes(field.name)) return true;
+
+    // These fields are required unless it's a Billing ticket
+    if (field.name === "source_type" || field.name === "connection_name") {
+      return !isBilling;
+    }
+
+    // Issue type is required if category is selected (and thus field is visible)
+    if (field.name === "issue_type" && values.category) {
+      return true;
+    }
+
+    return field.required;
+  };
+
+  const validateForm = () => {
+    const nextErrors: Record<string, string> = {};
 
     fields.forEach((field: SupportEditableField) => {
-      if (
-        (field.name === "source_type" || field.name === "connection_name") &&
-        selectedCategoryName?.toLowerCase() === "billing"
-      ) {
+      const required = isFieldRequired(field);
+
+      if (!required) {
         return;
       }
 
       const label = formatFieldLabel(field.name);
-
-      if (!field.required) {
-        return;
-      }
 
       if (
         field.type === "FileField" ||
@@ -313,6 +327,7 @@ const Support = () => {
 
   const renderField = (field: SupportEditableField) => {
     const label = formatFieldLabel(field.name);
+    const required = isFieldRequired(field);
 
     if (
       String(field.type).toLowerCase() === "filefield" ||
@@ -321,7 +336,7 @@ const Support = () => {
     ) {
       return (
         <Box key={field.name}>
-          <Field.Root required={field.required} invalid={!!errors[field.name]}>
+          <Field.Root required={required} invalid={!!errors[field.name]}>
             <Field.Label>{label}</Field.Label>
             <Input
               type="file"
@@ -381,7 +396,7 @@ const Support = () => {
     if (field.name === "source_type") {
       return (
         <Box key={field.name}>
-          <Field.Root required={field.required} invalid={!!errors[field.name]}>
+          <Field.Root required={required} invalid={!!errors[field.name]}>
             <Field.Label>{label}</Field.Label>
             <NativeSelect.Root size="sm">
               <NativeSelect.Field
@@ -408,6 +423,7 @@ const Support = () => {
     }
 
     if (field.name === "category") {
+      // ... same collection logic ...
       const categoryCollection = createListCollection({
         items: (choices?.categories || []).map((cat) => ({
           label: cat.name,
@@ -418,7 +434,7 @@ const Support = () => {
 
       return (
         <Box key={field.name}>
-          <Field.Root required={field.required} invalid={!!errors[field.name]}>
+          <Field.Root required={required} invalid={!!errors[field.name]}>
             <Field.Label>{label}</Field.Label>
             <Select.Root
               collection={categoryCollection}
@@ -469,6 +485,7 @@ const Support = () => {
     }
 
     if (field.name === "issue_type") {
+      // ... collection logic ...
       const filteredIssueTypes = (choices?.issue_types || []).filter(
         (it) => !values.category || String(it.category) === values.category,
       );
@@ -482,7 +499,7 @@ const Support = () => {
 
       return (
         <Box key={field.name}>
-          <Field.Root required={field.required} invalid={!!errors[field.name]}>
+          <Field.Root required={required} invalid={!!errors[field.name]}>
             <Field.Label>{label}</Field.Label>
             <Select.Root
               collection={issueTypeCollection}
@@ -537,7 +554,7 @@ const Support = () => {
     if (field.name === "description") {
       return (
         <Box key={field.name}>
-          <Field.Root required={field.required} invalid={!!errors[field.name]}>
+          <Field.Root required={required} invalid={!!errors[field.name]}>
             <Field.Label>{label}</Field.Label>
             <Textarea
               value={values.description}
@@ -559,7 +576,7 @@ const Support = () => {
     if (field.name === "connection_name") {
       return (
         <Box key={field.name}>
-          <Field.Root required={field.required} invalid={!!errors[field.name]}>
+          <Field.Root required={required} invalid={!!errors[field.name]}>
             <Field.Label>{label}</Field.Label>
             <NativeSelect.Root size="sm">
               <NativeSelect.Field
@@ -598,7 +615,7 @@ const Support = () => {
     if (field.type === "ChoiceField" || field.choices) {
       return (
         <Box key={field.name}>
-          <Field.Root required={field.required} invalid={!!errors[field.name]}>
+          <Field.Root required={required} invalid={!!errors[field.name]}>
             <Field.Label>{label}</Field.Label>
             <NativeSelect.Root size="sm">
               <NativeSelect.Field
@@ -635,7 +652,7 @@ const Support = () => {
     if (field.name === "subject") {
       return (
         <Box key={field.name}>
-          <Field.Root required={field.required} invalid={!!errors[field.name]}>
+          <Field.Root required={required} invalid={!!errors[field.name]}>
             <Field.Label>{label}</Field.Label>
             <Input
               value={values[field.name as keyof SupportFormValues] as string}
@@ -654,7 +671,7 @@ const Support = () => {
 
     return (
       <Box key={field.name}>
-        <Field.Root required={field.required} invalid={!!errors[field.name]}>
+        <Field.Root required={required} invalid={!!errors[field.name]}>
           <Field.Label>{label}</Field.Label>
           <Input
             value={values[field.name as keyof SupportFormValues] as string}
