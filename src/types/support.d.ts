@@ -30,6 +30,18 @@ export interface SupportTicketChoicesResponse {
   editable_fields: SupportEditableField[];
 }
 
+export interface ClosedByUser {
+  user_id: number;
+  email: string;
+  first_name: string;
+}
+
+export interface ClosedByAdmin {
+  admin_id: number;
+  full_name: string;
+  email: string;
+}
+
 export interface CreateSupportTicketPayload {
   attachment: File | null;
   attachments?: File[];
@@ -81,4 +93,9 @@ export interface SupportTicketResponse {
   created_by: number;
   updated_by: number;
   has_new_response: boolean;
+  closed_by_user?: ClosedByUser | number | null;
+  closed_by_admin?: ClosedByAdmin | number | null;
+  closed_by_user_name?: string | null;
+  closed_by_admin_name?: string | null;
+  closed_at?: string | null;
 }

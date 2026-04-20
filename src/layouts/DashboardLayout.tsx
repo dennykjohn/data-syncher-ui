@@ -2,10 +2,11 @@ import { useState } from "react";
 
 import { Grid, GridItem } from "@chakra-ui/react";
 
-import { Outlet, useParams } from "react-router";
+import { Outlet, useLocation, useParams } from "react-router";
 
 import Header from "@/components/dashboard/components/Header";
 import Sidebar from "@/components/dashboard/components/Sidebar/Sidebar";
+import ClientRoutes from "@/constants/client-routes";
 import useConnectionTableStatusWS from "@/hooks/useConnectionTableStatusWS";
 
 export default function Layout() {
@@ -16,6 +17,8 @@ export default function Layout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const sidebarWidth = isSidebarCollapsed ? "0" : "250px";
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
+  const location = useLocation();
+  const isSupportRoute = location.pathname.startsWith(ClientRoutes.SUPPORT);
 
   return (
     <Grid
@@ -37,7 +40,8 @@ export default function Layout() {
       <GridItem
         area="main"
         p={6}
-        overflowY="auto"
+        boxSizing="border-box"
+        overflowY={isSupportRoute ? "hidden" : "auto"}
         height="calc(100vh - 60px)"
         bg="gray.50"
         mt={{ base: "60px", md: "0" }}
