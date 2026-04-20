@@ -148,6 +148,16 @@ const Support = () => {
     }
   }
 
+  const closedByName =
+    ticketDetail?.closed_by_admin_name ||
+    ticketDetail?.closed_by_user_name ||
+    (typeof ticketDetail?.closed_by_admin === "object"
+      ? ticketDetail?.closed_by_admin?.full_name
+      : undefined) ||
+    (typeof ticketDetail?.closed_by_user === "object"
+      ? ticketDetail?.closed_by_user?.first_name
+      : undefined);
+
   const fields = useMemo(() => {
     const apiFields = choices?.editable_fields ?? [];
 
@@ -701,13 +711,7 @@ const Support = () => {
 
   if (view === "detail" && ticketDetail) {
     return (
-      <Flex
-        direction="column"
-        gap={0}
-        h="calc(100vh - 80px)"
-        overflow="hidden"
-        mt={-4}
-      >
+      <Flex direction="column" gap={0} h="100%" overflow="hidden">
         <Box px={6} py={0}>
           <PageHeader
             breadcrumbs={[
@@ -810,42 +814,180 @@ const Support = () => {
         />
         <Box borderBottom="1px solid" borderColor="gray.100" mx={6} mb={2} />
 
-        {/* Conversation Container - Shading Removed, Border Added */}
+        {/* Scrollable Container for Conversation and Reply Interface */}
         <Box
           flex="1"
-          bg="white"
+          minH={0}
           overflowY="auto"
-          p={0}
-          mx={6}
-          mb={2}
-          border="1px solid"
-          borderColor="gray.200"
-          borderRadius="sm"
+          pb={4}
+          display="flex"
+          flexDirection="column"
         >
-          <Stack gap={0}>
-            {/* Replies from API - Reversed (Newest First) */}
-            {[...replies].reverse().map((reply) => (
+          {/* Conversation Container - Shading Removed, Border Added */}
+          <Box
+            bg="white"
+            p={0}
+            mx={6}
+            mb={2}
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius="sm"
+          >
+            <Stack gap={0}>
+              {/* Replies from API - Reversed (Newest First) */}
+              {[...replies].reverse().map((reply) => (
+                <Box
+                  key={reply.id}
+                  pt={0}
+                  pb={2}
+                  mb={0}
+                  borderBottom="1px solid"
+                  borderColor="gray.200"
+                >
+                  <Flex align="center" gap={2} mb={0} px={2} pt={1}>
+                    <Text fontWeight="normal" fontSize="xs" color="gray.600">
+                      {"<"}
+                      {reply.is_support_team ? (
+                        "Support Team"
+                      ) : (
+                        <TicketUserName userId={ticketDetail.created_by} />
+                      )}
+                      {">"}
+                    </Text>
+                    <Text fontSize="xs" color="gray.400">
+                      {"<"}
+                      {format(new Date(reply.created_at), dateTimeFormat)}
+                      {">"}
+                    </Text>
+                  </Flex>
+                  <Box px={2} py={1} bg="gray.50">
+                    <Text
+                      fontSize="sm"
+                      color="gray.700"
+                      mb={2}
+                      whiteSpace="pre-wrap"
+                    >
+                      {reply.message}
+                    </Text>
+
+                    {(() => {
+                      const allAttachments = [...(reply.attachments || [])];
+                      if (
+                        reply.attachment &&
+                        !allAttachments.some(
+                          (a) =>
+                            JSON.stringify(a) ===
+                            JSON.stringify(reply.attachment),
+                        )
+                      ) {
+                        allAttachments.push(reply.attachment);
+                      }
+
+                      if (allAttachments.length === 0) return null;
+
+                      const getFileUrl = (raw: unknown): string => {
+                        if (!raw) return "";
+                        if (typeof raw === "string") return raw;
+                        if (typeof raw === "object" && raw !== null) {
+                          const obj = raw as Record<string, unknown>;
+                          return String(
+                            obj.file ||
+                              obj.url ||
+                              obj.attachment ||
+                              obj.name ||
+                              obj.path ||
+                              JSON.stringify(raw),
+                          );
+                        }
+                        return String(raw);
+                      };
+
+                      const getFileName = (url: string) => {
+                        if (url.startsWith("{") || url.startsWith("["))
+                          return "Attachment";
+                        return url.split("/").pop() || url || "Unknown File";
+                      };
+
+                      return (
+                        <Box
+                          mt={1}
+                          border="1px solid"
+                          borderColor="gray.200"
+                          borderRadius="sm"
+                          bg="gray.50"
+                          px={2}
+                          py={1}
+                          display="block"
+                          w="full"
+                          maxW="full"
+                          maxH="200px"
+                          overflowY="auto"
+                          overflowX="hidden"
+                        >
+                          <Box
+                            display="grid"
+                            gridTemplateColumns={
+                              allAttachments.length > 1
+                                ? "max-content max-content"
+                                : "1fr"
+                            }
+                            gapX={12}
+                            gapY={1}
+                            alignItems="center"
+                          >
+                            {allAttachments.map((rawAttach, idx) => {
+                              const url = getFileUrl(rawAttach);
+                              const isJson =
+                                url.startsWith("{") || url.startsWith("[");
+                              const displayName = isJson
+                                ? `Attachment ${idx + 1}`
+                                : getFileName(url);
+
+                              return (
+                                <Text
+                                  key={idx}
+                                  display="block"
+                                  fontSize="11px"
+                                  color="blue.600"
+                                  cursor={isJson ? "default" : "pointer"}
+                                  textDecoration={isJson ? "none" : "underline"}
+                                  _hover={isJson ? {} : { color: "blue.800" }}
+                                  onClick={() => {
+                                    if (!isJson)
+                                      window.open(
+                                        `https://qa.datasyncher.com${url}`,
+                                        "_blank",
+                                      );
+                                  }}
+                                  title={displayName}
+                                >
+                                  {displayName}
+                                </Text>
+                              );
+                            })}
+                          </Box>
+                        </Box>
+                      );
+                    })()}
+                  </Box>
+                </Box>
+              ))}
+
+              {/* Sample Greeting */}
               <Box
-                key={reply.id}
-                pt={0}
                 pb={2}
+                pt={0}
                 mb={0}
                 borderBottom="1px solid"
                 borderColor="gray.200"
               >
                 <Flex align="center" gap={2} mb={0} px={2} pt={1}>
                   <Text fontWeight="normal" fontSize="xs" color="gray.600">
-                    {"<"}
-                    {reply.is_support_team ? (
-                      "Support Team"
-                    ) : (
-                      <TicketUserName userId={ticketDetail.created_by} />
-                    )}
-                    {">"}
+                    {"<"}Support Team{">"}
                   </Text>
                   <Text fontSize="xs" color="gray.400">
                     {"<"}
-                    {format(new Date(reply.created_at), dateTimeFormat)}
+                    {format(new Date(ticketDetail.created_at), dateTimeFormat)}
                     {">"}
                   </Text>
                 </Flex>
@@ -856,20 +998,51 @@ const Support = () => {
                     mb={2}
                     whiteSpace="pre-wrap"
                   >
-                    {reply.message}
+                    Hello! We have received your request and our technical team
+                    is currently investigating the issue. We will update you
+                    here as soon as we have more information.
                   </Text>
+                </Box>
+              </Box>
 
+              {/* User's Original Message */}
+              <Box
+                pt={0}
+                pb={2}
+                mb={0}
+                borderBottom="1px solid"
+                borderColor="gray.100"
+              >
+                <Flex align="center" gap={2} mb={0} px={2} pt={1}>
+                  <Text fontWeight="normal" fontSize="xs" color="gray.600">
+                    {"<"}
+                    <TicketUserName userId={ticketDetail.created_by} />
+                    {">"}
+                  </Text>
+                  <Text fontSize="xs" color="gray.400">
+                    {"<"}
+                    {format(new Date(ticketDetail.created_at), dateTimeFormat)}
+                    {">"}
+                  </Text>
+                </Flex>
+                <Box px={2} py={1} bg="gray.50">
+                  <Text
+                    fontSize="sm"
+                    color="gray.700"
+                    mb={2}
+                    whiteSpace="pre-wrap"
+                  >
+                    {ticketDetail.description}
+                  </Text>
                   {(() => {
-                    const allAttachments = [...(reply.attachments || [])];
+                    const allAttachments = [
+                      ...(ticketDetail.attachments || []),
+                    ];
                     if (
-                      reply.attachment &&
-                      !allAttachments.some(
-                        (a) =>
-                          JSON.stringify(a) ===
-                          JSON.stringify(reply.attachment),
-                      )
+                      ticketDetail.attachment &&
+                      !allAttachments.includes(ticketDetail.attachment)
                     ) {
-                      allAttachments.push(reply.attachment);
+                      allAttachments.push(ticketDetail.attachment);
                     }
 
                     if (allAttachments.length === 0) return null;
@@ -960,304 +1133,163 @@ const Support = () => {
                   })()}
                 </Box>
               </Box>
-            ))}
+            </Stack>
+          </Box>
 
-            {/* Sample Greeting */}
+          {/* Reply Interface - Optimized for Space */}
+          <Box px={6}>
             <Box
-              pb={2}
-              pt={0}
-              mb={0}
-              borderBottom="1px solid"
-              borderColor="gray.200"
+              bg="white"
+              borderRadius="md"
+              border="1px solid"
+              borderColor="gray.300"
+              overflow="hidden"
             >
-              <Flex align="center" gap={2} mb={0} px={2} pt={1}>
-                <Text fontWeight="normal" fontSize="xs" color="gray.600">
-                  {"<"}Support Team{">"}
-                </Text>
-                <Text fontSize="xs" color="gray.400">
-                  {"<"}
-                  {format(new Date(ticketDetail.created_at), dateTimeFormat)}
-                  {">"}
-                </Text>
-              </Flex>
-              <Box px={2} py={1} bg="gray.50">
-                <Text
-                  fontSize="sm"
-                  color="gray.700"
-                  mb={2}
-                  whiteSpace="pre-wrap"
-                >
-                  Hello! We have received your request and our technical team is
-                  currently investigating the issue. We will update you here as
-                  soon as we have more information.
-                </Text>
-              </Box>
-            </Box>
-
-            {/* User's Original Message */}
-            <Box
-              pt={0}
-              pb={2}
-              mb={0}
-              borderBottom="1px solid"
-              borderColor="gray.100"
-            >
-              <Flex align="center" gap={2} mb={0} px={2} pt={1}>
-                <Text fontWeight="normal" fontSize="xs" color="gray.600">
-                  {"<"}
-                  <TicketUserName userId={ticketDetail.created_by} />
-                  {">"}
-                </Text>
-                <Text fontSize="xs" color="gray.400">
-                  {"<"}
-                  {format(new Date(ticketDetail.created_at), dateTimeFormat)}
-                  {">"}
-                </Text>
-              </Flex>
-              <Box px={2} py={1} bg="gray.50">
-                <Text
-                  fontSize="sm"
-                  color="gray.700"
-                  mb={2}
-                  whiteSpace="pre-wrap"
-                >
-                  {ticketDetail.description}
-                </Text>
-                {(() => {
-                  const allAttachments = [...(ticketDetail.attachments || [])];
-                  if (
-                    ticketDetail.attachment &&
-                    !allAttachments.includes(ticketDetail.attachment)
-                  ) {
-                    allAttachments.push(ticketDetail.attachment);
-                  }
-
-                  if (allAttachments.length === 0) return null;
-
-                  const getFileUrl = (raw: unknown): string => {
-                    if (!raw) return "";
-                    if (typeof raw === "string") return raw;
-                    if (typeof raw === "object" && raw !== null) {
-                      const obj = raw as Record<string, unknown>;
-                      return String(
-                        obj.file ||
-                          obj.url ||
-                          obj.attachment ||
-                          obj.name ||
-                          obj.path ||
-                          JSON.stringify(raw),
-                      );
-                    }
-                    return String(raw);
-                  };
-
-                  const getFileName = (url: string) => {
-                    if (url.startsWith("{") || url.startsWith("["))
-                      return "Attachment";
-                    return url.split("/").pop() || url || "Unknown File";
-                  };
-
-                  return (
-                    <Box
-                      mt={1}
-                      border="1px solid"
-                      borderColor="gray.200"
-                      borderRadius="sm"
-                      bg="gray.50"
-                      px={2}
-                      py={1}
-                      display="block"
-                      w="full"
-                      maxW="full"
-                      maxH="200px"
-                      overflowY="auto"
-                      overflowX="hidden"
-                    >
-                      <Box
-                        display="grid"
-                        gridTemplateColumns={
-                          allAttachments.length > 1
-                            ? "max-content max-content"
-                            : "1fr"
+              <Textarea
+                placeholder={
+                  ticketDetail.status?.toLowerCase() === "closed"
+                    ? `Closed${closedByName ? ` by ${closedByName}` : ""} on ${format(
+                        new Date(ticketDetail.closed_at!),
+                        dateTimeFormat,
+                      )}`
+                    : "Write a reply..."
+                }
+                size="sm"
+                variant="outline"
+                rows={4}
+                border="none"
+                _focus={{ ring: 0 }}
+                resize="none"
+                value={replyText}
+                color={
+                  ticketDetail.status?.toLowerCase() === "closed"
+                    ? "gray.500"
+                    : "gray.800"
+                }
+                _placeholder={{
+                  color:
+                    ticketDetail.status?.toLowerCase() === "closed"
+                      ? "gray.500"
+                      : "gray.400",
+                }}
+                _disabled={{ color: "gray.500", opacity: 1 }}
+                onChange={(e) => setReplyText(e.target.value)}
+                disabled={ticketDetail.status?.toLowerCase() === "closed"}
+                px={2}
+                py={2}
+              />
+              {replyAttachments.length > 0 && (
+                <Box px={2} pb={2}>
+                  {(showAllFiles
+                    ? replyAttachments
+                    : replyAttachments.slice(0, 3)
+                  ).map((file, i) => (
+                    <Flex key={i} align="center" gap={2} py="2px">
+                      <LuFile size={13} color="#718096" />
+                      <Text fontSize="xs" color="gray.600" flex="1" truncate>
+                        {file.name}
+                      </Text>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        p={0}
+                        h="auto"
+                        onClick={() =>
+                          setReplyAttachments((prev) =>
+                            prev.filter((_, idx) => idx !== i),
+                          )
                         }
-                        gapX={12}
-                        gapY={1}
-                        alignItems="center"
                       >
-                        {allAttachments.map((rawAttach, idx) => {
-                          const url = getFileUrl(rawAttach);
-                          const isJson =
-                            url.startsWith("{") || url.startsWith("[");
-                          const displayName = isJson
-                            ? `Attachment ${idx + 1}`
-                            : getFileName(url);
-
-                          return (
-                            <Text
-                              key={idx}
-                              display="block"
-                              fontSize="11px"
-                              color="blue.600"
-                              cursor={isJson ? "default" : "pointer"}
-                              textDecoration={isJson ? "none" : "underline"}
-                              _hover={isJson ? {} : { color: "blue.800" }}
-                              onClick={() => {
-                                if (!isJson)
-                                  window.open(
-                                    `https://qa.datasyncher.com${url}`,
-                                    "_blank",
-                                  );
-                              }}
-                              title={displayName}
-                            >
-                              {displayName}
-                            </Text>
-                          );
-                        })}
-                      </Box>
-                    </Box>
-                  );
-                })()}
-              </Box>
-            </Box>
-          </Stack>
-        </Box>
-
-        {/* Reply Interface - Optimized for Space */}
-        <Box px={6} mb={4}>
-          <Box
-            bg="white"
-            borderRadius="md"
-            border="1px solid"
-            borderColor="gray.300"
-            overflow="hidden"
-          >
-            <Textarea
-              placeholder="Write a reply..."
-              size="sm"
-              variant="outline"
-              rows={4}
-              border="none"
-              _focus={{ ring: 0 }}
-              resize="none"
-              value={replyText}
-              color="gray.800"
-              onChange={(e) => setReplyText(e.target.value)}
-              disabled={ticketDetail.status?.toLowerCase() === "closed"}
-              px={2}
-              py={2}
-            />
-            {replyAttachments.length > 0 && (
-              <Box px={2} pb={2}>
-                {(showAllFiles
-                  ? replyAttachments
-                  : replyAttachments.slice(0, 3)
-                ).map((file, i) => (
-                  <Flex key={i} align="center" gap={2} py="2px">
-                    <LuFile size={13} color="#718096" />
-                    <Text fontSize="xs" color="gray.600" flex="1" truncate>
-                      {file.name}
-                    </Text>
+                        <LuX size={13} />
+                      </Button>
+                    </Flex>
+                  ))}
+                  {replyAttachments.length > 3 && (
                     <Button
                       size="xs"
                       variant="ghost"
+                      color="#6e2fd5"
                       p={0}
-                      h="auto"
-                      onClick={() =>
-                        setReplyAttachments((prev) =>
-                          prev.filter((_, idx) => idx !== i),
-                        )
-                      }
+                      mt={1}
+                      onClick={() => setShowAllFiles((v) => !v)}
                     >
-                      <LuX size={13} />
+                      {showAllFiles
+                        ? "Show less"
+                        : `+${replyAttachments.length - 3} more files`}
                     </Button>
-                  </Flex>
-                ))}
-                {replyAttachments.length > 3 && (
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    color="#6e2fd5"
-                    p={0}
-                    mt={1}
-                    onClick={() => setShowAllFiles((v) => !v)}
-                  >
-                    {showAllFiles
-                      ? "Show less"
-                      : `+${replyAttachments.length - 3} more files`}
-                  </Button>
-                )}
-              </Box>
-            )}
-            <Flex
-              justify="space-between"
-              align="center"
-              px={2}
-              py={2}
-              bg="gray.50"
-              borderTop="1px solid"
-              borderColor="gray.100"
-            >
-              <Button
-                size="xs"
-                variant="ghost"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={ticketDetail.status?.toLowerCase() === "closed"}
-                color="gray.600"
+                  )}
+                </Box>
+              )}
+              <Flex
+                justify="space-between"
+                align="center"
+                px={2}
+                py={2}
+                bg="gray.50"
+                borderTop="1px solid"
+                borderColor="gray.100"
               >
-                <LuPaperclip size={16} />
-                <Text ml={1}>Attach File</Text>
-              </Button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  setReplyAttachments((prev) => [...prev, ...files]);
-                  e.target.value = "";
-                }}
-              />
-              <Button
-                size="sm"
-                colorPalette="brand"
-                px={6}
-                disabled={
-                  ticketDetail.status?.toLowerCase() === "closed" ||
-                  (!replyText.trim() && replyAttachments.length === 0)
-                }
-                loading={sendReply.isPending}
-                onClick={async () => {
-                  const currentText = replyText;
-                  const currentFiles = replyAttachments;
-                  setReplyText("");
-                  setReplyAttachments([]);
-                  setShowAllFiles(false);
-                  try {
-                    await sendReply.mutateAsync({
-                      message: currentText,
-                      attachments: currentFiles,
-                    });
-                    toaster.success({
-                      title: "Reply sent",
-                      description: "Your reply has been successfully sent.",
-                    });
-                    setView("list");
-                  } catch {
-                    setReplyText(currentText);
-                    setReplyAttachments(currentFiles);
-                    toaster.error({
-                      title: "Error",
-                      description: "Failed to send reply. Please try again.",
-                    });
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={ticketDetail.status?.toLowerCase() === "closed"}
+                  color="gray.600"
+                >
+                  <LuPaperclip size={16} />
+                  <Text ml={1}>Attach File</Text>
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setReplyAttachments((prev) => [...prev, ...files]);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  size="sm"
+                  colorPalette="brand"
+                  px={6}
+                  disabled={
+                    ticketDetail.status?.toLowerCase() === "closed" ||
+                    (!replyText.trim() && replyAttachments.length === 0)
                   }
-                }}
-              >
-                <LuSend style={{ marginRight: "8px" }} />
-                Send Reply
-              </Button>
-            </Flex>
+                  loading={sendReply.isPending}
+                  onClick={async () => {
+                    const currentText = replyText;
+                    const currentFiles = replyAttachments;
+                    setReplyText("");
+                    setReplyAttachments([]);
+                    setShowAllFiles(false);
+                    try {
+                      await sendReply.mutateAsync({
+                        message: currentText,
+                        attachments: currentFiles,
+                      });
+                      toaster.success({
+                        title: "Reply sent",
+                        description: "Your reply has been successfully sent.",
+                      });
+                      setView("list");
+                    } catch {
+                      setReplyText(currentText);
+                      setReplyAttachments(currentFiles);
+                      toaster.error({
+                        title: "Error",
+                        description: "Failed to send reply. Please try again.",
+                      });
+                    }
+                  }}
+                >
+                  <LuSend style={{ marginRight: "8px" }} />
+                  Send Reply
+                </Button>
+              </Flex>
+            </Box>
           </Box>
         </Box>
       </Flex>
