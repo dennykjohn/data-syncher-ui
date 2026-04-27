@@ -1,13 +1,11 @@
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
 import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 
-import { format } from "date-fns";
 import { useNavigate } from "react-router";
 
 import TableWrapper from "@/components/dashboard/wrapper/TableWrapper";
 import ClientRoutes from "@/constants/client-routes";
-import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import usePermissions from "@/hooks/usePermissions";
 import { useFetchDestinationListByPage } from "@/queryOptions/destination/useFetchDestinationListByPage";
@@ -18,6 +16,7 @@ import { getDestinationImage } from "../../utils/getImage";
 import PageHeader from "../../wrapper/PageHeader";
 import TableFilter from "../../wrapper/TableFilter";
 import NoDestinations from "./components/NoDestination";
+import { formatDestinationDate } from "./destinationTableFormat";
 
 const columns: Column<DestinationTableItem>[] = [
   { header: "Name", accessor: "name" },
@@ -39,12 +38,12 @@ const columns: Column<DestinationTableItem>[] = [
   {
     header: "Created At",
     accessor: "created_at",
-    render: (_, { created_at }) => format(new Date(created_at), dateTimeFormat),
+    render: (_, { created_at }) => formatDestinationDate(created_at),
   },
   {
     header: "Updated At",
     accessor: "updated_at",
-    render: (_, { updated_at }) => format(new Date(updated_at), dateTimeFormat),
+    render: (_, { updated_at }) => formatDestinationDate(updated_at),
   },
   {
     header: "Status",
@@ -71,7 +70,7 @@ const Destination = () => {
   const canCreate = can("can_create_destinations");
   const canEdit = can("can_edit_destinations");
 
-  const { data, isLoading, refetch } = useFetchDestinationListByPage({
+  const { data, isLoading } = useFetchDestinationListByPage({
     page: currentPage,
     size: SIZE,
     searchTerm,
@@ -83,12 +82,9 @@ const Destination = () => {
     });
   }, [searchTerm]);
 
-  useEffect(() => {
-    refetch();
-  }, [currentPage, refetch]);
-  const updateCurrentPage = (page: number) => {
+  const updateCurrentPage = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
   return (
     <Flex flexDirection="column" height="100%" gap={VIEW_CONFIG.pageGap}>
@@ -106,6 +102,7 @@ const Destination = () => {
       />
       <TableWrapper>
         <Table<DestinationTableItem>
+          key={searchTerm}
           data={data?.content || []}
           columns={columns}
           updateCurrentPage={updateCurrentPage}

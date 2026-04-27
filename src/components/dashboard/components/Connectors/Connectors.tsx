@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
 import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 
@@ -81,7 +81,7 @@ const columns: Column<ConnectorTableItem>[] = [
   },
   {
     header: "Migration status",
-    accessor: "migration_status_name",
+    accessor: "migration_status",
     textAlign: "center",
     width: "14.285%",
     render: (_, { migration_status, error_message }) => {
@@ -166,7 +166,7 @@ const Connectors = () => {
 
   const canCreate = can("can_create_connectors");
 
-  const { data, isLoading, refetch } = useFetchConnectorsListByPage({
+  const { data, isLoading } = useFetchConnectorsListByPage({
     page: currentPage,
     size: SIZE,
     searchTerm,
@@ -178,13 +178,9 @@ const Connectors = () => {
     });
   }, [searchTerm]);
 
-  useEffect(() => {
-    refetch();
-  }, [currentPage, refetch]);
-
-  const updateCurrentPage = (page: number) => {
+  const updateCurrentPage = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
   //if (data?.totalElements === 0) return <NoConnections />;
   return (
@@ -209,6 +205,7 @@ const Connectors = () => {
       />
       <TableWrapper>
         <Table<ConnectorTableItem>
+          key={searchTerm}
           data={data?.content || []}
           columns={columns}
           totalElements={data?.totalElements || 0}

@@ -48,6 +48,7 @@ import {
 import { isPrimaryKey } from "../ReverseSchema/utils/validation";
 import Actions from "./Actions";
 import BatchGroupedPanel from "./Batches/BatchGroupedPanel";
+import { isConnectorTableMarkedSelected } from "./schemaSelection";
 import { useIsMutating } from "@tanstack/react-query";
 
 interface TableRowProps {
@@ -56,7 +57,8 @@ interface TableRowProps {
   connectionId: number;
   isExpanded: boolean;
   onToggleExpand: (_table: string) => void;
-  userCheckedTables: ConnectorTable[];
+  /** Aligned with server selection or local overrides (see Schema `effectiveSelectedByTable`). */
+  isSelected: boolean;
   onCheckedChange: (_checked: boolean) => void;
   reloadingTables: string[];
   isReloadingSingleTable: boolean;
@@ -75,7 +77,7 @@ const TableRow = ({
   connectionId,
   isExpanded,
   onToggleExpand,
-  userCheckedTables,
+  isSelected,
   onCheckedChange,
   reloadingTables,
   shouldLockAllReloads,
@@ -92,8 +94,6 @@ const TableRow = ({
     table,
     isExpanded,
   );
-
-  const isChecked = userCheckedTables.some((t) => t.table === table);
 
   const isThisTableReloading =
     reloadingTables?.some((t) => t.toLowerCase() === table.toLowerCase()) ??
@@ -242,7 +242,7 @@ const TableRow = ({
               onCheckedChange={({ checked }) =>
                 onCheckedChange(checked === true)
               }
-              checked={isChecked}
+              checked={isSelected}
             >
               <Checkbox.HiddenInput />
               <Checkbox.Control cursor="pointer" />
@@ -270,7 +270,12 @@ const Schema = () => {
   const tablesInAnyBatch = useMemo<Set<string>>(() => {
     const set = new Set<string>();
     batchesData?.batches?.forEach((b) => {
-      b.tables?.forEach((t) => set.add(t.table_name));
+      b.tables?.forEach((t) => {
+        const name = t?.table_name;
+        if (typeof name === "string" && name.length > 0) {
+          set.add(name.toLowerCase());
+        }
+      });
     });
     return set;
   }, [batchesData]);
@@ -477,13 +482,13 @@ const Schema = () => {
 
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
-    return AllTableList.filter((t: ConnectorTable) => t.selected).sort(
-      (a: ConnectorTable, b: ConnectorTable) => {
-        const seqA = a.sequence ?? 0;
-        const seqB = b.sequence ?? 0;
-        return seqA - seqB;
-      },
-    );
+    return AllTableList.filter((t: ConnectorTable) =>
+      isConnectorTableMarkedSelected(t.selected),
+    ).sort((a: ConnectorTable, b: ConnectorTable) => {
+      const seqA = a.sequence ?? 0;
+      const seqB = b.sequence ?? 0;
+      return seqA - seqB;
+    });
   }, [AllTableList]);
 
   const [copyOfInitialCheckedTables, setCopyOfInitialCheckedTables] = useState<
@@ -493,15 +498,45 @@ const Schema = () => {
     () => checkedTables,
   );
   const shouldSkipUpdateRef = useRef(false);
+  /**
+   * After any checkbox toggle, only `userCheckedTables` drives UI + Migration Batches until Save.
+   * Before that, server `checkedTables` drives both so the right panel matches purple checks from API `selected`.
+   */
+  const [hasLocalSelectionEdits, setHasLocalSelectionEdits] = useState(false);
+  /** First checkbox change in this visit: merge from server `checkedTables`; after that use previous `userCheckedTables`. */
+  const beganLocalSelectionRef = useRef(false);
 
   useEffect(() => {
-    if (!shouldSkipUpdateRef.current) {
-      setTimeout(() => {
-        setCopyOfInitialCheckedTables(checkedTables);
-        setUserCheckedTables(checkedTables);
-      }, 0);
-    }
-  }, [checkedTables, disable_update_schema, AllTableList]);
+    const timer = window.setTimeout(() => {
+      setHasLocalSelectionEdits(false);
+      beganLocalSelectionRef.current = false;
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [context.connection_id]);
+
+  useEffect(() => {
+    if (shouldSkipUpdateRef.current) return;
+    if (hasLocalSelectionEdits) return;
+    const id = window.setTimeout(() => {
+      setCopyOfInitialCheckedTables(checkedTables);
+      setUserCheckedTables(checkedTables);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [
+    checkedTables,
+    disable_update_schema,
+    AllTableList,
+    hasLocalSelectionEdits,
+  ]);
+
+  /** Rows treated as selected for checkboxes + Unassigned column (server truth OR local edits). */
+  const effectiveSelectedRows = useMemo<ConnectorTable[]>(() => {
+    return hasLocalSelectionEdits ? userCheckedTables : checkedTables;
+  }, [hasLocalSelectionEdits, userCheckedTables, checkedTables]);
+
+  const effectiveSelectedKeys = useMemo(() => {
+    return new Set(effectiveSelectedRows.map((t) => t.table.toLowerCase()));
+  }, [effectiveSelectedRows]);
 
   const hasCheckedTablesChanged = useMemo(() => {
     return (
@@ -515,20 +550,20 @@ const Schema = () => {
     );
   }, [userCheckedTables, copyOfInitialCheckedTables]);
 
-  /** Checked on the left but not in any batch and not yet listed by GET batches (until Save). */
+  /**
+   * Checked on the left but not assigned to a named batch.
+   * mergeUnassigned() dedupes with API unassigned rows; do not exclude API names here
+   * (that hid rows when GET /batches lagged, failed, or casing differed).
+   */
   const pendingUnassignedTables = useMemo<UnassignedTable[]>(() => {
-    const apiNames = new Set(
-      (batchesData?.unassigned_tables ?? []).map((u) => u.table_name),
-    );
-    return userCheckedTables
-      .filter((t) => !tablesInAnyBatch.has(t.table))
-      .filter((t) => !apiNames.has(t.table))
+    return effectiveSelectedRows
+      .filter((t) => !tablesInAnyBatch.has(t.table.toLowerCase()))
       .map((t) => ({
         table_name: t.table,
         sequence: t.sequence ?? 0,
         last_synced: t.last_synced ?? null,
       }));
-  }, [userCheckedTables, tablesInAnyBatch, batchesData]);
+  }, [effectiveSelectedRows, tablesInAnyBatch]);
 
   const toggleExpand = (table: string) =>
     setExpanded((prev) => ({
@@ -560,6 +595,8 @@ const Schema = () => {
           shouldSkipUpdateRef.current = true;
           setCopyOfInitialCheckedTables(savedTables);
           setUserCheckedTables(savedTables);
+          setHasLocalSelectionEdits(false);
+          beganLocalSelectionRef.current = false;
           shouldSkipUpdateRef.current = false;
         },
       },
@@ -648,15 +685,22 @@ const Schema = () => {
                     connectionId={context.connection_id}
                     isExpanded={isExpanded}
                     onToggleExpand={toggleExpand}
-                    userCheckedTables={userCheckedTables}
+                    isSelected={effectiveSelectedKeys.has(table.toLowerCase())}
                     onCheckedChange={(checked) => {
-                      setUserCheckedTables((prev: ConnectorTable[]) =>
-                        checked
-                          ? [...prev, item]
-                          : prev.filter(
-                              (t: ConnectorTable) => t.table !== table,
-                            ),
-                      );
+                      setHasLocalSelectionEdits(true);
+                      setUserCheckedTables((prev: ConnectorTable[]) => {
+                        const base = beganLocalSelectionRef.current
+                          ? prev
+                          : checkedTables;
+                        beganLocalSelectionRef.current = true;
+                        if (checked) {
+                          if (base.some((t) => t.table === table)) return base;
+                          return [...base, item];
+                        }
+                        return base.filter(
+                          (t: ConnectorTable) => t.table !== table,
+                        );
+                      });
                     }}
                     reloadingTables={reloadingTables}
                     isReloadingSingleTable={isReloadingSingleTable}
@@ -666,7 +710,7 @@ const Schema = () => {
                     isRefreshSchemaInProgress={isRefreshSchemaInProgress}
                     shouldLockAllReloads={shouldLockAllReloads}
                     tableStatusData={tableStatusData}
-                    inBatch={tablesInAnyBatch.has(table)}
+                    inBatch={tablesInAnyBatch.has(table.toLowerCase())}
                     onReload={() => {
                       setShouldShowDisabledState(true);
                       setReloadingTables((prev: string[]) => [...prev, table]);

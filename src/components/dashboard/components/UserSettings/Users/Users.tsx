@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Flex } from "@chakra-ui/react";
 
@@ -44,9 +44,9 @@ const Users = () => {
     refetch();
   }, [searchTerm, refetch]);
 
-  const updateCurrentPage = (page: number) => {
+  const updateCurrentPage = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
   return (
     <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
@@ -77,6 +77,7 @@ const Users = () => {
       />
       <TableWrapper>
         <Table<UserTableItem>
+          key={searchTerm}
           data={data?.content || []}
           columns={columns}
           totalElements={data?.totalElements || 0}

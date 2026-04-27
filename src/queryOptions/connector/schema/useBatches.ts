@@ -30,6 +30,8 @@ export function useFetchBatches(connectionId: number, enabled: boolean = true) {
     queryKey: batchesQueryKey(connectionId),
     queryFn: () => fetchBatches(connectionId),
     enabled: !!connectionId && enabled,
+    staleTime: 60 * 1000,
+    refetchOnMount: true,
   });
 }
 

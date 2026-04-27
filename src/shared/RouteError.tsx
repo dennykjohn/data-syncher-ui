@@ -28,7 +28,6 @@ const RouteError: React.FC = () => {
       p={6}
       h="100vh"
     >
-      .{" "}
       <Image
         src={OopsIllustration}
         alt="Oops illustration"

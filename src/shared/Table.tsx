@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import {
   Box,
@@ -49,10 +49,6 @@ const Table = <T,>({
   hidePagination = false,
 }: TableProps<T>) => {
   const [currentPage, setCurrentPage] = useState(1);
-
-  useEffect(() => {
-    updateCurrentPage(currentPage);
-  }, [updateCurrentPage, currentPage]);
 
   const handleRowClick = (item: T, index: number) => {
     if (onRowClick) {
@@ -148,7 +144,11 @@ const Table = <T,>({
             defaultPageSize={10}
             pageSize={pageSize}
             page={currentPage}
-            onPageChange={(e) => setCurrentPage(e.page)}
+            onPageChange={(e) => {
+              const p = e.page;
+              setCurrentPage(p);
+              updateCurrentPage(p);
+            }}
           >
             <ButtonGroup variant="ghost" size="sm" wrap="wrap">
               <Pagination.PrevTrigger asChild>

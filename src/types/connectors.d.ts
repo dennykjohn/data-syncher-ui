@@ -30,7 +30,6 @@ export interface ConnectorTableItem {
   next_sync_time: string;
   connected_on: number;
   migration_status: string;
-  migration_status_name: string;
   error_message?: string | null;
 }
 
@@ -105,6 +104,8 @@ export type ConnectorTable = {
   sequence: number | null;
   is_delta: boolean;
   table_fields: Record<string, string>;
+  /** Present when listing tables from connection API / SourceTableSelection sync metadata */
+  last_synced?: string | null;
 };
 
 export type ConnectorTablesResponse = {

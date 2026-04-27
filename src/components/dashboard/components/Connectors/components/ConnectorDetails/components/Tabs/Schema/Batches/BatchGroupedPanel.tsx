@@ -14,15 +14,16 @@ import { MdPlayArrow, MdRefresh } from "react-icons/md";
 
 import { toaster } from "@/components/ui/toaster";
 import {
+  batchesQueryKey,
   useFetchBatches,
   useRunBatchNow,
 } from "@/queryOptions/connector/schema/useBatches";
-import useRefreshSchema from "@/queryOptions/connector/schema/useRefreshSchema";
 import { type UnassignedTable } from "@/types/connectors";
 
 import BatchCard from "./BatchCard";
 import BatchPickerModal from "./BatchPickerModal";
 import NewBatchModal from "./NewBatchModal";
+import { useQueryClient } from "@tanstack/react-query";
 
 /** Merged row: API wins for `last_synced`; `pending_only` = not yet on server. */
 type DisplayUnassignedRow = UnassignedTable & { pending_only?: boolean };
@@ -60,9 +61,8 @@ const BatchGroupedPanel = ({
   connectionId,
   pendingUnassignedTables = [],
 }: BatchGroupedPanelProps) => {
-  const { data, isLoading } = useFetchBatches(connectionId);
-  const { mutate: refreshSchema, isPending: isRefreshingSchema } =
-    useRefreshSchema({ connectorId: connectionId });
+  const queryClient = useQueryClient();
+  const { data, isLoading, isFetching } = useFetchBatches(connectionId);
   const { mutateAsync: runBatch } = useRunBatchNow(connectionId);
 
   const [isNewBatchOpen, setIsNewBatchOpen] = useState(false);
@@ -89,7 +89,10 @@ const BatchGroupedPanel = ({
   );
 
   const showEmptyState =
-    !isLoading && batches.length === 0 && displayUnassigned.length === 0;
+    !isLoading &&
+    !isFetching &&
+    batches.length === 0 &&
+    displayUnassigned.length === 0;
 
   const handleRunAll = async () => {
     if (runnableBatches.length === 0) {
@@ -227,11 +230,14 @@ const BatchGroupedPanel = ({
             <Button
               size="xs"
               variant="outline"
-              onClick={() => refreshSchema()}
-              loading={isRefreshingSchema}
+              onClick={() =>
+                queryClient.invalidateQueries({
+                  queryKey: batchesQueryKey(connectionId),
+                })
+              }
             >
               <MdRefresh />
-              Refresh schema
+              Reload batches
             </Button>
             <Button
               size="xs"
