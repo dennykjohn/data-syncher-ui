@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { Flex } from "@chakra-ui/react";
+import { Box, Flex, Grid } from "@chakra-ui/react";
 
 import { useNavigate, useParams } from "react-router";
 
@@ -17,6 +17,7 @@ import useUpdateConnectorConfig from "@/queryOptions/connector/useUpdateConnecto
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 
 import { type ConnectorFormState } from "../../type";
+import ConnectorDocsHelperPanel from "./ConnectorDocsHelperPanel";
 import S3ConnectorConfiguration from "./S3ConnectorConfiguration";
 
 /**
@@ -140,46 +141,90 @@ const GenericConnectorConfiguration = ({
   }
 
   return (
-    <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
-      <PageHeader
-        breadcrumbs={[
-          {
-            label: "Connector",
-            route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
-          },
-          ...(mode === "edit"
-            ? [
+    <Box
+      w="full"
+      h={{ base: "auto", md: "calc(100vh - 64px)" }}
+      mt={{ base: 0, md: -6 }}
+      mb={{ base: 0, md: -6 }}
+      mr={{ base: 0, md: -6 }}
+      overflow="hidden"
+    >
+      <Grid
+        templateColumns={{ base: "1fr", xl: "1fr 1fr" }}
+        templateRows={{ base: "1fr 1fr", xl: "1fr" }}
+        alignItems="stretch"
+        gap={0}
+        w="full"
+        h="full"
+      >
+        <Box
+          w="full"
+          h="full"
+          overflowY="auto"
+          overscrollBehaviorY="contain"
+          pt={{ base: 0, md: 6 }}
+          pb={{ base: 4, md: 6 }}
+          pr={{ base: 0, xl: 4 }}
+        >
+          <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
+            <PageHeader
+              breadcrumbs={[
                 {
-                  label: "Settings",
-                  route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+                  label: "Connector",
+                  route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
                 },
-              ]
-            : []),
-          { label: mode === "edit" ? "Edit Connector" : "Configure" },
-        ]}
-        title={
-          mode === "edit" ? "Edit Connector" : "Enter authorization details"
-        }
-        subtitle={
-          mode === "edit"
-            ? "Modify the connector configuration"
-            : "Provide the necessary details to authorize the connector"
-        }
-      />
-      <DynamicForm
-        mode={mode}
-        config={{
-          fields: schemaFields,
-        }}
-        sourceName={sourceName}
-        onSubmit={(values) => {
-          handleFormSubmit(values);
-        }}
-        loading={isCreateConnectorPending || isUpdateConnectorConfigPending}
-        handleBackButtonClick={handlePrevious}
-        defaultValues={defaultValues}
-      />
-    </Flex>
+                ...(mode === "edit"
+                  ? [
+                      {
+                        label: "Settings",
+                        route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+                      },
+                    ]
+                  : []),
+                { label: mode === "edit" ? "Edit Connector" : "Configure" },
+              ]}
+              title={
+                mode === "edit"
+                  ? "Edit Connector"
+                  : "Enter authorization details"
+              }
+              subtitle={
+                mode === "edit"
+                  ? "Modify the connector configuration"
+                  : "Provide the necessary details to authorize the connector"
+              }
+            />
+            <DynamicForm
+              mode={mode}
+              config={{
+                fields: schemaFields,
+              }}
+              sourceName={sourceName}
+              onSubmit={(values) => {
+                handleFormSubmit(values);
+              }}
+              loading={
+                isCreateConnectorPending || isUpdateConnectorConfigPending
+              }
+              handleBackButtonClick={handlePrevious}
+              defaultValues={defaultValues}
+            />
+          </Flex>
+        </Box>
+
+        <Box
+          w="full"
+          h="full"
+          overflow="hidden"
+          bg={{ base: "transparent", xl: "gray.50" }}
+        >
+          <ConnectorDocsHelperPanel
+            connectorKey={sourceName}
+            kind="connector"
+          />
+        </Box>
+      </Grid>
+    </Box>
   );
 };
 
