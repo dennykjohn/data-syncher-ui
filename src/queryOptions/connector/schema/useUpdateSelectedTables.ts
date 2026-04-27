@@ -1,5 +1,6 @@
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
+import { batchesQueryKey } from "@/queryOptions/connector/schema/useBatches";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -31,6 +32,10 @@ const useUpdateSelectedTables = ({ connectorId }: { connectorId: number }) => {
 
       queryClient.invalidateQueries({
         queryKey: ["TableStatus", connectorId],
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: batchesQueryKey(connectorId),
       });
     },
   });

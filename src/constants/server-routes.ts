@@ -115,6 +115,19 @@ const ServerRoutes = {
       connectionId: number;
       logId: number;
     }) => `connection/${connectionId}/log/${logId}/`,
+    batches: {
+      list: (connectionId: number) => `connection/${connectionId}/batches/`,
+      detail: (connectionId: number, batchId: number) =>
+        `connection/${connectionId}/batches/${batchId}/`,
+      assignTables: (connectionId: number, batchId: number) =>
+        `connection/${connectionId}/batches/${batchId}/tables/`,
+      removeTable: (connectionId: number, batchId: number, tableName: string) =>
+        `connection/${connectionId}/batches/${batchId}/tables/${encodeURIComponent(tableName)}/`,
+      runNow: (connectionId: number, batchId: number) =>
+        `connection/${connectionId}/batches/${batchId}/run/`,
+      toggle: (connectionId: number, batchId: number) =>
+        `connection/${connectionId}/batches/${batchId}/toggle/`,
+    },
   },
   s3: {
     listFiles: () => "s3/list-files/",

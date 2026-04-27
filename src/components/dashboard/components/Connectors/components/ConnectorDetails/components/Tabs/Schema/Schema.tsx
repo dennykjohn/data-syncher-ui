@@ -31,6 +31,7 @@ import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { queryClient } from "@/lib/react-query-client";
+import { useFetchBatches } from "@/queryOptions/connector/schema/useBatches";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
@@ -38,11 +39,15 @@ import { usePagination } from "@/queryOptions/connector/schema/usePagination";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
-import { type Connector, type ConnectorTable } from "@/types/connectors";
+import {
+  type Connector,
+  type ConnectorTable,
+  type UnassignedTable,
+} from "@/types/connectors";
 
 import { isPrimaryKey } from "../ReverseSchema/utils/validation";
 import Actions from "./Actions";
-import SelectedTableList from "./SelectedTable";
+import BatchGroupedPanel from "./Batches/BatchGroupedPanel";
 import { useIsMutating } from "@tanstack/react-query";
 
 interface TableRowProps {
@@ -62,6 +67,7 @@ interface TableRowProps {
     tables: Array<{ table: string; status?: string | null }>;
   };
   onReload: () => void;
+  inBatch?: boolean;
 }
 const TableRow = ({
   item,
@@ -75,10 +81,11 @@ const TableRow = ({
   shouldLockAllReloads,
   tableStatusData,
   onReload,
+  inBatch,
 }: TableRowProps) => {
   const { table } = item;
   const isEven = index % 2 === 0;
-  const rowBg = isEven ? "gray.100" : "white";
+  const rowBg = inBatch ? "brand.50" : isEven ? "gray.100" : "white";
 
   const { data: tableFieldsData } = useFetchTableFields(
     connectionId,
@@ -107,6 +114,8 @@ const TableRow = ({
       direction="column"
       padding={2}
       borderRadius={4}
+      borderLeftWidth={inBatch ? 3 : 0}
+      borderLeftColor={inBatch ? "brand.500" : "transparent"}
     >
       <Grid
         templateColumns="24px 1fr auto"
@@ -121,13 +130,31 @@ const TableRow = ({
         </Box>
 
         <Box>
-          <Text
-            fontSize="sm"
-            cursor="pointer"
-            onClick={() => onToggleExpand(table)}
-          >
-            {table}
-          </Text>
+          <Flex alignItems="center" gap={2}>
+            <Text
+              fontSize="sm"
+              cursor="pointer"
+              onClick={() => onToggleExpand(table)}
+            >
+              {table}
+            </Text>
+            {inBatch && (
+              <Text
+                as="span"
+                fontSize="2xs"
+                fontWeight="semibold"
+                color="brand.700"
+                bgColor="brand.100"
+                px={1.5}
+                py={0.5}
+                borderRadius="sm"
+                textTransform="uppercase"
+                letterSpacing="wider"
+              >
+                In batch
+              </Text>
+            )}
+          </Flex>
 
           {isExpanded && (
             <Flex direction="column" gap={2} mt={2}>
@@ -238,6 +265,16 @@ const Schema = () => {
   const AllTableList = allTableData?.tables;
   const itemsPerPage = allTableData?.pagination_limit;
 
+  const { data: batchesData } = useFetchBatches(context.connection_id);
+
+  const tablesInAnyBatch = useMemo<Set<string>>(() => {
+    const set = new Set<string>();
+    batchesData?.batches?.forEach((b) => {
+      b.tables?.forEach((t) => set.add(t.table_name));
+    });
+    return set;
+  }, [batchesData]);
+
   const { status: schemaStatus } = useUpdateSchemaStatus(
     context.connection_id,
     true,
@@ -282,7 +319,8 @@ const Schema = () => {
     () => context.setReloadingTables ?? (() => {}),
     [context.setReloadingTables],
   );
-  const [refreshingTables, setRefreshingTables] = useState<string[]>([]); // Hoist Refresh State
+  // Delta-refresh progress is now owned by the Batches panel; left panel no longer tracks it.
+  const refreshingTables = useMemo<string[]>(() => [], []);
   const reloadTimestamps = useRef<Record<string, number>>({});
 
   useEffect(() => {
@@ -360,12 +398,9 @@ const Schema = () => {
     isRefreshDeltaTableInProgress > 0 ||
     activeRefreshes.length > 0 ||
     refreshingTables.length > 0;
-  const isAnyReloading = reloadingTables.length > 0 || isReloadingSingleTable;
   const isSchemaSyncing = isRefreshSchemaInProgress > 0;
 
   const shouldLockAllReloads = isAnyRefreshing || isSchemaSyncing;
-
-  const shouldLockAllRefreshes = isAnyReloading || isSchemaSyncing;
 
   useEffect(() => {
     if (hasAnyTableInProgress || isReloadingSingleTable) {
@@ -479,6 +514,21 @@ const Schema = () => {
       )
     );
   }, [userCheckedTables, copyOfInitialCheckedTables]);
+
+  /** Checked on the left but not in any batch and not yet listed by GET batches (until Save). */
+  const pendingUnassignedTables = useMemo<UnassignedTable[]>(() => {
+    const apiNames = new Set(
+      (batchesData?.unassigned_tables ?? []).map((u) => u.table_name),
+    );
+    return userCheckedTables
+      .filter((t) => !tablesInAnyBatch.has(t.table))
+      .filter((t) => !apiNames.has(t.table))
+      .map((t) => ({
+        table_name: t.table,
+        sequence: t.sequence ?? 0,
+        last_synced: t.last_synced ?? null,
+      }));
+  }, [userCheckedTables, tablesInAnyBatch, batchesData]);
 
   const toggleExpand = (table: string) =>
     setExpanded((prev) => ({
@@ -616,6 +666,7 @@ const Schema = () => {
                     isRefreshSchemaInProgress={isRefreshSchemaInProgress}
                     shouldLockAllReloads={shouldLockAllReloads}
                     tableStatusData={tableStatusData}
+                    inBatch={tablesInAnyBatch.has(table)}
                     onReload={() => {
                       setShouldShowDisabledState(true);
                       setReloadingTables((prev: string[]) => [...prev, table]);
@@ -639,14 +690,9 @@ const Schema = () => {
           )}
         </Flex>
 
-        <SelectedTableList
-          selectedTablesFromMain={checkedTables}
-          reloadingTables={reloadingTables}
-          refreshingTables={refreshingTables}
-          setRefreshingTables={setRefreshingTables}
-          isReloadingSingleTable={isReloadingSingleTable}
-          shouldLockAllReloads={shouldLockAllReloads}
-          shouldLockAllRefreshes={shouldLockAllRefreshes}
+        <BatchGroupedPanel
+          connectionId={context.connection_id}
+          pendingUnassignedTables={pendingUnassignedTables}
         />
       </Grid>
 
