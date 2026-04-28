@@ -655,7 +655,8 @@ const Schema = () => {
           <ActionBar.Positioner>
             <ActionBar.Content>
               <Button
-                variant="outline"
+                variant="solid"
+                colorPalette="purple"
                 size="sm"
                 onClick={() => handleAssignTables()}
                 loading={isAssigningTables}

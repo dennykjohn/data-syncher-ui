@@ -36,11 +36,10 @@ const getStatusColor = (status: ConnectorStatus) => {
 };
 
 const columns: Column<ConnectorTableItem>[] = [
-  { header: "Name", accessor: "connector_name", width: "14.285%" },
+  { header: "Connector Name", accessor: "connector_name" },
   {
     header: "Source",
     accessor: "source_name",
-    width: "18%",
     render: (_, { source_name, display_name }) => (
       <HStack gap={1} align="center">
         <Image
@@ -49,14 +48,17 @@ const columns: Column<ConnectorTableItem>[] = [
           boxSize="24px"
           objectFit="contain"
         />
-        <Text fontSize="sm">{display_name || source_name}</Text>
+        <Text fontSize="xs">{display_name || source_name}</Text>
       </HStack>
     ),
   },
   {
+    header: "Destination Name",
+    accessor: "dst_config_name",
+  },
+  {
     header: "Destination",
     accessor: "destination_name",
-    width: "14.285%",
     render: (_, { destination_name }) => (
       <HStack gap={1} align="center">
         <Image
@@ -65,14 +67,13 @@ const columns: Column<ConnectorTableItem>[] = [
           boxSize="24px"
           objectFit="contain"
         />
-        <Text fontSize="sm">{destination_name}</Text>
+        <Text fontSize="xs">{destination_name}</Text>
       </HStack>
     ),
   },
   {
     header: "Last sync",
     accessor: "last_synced_new",
-    width: "14.285%",
     render: (_, { last_synced_new }) => {
       const d = new Date(last_synced_new as string | number);
       if (Number.isNaN(d.getTime())) return String(last_synced_new ?? "");
@@ -83,7 +84,7 @@ const columns: Column<ConnectorTableItem>[] = [
     header: "Migration status",
     accessor: "migration_status_name",
     textAlign: "center",
-    width: "14.285%",
+    width: "80px",
     render: (_, { migration_status, error_message }) => {
       return (
         <HStack gap={2} w="100%" justify="center">
@@ -122,8 +123,6 @@ const columns: Column<ConnectorTableItem>[] = [
   {
     header: "Next sync in",
     accessor: "next_sync_time",
-    textAlign: "left",
-    width: "14.285%",
     render: (_, { next_sync_time }) => {
       if (!next_sync_time || next_sync_time === "None") return "--";
       const d = new Date(next_sync_time);
@@ -135,7 +134,7 @@ const columns: Column<ConnectorTableItem>[] = [
     header: "Connection status",
     accessor: "status",
     textAlign: "center",
-    width: "14.285%",
+    width: "120px",
     render: (_, { status }) => (
       <Badge colorPalette={getStatusColor(status)} variant="solid" size="sm">
         {(() => {
