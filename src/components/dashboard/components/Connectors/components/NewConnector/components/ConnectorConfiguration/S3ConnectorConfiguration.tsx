@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { Flex } from "@chakra-ui/react";
+import { Box, Flex, Grid } from "@chakra-ui/react";
 
 import { useNavigate, useParams } from "react-router";
 
@@ -24,6 +24,7 @@ import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 import { type CreateConnectionPayload } from "@/types/connectors";
 
 import { type ConnectorFormState } from "../../type";
+import S3DocsHelperPanel from "./S3DocsHelperPanel";
 import { useQueryClient } from "@tanstack/react-query";
 
 const S3ConnectorConfiguration = ({
@@ -649,46 +650,93 @@ const S3ConnectorConfiguration = ({
 
   // ------------------- Main form -------------------
   return (
-    <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
-      <PageHeader
-        breadcrumbs={[
-          {
-            label: "Connector",
-            route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
-          },
-          ...(mode === "edit"
-            ? [
+    <Box
+      w="full"
+      h={{ base: "auto", md: "calc(100vh - 64px)" }}
+      mt={{ base: 0, md: -6 }}
+      mb={{ base: 0, md: -6 }}
+      mr={{ base: 0, md: -6 }}
+      overflow="hidden"
+    >
+      <Grid
+        templateColumns={{
+          base: "1fr",
+          xl: "1fr 1fr",
+        }}
+        templateRows={{
+          base: "1fr 1fr",
+          xl: "1fr",
+        }}
+        alignItems="stretch"
+        gap={0}
+        w="full"
+        h="full"
+      >
+        <Box
+          w="full"
+          h="full"
+          overflowY="auto"
+          overscrollBehaviorY="contain"
+          pt={{ base: 0, md: 6 }}
+          pb={{ base: 4, md: 6 }}
+          pr={{ base: 0, xl: 4 }}
+        >
+          <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
+            <PageHeader
+              breadcrumbs={[
                 {
-                  label: "Settings",
-                  route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+                  label: "Connector",
+                  route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
                 },
-              ]
-            : []),
-          { label: mode === "edit" ? "Edit S3 Connector" : "Configure S3" },
-        ]}
-        title={
-          mode === "edit"
-            ? "Edit S3 Connector"
-            : "Enter S3 authorization details"
-        }
-        subtitle={
-          mode === "edit"
-            ? "Modify the S3 connector configuration"
-            : "Provide the necessary details to authorize the S3 connector"
-        }
-      />
-      <S3DynamicForm
-        schema={schemaFields as S3FieldSchema[]}
-        onSubmit={handleFormSubmit}
-        loading={isCreateConnectorPending || isUpdateConnectorConfigPending}
-        handleBackButtonClick={handlePrevious}
-        defaultValues={s3DefaultValues}
-        mode={mode}
-        sourceName={sourceName}
-        connectionId={shouldFetch ? Number(connectionId) : undefined}
-        migrationStatus={connectorData?.migration_status}
-      />
-    </Flex>
+                ...(mode === "edit"
+                  ? [
+                      {
+                        label: "Settings",
+                        route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+                      },
+                    ]
+                  : []),
+                {
+                  label: mode === "edit" ? "Edit S3 Connector" : "Configure S3",
+                },
+              ]}
+              title={
+                mode === "edit"
+                  ? "Edit S3 Connector"
+                  : "Enter S3 authorization details"
+              }
+              subtitle={
+                mode === "edit"
+                  ? "Modify the S3 connector configuration"
+                  : "Provide the necessary details to authorize the S3 connector"
+              }
+            />
+            <S3DynamicForm
+              schema={schemaFields as S3FieldSchema[]}
+              onSubmit={handleFormSubmit}
+              loading={
+                isCreateConnectorPending || isUpdateConnectorConfigPending
+              }
+              handleBackButtonClick={handlePrevious}
+              defaultValues={s3DefaultValues}
+              mode={mode}
+              sourceName={sourceName}
+              connectionId={shouldFetch ? Number(connectionId) : undefined}
+              migrationStatus={connectorData?.migration_status}
+            />
+          </Flex>
+        </Box>
+
+        <Box
+          w="full"
+          h="full"
+          overflow="hidden"
+          bg={{ base: "transparent", xl: "gray.50" }}
+        >
+          <S3DocsHelperPanel />
+        </Box>
+      </Grid>
+    </Box>
   );
 };
 

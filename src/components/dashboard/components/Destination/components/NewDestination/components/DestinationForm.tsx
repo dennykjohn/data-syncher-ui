@@ -1,12 +1,13 @@
 import { useEffect, useReducer, useState } from "react";
 
-import { Button, Flex } from "@chakra-ui/react";
+import { Box, Button, Flex, Grid } from "@chakra-ui/react";
 
 import { CiTrash } from "react-icons/ci";
 import { MdRefresh } from "react-icons/md";
 
 import { useLocation, useNavigate, useParams } from "react-router";
 
+import ConnectorDocsHelperPanel from "@/components/dashboard/components/Connectors/components/NewConnector/components/ConnectorConfiguration/ConnectorDocsHelperPanel";
 import DynamicForm from "@/components/dashboard/helpers/DynamicForm";
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
@@ -115,109 +116,154 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
     return <LoadingSpinner />;
   }
 
+  const destinationKey =
+    (mode === "add" ? destinationName : destinationData?.dst) ||
+    destinationName ||
+    "";
+
   return (
-    <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
-      <PageHeader
-        breadcrumbs={
-          mode === "add"
-            ? BreadcrumbsForNewDestination
-            : BreadcrumbsForEditDestination
-        }
-        title={
-          mode === "add"
-            ? `Configure your ${formState.dst} destination`
-            : `Edit your ${formState.dst} destination`
-        }
-        subtitle="Follow guide to setup your destination"
-      />
-
-      <DynamicForm
-        mode={mode === "add" ? "create" : "edit"}
-        destinationName={
-          mode === "add" ? destinationName : destinationData?.dst
-        }
-        config={{
-          fields:
-            mode === "edit" && destinationData?.fields
-              ? destinationData.fields
-              : formSchema || [],
-        }}
-        onSubmit={(values) => {
-          handleFormSubmit(values);
-        }}
-        loading={isPending || isUpdateDestinationPending}
-        defaultValues={
-          mode === "edit" && destinationData
-            ? destinationData.config_data
-            : undefined
-        }
-        onValuesChange={setCurrentFormValues}
-        leftButtons={
-          mode === "edit" && params.destinationId ? (
-            <Button
-              variant="outline"
-              colorPalette="red"
-              color="red.500"
-              onClick={() => setShowDeleteDialog(true)}
-            >
-              <CiTrash />
-              Delete
-            </Button>
-          ) : undefined
-        }
-        rightButtons={
-          mode === "edit" && params.destinationId ? (
-            <Button
-              variant="outline"
-              colorPalette="red"
-              color="red.500"
-              loading={isTriggeringBackend}
-              onClick={() =>
-                triggerBackend(
-                  {
-                    // send current edited form values to backend for testing
-                    config_data:
-                      Object.keys(currentFormValues).length > 0
-                        ? currentFormValues
-                        : (destinationData?.config_data ?? {}),
-                  },
-                  {
-                    onSuccess: (response: {
-                      auth_url?: string;
-                      message?: string;
-                    }) => {
-                      if (response.auth_url) {
-                        window.location.href = response.auth_url;
-                      } else if (response.message) {
-                        toaster.success({
-                          title: response.message,
-                        });
-                      }
-                    },
-                  },
-                )
+    <Box
+      w="full"
+      h={{ base: "auto", md: "calc(100vh - 64px)" }}
+      mt={{ base: 0, md: -6 }}
+      mb={{ base: 0, md: -6 }}
+      mr={{ base: 0, md: -6 }}
+      overflow="hidden"
+    >
+      <Grid
+        templateColumns={{ base: "1fr", xl: "1fr 1fr" }}
+        templateRows={{ base: "1fr 1fr", xl: "1fr" }}
+        alignItems="stretch"
+        gap={0}
+        w="full"
+        h="full"
+      >
+        <Box
+          w="full"
+          h="full"
+          overflowY="auto"
+          overscrollBehaviorY="contain"
+          pt={{ base: 0, md: 6 }}
+          pb={{ base: 4, md: 6 }}
+          pr={{ base: 0, xl: 4 }}
+        >
+          <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
+            <PageHeader
+              breadcrumbs={
+                mode === "add"
+                  ? BreadcrumbsForNewDestination
+                  : BreadcrumbsForEditDestination
               }
-            >
-              <MdRefresh />
-              Test destination
-            </Button>
-          ) : undefined
-        }
-      />
+              title={
+                mode === "add"
+                  ? `Configure your ${formState.dst} destination`
+                  : `Edit your ${formState.dst} destination`
+              }
+              subtitle="Follow guide to setup your destination"
+            />
 
-      {showDeleteDialog && params.destinationId && (
-        <DeleteConfirmationDialog
-          open={showDeleteDialog}
-          setShowDeleteDialog={setShowDeleteDialog}
-          destinationId={Number(params.destinationId)}
-          onSuccess={() => {
-            navigate(
-              `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
-            );
-          }}
-        />
-      )}
-    </Flex>
+            <DynamicForm
+              mode={mode === "add" ? "create" : "edit"}
+              destinationName={
+                mode === "add" ? destinationName : destinationData?.dst
+              }
+              config={{
+                fields:
+                  mode === "edit" && destinationData?.fields
+                    ? destinationData.fields
+                    : formSchema || [],
+              }}
+              onSubmit={(values) => {
+                handleFormSubmit(values);
+              }}
+              loading={isPending || isUpdateDestinationPending}
+              defaultValues={
+                mode === "edit" && destinationData
+                  ? destinationData.config_data
+                  : undefined
+              }
+              onValuesChange={setCurrentFormValues}
+              leftButtons={
+                mode === "edit" && params.destinationId ? (
+                  <Button
+                    variant="outline"
+                    colorPalette="red"
+                    color="red.500"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <CiTrash />
+                    Delete
+                  </Button>
+                ) : undefined
+              }
+              rightButtons={
+                mode === "edit" && params.destinationId ? (
+                  <Button
+                    variant="outline"
+                    colorPalette="red"
+                    color="red.500"
+                    loading={isTriggeringBackend}
+                    onClick={() =>
+                      triggerBackend(
+                        {
+                          // send current edited form values to backend for testing
+                          config_data:
+                            Object.keys(currentFormValues).length > 0
+                              ? currentFormValues
+                              : (destinationData?.config_data ?? {}),
+                        },
+                        {
+                          onSuccess: (response: {
+                            auth_url?: string;
+                            message?: string;
+                          }) => {
+                            if (response.auth_url) {
+                              window.location.href = response.auth_url;
+                            } else if (response.message) {
+                              toaster.success({
+                                title: response.message,
+                              });
+                            }
+                          },
+                        },
+                      )
+                    }
+                  >
+                    <MdRefresh />
+                    Test destination
+                  </Button>
+                ) : undefined
+              }
+            />
+
+            {showDeleteDialog && params.destinationId && (
+              <DeleteConfirmationDialog
+                open={showDeleteDialog}
+                setShowDeleteDialog={setShowDeleteDialog}
+                destinationId={Number(params.destinationId)}
+                onSuccess={() => {
+                  navigate(
+                    `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
+                  );
+                }}
+              />
+            )}
+          </Flex>
+        </Box>
+
+        <Box
+          w="full"
+          h="full"
+          overflow="hidden"
+          bg={{ base: "transparent", xl: "gray.50" }}
+        >
+          <ConnectorDocsHelperPanel
+            connectorKey={destinationKey}
+            kind="destination"
+          />
+        </Box>
+      </Grid>
+    </Box>
   );
 };
 
