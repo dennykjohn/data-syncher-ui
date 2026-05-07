@@ -11,3 +11,7 @@ export const ForgotPassword = lazy(
 export const ResetPassword = lazy(
   () => import("@/components/auth/ResetPassword/ResetPassword"),
 );
+
+export const VerifyEmailPage = lazy(
+  () => import("@/components/auth/VerifyEmail/VerifyEmail"),
+);
