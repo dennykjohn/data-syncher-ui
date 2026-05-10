@@ -35,7 +35,7 @@ const VerifyEmail = () => {
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
-    const state = location.state as { email?: string };
+    const state = location.state as { email?: string } | null;
     const queryEmail = searchParams.get("email");
 
     if (state?.email) {
@@ -43,7 +43,6 @@ const VerifyEmail = () => {
     } else if (queryEmail) {
       setEmail(queryEmail);
     } else {
-      // If no email found, redirect to login
       navigate(`${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`);
     }
   }, [location, searchParams, navigate]);
@@ -234,6 +233,7 @@ const VerifyEmail = () => {
           <Text fontSize="sm" textAlign="center" color="gray.500">
             Didn't receive the code?{" "}
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               p={0}
