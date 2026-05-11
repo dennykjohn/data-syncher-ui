@@ -13,7 +13,6 @@ import {
   Text,
 } from "@chakra-ui/react";
 
-import { AxiosError } from "axios";
 import { Link, useNavigate } from "react-router";
 
 import Logo from "@/assets/logo.svg";
@@ -31,20 +30,6 @@ export default function Form() {
   const passwordRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState(
-    "Invalid Username or Password",
-  );
-  const [email, setEmail] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
-
-  useEffect(() => {
-    const rememberedEmail = localStorage.getItem("remembered_email");
-    if (rememberedEmail) {
-      setEmail(rememberedEmail);
-      setRememberMe(true);
-    }
-  }, []);
 
   useEffect(() => {
     if (passwordRef.current) {
@@ -56,28 +41,17 @@ export default function Form() {
     event.preventDefault();
     // Handle form submission logic here
     const formData = new FormData(event.currentTarget);
-    const emailValue = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    if (!emailValue || !password) {
+    const data = {
+      username: formData.get("email") as string,
+      password: formData.get("password") as string,
+    };
+    if (!data.username || !data.password) {
       setHasError(true);
       return;
     }
-
-    if (rememberMe) {
-      localStorage.setItem("remembered_email", emailValue);
-    } else {
-      localStorage.removeItem("remembered_email");
-    }
-
-    const data = {
-      username: emailValue,
-      password: password,
-    };
     try {
       setIsLoading(true);
       setHasError(false);
-      setUnverifiedEmail(null);
       const { data: respData }: { data: LoginResponse } = await AxiosInstance({
         method: "POST",
         url: ServerRoutes.auth.login(),
@@ -85,42 +59,13 @@ export default function Form() {
       });
       await login(respData);
       navigate(ClientRoutes.DASHBOARD, { replace: true });
-    } catch (err) {
-      const error = err as AxiosError<{ error?: string }>;
-      setIsLoading(false);
-      if (error.response?.status === 403) {
-        setUnverifiedEmail(data.username);
-        setErrorMessage(
-          error.response.data?.error ||
-            "Please verify your email before logging in.",
-        );
-      } else {
-        setHasError(true);
-        setErrorMessage("Invalid Username or Password");
-        if (passwordRef.current) {
-          passwordRef.current.value = "";
-          passwordRef.current.focus();
-        }
-      }
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (!unverifiedEmail) return;
-    try {
-      setIsLoading(true);
-      await AxiosInstance.post(ServerRoutes.auth.resendOtp(), {
-        email: unverifiedEmail,
-      });
-      navigate(`${ClientRoutes.AUTH}/${ClientRoutes.VERIFY_EMAIL}`, {
-        state: { email: unverifiedEmail },
-      });
-    } catch (err) {
-      const error = err as AxiosError<{ error?: string }>;
+    } catch {
       setHasError(true);
-      setErrorMessage(error.response?.data?.error || "Failed to resend OTP.");
-    } finally {
       setIsLoading(false);
+      if (passwordRef.current) {
+        passwordRef.current.value = "";
+        passwordRef.current.focus();
+      }
     }
   };
 
@@ -131,7 +76,7 @@ export default function Form() {
           size="lg"
           w="100%"
           justifyContent="center"
-          invalid={hasError || !!unverifiedEmail}
+          invalid={hasError}
         >
           <Stack gap={4} mb={2}>
             <Image
@@ -167,8 +112,7 @@ export default function Form() {
                 type="email"
                 placeholder="Enter your email id"
                 autoFocus
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="off"
               />
             </Field.Root>
             <Field.Root required>
@@ -179,31 +123,14 @@ export default function Form() {
                 name="password"
                 placeholder="Enter your password"
                 ref={passwordRef}
+                autoComplete="new-password"
               />
             </Field.Root>
           </Fieldset.Content>
-          <Fieldset.ErrorText>{errorMessage}</Fieldset.ErrorText>
-
-          {unverifiedEmail && (
-            <Button
-              variant="outline"
-              colorPalette="brand"
-              size="sm"
-              mt={2}
-              onClick={handleResendOtp}
-              loading={isLoading}
-            >
-              Resend OTP & Verify
-            </Button>
-          )}
+          <Fieldset.ErrorText>Invalid Username or Password</Fieldset.ErrorText>
           <Flex justifyContent="space-between" alignItems="center" mb={2}>
-            <Checkbox.Root
-              colorPalette="brand"
-              size="md"
-              checked={rememberMe}
-              onCheckedChange={(e) => setRememberMe(!!e.checked)}
-            >
-              <Checkbox.HiddenInput name="rememberMe" />
+            <Checkbox.Root colorPalette="brand" size="md">
+              <Checkbox.HiddenInput />
               <Checkbox.Control />
               <Checkbox.Label>Remember me</Checkbox.Label>
             </Checkbox.Root>

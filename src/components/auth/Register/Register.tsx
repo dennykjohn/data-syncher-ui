@@ -107,18 +107,12 @@ const Register = () => {
     };
 
     try {
-      const response = await AxiosInstance.post(ServerRoutes.auth.register(), {
-        ...payload,
-      });
+      await AxiosInstance.post(ServerRoutes.auth.register(), { ...payload });
       toaster.success({
-        title: "Registration successful.",
-        description:
-          response?.data?.message ||
-          "A verification code has been sent to your email.",
+        title: "Account created.",
+        description: "You can now sign in.",
       });
-      navigate(`${ClientRoutes.AUTH}/${ClientRoutes.VERIFY_EMAIL}`, {
-        state: { email: form.email },
-      });
+      navigate(`${ClientRoutes.AUTH}/${ClientRoutes.LOGIN}`);
     } catch (err: unknown) {
       const error = err as Record<string, unknown>;
 

@@ -14,7 +14,6 @@ import {
   LoginPage,
   RegisterPage,
   ResetPassword,
-  VerifyEmailPage,
 } from "./AuthRoutes";
 import {
   ConnectorDetails,
@@ -89,7 +88,6 @@ export const router = createBrowserRouter([
       { path: ClientRoutes.REGISTER, element: <RegisterPage /> },
       { path: ClientRoutes.FORGOT_PASSWORD, element: <ForgotPassword /> },
       { path: ClientRoutes.RESET_PASSWORD, element: <ResetPassword /> },
-      { path: ClientRoutes.VERIFY_EMAIL, element: <VerifyEmailPage /> },
     ],
   },
   // 🌟 PROTECTED ROUTES

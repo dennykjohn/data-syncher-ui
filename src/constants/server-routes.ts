@@ -12,8 +12,6 @@ const ServerRoutes = {
     forgotPassword: () => "password-reset/",
     register: () => "authentication/",
     resetPassword: () => "password-reset-confirm/",
-    verifyEmail: () => "verify-email/",
-    resendOtp: () => "resend-otp/",
   },
   source: {
     listMasterSources: () => "source/all/",
