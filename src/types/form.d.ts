@@ -4,6 +4,8 @@ export type FieldConfig = {
   type:
     | "CharField"
     | "ChoiceField"
+    | "TextAreaField"
+    | "PasswordField"
     | "PasswordInput"
     | "DateField"
     | "DateTimeField";
@@ -16,6 +18,13 @@ export type FieldConfig = {
   required: boolean;
   read_only?: boolean; // If true, field will be read-only in edit mode
   widget?: string | null;
+
+  // Optional dynamic visibility (used by some destination schemas like SFTP)
+  is_visible?: boolean;
+  depend_on?: string | null;
+  dependency_value?: string | null;
+  // Some schemas use `dependency` instead of `dependency_value`.
+  dependency?: string | null;
 };
 
 export interface KeyPair {
