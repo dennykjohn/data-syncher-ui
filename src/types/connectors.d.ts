@@ -106,6 +106,13 @@ export type ConnectorTable = {
   sequence: number | null;
   is_delta: boolean;
   table_fields: Record<string, string>;
+  selected_fields?: string[] | null;
+  output_file_name?: string | null;
+  target_folder?: string | null;
+  file_format?: "csv" | "json" | "parquet" | string | null;
+  csv_delimiter?: string | null;
+  csv_quote_char?: string | null;
+  add_utc_timestamp?: boolean | null;
 };
 
 export type ConnectorTablesResponse = {
@@ -118,6 +125,12 @@ export interface ConnectorSelectedTable {
   table: string;
   sequence: number;
   status: "in_progress" | "completed" | "failed" | null;
+  output_file_name?: string | null;
+  target_folder?: string | null;
+  file_format?: "csv" | "json" | "parquet" | string | null;
+  csv_delimiter?: string | null;
+  csv_quote_char?: string | null;
+  add_utc_timestamp?: boolean | null;
 }
 
 // ------------------ Connector Activity Types ------------------

@@ -67,6 +67,28 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   rightButtons,
   onValuesChange,
 }) => {
+  const isSchemaVisible = (
+    field: FieldConfig,
+    current: Record<string, string>,
+  ) => {
+    const dependOn = field.depend_on ?? null;
+    const dependencyValue =
+      field.dependency_value ?? (field as FieldConfig).dependency ?? null;
+
+    const hasDependency =
+      !!dependOn && dependencyValue !== null && dependencyValue !== undefined;
+
+    // Only apply schema-visibility rules when a dependency is explicitly present.
+    // This avoids changing behavior for existing connectors that don't use it.
+    if (hasDependency && dependOn) {
+      const dependentValue = String(current[dependOn] || "").trim();
+      const requiredValue = String(dependencyValue || "").trim();
+      return dependentValue === requiredValue;
+    }
+
+    return true;
+  };
+
   const initialValues = config.fields.reduce(
     (acc, field) => ({
       ...acc,
@@ -137,6 +159,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const handleSubmit = () => {
     const newErrors: Record<string, string> = {};
     config.fields.forEach((field) => {
+      if (!isSchemaVisible(field, values)) return;
       if (field.required && !values[field.name]) {
         newErrors[field.name] = `${field.label} is required`;
       }
@@ -213,6 +236,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     } else if (field.type === "DateTimeField") {
       inputType = "datetime-local";
     }
+
+    if (!isSchemaVisible(field, values)) return null;
 
     // Check if field should be read-only in edit mode
     // read_only: true means non-editable in edit mode
@@ -327,6 +352,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       );
     } else if (
       field.type === "PasswordInput" ||
+      field.type === "PasswordField" ||
       field.widget === "PasswordInput"
     ) {
       return (
@@ -342,6 +368,34 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             value={values[field.name]}
             onChange={handleChange}
             placeholder={`Enter ${field.label.toLowerCase()}`}
+            readOnly={isReadOnly}
+            bg={isReadOnly ? "gray.200 !important" : undefined}
+            color={isReadOnly ? "black !important" : undefined}
+            borderColor={isReadOnly ? "gray.300 !important" : undefined}
+          />
+          {errors[field.name] && (
+            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+          )}
+        </Field.Root>
+      );
+    }
+
+    if (field.type === "TextAreaField") {
+      return (
+        <Field.Root
+          key={field.name}
+          required={field.required}
+          invalid={!!errors[field.name]}
+        >
+          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+          <Textarea
+            id={field.name}
+            name={field.name}
+            value={values[field.name] || ""}
+            onChange={handleChange}
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+            rows={6}
+            resize="vertical"
             readOnly={isReadOnly}
             bg={isReadOnly ? "gray.200 !important" : undefined}
             color={isReadOnly ? "black !important" : undefined}
