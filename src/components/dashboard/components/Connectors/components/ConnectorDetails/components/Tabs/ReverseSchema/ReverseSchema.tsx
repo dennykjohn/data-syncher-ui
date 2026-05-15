@@ -12,6 +12,7 @@ import { type Connector } from "@/types/connectors";
 
 import Actions from "./Actions";
 import Destination from "./components/Destination/Destination";
+import FileExportSchema from "./components/FileExportSchema/FileExportSchema";
 import Mapped, { type MappedRef } from "./components/Mapped/Mapped";
 import Source from "./components/Source/Source";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
@@ -93,6 +94,9 @@ const ReverseSchema = () => {
   ]);
 
   const totalDisabledState = shouldShowDisabledState || isMigrationInProgress;
+  const isSnowflakeToSftp =
+    context.source_name?.toLowerCase() === "snowflake" &&
+    context.destination_name?.toLowerCase() === "sftp";
 
   const handleDrop = (sourceTable: string, destinationTable: string) => {
     mappedRef.current?.handleDrop(sourceTable, destinationTable);
@@ -108,23 +112,31 @@ const ReverseSchema = () => {
         shouldShowDisabledState={totalDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
       />
-      <Grid
-        templateColumns={["1fr", "1fr 1fr 1fr"]}
-        gap={4}
-        style={{ overflow: "visible" }}
-        w="100%"
-      >
-        <Source reverseSchemaData={reverseSchemaData || null} />
-        <Destination
-          onDrop={handleDrop}
-          reverseSchemaData={reverseSchemaData || null}
-        />
-        <Mapped
-          ref={mappedRef}
+      {isSnowflakeToSftp ? (
+        <FileExportSchema
+          connector={context}
           reverseSchemaData={reverseSchemaData || null}
           isDisabled={totalDisabledState}
         />
-      </Grid>
+      ) : (
+        <Grid
+          templateColumns={["1fr", "1fr 1fr 1fr"]}
+          gap={4}
+          style={{ overflow: "visible" }}
+          w="100%"
+        >
+          <Source reverseSchemaData={reverseSchemaData || null} />
+          <Destination
+            onDrop={handleDrop}
+            reverseSchemaData={reverseSchemaData || null}
+          />
+          <Mapped
+            ref={mappedRef}
+            reverseSchemaData={reverseSchemaData || null}
+            isDisabled={totalDisabledState}
+          />
+        </Grid>
+      )}
     </Flex>
   );
 };

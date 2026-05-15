@@ -99,6 +99,10 @@ const ServerRoutes = {
     deleteConnection: (id: number) => `connection/${id}/delete/`,
     testStatus: (id: number) => `connection/${id}/test/`,
     updateSelectedTables: (id: number) => `connection/${id}/update-selection/`,
+    updateSelectedFields: (id: number, tableName: string) =>
+      `connection/${id}/tables/${tableName}/table-fields/`,
+    updateSftpExportSettings: (id: number) =>
+      `connection/${id}/sftp-export-settings/`,
     updateSchema: (id: number) => `connection/${id}/fetch-tables/`,
     updateSchemaStatus: (id: number) =>
       `connection/${id}/update-schema-status/`,
