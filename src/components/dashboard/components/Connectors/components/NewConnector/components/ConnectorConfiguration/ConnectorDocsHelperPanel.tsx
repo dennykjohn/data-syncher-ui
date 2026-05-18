@@ -432,6 +432,10 @@ const getSlugCandidates = (connectorKey: string) => {
     candidates.push("aws-s3", "amazon-s3", "amazons3");
   }
 
+  if (normalized === "sftp") {
+    candidates.push("sftp-destination");
+  }
+
   candidates.push(raw, normalized);
 
   // Some docs use dashed slugs; try a best-effort dashed variant.
