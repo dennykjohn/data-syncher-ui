@@ -6,6 +6,7 @@ import PostgreSQLIllustration from "@/assets/images/postgres.svg";
 import SalesforceSandboxIllustration from "@/assets/images/salesforce-sandbox.svg";
 import SalesForceIllustration from "@/assets/images/salesforce.svg";
 import SFTPIllustration from "@/assets/images/sftp.svg";
+import SharepointIllustration from "@/assets/images/sharepoint.svg";
 import SnowFlakeIllustration from "@/assets/images/snowflake.svg";
 import MySQLIllustration from "@/assets/images/sql.svg";
 
@@ -24,6 +25,7 @@ const IMAGE_MAP = {
   salesforce: SalesForceIllustration,
   salesforcesandbox: SalesforceSandboxIllustration,
   sftp: SFTPIllustration,
+  sharepoint: SharepointIllustration,
 } as const;
 
 // Default fallback image
@@ -60,6 +62,7 @@ export const getSourceImage = (name: string, fallback?: string): string => {
     googlereviews: GoogleReviewIllustration,
     amazons3: AmazonS3Illustration,
     sftp: SFTPIllustration,
+    sharepoint: SharepointIllustration,
   };
 
   for (const [key, image] of Object.entries(partialMatches)) {
