@@ -51,7 +51,7 @@ type TableExportSetting = {
 
 type TableExportDefaults = Omit<TableExportSetting, "output_file_name">;
 
-interface SnowflakeSftpSchemaProps {
+interface SnowflakeFileExportSchemaProps {
   connector: Connector;
   reverseSchemaData: ReverseSchemaResponse | null;
   isDisabled: boolean;
@@ -113,11 +113,11 @@ const getReusableTableDefaults = (
 const validateTargetFolder = (value: string) =>
   value.trim() ? "" : "Target folder is required.";
 
-const SnowflakeSftpSchema = ({
+const SnowflakeFileExportSchema = ({
   connector,
   reverseSchemaData,
   isDisabled,
-}: SnowflakeSftpSchemaProps) => {
+}: SnowflakeFileExportSchemaProps) => {
   const queryClient = useQueryClient();
   const { mutate: updateSelectedTables, isPending: isSavingSelection } =
     useUpdateSelectedTables({
@@ -1004,4 +1004,4 @@ const SnowflakeSftpSchema = ({
   );
 };
 
-export default SnowflakeSftpSchema;
+export default SnowflakeFileExportSchema;

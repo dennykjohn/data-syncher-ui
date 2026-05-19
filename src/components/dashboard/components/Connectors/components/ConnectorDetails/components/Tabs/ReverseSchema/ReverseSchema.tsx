@@ -94,9 +94,11 @@ const ReverseSchema = () => {
   ]);
 
   const totalDisabledState = shouldShowDisabledState || isMigrationInProgress;
-  const isSnowflakeToSftp =
+  const isSnowflakeToFileExport =
     context.source_name?.toLowerCase() === "snowflake" &&
-    context.destination_name?.toLowerCase() === "sftp";
+    ["sftp", "sharepoint"].includes(
+      context.destination_name?.toLowerCase() || "",
+    );
 
   const handleDrop = (sourceTable: string, destinationTable: string) => {
     mappedRef.current?.handleDrop(sourceTable, destinationTable);
@@ -112,7 +114,7 @@ const ReverseSchema = () => {
         shouldShowDisabledState={totalDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
       />
-      {isSnowflakeToSftp ? (
+      {isSnowflakeToFileExport ? (
         <FileExportSchema
           connector={context}
           reverseSchemaData={reverseSchemaData || null}
