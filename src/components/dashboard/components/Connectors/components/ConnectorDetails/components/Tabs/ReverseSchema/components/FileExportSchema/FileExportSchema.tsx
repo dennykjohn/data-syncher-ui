@@ -880,10 +880,10 @@ const SnowflakeFileExportSchema = ({
                             }
                           >
                             <Checkbox.HiddenInput />
-                            <Checkbox.Control />
                             <Checkbox.Label fontSize="sm">
                               Include timestamp in file name
                             </Checkbox.Label>
+                            <Checkbox.Control />
                           </Checkbox.Root>
                         </Box>
 

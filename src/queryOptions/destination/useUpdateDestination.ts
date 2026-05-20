@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const updateDestination = async (
   id: string,
-  payload: Destination,
+  payload: Destination | FormData,
 ): Promise<Destination> => {
   const { data } = await AxiosInstance.put(
     ServerRoutes.destination.updateDestination(id),
@@ -17,7 +17,7 @@ const updateDestination = async (
 
 export function useUpdateDestination({ id }: { id: string }) {
   const queryClient = useQueryClient();
-  return useMutation<Destination, Error, Destination>({
+  return useMutation<Destination, Error, Destination | FormData>({
     mutationFn: (payload) => updateDestination(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({

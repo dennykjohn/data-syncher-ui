@@ -40,7 +40,10 @@ type FormConfig = {
 
 interface DynamicFormProps {
   config: FormConfig;
-  onSubmit: (_values: Record<string, string>) => void;
+  onSubmit: (
+    _values: Record<string, string>,
+    _files?: Record<string, File | null>,
+  ) => void;
   loading?: boolean;
   defaultValues?: Record<string, string>;
   handleBackButtonClick?: () => void;
@@ -71,6 +74,24 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     field: FieldConfig,
     current: Record<string, string>,
   ) => {
+    const selectedAuthType =
+      current["auth_type"] || current["authentication_type"];
+
+    if (
+      field.name === "client_secret" &&
+      selectedAuthType === "client_certificate"
+    ) {
+      return false;
+    }
+
+    if (
+      (field.name === "client_certificate_file" ||
+        field.name === "certificate_password") &&
+      selectedAuthType !== "client_certificate"
+    ) {
+      return false;
+    }
+
     const dependOn = field.depend_on ?? null;
     const dependencyValue =
       field.dependency_value ?? (field as FieldConfig).dependency ?? null;
@@ -94,10 +115,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       ...acc,
       [field.name]: defaultValues?.[field.name] ?? "",
     }),
-    {},
+    { ...(defaultValues || {}) } as Record<string, string>,
   );
 
   const [values, setValues] = useState<Record<string, string>>(initialValues);
+  const [files, setFiles] = useState<Record<string, File | null>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
 
@@ -160,8 +182,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     const newErrors: Record<string, string> = {};
     config.fields.forEach((field) => {
       if (!isSchemaVisible(field, values)) return;
-      if (field.required && !values[field.name]) {
-        newErrors[field.name] = `${field.label} is required`;
+      if (field.required) {
+        if (field.name === "client_certificate_file") {
+          const isUploaded = !!values["client_certificate_uploaded"];
+          if (!isUploaded && !files[field.name]) {
+            newErrors[field.name] = `${field.label} is required`;
+          }
+        } else if (!values[field.name]) {
+          newErrors[field.name] = `${field.label} is required`;
+        }
       }
       if (field.name === "destination_schema") {
         const schemaError = validateSchemaName(values[field.name] || "");
@@ -180,7 +209,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     // is allowed to sync into the form after the successful save.
     isDirtyRef.current = false;
 
-    onSubmit(values);
+    onSubmit(values, files);
   };
 
   // Filter out passphrase from sorted fields - it will be rendered separately below KeyPairGenerator
@@ -242,6 +271,76 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     // Check if field should be read-only in edit mode
     // read_only: true means non-editable in edit mode
     const isReadOnly = mode === "edit" && field.read_only === true;
+
+    if (field.name === "client_certificate_file") {
+      const isUploaded = !!values["client_certificate_uploaded"];
+      const filename = values["client_certificate_file"];
+      const isRequired = field.required && !isUploaded && !files[field.name];
+
+      return (
+        <Field.Root
+          key={field.name}
+          required={isRequired}
+          invalid={!!errors[field.name]}
+        >
+          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+          <Box display="flex" gap={2} alignItems="center" w="full">
+            <Input
+              type="file"
+              id={field.name}
+              name={field.name}
+              accept=".pfx,.p12,.pem"
+              w="full"
+              h={10}
+              p={1.5}
+              css={{
+                "&::file-selector-button": {
+                  height: "100%",
+                  mr: 2,
+                  bg: "gray.100",
+                  border: "none",
+                  borderRadius: "md",
+                  px: 3,
+                  fontSize: "sm",
+                  cursor: "pointer",
+                  transition: "background 0.2s",
+                },
+                "&::file-selector-button:hover": {
+                  bg: "gray.200",
+                },
+              }}
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                if (file && file.size > 5 * 1024 * 1024) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    [field.name]: "File size must be less than 5MB",
+                  }));
+                  e.target.value = "";
+                  setFiles((prev) => ({ ...prev, [field.name]: null }));
+                  return;
+                }
+                setErrors((prev) => ({ ...prev, [field.name]: "" }));
+                setFiles((prev) => ({ ...prev, [field.name]: file }));
+              }}
+              readOnly={isReadOnly}
+              bg={isReadOnly ? "gray.200 !important" : undefined}
+            />
+          </Box>
+          {isUploaded &&
+            !files[field.name] &&
+            typeof filename === "string" &&
+            filename && (
+              <Field.HelperText fontSize="xs" color="gray.600">
+                Uploaded file: {filename}
+              </Field.HelperText>
+            )}
+          {errors[field.name] && (
+            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+          )}
+        </Field.Root>
+      );
+    }
 
     // If the value of authentication_type field is "password",
     // hide private_key, public_key & passphrase fields
