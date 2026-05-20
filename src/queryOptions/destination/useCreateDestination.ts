@@ -10,7 +10,7 @@ interface CreateDestinationResponse {
 }
 
 const createDestination = async (
-  payload: Destination,
+  payload: Destination | FormData,
 ): Promise<CreateDestinationResponse> => {
   const { data } = await AxiosInstance.post<CreateDestinationResponse>(
     ServerRoutes.destination.createDestination(),
@@ -21,7 +21,7 @@ const createDestination = async (
 
 export default function useCreateDestination() {
   const queryClient = useQueryClient();
-  return useMutation<CreateDestinationResponse, Error, Destination>({
+  return useMutation<CreateDestinationResponse, Error, Destination | FormData>({
     mutationFn: createDestination,
     onSuccess: () => {
       queryClient.invalidateQueries({
