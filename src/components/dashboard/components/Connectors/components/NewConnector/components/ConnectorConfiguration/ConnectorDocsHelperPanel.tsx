@@ -408,6 +408,14 @@ const GUIDE_URL_MAP: Record<
       jsonUrl:
         "https://qa.datasyncher.com/docs/guides/destinations/salesforce-sandbox-destination.json",
     },
+    sharepoint: {
+      jsonUrl:
+        "https://qa.datasyncher.com/docs/guides/destinations/sharepoint-destination.json",
+    },
+    sftp: {
+      jsonUrl:
+        "https://qa.datasyncher.com/docs/guides/destinations/sftp-destination.json",
+    },
   },
 };
 
@@ -430,10 +438,6 @@ const getSlugCandidates = (connectorKey: string) => {
   // Special-case common connector slugs that differ from backend keys.
   if (normalized.includes("amazons3")) {
     candidates.push("aws-s3", "amazon-s3", "amazons3");
-  }
-
-  if (normalized === "sftp") {
-    candidates.push("sftp-destination");
   }
 
   candidates.push(raw, normalized);
