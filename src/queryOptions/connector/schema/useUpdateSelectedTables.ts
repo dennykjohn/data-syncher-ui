@@ -16,6 +16,7 @@ type UpdateSelectedTablesPayload = {
       csv_delimiter?: string;
       csv_quote_char?: string;
       add_utc_timestamp?: boolean;
+      notification_email_group_ids?: number[];
     }
   >;
 };

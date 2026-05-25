@@ -113,6 +113,7 @@ export type ConnectorTable = {
   csv_delimiter?: string | null;
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
+  notification_email_group_ids?: number[] | null;
 };
 
 export type ConnectorTablesResponse = {
@@ -131,6 +132,7 @@ export interface ConnectorSelectedTable {
   csv_delimiter?: string | null;
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
+  notification_email_group_ids?: number[] | null;
 }
 
 // ------------------ Connector Activity Types ------------------
