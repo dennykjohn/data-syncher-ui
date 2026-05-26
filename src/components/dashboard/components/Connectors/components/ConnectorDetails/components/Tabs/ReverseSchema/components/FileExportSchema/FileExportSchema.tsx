@@ -16,7 +16,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 
-import { IoMdOptions, IoMdPlay, IoMdTrash } from "react-icons/io";
+import { IoMdMail, IoMdOptions, IoMdPlay, IoMdTrash } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
 import { PiKeyFill } from "react-icons/pi";
@@ -31,11 +31,14 @@ import { type ReverseSchemaResponse } from "@/queryOptions/connector/reverseSche
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import { usePagination } from "@/queryOptions/connector/schema/usePagination";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
+import useFetchEmailGroups from "@/queryOptions/emailGroups/useFetchEmailGroups";
 import { type Connector, type ConnectorTable } from "@/types/connectors";
 
 import { isPrimaryKey } from "../../utils/validation";
+import EmailGroupSelectionModal from "./EmailGroupSelectionModal";
 import FieldSelectionModal from "./FieldSelectionModal";
 import useUpdateSelectedFields from "./hooks/useUpdateSelectedFields";
+import useUpdateTableEmailGroups from "./hooks/useUpdateTableEmailGroups";
 import { useQueryClient } from "@tanstack/react-query";
 
 type FileFormat = "csv" | "json" | "parquet";
@@ -47,11 +50,12 @@ type TableExportSetting = {
   csv_delimiter: string;
   csv_quote_char: string;
   add_utc_timestamp: boolean;
+  notification_email_group_ids?: number[];
 };
 
 type TableExportDefaults = Omit<TableExportSetting, "output_file_name">;
 
-interface SnowflakeSftpSchemaProps {
+interface SnowflakeFileExportSchemaProps {
   connector: Connector;
   reverseSchemaData: ReverseSchemaResponse | null;
   isDisabled: boolean;
@@ -68,6 +72,7 @@ const DEFAULT_TABLE_SETTINGS: TableExportDefaults = {
   csv_delimiter: ",",
   csv_quote_char: '"',
   add_utc_timestamp: true,
+  notification_email_group_ids: [],
 };
 
 const isValidFileFormat = (value: unknown): value is FileFormat =>
@@ -86,6 +91,9 @@ const normalizeTableSetting = (
     typeof raw?.add_utc_timestamp === "boolean"
       ? raw.add_utc_timestamp
       : DEFAULT_TABLE_SETTINGS.add_utc_timestamp,
+  notification_email_group_ids: Array.isArray(raw?.notification_email_group_ids)
+    ? raw.notification_email_group_ids
+    : [],
 });
 
 const hasApiTableExportSettings = (raw?: Partial<ConnectorTable>) =>
@@ -108,16 +116,19 @@ const getReusableTableDefaults = (
     typeof raw?.add_utc_timestamp === "boolean"
       ? raw.add_utc_timestamp
       : DEFAULT_TABLE_SETTINGS.add_utc_timestamp,
+  notification_email_group_ids: Array.isArray(raw?.notification_email_group_ids)
+    ? raw.notification_email_group_ids
+    : [],
 });
 
 const validateTargetFolder = (value: string) =>
   value.trim() ? "" : "Target folder is required.";
 
-const SnowflakeSftpSchema = ({
+const SnowflakeFileExportSchema = ({
   connector,
   reverseSchemaData,
   isDisabled,
-}: SnowflakeSftpSchemaProps) => {
+}: SnowflakeFileExportSchemaProps) => {
   const queryClient = useQueryClient();
   const { mutate: updateSelectedTables, isPending: isSavingSelection } =
     useUpdateSelectedTables({
@@ -127,6 +138,11 @@ const SnowflakeSftpSchema = ({
   const { data: tableStatusData } = useFetchTableStatus(
     connector.connection_id,
     true,
+  );
+
+  const { data: emailGroups = [] } = useFetchEmailGroups();
+  const isEmailSupportedDestination = ["sharepoint", "googledrive"].includes(
+    connector.destination_name?.toLowerCase() || "",
   );
 
   const sourceTables = useMemo(
@@ -158,9 +174,18 @@ const SnowflakeSftpSchema = ({
     string | null
   >(null);
   const [draggedTable, setDraggedTable] = useState<string | null>(null);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [activeTableForEmail, setActiveTableForEmail] = useState<string | null>(
+    null,
+  );
 
   const { mutate: updateSelectedFields, isPending: isUpdatingFields } =
     useUpdateSelectedFields({
+      connectorId: connector.connection_id,
+    });
+
+  const { mutate: updateTableEmailGroups, isPending: isUpdatingEmails } =
+    useUpdateTableEmailGroups({
       connectorId: connector.connection_id,
     });
 
@@ -173,17 +198,11 @@ const SnowflakeSftpSchema = ({
     const nextSelected = Array.from(new Set([...selectedFromSchema]));
 
     setSelectedTables(nextSelected);
-    setTableExportSettings((prev) => {
+    setTableExportSettings(() => {
       const nextSettings: Record<string, TableExportSetting> = {};
       nextSelected.forEach((tableName) => {
         const schemaRow = sourceTables.find((item) => item.table === tableName);
-        if (hasApiTableExportSettings(schemaRow)) {
-          nextSettings[tableName] = normalizeTableSetting(tableName, schemaRow);
-        } else if (prev[tableName]) {
-          nextSettings[tableName] = prev[tableName];
-        } else {
-          nextSettings[tableName] = normalizeTableSetting(tableName, schemaRow);
-        }
+        nextSettings[tableName] = normalizeTableSetting(tableName, schemaRow);
       });
       return nextSettings;
     });
@@ -280,6 +299,9 @@ const SnowflakeSftpSchema = ({
                 csv_delimiter: row.csv_delimiter || ",",
                 csv_quote_char: row.csv_quote_char || '"',
               }
+            : {}),
+          ...(!isEmailSupportedDestination
+            ? { notification_email_group_ids: undefined }
             : {}),
         };
         return acc;
@@ -423,6 +445,7 @@ const SnowflakeSftpSchema = ({
           add_utc_timestamp: boolean;
           csv_delimiter?: string;
           csv_quote_char?: string;
+          notification_email_group_ids?: number[];
         }
       >
     >((acc, table) => {
@@ -436,6 +459,12 @@ const SnowflakeSftpSchema = ({
           ? {
               csv_delimiter: row.csv_delimiter || ",",
               csv_quote_char: row.csv_quote_char || '"',
+            }
+          : {}),
+        ...(isEmailSupportedDestination
+          ? {
+              notification_email_group_ids:
+                row.notification_email_group_ids || [],
             }
           : {}),
       };
@@ -479,6 +508,33 @@ const SnowflakeSftpSchema = ({
         onSuccess: () => {
           toaster.success({ title: "Field selection updated" });
           setFieldModalOpen(false);
+          queryClient.invalidateQueries({
+            queryKey: ["ReverseSchema", connector.connection_id],
+          });
+        },
+      },
+    );
+  };
+
+  const handleSaveEmailGroups = (selectedGroupIds: number[]) => {
+    if (!activeTableForEmail) return;
+    updateTableEmailGroups(
+      {
+        tableName: activeTableForEmail,
+        notification_email_group_ids: selectedGroupIds,
+      },
+      {
+        onSuccess: () => {
+          toaster.success({ title: "Email groups updated" });
+          setTableExportSettings((prev) => ({
+            ...prev,
+            [activeTableForEmail]: {
+              ...(prev[activeTableForEmail] ||
+                normalizeTableSetting(activeTableForEmail)),
+              notification_email_group_ids: selectedGroupIds,
+            },
+          }));
+          setEmailModalOpen(false);
           queryClient.invalidateQueries({
             queryKey: ["ReverseSchema", connector.connection_id],
           });
@@ -812,6 +868,55 @@ const SnowflakeSftpSchema = ({
                           </IconButton>
                         </Tooltip>
 
+                        {isEmailSupportedDestination &&
+                          (() => {
+                            const isEmailConfigured = !!(
+                              tableExportSettings[item.table]
+                                ?.notification_email_group_ids &&
+                              (tableExportSettings[item.table]
+                                ?.notification_email_group_ids?.length || 0) > 0
+                            );
+                            return (
+                              <Tooltip content="Select Email Notifications">
+                                <IconButton
+                                  size="xs"
+                                  variant={
+                                    isEmailConfigured ? "subtle" : "ghost"
+                                  }
+                                  colorPalette="brand"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveTableForEmail(item.table);
+                                    setEmailModalOpen(true);
+                                  }}
+                                  borderRadius="full"
+                                  height="24px"
+                                  width="24px"
+                                  minWidth="24px"
+                                  fontSize="16px"
+                                  boxShadow="none"
+                                  bg={
+                                    isEmailConfigured
+                                      ? "brand.50"
+                                      : "transparent"
+                                  }
+                                  color={
+                                    isEmailConfigured ? "brand.600" : "gray.500"
+                                  }
+                                  borderColor="transparent"
+                                  _hover={{
+                                    transform: "translateY(-1px)",
+                                    bg: "brand.50",
+                                    color: "brand.600",
+                                  }}
+                                  transition="all 0.2s"
+                                >
+                                  <IoMdMail />
+                                </IconButton>
+                              </Tooltip>
+                            );
+                          })()}
+
                         <Box
                           width="24px"
                           display="flex"
@@ -880,10 +985,10 @@ const SnowflakeSftpSchema = ({
                             }
                           >
                             <Checkbox.HiddenInput />
-                            <Checkbox.Control />
                             <Checkbox.Label fontSize="sm">
                               Include timestamp in file name
                             </Checkbox.Label>
+                            <Checkbox.Control />
                           </Checkbox.Root>
                         </Box>
 
@@ -1000,8 +1105,23 @@ const SnowflakeSftpSchema = ({
         onSave={handleSaveFields}
         isSaving={isUpdatingFields}
       />
+
+      <EmailGroupSelectionModal
+        open={emailModalOpen}
+        onClose={() => setEmailModalOpen(false)}
+        tableName={activeTableForEmail || ""}
+        emailGroups={emailGroups}
+        initialSelectedGroupIds={
+          (activeTableForEmail &&
+            tableExportSettings[activeTableForEmail]
+              ?.notification_email_group_ids) ||
+          []
+        }
+        onSave={handleSaveEmailGroups}
+        isSaving={isUpdatingEmails}
+      />
     </>
   );
 };
 
-export default SnowflakeSftpSchema;
+export default SnowflakeFileExportSchema;

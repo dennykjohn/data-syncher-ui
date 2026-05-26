@@ -101,6 +101,8 @@ const ServerRoutes = {
     updateSelectedTables: (id: number) => `connection/${id}/update-selection/`,
     updateSelectedFields: (id: number, tableName: string) =>
       `connection/${id}/tables/${tableName}/table-fields/`,
+    updateTableEmailGroups: (id: number, tableName: string) =>
+      `connection/${id}/tables/${tableName}/email-groups/`,
     updateSftpExportSettings: (id: number) =>
       `connection/${id}/sftp-export-settings/`,
     updateSchema: (id: number) => `connection/${id}/fetch-tables/`,
@@ -176,6 +178,12 @@ const ServerRoutes = {
   communicationSupport: {
     getDetails: () => "account/communication-support/",
     update: () => "account/communication-support/",
+  },
+  emailGroups: {
+    list: () => "account/email-groups/",
+    create: () => "account/email-groups/",
+    update: (id: number | string) => `account/email-groups/${id}/`,
+    delete: (id: number | string) => `account/email-groups/${id}/`,
   },
   account: {
     profile: () => "account/profile/",

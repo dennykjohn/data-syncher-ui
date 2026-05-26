@@ -67,14 +67,30 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   >({});
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const handleFormSubmit = (values: Record<string, string>) => {
-    const payload: Destination = {
+  const handleFormSubmit = (
+    values: Record<string, string>,
+    files?: Record<string, File | null>,
+  ) => {
+    const basePayload: Destination = {
       dst: mode === "add" ? destinationName : destinationData?.dst,
       name: values["destination_name"],
       config_data: { ...values },
     };
+
+    let finalPayload: Destination | FormData = basePayload;
+
+    if (files && files["client_certificate_file"]) {
+      const formData = new FormData();
+      formData.append("config_data", JSON.stringify(basePayload));
+      formData.append(
+        "client_certificate_file",
+        files["client_certificate_file"],
+      );
+      finalPayload = formData;
+    }
+
     if (mode === "edit") {
-      updateDestination(payload, {
+      updateDestination(finalPayload, {
         onSuccess: (response) => {
           const responseWithAuth = response as unknown as {
             auth_url?: string;
@@ -91,7 +107,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
       });
       return;
     }
-    createDestination(payload, {
+    createDestination(finalPayload, {
       onSuccess: (response: { auth_url?: string; message?: string }) => {
         if (response.auth_url) {
           window.location.href = response.auth_url;
@@ -173,8 +189,8 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
                     ? destinationData.fields
                     : formSchema || [],
               }}
-              onSubmit={(values) => {
-                handleFormSubmit(values);
+              onSubmit={(values, files) => {
+                handleFormSubmit(values, files);
               }}
               loading={isPending || isUpdateDestinationPending}
               defaultValues={

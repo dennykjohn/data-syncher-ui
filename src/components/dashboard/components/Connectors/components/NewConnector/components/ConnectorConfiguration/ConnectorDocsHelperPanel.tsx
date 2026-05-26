@@ -408,6 +408,14 @@ const GUIDE_URL_MAP: Record<
       jsonUrl:
         "https://qa.datasyncher.com/docs/guides/destinations/salesforce-sandbox-destination.json",
     },
+    sharepoint: {
+      jsonUrl:
+        "https://qa.datasyncher.com/docs/guides/destinations/sharepoint-destination.json",
+    },
+    sftp: {
+      jsonUrl:
+        "https://qa.datasyncher.com/docs/guides/destinations/sftp-destination.json",
+    },
   },
 };
 
