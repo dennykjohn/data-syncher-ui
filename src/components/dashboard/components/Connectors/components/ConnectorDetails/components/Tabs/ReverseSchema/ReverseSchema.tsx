@@ -96,7 +96,7 @@ const ReverseSchema = () => {
   const totalDisabledState = shouldShowDisabledState || isMigrationInProgress;
   const isSnowflakeToFileExport =
     context.source_name?.toLowerCase() === "snowflake" &&
-    ["sftp", "sharepoint"].includes(
+    ["sftp", "sharepoint", "googledrive"].includes(
       context.destination_name?.toLowerCase() || "",
     );
 

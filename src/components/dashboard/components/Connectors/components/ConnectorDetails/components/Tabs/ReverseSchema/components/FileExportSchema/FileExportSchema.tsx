@@ -141,8 +141,9 @@ const SnowflakeFileExportSchema = ({
   );
 
   const { data: emailGroups = [] } = useFetchEmailGroups();
-  const isSharepoint =
-    connector.destination_name?.toLowerCase() === "sharepoint";
+  const isEmailSupportedDestination = ["sharepoint", "googledrive"].includes(
+    connector.destination_name?.toLowerCase() || "",
+  );
 
   const sourceTables = useMemo(
     () => reverseSchemaData?.source_tables || [],
@@ -197,17 +198,11 @@ const SnowflakeFileExportSchema = ({
     const nextSelected = Array.from(new Set([...selectedFromSchema]));
 
     setSelectedTables(nextSelected);
-    setTableExportSettings((prev) => {
+    setTableExportSettings(() => {
       const nextSettings: Record<string, TableExportSetting> = {};
       nextSelected.forEach((tableName) => {
         const schemaRow = sourceTables.find((item) => item.table === tableName);
-        if (hasApiTableExportSettings(schemaRow)) {
-          nextSettings[tableName] = normalizeTableSetting(tableName, schemaRow);
-        } else if (prev[tableName]) {
-          nextSettings[tableName] = prev[tableName];
-        } else {
-          nextSettings[tableName] = normalizeTableSetting(tableName, schemaRow);
-        }
+        nextSettings[tableName] = normalizeTableSetting(tableName, schemaRow);
       });
       return nextSettings;
     });
@@ -305,7 +300,9 @@ const SnowflakeFileExportSchema = ({
                 csv_quote_char: row.csv_quote_char || '"',
               }
             : {}),
-          ...(!isSharepoint ? { notification_email_group_ids: undefined } : {}),
+          ...(!isEmailSupportedDestination
+            ? { notification_email_group_ids: undefined }
+            : {}),
         };
         return acc;
       }, {});
@@ -464,7 +461,7 @@ const SnowflakeFileExportSchema = ({
               csv_quote_char: row.csv_quote_char || '"',
             }
           : {}),
-        ...(isSharepoint
+        ...(isEmailSupportedDestination
           ? {
               notification_email_group_ids:
                 row.notification_email_group_ids || [],
@@ -871,7 +868,7 @@ const SnowflakeFileExportSchema = ({
                           </IconButton>
                         </Tooltip>
 
-                        {isSharepoint &&
+                        {isEmailSupportedDestination &&
                           (() => {
                             const isEmailConfigured = !!(
                               tableExportSettings[item.table]
