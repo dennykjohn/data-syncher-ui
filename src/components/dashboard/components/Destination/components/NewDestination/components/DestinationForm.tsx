@@ -294,7 +294,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
               loading={isPending || isUpdateDestinationPending}
               defaultValues={
                 mode === "edit" && destinationData
-                  ? destinationData.config_data
+                  ? (destinationData.config_data as Record<string, string>)
                   : undefined
               }
               onValuesChange={setCurrentFormValues}

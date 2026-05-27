@@ -140,7 +140,7 @@ const Sidebar = ({
       </Flex>
       <Flex flexDirection={"column"} gap={2}>
         {NavLinks.map((props) => {
-          const { label, icon, path, isAccordion, onClick } = props;
+          const { label, icon, path, isAccordion } = props;
           const active = path ? isActive(path) : false;
 
           if (isAccordion) {
@@ -159,7 +159,6 @@ const Sidebar = ({
               label={label}
               icon={icon}
               path={path}
-              onClick={onClick}
               active={active}
               onMenuItemClick={onMenuItemClick}
             />
