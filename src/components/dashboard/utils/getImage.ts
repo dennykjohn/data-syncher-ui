@@ -1,5 +1,6 @@
 import AmazonS3Illustration from "@/assets/images/amazon-s3.svg";
 import DataBricksIllustration from "@/assets/images/databricks.svg";
+import GoogleDriveIllustration from "@/assets/images/google-drive.svg";
 import GoogleReviewIllustration from "@/assets/images/google-review.svg";
 import MicrosoftDynamicsIllustration from "@/assets/images/ms-dynamics.svg";
 import PostgreSQLIllustration from "@/assets/images/postgres.svg";
@@ -26,6 +27,7 @@ const IMAGE_MAP = {
   salesforcesandbox: SalesforceSandboxIllustration,
   sftp: SFTPIllustration,
   sharepoint: SharepointIllustration,
+  googledrive: GoogleDriveIllustration,
 } as const;
 
 // Default fallback image
@@ -60,6 +62,7 @@ export const getSourceImage = (name: string, fallback?: string): string => {
     mysql: MySQLIllustration,
     salesforce: SalesForceIllustration,
     googlereviews: GoogleReviewIllustration,
+    googledrive: GoogleDriveIllustration,
     amazons3: AmazonS3Illustration,
     sftp: SFTPIllustration,
     sharepoint: SharepointIllustration,

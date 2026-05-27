@@ -121,8 +121,20 @@ const getReusableTableDefaults = (
     : [],
 });
 
-const validateTargetFolder = (value: string) =>
-  value.trim() ? "" : "Target folder is required.";
+const isDestinationGoogleDrive = (conn?: Connector) =>
+  conn?.destination_name?.toLowerCase().replace(/[\s\-._]/g, "") ===
+  "googledrive";
+
+const isTargetFolderRequired = (conn?: Connector) =>
+  // Target folder is not mandatory for Google Drive destinations
+  !isDestinationGoogleDrive(conn);
+
+const validateTargetFolder = (value: string, conn?: Connector) =>
+  isTargetFolderRequired(conn)
+    ? value.trim()
+      ? ""
+      : "Target folder is required."
+    : "";
 
 const SnowflakeFileExportSchema = ({
   connector,
@@ -377,7 +389,10 @@ const SnowflakeFileExportSchema = ({
     if (Object.prototype.hasOwnProperty.call(patch, "target_folder")) {
       setTargetFolderErrors((prev) => {
         const next = { ...prev };
-        const nextError = validateTargetFolder(patch.target_folder ?? "");
+        const nextError = validateTargetFolder(
+          patch.target_folder ?? "",
+          connector,
+        );
         if (nextError) {
           next[tableName] = nextError;
         } else {
@@ -403,7 +418,7 @@ const SnowflakeFileExportSchema = ({
     >((acc, table) => {
       const settings =
         tableExportSettings[table] || normalizeTableSetting(table);
-      const error = validateTargetFolder(settings.target_folder);
+      const error = validateTargetFolder(settings.target_folder, connector);
       if (error) {
         acc[table] = error;
       }
@@ -995,7 +1010,7 @@ const SnowflakeFileExportSchema = ({
                         <Box>
                           <Field.Root
                             gap={0}
-                            required
+                            required={isTargetFolderRequired(connector)}
                             invalid={!!targetFolderErrors[item.table]}
                           >
                             <Field.Label fontSize="xs" color="gray.600" mb={0}>

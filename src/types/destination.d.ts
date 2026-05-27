@@ -19,7 +19,7 @@ export interface NewDestinationFormState {
 export interface Destination {
   dst: string;
   name: string;
-  config_data: Record<string, string>;
+  config_data: Record<string, unknown>;
   fields?: FieldConfig[]; // Fields with read_only property from backend in edit mode
 }
 

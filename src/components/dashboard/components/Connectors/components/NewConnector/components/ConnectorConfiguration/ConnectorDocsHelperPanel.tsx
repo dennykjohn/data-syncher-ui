@@ -416,6 +416,12 @@ const GUIDE_URL_MAP: Record<
       jsonUrl:
         "https://qa.datasyncher.com/docs/guides/destinations/sftp-destination.json",
     },
+    googledrive: {
+      jsonUrl:
+        "https://qa.datasyncher.com/docs/guides/destinations/google-drive-destination.json",
+      docsUrl:
+        "https://qa.datasyncher.com/docs/destinations/google-drive-destination",
+    },
   },
 };
 

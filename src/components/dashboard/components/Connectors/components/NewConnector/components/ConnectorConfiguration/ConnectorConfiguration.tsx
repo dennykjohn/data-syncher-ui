@@ -14,6 +14,7 @@ import useCreateConnection from "@/queryOptions/connector/useCreateConnection";
 import useFetchConnectorConfig from "@/queryOptions/connector/useFetchConnectorConfig";
 import { useFetchConnectorById } from "@/queryOptions/connector/useFetchConnectorDetailsById";
 import useUpdateConnectorConfig from "@/queryOptions/connector/useUpdateConnectorConfig";
+import useFetchAllUserCreatedDestinationList from "@/queryOptions/destination/useFetchAllUserCreatedDestinationList";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 
 import { type ConnectorFormState } from "../../type";
@@ -48,6 +49,19 @@ const GenericConnectorConfiguration = ({
     type: state?.source || connectorData?.source_name || "",
     source: "source",
   });
+
+  const { data: destinationList } = useFetchAllUserCreatedDestinationList();
+
+  const destinationType = useMemo(() => {
+    if (mode === "edit" && connectorConfig?.destination_config) {
+      return connectorConfig.destination_config.dst;
+    }
+    if (mode === "create" && state?.destination && destinationList) {
+      const match = destinationList.find((d) => d.name === state.destination);
+      return match?.dst || "";
+    }
+    return "";
+  }, [mode, connectorConfig, state, destinationList]);
 
   // Mutation hooks
   const {
@@ -200,6 +214,10 @@ const GenericConnectorConfiguration = ({
                 fields: schemaFields,
               }}
               sourceName={sourceName}
+              destinationName={
+                state?.destination || connectorConfig?.destination_config.name
+              }
+              destinationType={destinationType}
               onSubmit={(values) => {
                 handleFormSubmit(values);
               }}

@@ -32,9 +32,14 @@ const ConnectorTabs = ({ connector }: ConnectorTabsProps) => {
     },
     {
       label: "Schema",
-      route: connector?.is_reverse_etl
-        ? ClientRoutes.CONNECTORS.REVERSE_SCHEMA
-        : ClientRoutes.CONNECTORS.SCHEMA,
+      route:
+        connector?.is_reverse_etl ||
+        connector?.destination_name?.toLowerCase().replace(/[\s\-._]/g, "") ===
+          "sftp" ||
+        connector?.destination_name?.toLowerCase().replace(/[\s\-._]/g, "") ===
+          "googledrive"
+          ? ClientRoutes.CONNECTORS.REVERSE_SCHEMA
+          : ClientRoutes.CONNECTORS.SCHEMA,
       permission: "can_view_tables",
     },
     {
