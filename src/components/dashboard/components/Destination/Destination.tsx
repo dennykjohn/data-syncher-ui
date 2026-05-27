@@ -3,9 +3,10 @@ import { startTransition, useEffect, useState } from "react";
 import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 
 import { format } from "date-fns";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 
 import TableWrapper from "@/components/dashboard/wrapper/TableWrapper";
+import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
 import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
@@ -64,6 +65,28 @@ const SIZE = 10;
 
 const Destination = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const oauthStatus = searchParams.get("oauth_status");
+    const oauthError = searchParams.get("oauth_error");
+
+    if (oauthStatus === "error" && oauthError) {
+      toaster.error({
+        title: oauthError,
+      });
+
+      // Remove query params from the URL using replaceState
+      const url = new URL(window.location.href);
+      url.searchParams.delete("oauth_status");
+      url.searchParams.delete("oauth_error");
+      window.history.replaceState(
+        {},
+        document.title,
+        url.pathname + url.search,
+      );
+    }
+  }, [searchParams]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const { can } = usePermissions();

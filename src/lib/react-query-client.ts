@@ -7,6 +7,7 @@ type Error = {
   message?: string;
   description?: string;
   trial_expired?: boolean;
+  error?: string;
 };
 
 export const queryClient = new QueryClient({
@@ -39,6 +40,7 @@ export const queryClient = new QueryClient({
       const err = error as Error;
 
       if (err.trial_expired) return;
+      if (err.error === "GOOGLE_DRIVE_FOLDER_CONFIRMATION_REQUIRED") return;
 
       // Only show toast if there's a specific error message
       if (err.message || err.description) {

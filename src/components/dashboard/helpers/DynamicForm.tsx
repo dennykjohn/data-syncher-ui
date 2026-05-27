@@ -49,6 +49,7 @@ interface DynamicFormProps {
   handleBackButtonClick?: () => void;
   mode?: "create" | "edit";
   destinationName?: string;
+  destinationType?: string;
   sourceName?: string;
   hideSubmitButton?: boolean;
   leftButtons?: React.ReactNode;
@@ -64,6 +65,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   handleBackButtonClick,
   mode,
   destinationName,
+  destinationType,
   sourceName,
   hideSubmitButton = false,
   leftButtons,
@@ -90,6 +92,23 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       selectedAuthType !== "client_certificate"
     ) {
       return false;
+    }
+
+    if (field.name === "destination_schema") {
+      const normalizedDstType = (destinationType || "")
+        .toLowerCase()
+        .replace(/[\s\-._]/g, "");
+      const normalizedDstName = (destinationName || "")
+        .toLowerCase()
+        .replace(/[\s\-._]/g, "");
+      if (
+        normalizedDstType === "googledrive" ||
+        normalizedDstType === "sftp" ||
+        normalizedDstName === "googledrive" ||
+        normalizedDstName === "sftp"
+      ) {
+        return false;
+      }
     }
 
     const dependOn = field.depend_on ?? null;

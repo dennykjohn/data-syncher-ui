@@ -1,6 +1,7 @@
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 import { type Destination } from "@/types/destination";
+import { type ErrorResponseType } from "@/types/error";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -21,7 +22,11 @@ const createDestination = async (
 
 export default function useCreateDestination() {
   const queryClient = useQueryClient();
-  return useMutation<CreateDestinationResponse, Error, Destination | FormData>({
+  return useMutation<
+    CreateDestinationResponse,
+    ErrorResponseType,
+    Destination | FormData
+  >({
     mutationFn: createDestination,
     onSuccess: () => {
       queryClient.invalidateQueries({

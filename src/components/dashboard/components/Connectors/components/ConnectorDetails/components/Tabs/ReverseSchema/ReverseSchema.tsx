@@ -97,7 +97,7 @@ const ReverseSchema = () => {
   const isSnowflakeToFileExport =
     context.source_name?.toLowerCase() === "snowflake" &&
     ["sftp", "sharepoint", "googledrive"].includes(
-      context.destination_name?.toLowerCase() || "",
+      context.destination_name?.toLowerCase().replace(/[\s\-._]/g, "") || "",
     );
 
   const handleDrop = (sourceTable: string, destinationTable: string) => {
