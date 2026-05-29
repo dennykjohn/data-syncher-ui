@@ -103,6 +103,8 @@ const ServerRoutes = {
       `connection/${id}/tables/${tableName}/table-fields/`,
     updateTableEmailGroups: (id: number, tableName: string) =>
       `connection/${id}/tables/${tableName}/email-groups/`,
+    updateTableExportSettings: (id: number, tableName: string) =>
+      `connection/${id}/tables/${tableName}/export-settings/`,
     updateSftpExportSettings: (id: number) =>
       `connection/${id}/sftp-export-settings/`,
     updateSchema: (id: number) => `connection/${id}/fetch-tables/`,

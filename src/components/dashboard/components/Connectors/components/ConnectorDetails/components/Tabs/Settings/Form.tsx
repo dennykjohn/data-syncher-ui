@@ -32,6 +32,7 @@ import { reducer } from "./reducer";
 
 const Form = (props: Connector) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [chunkCountError, setChunkCountError] = useState<string | null>(null);
   const { can } = usePermissions();
 
   const canEdit = can("can_edit_connection_settings");
@@ -53,13 +54,7 @@ const Form = (props: Connector) => {
     time_frequency: time_frequency ?? "",
     safety_interval: safety_interval ?? "",
     execution_order: execution_order ?? "",
-    chunk_count:
-      typeof chunk_count === "number"
-        ? Math.min(
-            Math.max(chunk_count, dst_min_count ?? 0),
-            dst_max_count ?? 1000000,
-          )
-        : (dst_min_count ?? 10),
+    chunk_count: chunk_count ?? dst_min_count ?? 10,
   };
 
   const [formState, dispatch] = useReducer(reducer, initialFormState);
@@ -168,34 +163,34 @@ const Form = (props: Connector) => {
           </NativeSelect.Root>
         </Field.Root>
 
-        <Field.Root maxW="sm" disabled={!canEdit}>
+        <Field.Root maxW="sm" disabled={!canEdit} invalid={!!chunkCountError}>
           <Field.Label>Transfer packet size</Field.Label>
           <NumberInput.Root
             disabled={!canEdit}
-            min={dst_min_count ?? 1}
-            max={dst_max_count ?? 1000000}
             value={String(formState.chunk_count ?? 10)}
             onValueChange={(e) => {
               const value = Number(e.value);
               if (isNaN(value)) return;
 
-              const min = dst_min_count ?? 1;
-              const max = dst_max_count ?? 1000000;
-
               dispatch({
                 type: "SET_FIELD",
                 field: "chunk_count",
-                value: Math.min(Math.max(value, min), max),
+                value: value,
               });
+              setChunkCountError(null);
             }}
           >
             <NumberInput.Control />
             <NumberInput.Input />
           </NumberInput.Root>
-          <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
-            Min count: {dst_min_count?.toLocaleString() || "10,000"} | Max
-            count: {dst_max_count?.toLocaleString() || "1,000,000"}
-          </Field.HelperText>
+          {chunkCountError ? (
+            <Field.ErrorText>{chunkCountError}</Field.ErrorText>
+          ) : (
+            <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+              Min count: {dst_min_count?.toLocaleString() || "10,000"} | Max
+              count: {dst_max_count?.toLocaleString() || "1,000,000"}
+            </Field.HelperText>
+          )}
         </Field.Root>
       </Stack>
 
@@ -253,7 +248,8 @@ const Form = (props: Connector) => {
           <Button
             colorPalette="brand"
             disabled={!canEdit}
-            onClick={() =>
+            onClick={() => {
+              setChunkCountError(null);
               updateSettings(
                 {
                   ...formState,
@@ -264,9 +260,27 @@ const Form = (props: Connector) => {
                       title: "Connector settings updated",
                     });
                   },
+                  onError: (error: unknown) => {
+                    const err = error as {
+                      response?: {
+                        data?: {
+                          chunk_count?: string | string[];
+                          message?: string;
+                        };
+                      };
+                    };
+                    const errors = err.response?.data;
+                    if (errors && (errors.chunk_count || errors.message)) {
+                      const msg =
+                        (Array.isArray(errors.chunk_count)
+                          ? errors.chunk_count[0]
+                          : errors.chunk_count || errors.message) || null;
+                      setChunkCountError(msg);
+                    }
+                  },
                 },
-              )
-            }
+              );
+            }}
             loading={isUpdateOperationPending}
           >
             <MdRefresh />

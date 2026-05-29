@@ -4,19 +4,23 @@ import {
   Box,
   Button,
   Checkbox,
-  Field,
   Flex,
   Grid,
   IconButton,
   Image,
   Input,
   InputGroup,
-  NativeSelect,
   Text,
   VStack,
 } from "@chakra-ui/react";
 
-import { IoMdMail, IoMdOptions, IoMdPlay, IoMdTrash } from "react-icons/io";
+import {
+  IoMdMail,
+  IoMdOptions,
+  IoMdPlay,
+  IoMdSettings,
+  IoMdTrash,
+} from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
 import { PiKeyFill } from "react-icons/pi";
@@ -32,25 +36,36 @@ import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableSt
 import { usePagination } from "@/queryOptions/connector/schema/usePagination";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import useFetchEmailGroups from "@/queryOptions/emailGroups/useFetchEmailGroups";
-import { type Connector, type ConnectorTable } from "@/types/connectors";
+import {
+  type Connector,
+  type ConnectorTable,
+  type ExcelConditionalFormat,
+  type ExcelOptions,
+} from "@/types/connectors";
 
 import { isPrimaryKey } from "../../utils/validation";
 import EmailGroupSelectionModal from "./EmailGroupSelectionModal";
+import { DEFAULT_EXCEL_OPTIONS, cleanRulePayload } from "./ExcelSettings";
 import FieldSelectionModal from "./FieldSelectionModal";
+import TableExportSettingsModal from "./TableExportSettingsModal";
 import useUpdateSelectedFields from "./hooks/useUpdateSelectedFields";
 import useUpdateTableEmailGroups from "./hooks/useUpdateTableEmailGroups";
+import useUpdateTableExportSettings from "./hooks/useUpdateTableExportSettings";
 import { useQueryClient } from "@tanstack/react-query";
 
-type FileFormat = "csv" | "json" | "parquet";
+type FileFormat = "csv" | "json" | "parquet" | "excel";
 
 type TableExportSetting = {
   output_file_name: string;
   target_folder: string;
   file_format: FileFormat;
-  csv_delimiter: string;
-  csv_quote_char: string;
+  csv_delimiter?: string;
+  csv_quote_char?: string;
   add_utc_timestamp: boolean;
   notification_email_group_ids?: number[];
+  excel_sheet_name?: string;
+  excel_options?: ExcelOptions;
+  excel_conditional_formats?: ExcelConditionalFormat[];
 };
 
 type TableExportDefaults = Omit<TableExportSetting, "output_file_name">;
@@ -76,7 +91,36 @@ const DEFAULT_TABLE_SETTINGS: TableExportDefaults = {
 };
 
 const isValidFileFormat = (value: unknown): value is FileFormat =>
-  value === "csv" || value === "json" || value === "parquet";
+  value === "csv" ||
+  value === "json" ||
+  value === "parquet" ||
+  value === "excel";
+
+function safeParseJson<T>(val: unknown): T | undefined {
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val) as T;
+    } catch {
+      return undefined;
+    }
+  }
+  return val as T;
+}
+
+const sanitizeExcelOptions = (
+  opts?: ExcelOptions,
+): ExcelOptions | undefined => {
+  if (!opts) return undefined;
+  const nextOpts = { ...opts };
+  if (nextOpts.sheet_header_enabled === false) {
+    delete nextOpts.sheet_header;
+    delete nextOpts.sheet_header_style;
+    delete nextOpts.sheet_header_row_span;
+    delete (nextOpts as Record<string, unknown>).sheet_header_title;
+    delete (nextOpts as Record<string, unknown>).sheet_header_merge_rows;
+  }
+  return nextOpts;
+};
 
 const normalizeTableSetting = (
   tableName: string,
@@ -94,7 +138,51 @@ const normalizeTableSetting = (
   notification_email_group_ids: Array.isArray(raw?.notification_email_group_ids)
     ? raw.notification_email_group_ids
     : [],
+  excel_sheet_name: raw?.excel_sheet_name || undefined,
+  excel_options:
+    sanitizeExcelOptions(safeParseJson<ExcelOptions>(raw?.excel_options)) ||
+    undefined,
+  excel_conditional_formats:
+    safeParseJson<ExcelConditionalFormat[]>(
+      raw?.excel_conditional_formats,
+    )?.map(cleanRulePayload) || undefined,
 });
+
+const sanitizeTableExportSetting = (
+  setting: TableExportSetting,
+  isEmailSupported: boolean,
+): TableExportSetting => {
+  const base: TableExportSetting = {
+    output_file_name: setting.output_file_name.trim(),
+    target_folder: setting.target_folder.trim(),
+    file_format: setting.file_format,
+    add_utc_timestamp: setting.add_utc_timestamp,
+    ...(isEmailSupported
+      ? {
+          notification_email_group_ids:
+            setting.notification_email_group_ids || [],
+        }
+      : {}),
+  };
+
+  if (setting.file_format === "csv") {
+    base.csv_delimiter = setting.csv_delimiter || ",";
+    base.csv_quote_char = setting.csv_quote_char || '"';
+  } else if (setting.file_format === "excel") {
+    base.excel_sheet_name =
+      setting.excel_sheet_name || setting.excel_options?.sheet_name || "Sheet1";
+    base.excel_options = sanitizeExcelOptions(
+      setting.excel_options || {
+        ...DEFAULT_EXCEL_OPTIONS,
+        sheet_name: base.excel_sheet_name,
+      },
+    );
+    base.excel_conditional_formats =
+      setting.excel_conditional_formats?.map(cleanRulePayload) || [];
+  }
+
+  return base;
+};
 
 const hasApiTableExportSettings = (raw?: Partial<ConnectorTable>) =>
   !!raw &&
@@ -121,20 +209,7 @@ const getReusableTableDefaults = (
     : [],
 });
 
-const isDestinationGoogleDrive = (conn?: Connector) =>
-  conn?.destination_name?.toLowerCase().replace(/[\s\-._]/g, "") ===
-  "googledrive";
-
-const isTargetFolderRequired = (conn?: Connector) =>
-  // Target folder is not mandatory for Google Drive destinations
-  !isDestinationGoogleDrive(conn);
-
-const validateTargetFolder = (value: string, conn?: Connector) =>
-  isTargetFolderRequired(conn)
-    ? value.trim()
-      ? ""
-      : "Target folder is required."
-    : "";
+const validateTargetFolder = (_value: string, _connector?: Connector) => "";
 
 const SnowflakeFileExportSchema = ({
   connector,
@@ -170,9 +245,10 @@ const SnowflakeFileExportSchema = ({
   const [sourceSearch, setSourceSearch] = useState("");
   const [mappingSearch, setMappingSearch] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [expandedMappings, setExpandedMappings] = useState<
-    Record<string, boolean>
-  >({});
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [activeTableForSettings, setActiveTableForSettings] = useState<
+    string | null
+  >(null);
   const [targetFolderErrors, setTargetFolderErrors] = useState<
     Record<string, string>
   >({});
@@ -201,6 +277,27 @@ const SnowflakeFileExportSchema = ({
       connectorId: connector.connection_id,
     });
 
+  const { mutate: updateTableExportSettings, isPending: isUpdatingSettings } =
+    useUpdateTableExportSettings({
+      connectorId: connector.connection_id,
+    });
+
+  const activeTableSettings = useMemo(() => {
+    if (!activeTableForSettings) return null;
+    return (
+      tableExportSettings[activeTableForSettings] ||
+      normalizeTableSetting(activeTableForSettings)
+    );
+  }, [activeTableForSettings, tableExportSettings]);
+
+  const activeTableFields = useMemo(() => {
+    if (!activeTableForSettings) return {};
+    const tableData = sourceTables.find(
+      (t) => t.table === activeTableForSettings,
+    );
+    return tableData?.table_fields || {};
+  }, [activeTableForSettings, sourceTables]);
+
   useEffect(() => {
     if (isSelectionDirty || isSavingSelection) return;
 
@@ -209,15 +306,26 @@ const SnowflakeFileExportSchema = ({
       .map((item) => item.table);
     const nextSelected = Array.from(new Set([...selectedFromSchema]));
 
-    setSelectedTables(nextSelected);
-    setTableExportSettings(() => {
+    setSelectedTables((current) => {
+      if (JSON.stringify(current) === JSON.stringify(nextSelected)) {
+        return current;
+      }
+      return nextSelected;
+    });
+
+    setTableExportSettings((current) => {
       const nextSettings: Record<string, TableExportSetting> = {};
       nextSelected.forEach((tableName) => {
         const schemaRow = sourceTables.find((item) => item.table === tableName);
         nextSettings[tableName] = normalizeTableSetting(tableName, schemaRow);
       });
+
+      if (JSON.stringify(current) === JSON.stringify(nextSettings)) {
+        return current;
+      }
       return nextSettings;
     });
+
     const mostRecentSavedTable = [...nextSelected]
       .reverse()
       .find((tableName) => {
@@ -228,11 +336,15 @@ const SnowflakeFileExportSchema = ({
       const schemaRow = sourceTables.find(
         (item) => item.table === mostRecentSavedTable,
       );
-      setLastSavedDefaults(
-        getReusableTableDefaults(
-          normalizeTableSetting(mostRecentSavedTable, schemaRow),
-        ),
+      const nextDefaults = getReusableTableDefaults(
+        normalizeTableSetting(mostRecentSavedTable, schemaRow),
       );
+      setLastSavedDefaults((current) => {
+        if (JSON.stringify(current) === JSON.stringify(nextDefaults)) {
+          return current;
+        }
+        return nextDefaults;
+      });
     }
     setIsSelectionDirty(false);
   }, [sourceTables, isSelectionDirty, isSavingSelection]);
@@ -304,18 +416,10 @@ const SnowflakeFileExportSchema = ({
         Record<string, TableExportSetting>
       >((acc, table) => {
         const row = tableExportSettings[table] || normalizeTableSetting(table);
-        acc[table] = {
-          ...row,
-          ...(row.file_format === "csv"
-            ? {
-                csv_delimiter: row.csv_delimiter || ",",
-                csv_quote_char: row.csv_quote_char || '"',
-              }
-            : {}),
-          ...(!isEmailSupportedDestination
-            ? { notification_email_group_ids: undefined }
-            : {}),
-        };
+        acc[table] = sanitizeTableExportSetting(
+          row,
+          isEmailSupportedDestination,
+        );
         return acc;
       }, {});
 
@@ -359,10 +463,6 @@ const SnowflakeFileExportSchema = ({
                 ...lastSavedDefaults,
               }),
       }));
-      setExpandedMappings((prev) => ({
-        ...prev,
-        [tableName]: true,
-      }));
       setTargetFolderErrors((prev) => {
         const next = { ...prev };
         delete next[tableName];
@@ -372,36 +472,6 @@ const SnowflakeFileExportSchema = ({
       setIsSelectionDirty(true);
       return [...prev, tableName];
     });
-  };
-
-  const updateTableSetting = (
-    tableName: string,
-    patch: Partial<TableExportSetting>,
-  ) => {
-    setLastInteractedTable(tableName);
-    setTableExportSettings((prev) => ({
-      ...prev,
-      [tableName]: {
-        ...(prev[tableName] || normalizeTableSetting(tableName)),
-        ...patch,
-      },
-    }));
-    if (Object.prototype.hasOwnProperty.call(patch, "target_folder")) {
-      setTargetFolderErrors((prev) => {
-        const next = { ...prev };
-        const nextError = validateTargetFolder(
-          patch.target_folder ?? "",
-          connector,
-        );
-        if (nextError) {
-          next[tableName] = nextError;
-        } else {
-          delete next[tableName];
-        }
-        return next;
-      });
-    }
-    setIsSelectionDirty(true);
   };
 
   const handleSaveSelection = () => {
@@ -427,13 +497,6 @@ const SnowflakeFileExportSchema = ({
 
     if (Object.keys(nextTargetFolderErrors).length > 0) {
       setTargetFolderErrors(nextTargetFolderErrors);
-      setExpandedMappings((prev) => {
-        const next = { ...prev };
-        Object.keys(nextTargetFolderErrors).forEach((table) => {
-          next[table] = true;
-        });
-        return next;
-      });
       toaster.error({
         title: "Target folder is required",
         description:
@@ -451,38 +514,10 @@ const SnowflakeFileExportSchema = ({
     );
 
     const tableExportPayload = selectedTables.reduce<
-      Record<
-        string,
-        {
-          output_file_name: string;
-          target_folder: string;
-          file_format: FileFormat;
-          add_utc_timestamp: boolean;
-          csv_delimiter?: string;
-          csv_quote_char?: string;
-          notification_email_group_ids?: number[];
-        }
-      >
+      Record<string, TableExportSetting>
     >((acc, table) => {
       const row = tableExportSettings[table] || normalizeTableSetting(table);
-      acc[table] = {
-        output_file_name: row.output_file_name.trim() || table,
-        target_folder: row.target_folder.trim(),
-        file_format: row.file_format,
-        add_utc_timestamp: row.add_utc_timestamp,
-        ...(row.file_format === "csv"
-          ? {
-              csv_delimiter: row.csv_delimiter || ",",
-              csv_quote_char: row.csv_quote_char || '"',
-            }
-          : {}),
-        ...(isEmailSupportedDestination
-          ? {
-              notification_email_group_ids:
-                row.notification_email_group_ids || [],
-            }
-          : {}),
-      };
+      acc[table] = sanitizeTableExportSetting(row, isEmailSupportedDestination);
       return acc;
     }, {});
 
@@ -757,11 +792,8 @@ const SnowflakeFileExportSchema = ({
           ) : (
             <VStack align="stretch" gap={2}>
               {filteredSelectedTables.map((item, index) => {
-                const settings =
-                  tableExportSettings[item.table] ||
-                  normalizeTableSetting(item.table);
                 const rowBg = index % 2 === 0 ? "gray.100" : "gray.50";
-                const isExpanded = !!expandedMappings[item.table];
+                const hasError = !!targetFolderErrors[item.table];
 
                 return (
                   <Flex
@@ -792,25 +824,8 @@ const SnowflakeFileExportSchema = ({
                         gap={2}
                         flex={1}
                         minW={0}
-                        onClick={() =>
-                          setExpandedMappings((prev) => ({
-                            ...prev,
-                            [item.table]: !prev[item.table],
-                          }))
-                        }
-                        cursor="pointer"
+                        padding={1.5}
                       >
-                        <Box
-                          padding={1.5}
-                          color="gray.500"
-                          _hover={{
-                            color: "brand.500",
-                            bg: "brand.50",
-                            borderRadius: "full",
-                          }}
-                        >
-                          {isExpanded ? <IoCaretDownSharp /> : <IoMdPlay />}
-                        </Box>
                         <Text
                           fontSize="sm"
                           fontWeight="semibold"
@@ -821,14 +836,21 @@ const SnowflakeFileExportSchema = ({
                           {item.table}
                         </Text>
                       </Flex>
-                      <Flex gap={2} alignItems="center" pr={1}>
+                      <Flex gap={1.5} alignItems="center" pr={1} flexShrink={0}>
                         {(() => {
                           const status = tableStatusData?.tables?.find(
                             (t) => t.table === item.table,
                           )?.status;
-                          if (!status) return null;
                           return (
-                            <Box>
+                            <Box
+                              w="22px"
+                              h="22px"
+                              minW="22px"
+                              flexShrink={0}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                            >
                               {status === "in_progress" && (
                                 <Image
                                   src={SandtimeIcon}
@@ -865,15 +887,16 @@ const SnowflakeFileExportSchema = ({
                               setFieldModalOpen(true);
                             }}
                             borderRadius="full"
-                            height="24px"
-                            width="24px"
-                            minWidth="24px"
-                            fontSize="16px"
+                            height="22px"
+                            width="22px"
+                            minWidth="22px"
+                            flexShrink={0}
+                            fontSize="14px"
                             boxShadow="none"
                             bg="transparent"
                             borderColor="transparent"
+                            color="gray.500"
                             _hover={{
-                              transform: "translateY(-1px)",
                               bg: "brand.50",
                               color: "brand.600",
                             }}
@@ -886,10 +909,10 @@ const SnowflakeFileExportSchema = ({
                         {isEmailSupportedDestination &&
                           (() => {
                             const isEmailConfigured = !!(
-                              tableExportSettings[item.table]
+                              tableExportSettings?.[item.table]
                                 ?.notification_email_group_ids &&
-                              (tableExportSettings[item.table]
-                                ?.notification_email_group_ids?.length || 0) > 0
+                              (tableExportSettings?.[item.table]
+                                ?.notification_email_group_ids?.length ?? 0) > 0
                             );
                             return (
                               <Tooltip content="Select Email Notifications">
@@ -905,10 +928,11 @@ const SnowflakeFileExportSchema = ({
                                     setEmailModalOpen(true);
                                   }}
                                   borderRadius="full"
-                                  height="24px"
-                                  width="24px"
-                                  minWidth="24px"
-                                  fontSize="16px"
+                                  height="22px"
+                                  width="22px"
+                                  minWidth="22px"
+                                  flexShrink={0}
+                                  fontSize="14px"
                                   boxShadow="none"
                                   bg={
                                     isEmailConfigured
@@ -920,7 +944,6 @@ const SnowflakeFileExportSchema = ({
                                   }
                                   borderColor="transparent"
                                   _hover={{
-                                    transform: "translateY(-1px)",
                                     bg: "brand.50",
                                     color: "brand.600",
                                   }}
@@ -932,165 +955,125 @@ const SnowflakeFileExportSchema = ({
                             );
                           })()}
 
-                        <Box
-                          width="24px"
-                          display="flex"
-                          justifyContent="center"
+                        <Tooltip
+                          content={
+                            hasError
+                              ? targetFolderErrors[item.table]
+                              : "Export Settings"
+                          }
                         >
-                          {item.selected_fields &&
-                            item.selected_fields.length > 0 && (
-                              <Tooltip content="Reset to all fields">
-                                <IconButton
-                                  size="xs"
-                                  variant="ghost"
-                                  colorPalette="red"
-                                  onClick={(e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    updateSelectedFields({
-                                      tableName: item.table,
-                                      selected_fields: [],
-                                    });
-                                  }}
-                                  aria-label="Clear selection"
-                                  borderRadius="full"
-                                  height="24px"
-                                  width="24px"
-                                  _hover={{ bg: "red.50" }}
+                          <IconButton
+                            size="xs"
+                            variant="ghost"
+                            colorPalette={hasError ? "red" : "brand"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveTableForSettings(item.table);
+                              setSettingsModalOpen(true);
+                            }}
+                            borderRadius="full"
+                            height="22px"
+                            width="22px"
+                            minWidth="22px"
+                            flexShrink={0}
+                            fontSize="14px"
+                            boxShadow="none"
+                            bg="transparent"
+                            borderColor="transparent"
+                            color={hasError ? "red.500" : "gray.500"}
+                            _hover={{
+                              bg: hasError ? "red.50" : "brand.50",
+                              color: hasError ? "red.600" : "brand.600",
+                            }}
+                            transition="all 0.2s"
+                          >
+                            <IoMdSettings />
+                          </IconButton>
+                        </Tooltip>
+
+                        {(() => {
+                          const hasSelectedFields = !!(
+                            item.selected_fields &&
+                            item.selected_fields.length > 0
+                          );
+                          return (
+                            <Box
+                              w="29px"
+                              h="22px"
+                              minW="29px"
+                              flexShrink={0}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              {hasSelectedFields && (
+                                <Flex
+                                  gap={1.5}
+                                  w="100%"
+                                  h="100%"
+                                  alignItems="center"
+                                  flexShrink={0}
                                 >
-                                  <IoMdTrash />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                        </Box>
+                                  <Box
+                                    w="1px"
+                                    h="14px"
+                                    bg="gray.300"
+                                    flexShrink={0}
+                                  />
+                                  <Tooltip content="Reset to all fields">
+                                    <IconButton
+                                      size="xs"
+                                      variant="ghost"
+                                      colorPalette="red"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateSelectedFields(
+                                          {
+                                            tableName: item.table,
+                                            selected_fields: [],
+                                          },
+                                          {
+                                            onSuccess: () => {
+                                              toaster.success({
+                                                title:
+                                                  "Reset fields successfully",
+                                              });
+                                              queryClient.invalidateQueries({
+                                                queryKey: [
+                                                  "ReverseSchema",
+                                                  connector.connection_id,
+                                                ],
+                                              });
+                                            },
+                                          },
+                                        );
+                                      }}
+                                      borderRadius="full"
+                                      height="22px"
+                                      width="22px"
+                                      minWidth="22px"
+                                      flexShrink={0}
+                                      fontSize="14px"
+                                      boxShadow="none"
+                                      bg="transparent"
+                                      borderColor="transparent"
+                                      color="red.500"
+                                      _hover={{
+                                        bg: "red.50",
+                                        color: "red.600",
+                                      }}
+                                      transition="all 0.2s"
+                                    >
+                                      <IoMdTrash />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Flex>
+                              )}
+                            </Box>
+                          );
+                        })()}
                       </Flex>
                     </Flex>
-
-                    {isExpanded && (
-                      <Flex
-                        width="100%"
-                        direction="column"
-                        gap={1}
-                        pt={1}
-                        px={1}
-                      >
-                        <Box>
-                          <Field.Root gap={0}>
-                            <Field.Label fontSize="xs" color="gray.600" mb={0}>
-                              Target File Name
-                            </Field.Label>
-                            <Input
-                              size="sm"
-                              value={settings.output_file_name}
-                              onChange={(e) =>
-                                updateTableSetting(item.table, {
-                                  output_file_name: e.target.value,
-                                })
-                              }
-                              placeholder="Target file name"
-                            />
-                          </Field.Root>
-                          <Checkbox.Root
-                            mt={2}
-                            colorPalette="brand"
-                            checked={settings.add_utc_timestamp}
-                            onCheckedChange={(details) =>
-                              updateTableSetting(item.table, {
-                                add_utc_timestamp: !!details.checked,
-                              })
-                            }
-                          >
-                            <Checkbox.HiddenInput />
-                            <Checkbox.Label fontSize="sm">
-                              Include timestamp in file name
-                            </Checkbox.Label>
-                            <Checkbox.Control />
-                          </Checkbox.Root>
-                        </Box>
-
-                        <Box>
-                          <Field.Root
-                            gap={0}
-                            required={isTargetFolderRequired(connector)}
-                            invalid={!!targetFolderErrors[item.table]}
-                          >
-                            <Field.Label fontSize="xs" color="gray.600" mb={0}>
-                              Target Folder
-                            </Field.Label>
-                            <Input
-                              size="sm"
-                              value={settings.target_folder}
-                              onChange={(e) =>
-                                updateTableSetting(item.table, {
-                                  target_folder: e.target.value,
-                                })
-                              }
-                              placeholder="Target folder"
-                            />
-                            {targetFolderErrors[item.table] && (
-                              <Field.ErrorText>
-                                {targetFolderErrors[item.table]}
-                              </Field.ErrorText>
-                            )}
-                          </Field.Root>
-                        </Box>
-
-                        <Box>
-                          <Text fontSize="xs" color="gray.600" mb={0}>
-                            File Type
-                          </Text>
-                          <NativeSelect.Root size="sm">
-                            <NativeSelect.Field
-                              value={settings.file_format}
-                              onChange={(e) =>
-                                updateTableSetting(item.table, {
-                                  file_format: e.target.value as FileFormat,
-                                })
-                              }
-                            >
-                              <option value="csv">CSV</option>
-                              <option value="json">JSON</option>
-                              <option value="parquet">Parquet</option>
-                            </NativeSelect.Field>
-                            <NativeSelect.Indicator />
-                          </NativeSelect.Root>
-                        </Box>
-
-                        {settings.file_format === "csv" && (
-                          <Flex gap={2}>
-                            <Box flex={1}>
-                              <Text fontSize="xs" color="gray.600" mb={0}>
-                                CSV Delimiter
-                              </Text>
-                              <Input
-                                size="sm"
-                                value={settings.csv_delimiter}
-                                onChange={(e) =>
-                                  updateTableSetting(item.table, {
-                                    csv_delimiter: e.target.value,
-                                  })
-                                }
-                                placeholder=","
-                              />
-                            </Box>
-                            <Box flex={1}>
-                              <Text fontSize="xs" color="gray.600" mb={0}>
-                                CSV Quote Char
-                              </Text>
-                              <Input
-                                size="sm"
-                                value={settings.csv_quote_char}
-                                onChange={(e) =>
-                                  updateTableSetting(item.table, {
-                                    csv_quote_char: e.target.value,
-                                  })
-                                }
-                                placeholder={'"'}
-                              />
-                            </Box>
-                          </Flex>
-                        )}
-                      </Flex>
-                    )}
                   </Flex>
                 );
               })}
@@ -1135,6 +1118,56 @@ const SnowflakeFileExportSchema = ({
         onSave={handleSaveEmailGroups}
         isSaving={isUpdatingEmails}
       />
+
+      {activeTableForSettings && activeTableSettings && (
+        <TableExportSettingsModal
+          open={settingsModalOpen}
+          onClose={() => {
+            setSettingsModalOpen(false);
+            setActiveTableForSettings(null);
+          }}
+          tableName={activeTableForSettings}
+          settings={activeTableSettings}
+          tableFields={activeTableFields}
+          isSaving={isUpdatingSettings}
+          onSave={(localSettings) => {
+            const normalizedSettings = sanitizeTableExportSetting(
+              {
+                ...localSettings,
+                output_file_name:
+                  localSettings.output_file_name.trim() ||
+                  activeTableForSettings,
+              },
+              isEmailSupportedDestination,
+            );
+
+            updateTableExportSettings(
+              {
+                tableName: activeTableForSettings,
+                settings: normalizedSettings,
+              },
+              {
+                onSuccess: () => {
+                  toaster.success({
+                    title: "Settings saved successfully",
+                  });
+                  setTableExportSettings((prev) => ({
+                    ...prev,
+                    [activeTableForSettings]: normalizedSettings,
+                  }));
+                  setTargetFolderErrors((prev) => {
+                    const next = { ...prev };
+                    delete next[activeTableForSettings];
+                    return next;
+                  });
+                  setSettingsModalOpen(false);
+                  setActiveTableForSettings(null);
+                },
+              },
+            );
+          }}
+        />
+      )}
     </>
   );
 };
