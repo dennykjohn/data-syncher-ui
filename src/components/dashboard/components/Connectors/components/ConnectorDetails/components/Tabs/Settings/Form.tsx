@@ -228,8 +228,8 @@ const Form = (props: Connector) => {
         <Flex gap={4}>
           <Button
             variant="outline"
-            colorPalette="red"
-            color="red.500"
+            colorPalette="brand"
+            color="brand.500"
             loading={isTestOperationPending}
             onClick={() =>
               testConnection(undefined, {

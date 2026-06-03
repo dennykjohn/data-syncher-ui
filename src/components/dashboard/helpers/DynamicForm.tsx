@@ -104,8 +104,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       if (
         normalizedDstType === "googledrive" ||
         normalizedDstType === "sftp" ||
+        normalizedDstType === "amazons3" ||
         normalizedDstName === "googledrive" ||
-        normalizedDstName === "sftp"
+        normalizedDstName === "sftp" ||
+        normalizedDstName === "amazons3"
       ) {
         return false;
       }
