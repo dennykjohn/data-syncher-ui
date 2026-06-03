@@ -315,8 +315,8 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
                 mode === "edit" && params.destinationId ? (
                   <Button
                     variant="outline"
-                    colorPalette="red"
-                    color="red.500"
+                    colorPalette="brand"
+                    color="brand.500"
                     loading={isTriggeringBackend}
                     onClick={() =>
                       triggerBackend(

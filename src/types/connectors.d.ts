@@ -100,6 +100,102 @@ export type ConnectorSettingsApiResponse = {
   migration_status?: string;
 };
 
+export interface ExcelHeaderStyle {
+  fill?: string;
+  font_color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  font_name?: string;
+  font_size?: number;
+  horizontal?: string;
+  vertical?: string;
+  wrap_text?: boolean;
+}
+
+export interface ExcelColumnStyle {
+  column_name: string;
+  width?: number;
+  horizontal?: string;
+  vertical?: string;
+  number_format?: string;
+}
+
+export interface ExcelBodyStyle {
+  font_name?: string;
+  font_size?: number;
+  font_color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  fill?: string;
+  fill_color?: string;
+  background_color?: string;
+  banding_fill?: string;
+  banding_fill_color?: string;
+  banding_background_color?: string;
+  banding_font_color?: string;
+  banding_frequency?: number;
+}
+
+export interface ExcelOptions {
+  sheet_name?: string;
+  auto_filter?: boolean;
+  freeze_panes?: string;
+  freeze_header?: boolean;
+  auto_width?: boolean;
+  date_format?: string;
+  datetime_format?: string;
+  time_format?: string;
+  header_style?: ExcelHeaderStyle;
+  sheet_header_style?: ExcelHeaderStyle;
+  sheet_header?: string;
+  sheet_header_row_span?: number;
+  sheet_header_enabled?: boolean;
+  hidden_columns?: string[];
+  column_styles?: ExcelColumnStyle[];
+  body_style?: ExcelBodyStyle;
+}
+
+export interface ExcelDifferentialStyle {
+  fill?: string;
+  fill_color?: string;
+  background_color?: string;
+  font_color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  horizontal?: string;
+  vertical?: string;
+  wrap_text?: boolean;
+}
+
+export interface ExcelConditionalFormat {
+  type: string;
+  range?: string;
+  column_name?: string;
+  formula?: string | string[];
+  stop_if_true?: boolean;
+  operator?: string;
+  text?: string;
+  rank?: number;
+  percent?: boolean;
+  bottom?: boolean;
+  above_average?: boolean;
+  below_average?: boolean;
+  equal_average?: boolean;
+  time_period?: string;
+  colors?: string[];
+  color?: string;
+  show_value?: boolean;
+  icon_style?: string;
+  value_type?: string;
+  values?: (number | string)[];
+  start_type?: string;
+  start_value?: string | number;
+  end_type?: string;
+  end_value?: string | number;
+  reverse?: boolean;
+  style?: ExcelDifferentialStyle;
+}
+
 export type ConnectorTable = {
   table: string;
   selected: boolean;
@@ -109,11 +205,14 @@ export type ConnectorTable = {
   selected_fields?: string[] | null;
   output_file_name?: string | null;
   target_folder?: string | null;
-  file_format?: "csv" | "json" | "parquet" | string | null;
+  file_format?: "csv" | "json" | "parquet" | "excel" | string | null;
   csv_delimiter?: string | null;
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
   notification_email_group_ids?: number[] | null;
+  excel_sheet_name?: string | null;
+  excel_options?: ExcelOptions | null;
+  excel_conditional_formats?: ExcelConditionalFormat[] | null;
 };
 
 export type ConnectorTablesResponse = {
@@ -128,11 +227,14 @@ export interface ConnectorSelectedTable {
   status: "in_progress" | "completed" | "failed" | null;
   output_file_name?: string | null;
   target_folder?: string | null;
-  file_format?: "csv" | "json" | "parquet" | string | null;
+  file_format?: "csv" | "json" | "parquet" | "excel" | string | null;
   csv_delimiter?: string | null;
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
   notification_email_group_ids?: number[] | null;
+  excel_sheet_name?: string | null;
+  excel_options?: ExcelOptions | null;
+  excel_conditional_formats?: ExcelConditionalFormat[] | null;
 }
 
 // ------------------ Connector Activity Types ------------------
