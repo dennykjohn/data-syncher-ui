@@ -655,21 +655,17 @@ const EmailGroupSelectionModalNew = ({
 
             <Dialog.Body pt={1} pb={3} px={3.5} bg="white">
               <VStack align="stretch" gap={1}>
-                <Text fontSize="xs" fontWeight="semibold" color="gray.600">
-                  Email Preview
-                </Text>
-
                 {/* Dynamic Email Client Mock */}
                 <Box
                   borderWidth="1px"
                   borderColor="gray.200"
                   borderRadius="xl"
                   bg="white"
-                  p={3}
+                  p={2.5}
                   boxShadow="sm"
                   display="flex"
                   flexDirection="column"
-                  gap={1.5}
+                  gap={1}
                 >
                   {/* Header: Sender details */}
                   <Flex
@@ -693,18 +689,23 @@ const EmailGroupSelectionModalNew = ({
                       >
                         DS
                       </Flex>
-                      <Box>
+                      <Flex align="baseline" gap={1.5}>
                         <Text
                           fontSize="11px"
                           fontWeight="bold"
                           color="gray.800"
+                          lineHeight="none"
                         >
                           DataSyncher Alert System
                         </Text>
-                        <Text fontSize="9px" color="gray.500">
-                          support1@datasyncher.com
+                        <Text
+                          fontSize="9.5px"
+                          color="gray.500"
+                          lineHeight="none"
+                        >
+                          &lt;support1@datasyncher.com&gt;
                         </Text>
-                      </Box>
+                      </Flex>
                     </Flex>
                   </Flex>
 
@@ -932,7 +933,7 @@ const EmailGroupSelectionModalNew = ({
                     <Flex align="center" gap={1.5} wrap="wrap">
                       {/* Bold / Italic */}
                       <Flex
-                        gap={1}
+                        gap={3}
                         bg="white"
                         p="1px"
                         borderRadius="md"
@@ -1382,7 +1383,7 @@ const EmailGroupSelectionModalNew = ({
                     {isEditingSubject ? (
                       <Box
                         bg="white"
-                        p={1.5}
+                        p={1}
                         borderRadius="md"
                         borderWidth="1px"
                         borderColor="brand.200"
@@ -1413,7 +1414,7 @@ const EmailGroupSelectionModalNew = ({
                             fontFamily="system-ui"
                             borderColor="gray.300"
                             _focus={{ borderColor: "brand.500" }}
-                            h="24px"
+                            h="20px"
                           />
                           <IconButton
                             aria-label="Save subject"
@@ -1421,9 +1422,9 @@ const EmailGroupSelectionModalNew = ({
                             variant="ghost"
                             colorPalette="green"
                             onClick={saveSubjectInline}
-                            h="22px"
-                            w="22px"
-                            minW="22px"
+                            h="18px"
+                            w="18px"
+                            minW="18px"
                           >
                             <LuCheck size={12} />
                           </IconButton>
@@ -1433,14 +1434,14 @@ const EmailGroupSelectionModalNew = ({
                             variant="ghost"
                             colorPalette="red"
                             onClick={cancelSubjectInline}
-                            h="22px"
-                            w="22px"
-                            minW="22px"
+                            h="18px"
+                            w="18px"
+                            minW="18px"
                           >
                             <LuX size={12} />
                           </IconButton>
                         </Flex>
-                        <Flex align="center" gap={1.5} mt={1.5} flexWrap="wrap">
+                        <Flex align="center" gap={1.5} mt={1} flexWrap="wrap">
                           <Text
                             fontSize="9px"
                             color="gray.500"
@@ -1478,7 +1479,8 @@ const EmailGroupSelectionModalNew = ({
                         justify="space-between"
                         gap={1.5}
                         cursor="pointer"
-                        p="4px"
+                        py="1px"
+                        px="3px"
                         border="1px solid transparent"
                         borderRadius="md"
                         transition="all 0.2s"
@@ -1526,11 +1528,11 @@ const EmailGroupSelectionModalNew = ({
                           variant="ghost"
                           colorPalette="brand"
                           flexShrink={0}
-                          h="20px"
-                          w="20px"
-                          minW="20px"
+                          h="16px"
+                          w="16px"
+                          minW="16px"
                         >
-                          <LuPencil size={11} />
+                          <LuPencil size={9.5} />
                         </IconButton>
                       </Flex>
                     )}
@@ -1553,7 +1555,7 @@ const EmailGroupSelectionModalNew = ({
                     display="flex"
                     flexDirection="column"
                   >
-                    <VStack align="stretch" gap={2.5}>
+                    <VStack align="stretch" gap={1.5}>
                       {/* Greeting recipient */}
                       <Box
                         p="4px"
