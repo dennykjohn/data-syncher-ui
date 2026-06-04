@@ -10,6 +10,8 @@ import {
   Image,
   Input,
   InputGroup,
+  Menu,
+  Portal,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -35,6 +37,10 @@ import { type ReverseSchemaResponse } from "@/queryOptions/connector/reverseSche
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import { usePagination } from "@/queryOptions/connector/schema/usePagination";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
+import {
+  type ExportConfigResponse,
+  useFetchExportConfig,
+} from "@/queryOptions/destination/useFetchExportConfig";
 import useFetchEmailGroups from "@/queryOptions/emailGroups/useFetchEmailGroups";
 import {
   type Connector,
@@ -44,7 +50,7 @@ import {
 } from "@/types/connectors";
 
 import { isPrimaryKey } from "../../utils/validation";
-import EmailGroupSelectionModal from "./EmailGroupSelectionModal";
+import EmailGroupSelectionModal from "./EmailGroupSelectionModalNew";
 import { DEFAULT_EXCEL_OPTIONS, cleanRulePayload } from "./ExcelSettings";
 import FieldSelectionModal from "./FieldSelectionModal";
 import TableExportSettingsModal from "./TableExportSettingsModal";
@@ -63,6 +69,48 @@ type TableExportSetting = {
   csv_quote_char?: string;
   add_utc_timestamp: boolean;
   notification_email_group_ids?: number[];
+  email_custom_fields?: {
+    subject?: string;
+    subject_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    body_fields?: string[];
+    greeting_name?: string;
+    greeting_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    body_content?: string;
+    body_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    team_name?: string;
+    team_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+  };
   excel_sheet_name?: string;
   excel_options?: ExcelOptions;
   excel_conditional_formats?: ExcelConditionalFormat[];
@@ -109,6 +157,7 @@ function safeParseJson<T>(val: unknown): T | undefined {
 
 const sanitizeExcelOptions = (
   opts?: ExcelOptions,
+  defaultHeaderName?: string,
 ): ExcelOptions | undefined => {
   if (!opts) return undefined;
   const nextOpts = { ...opts };
@@ -118,6 +167,9 @@ const sanitizeExcelOptions = (
     delete nextOpts.sheet_header_row_span;
     delete (nextOpts as Record<string, unknown>).sheet_header_title;
     delete (nextOpts as Record<string, unknown>).sheet_header_merge_rows;
+  } else {
+    nextOpts.sheet_header =
+      nextOpts.sheet_header?.trim() || defaultHeaderName || "";
   }
   return nextOpts;
 };
@@ -125,32 +177,145 @@ const sanitizeExcelOptions = (
 const normalizeTableSetting = (
   tableName: string,
   raw?: Partial<ConnectorTable>,
-): TableExportSetting => ({
-  output_file_name: raw?.output_file_name || tableName,
-  target_folder: raw?.target_folder || "",
-  file_format: isValidFileFormat(raw?.file_format) ? raw.file_format : "csv",
-  csv_delimiter: raw?.csv_delimiter || DEFAULT_TABLE_SETTINGS.csv_delimiter,
-  csv_quote_char: raw?.csv_quote_char || DEFAULT_TABLE_SETTINGS.csv_quote_char,
-  add_utc_timestamp:
-    typeof raw?.add_utc_timestamp === "boolean"
-      ? raw.add_utc_timestamp
-      : DEFAULT_TABLE_SETTINGS.add_utc_timestamp,
-  notification_email_group_ids: Array.isArray(raw?.notification_email_group_ids)
-    ? raw.notification_email_group_ids
-    : [],
-  excel_sheet_name: raw?.excel_sheet_name || undefined,
-  excel_options:
-    sanitizeExcelOptions(safeParseJson<ExcelOptions>(raw?.excel_options)) ||
-    undefined,
-  excel_conditional_formats:
-    safeParseJson<ExcelConditionalFormat[]>(
-      raw?.excel_conditional_formats,
-    )?.map(cleanRulePayload) || undefined,
-});
+  exportConfig?: ExportConfigResponse,
+): TableExportSetting => {
+  const defaultFormat = exportConfig?.destination?.default_format || "csv";
+  const defaultCsvDelimiter =
+    exportConfig?.destination?.csv_defaults?.delimiter || ",";
+  const defaultCsvQuoteChar =
+    exportConfig?.destination?.csv_defaults?.quote_char || '"';
+
+  return {
+    output_file_name: raw?.output_file_name || tableName,
+    target_folder: raw?.target_folder || "",
+    file_format: isValidFileFormat(raw?.file_format)
+      ? raw.file_format
+      : isValidFileFormat(defaultFormat)
+        ? defaultFormat
+        : "csv",
+    csv_delimiter: raw?.csv_delimiter || defaultCsvDelimiter,
+    csv_quote_char: raw?.csv_quote_char || defaultCsvQuoteChar,
+    add_utc_timestamp:
+      typeof raw?.add_utc_timestamp === "boolean"
+        ? raw.add_utc_timestamp
+        : DEFAULT_TABLE_SETTINGS.add_utc_timestamp,
+    notification_email_group_ids: Array.isArray(
+      raw?.notification_email_group_ids,
+    )
+      ? raw.notification_email_group_ids
+      : [],
+    email_custom_fields: raw?.email_custom_fields
+      ? {
+          subject:
+            raw.email_custom_fields.subject !== undefined &&
+            raw.email_custom_fields.subject !== null
+              ? raw.email_custom_fields.subject
+              : "",
+          subject_styles: raw.email_custom_fields.subject_styles
+            ? {
+                bold: !!raw.email_custom_fields.subject_styles.bold,
+                italic: !!raw.email_custom_fields.subject_styles.italic,
+                color:
+                  raw.email_custom_fields.subject_styles.color || undefined,
+                font_family:
+                  raw.email_custom_fields.subject_styles.font_family ||
+                  undefined,
+                font_size:
+                  raw.email_custom_fields.subject_styles.font_size || undefined,
+              }
+            : undefined,
+          body_fields: Array.isArray(raw.email_custom_fields.body_fields)
+            ? raw.email_custom_fields.body_fields
+            : undefined,
+          greeting_name:
+            raw.email_custom_fields.greeting_name !== undefined &&
+            raw.email_custom_fields.greeting_name !== null
+              ? raw.email_custom_fields.greeting_name
+              : "",
+          greeting_styles: raw.email_custom_fields.greeting_styles
+            ? {
+                bold: !!raw.email_custom_fields.greeting_styles.bold,
+                italic: !!raw.email_custom_fields.greeting_styles.italic,
+                color:
+                  raw.email_custom_fields.greeting_styles.color || undefined,
+                font_family:
+                  raw.email_custom_fields.greeting_styles.font_family ||
+                  undefined,
+                font_size:
+                  raw.email_custom_fields.greeting_styles.font_size ||
+                  undefined,
+              }
+            : undefined,
+          body_content:
+            raw.email_custom_fields.body_content !== undefined &&
+            raw.email_custom_fields.body_content !== null
+              ? raw.email_custom_fields.body_content
+              : "",
+          body_styles: raw.email_custom_fields.body_styles
+            ? {
+                bold: !!raw.email_custom_fields.body_styles.bold,
+                italic: !!raw.email_custom_fields.body_styles.italic,
+                color: raw.email_custom_fields.body_styles.color || undefined,
+                font_family:
+                  raw.email_custom_fields.body_styles.font_family || undefined,
+                font_size:
+                  raw.email_custom_fields.body_styles.font_size || undefined,
+              }
+            : undefined,
+          team_name:
+            raw.email_custom_fields.team_name !== undefined &&
+            raw.email_custom_fields.team_name !== null
+              ? raw.email_custom_fields.team_name
+              : "",
+          team_styles: raw.email_custom_fields.team_styles
+            ? {
+                bold: !!raw.email_custom_fields.team_styles.bold,
+                italic: !!raw.email_custom_fields.team_styles.italic,
+                color: raw.email_custom_fields.team_styles.color || undefined,
+                font_family:
+                  raw.email_custom_fields.team_styles.font_family || undefined,
+                font_size:
+                  raw.email_custom_fields.team_styles.font_size || undefined,
+              }
+            : undefined,
+          styles: raw.email_custom_fields.styles
+            ? {
+                bold: !!raw.email_custom_fields.styles.bold,
+                italic: !!raw.email_custom_fields.styles.italic,
+                color:
+                  raw.email_custom_fields.styles.color !== undefined &&
+                  raw.email_custom_fields.styles.color !== null
+                    ? raw.email_custom_fields.styles.color
+                    : undefined,
+                font_family:
+                  raw.email_custom_fields.styles.font_family !== undefined &&
+                  raw.email_custom_fields.styles.font_family !== null
+                    ? raw.email_custom_fields.styles.font_family
+                    : undefined,
+                font_size:
+                  raw.email_custom_fields.styles.font_size !== undefined &&
+                  raw.email_custom_fields.styles.font_size !== null
+                    ? raw.email_custom_fields.styles.font_size
+                    : undefined,
+              }
+            : undefined,
+        }
+      : undefined,
+    excel_sheet_name: raw?.excel_sheet_name || undefined,
+    excel_options:
+      sanitizeExcelOptions(safeParseJson<ExcelOptions>(raw?.excel_options)) ||
+      undefined,
+    excel_conditional_formats:
+      safeParseJson<ExcelConditionalFormat[]>(
+        raw?.excel_conditional_formats,
+      )?.map(cleanRulePayload) || undefined,
+  };
+};
 
 const sanitizeTableExportSetting = (
   setting: TableExportSetting,
   isEmailSupported: boolean,
+  defaultSheetName?: string,
 ): TableExportSetting => {
   const base: TableExportSetting = {
     output_file_name: setting.output_file_name.trim(),
@@ -161,6 +326,7 @@ const sanitizeTableExportSetting = (
       ? {
           notification_email_group_ids:
             setting.notification_email_group_ids || [],
+          email_custom_fields: setting.email_custom_fields || undefined,
         }
       : {}),
   };
@@ -176,6 +342,7 @@ const sanitizeTableExportSetting = (
         ...DEFAULT_EXCEL_OPTIONS,
         sheet_name: base.excel_sheet_name,
       },
+      defaultSheetName || setting.output_file_name,
     );
     base.excel_conditional_formats =
       setting.excel_conditional_formats?.map(cleanRulePayload) || [];
@@ -192,22 +359,31 @@ const hasApiTableExportSettings = (raw?: Partial<ConnectorTable>) =>
 
 const getReusableTableDefaults = (
   raw?: Partial<TableExportSetting>,
-): TableExportDefaults => ({
-  target_folder:
-    raw?.target_folder?.trim() ?? DEFAULT_TABLE_SETTINGS.target_folder,
-  file_format: isValidFileFormat(raw?.file_format)
-    ? raw.file_format
-    : DEFAULT_TABLE_SETTINGS.file_format,
-  csv_delimiter: raw?.csv_delimiter || DEFAULT_TABLE_SETTINGS.csv_delimiter,
-  csv_quote_char: raw?.csv_quote_char || DEFAULT_TABLE_SETTINGS.csv_quote_char,
-  add_utc_timestamp:
-    typeof raw?.add_utc_timestamp === "boolean"
-      ? raw.add_utc_timestamp
-      : DEFAULT_TABLE_SETTINGS.add_utc_timestamp,
-  notification_email_group_ids: Array.isArray(raw?.notification_email_group_ids)
-    ? raw.notification_email_group_ids
-    : [],
-});
+  exportConfig?: ExportConfigResponse,
+): TableExportDefaults => {
+  const defaultFormat = exportConfig?.destination?.default_format || "csv";
+  const defaultCsvDelimiter =
+    exportConfig?.destination?.csv_defaults?.delimiter || ",";
+  const defaultCsvQuoteChar =
+    exportConfig?.destination?.csv_defaults?.quote_char || '"';
+
+  return {
+    target_folder:
+      raw?.target_folder?.trim() ?? DEFAULT_TABLE_SETTINGS.target_folder,
+    file_format: isValidFileFormat(raw?.file_format)
+      ? raw.file_format
+      : isValidFileFormat(defaultFormat)
+        ? defaultFormat
+        : "csv",
+    csv_delimiter: raw?.csv_delimiter || defaultCsvDelimiter,
+    csv_quote_char: raw?.csv_quote_char || defaultCsvQuoteChar,
+    add_utc_timestamp:
+      typeof raw?.add_utc_timestamp === "boolean"
+        ? raw.add_utc_timestamp
+        : DEFAULT_TABLE_SETTINGS.add_utc_timestamp,
+    notification_email_group_ids: [],
+  };
+};
 
 const validateTargetFolder = (_value: string, _connector?: Connector) => "";
 
@@ -228,9 +404,12 @@ const SnowflakeFileExportSchema = ({
   );
 
   const { data: emailGroups = [] } = useFetchEmailGroups();
-  const isEmailSupportedDestination = ["sharepoint", "googledrive"].includes(
-    connector.destination_name?.toLowerCase() || "",
+  const { data: exportConfig } = useFetchExportConfig(
+    connector.destination_name,
   );
+  const isEmailSupportedDestination = exportConfig?.destination
+    ? exportConfig.destination.supports_notification_groups
+    : !!connector.supports_notification_groups;
 
   const sourceTables = useMemo(
     () => reverseSchemaData?.source_tables || [],
@@ -266,6 +445,11 @@ const SnowflakeFileExportSchema = ({
   const [activeTableForEmail, setActiveTableForEmail] = useState<string | null>(
     null,
   );
+  const [activeTableForCopy, setActiveTableForCopy] = useState<string | null>(
+    null,
+  );
+  const [copyType, setCopyType] = useState<"email" | "export" | null>(null);
+  const [selectedCopyTargets, setSelectedCopyTargets] = useState<string[]>([]);
 
   const { mutate: updateSelectedFields, isPending: isUpdatingFields } =
     useUpdateSelectedFields({
@@ -286,9 +470,9 @@ const SnowflakeFileExportSchema = ({
     if (!activeTableForSettings) return null;
     return (
       tableExportSettings[activeTableForSettings] ||
-      normalizeTableSetting(activeTableForSettings)
+      normalizeTableSetting(activeTableForSettings, undefined, exportConfig)
     );
-  }, [activeTableForSettings, tableExportSettings]);
+  }, [activeTableForSettings, tableExportSettings, exportConfig]);
 
   const activeTableFields = useMemo(() => {
     if (!activeTableForSettings) return {};
@@ -317,7 +501,11 @@ const SnowflakeFileExportSchema = ({
       const nextSettings: Record<string, TableExportSetting> = {};
       nextSelected.forEach((tableName) => {
         const schemaRow = sourceTables.find((item) => item.table === tableName);
-        nextSettings[tableName] = normalizeTableSetting(tableName, schemaRow);
+        nextSettings[tableName] = normalizeTableSetting(
+          tableName,
+          schemaRow,
+          exportConfig,
+        );
       });
 
       if (JSON.stringify(current) === JSON.stringify(nextSettings)) {
@@ -337,7 +525,8 @@ const SnowflakeFileExportSchema = ({
         (item) => item.table === mostRecentSavedTable,
       );
       const nextDefaults = getReusableTableDefaults(
-        normalizeTableSetting(mostRecentSavedTable, schemaRow),
+        normalizeTableSetting(mostRecentSavedTable, schemaRow, exportConfig),
+        exportConfig,
       );
       setLastSavedDefaults((current) => {
         if (JSON.stringify(current) === JSON.stringify(nextDefaults)) {
@@ -347,7 +536,7 @@ const SnowflakeFileExportSchema = ({
       });
     }
     setIsSelectionDirty(false);
-  }, [sourceTables, isSelectionDirty, isSavingSelection]);
+  }, [sourceTables, isSelectionDirty, isSavingSelection, exportConfig]);
 
   const filteredSourcePanelTables = useMemo(() => {
     const query = sourceSearch.trim().toLowerCase();
@@ -419,6 +608,7 @@ const SnowflakeFileExportSchema = ({
         acc[table] = sanitizeTableExportSetting(
           row,
           isEmailSupportedDestination,
+          table,
         );
         return acc;
       }, {});
@@ -457,7 +647,7 @@ const SnowflakeFileExportSchema = ({
         [tableName]:
           current[tableName] ||
           (hasApiTableExportSettings(schemaRow)
-            ? normalizeTableSetting(tableName, schemaRow)
+            ? normalizeTableSetting(tableName, schemaRow, exportConfig)
             : {
                 output_file_name: tableName,
                 ...lastSavedDefaults,
@@ -487,7 +677,8 @@ const SnowflakeFileExportSchema = ({
       Record<string, string>
     >((acc, table) => {
       const settings =
-        tableExportSettings[table] || normalizeTableSetting(table);
+        tableExportSettings[table] ||
+        normalizeTableSetting(table, undefined, exportConfig);
       const error = validateTargetFolder(settings.target_folder, connector);
       if (error) {
         acc[table] = error;
@@ -516,8 +707,14 @@ const SnowflakeFileExportSchema = ({
     const tableExportPayload = selectedTables.reduce<
       Record<string, TableExportSetting>
     >((acc, table) => {
-      const row = tableExportSettings[table] || normalizeTableSetting(table);
-      acc[table] = sanitizeTableExportSetting(row, isEmailSupportedDestination);
+      const row =
+        tableExportSettings[table] ||
+        normalizeTableSetting(table, undefined, exportConfig);
+      acc[table] = sanitizeTableExportSetting(
+        row,
+        isEmailSupportedDestination,
+        table,
+      );
       return acc;
     }, {});
 
@@ -539,7 +736,10 @@ const SnowflakeFileExportSchema = ({
             selectedTables[selectedTables.length - 1];
           if (templateSourceTable) {
             setLastSavedDefaults(
-              getReusableTableDefaults(tableExportPayload[templateSourceTable]),
+              getReusableTableDefaults(
+                tableExportPayload[templateSourceTable],
+                exportConfig,
+              ),
             );
           }
           queryClient.invalidateQueries({
@@ -566,12 +766,52 @@ const SnowflakeFileExportSchema = ({
     );
   };
 
-  const handleSaveEmailGroups = (selectedGroupIds: number[]) => {
+  const handleSaveEmailGroups = (
+    selectedGroupIds: number[],
+    customFields?: {
+      subject?: string;
+      subject_styles?: {
+        bold?: boolean;
+        italic?: boolean;
+        color?: string;
+        font_family?: string;
+      } | null;
+      body_fields: string[];
+      greeting_name?: string;
+      greeting_styles?: {
+        bold?: boolean;
+        italic?: boolean;
+        color?: string;
+        font_family?: string;
+      } | null;
+      body_content?: string;
+      body_styles?: {
+        bold?: boolean;
+        italic?: boolean;
+        color?: string;
+        font_family?: string;
+      } | null;
+      team_name?: string;
+      team_styles?: {
+        bold?: boolean;
+        italic?: boolean;
+        color?: string;
+        font_family?: string;
+      } | null;
+      styles?: {
+        bold?: boolean;
+        italic?: boolean;
+        color?: string;
+        font_family?: string;
+      } | null;
+    },
+  ) => {
     if (!activeTableForEmail) return;
     updateTableEmailGroups(
       {
         tableName: activeTableForEmail,
         notification_email_group_ids: selectedGroupIds,
+        email_custom_fields: customFields,
       },
       {
         onSuccess: () => {
@@ -580,11 +820,117 @@ const SnowflakeFileExportSchema = ({
             ...prev,
             [activeTableForEmail]: {
               ...(prev[activeTableForEmail] ||
-                normalizeTableSetting(activeTableForEmail)),
+                normalizeTableSetting(
+                  activeTableForEmail,
+                  undefined,
+                  exportConfig,
+                )),
               notification_email_group_ids: selectedGroupIds,
+              email_custom_fields: customFields,
             },
           }));
           setEmailModalOpen(false);
+          queryClient.invalidateQueries({
+            queryKey: ["ReverseSchema", connector.connection_id],
+          });
+        },
+      },
+    );
+  };
+
+  const handleCopySettings = (targetTables: string[]) => {
+    if (!activeTableForCopy) return;
+
+    const sourceSettings =
+      tableExportSettings[activeTableForCopy] ||
+      normalizeTableSetting(activeTableForCopy, undefined, exportConfig);
+    const updatedSettings = { ...tableExportSettings };
+
+    if (copyType === "email") {
+      const sourceEmailGroups =
+        sourceSettings.notification_email_group_ids || [];
+      const sourceEmailCustomFields =
+        sourceSettings.email_custom_fields || undefined;
+      targetTables.forEach((table) => {
+        updatedSettings[table] = {
+          ...(updatedSettings[table] ||
+            normalizeTableSetting(table, undefined, exportConfig)),
+          notification_email_group_ids: sourceEmailGroups,
+          email_custom_fields: sourceEmailCustomFields,
+        };
+      });
+    } else {
+      targetTables.forEach((table) => {
+        const currentTargetSettings =
+          updatedSettings[table] ||
+          normalizeTableSetting(table, undefined, exportConfig);
+
+        const sourceExcelOpts = sourceSettings.excel_options;
+        const targetExcelOpts = currentTargetSettings.excel_options;
+
+        const mergedExcelOptions = sourceExcelOpts
+          ? {
+              ...sourceExcelOpts,
+              sheet_name: targetExcelOpts?.sheet_name,
+              sheet_header: targetExcelOpts?.sheet_header,
+              hidden_columns: targetExcelOpts?.hidden_columns,
+              column_styles: targetExcelOpts?.column_styles,
+            }
+          : undefined;
+
+        updatedSettings[table] = {
+          ...currentTargetSettings,
+          target_folder: sourceSettings.target_folder,
+          file_format: sourceSettings.file_format,
+          csv_delimiter: sourceSettings.csv_delimiter,
+          csv_quote_char: sourceSettings.csv_quote_char,
+          add_utc_timestamp: sourceSettings.add_utc_timestamp,
+          excel_sheet_name: currentTargetSettings.excel_sheet_name,
+          excel_options: mergedExcelOptions,
+          excel_conditional_formats:
+            currentTargetSettings.excel_conditional_formats,
+        };
+      });
+    }
+
+    const truncateFlags = selectedTables.reduce<Record<string, boolean>>(
+      (acc, table) => {
+        acc[table] = false;
+        return acc;
+      },
+      {},
+    );
+
+    const tableExportPayload = selectedTables.reduce<
+      Record<string, TableExportSetting>
+    >((acc, table) => {
+      const row = updatedSettings[table] || normalizeTableSetting(table);
+      acc[table] = sanitizeTableExportSetting(
+        row,
+        isEmailSupportedDestination,
+        table,
+      );
+      return acc;
+    }, {});
+
+    updateSelectedTables(
+      {
+        selected_tables: selectedTables,
+        truncate_flags: truncateFlags,
+        table_export_settings: tableExportPayload,
+      },
+      {
+        onSuccess: () => {
+          toaster.success({
+            title: "Settings copied successfully",
+            description: `Copied ${
+              copyType === "email" ? "email notifications" : "export settings"
+            } from ${activeTableForCopy} to ${targetTables.length} table(s).`,
+          });
+          setTableExportSettings(updatedSettings);
+          setActiveTableForCopy(null);
+          setCopyType(null);
+          setSelectedCopyTargets([]);
           queryClient.invalidateQueries({
             queryKey: ["ReverseSchema", connector.connection_id],
           });
@@ -623,6 +969,7 @@ const SnowflakeFileExportSchema = ({
                 size="sm"
                 value={sourceSearch}
                 onChange={(e) => setSourceSearch(e.target.value)}
+                disabled={!!activeTableForCopy}
               />
             </InputGroup>
           </Flex>
@@ -664,33 +1011,47 @@ const SnowflakeFileExportSchema = ({
                         <Flex alignItems="center" gap={2} flex="1">
                           <Box
                             onClick={(e) => {
+                              if (activeTableForCopy) return;
                               e.stopPropagation();
                               setExpanded((prev) => ({
                                 ...prev,
                                 [table]: !prev[table],
                               }));
                             }}
-                            cursor="pointer"
+                            cursor={
+                              activeTableForCopy ? "not-allowed" : "pointer"
+                            }
                             padding={1}
-                            _hover={{
-                              backgroundColor: "brand.200",
-                              borderRadius: 4,
-                            }}
+                            _hover={
+                              activeTableForCopy
+                                ? undefined
+                                : {
+                                    backgroundColor: "brand.200",
+                                    borderRadius: 4,
+                                  }
+                            }
+                            opacity={activeTableForCopy ? 0.5 : 1}
                           >
                             {isExpanded ? <IoCaretDownSharp /> : <IoMdPlay />}
                           </Box>
-                          <Text fontSize="sm" fontWeight="medium" flex="1">
+                          <Checkbox.Root
+                            colorPalette="brand"
+                            checked={isSelected}
+                            onCheckedChange={() => toggleTableSelection(table)}
+                            disabled={!!activeTableForCopy}
+                          >
+                            <Checkbox.HiddenInput />
+                            <Checkbox.Control />
+                          </Checkbox.Root>
+                          <Text
+                            fontSize="sm"
+                            fontWeight="medium"
+                            flex="1"
+                            truncate
+                          >
                             {table}
                           </Text>
                         </Flex>
-                        <Checkbox.Root
-                          colorPalette="brand"
-                          checked={isSelected}
-                          onCheckedChange={() => toggleTableSelection(table)}
-                        >
-                          <Checkbox.HiddenInput />
-                          <Checkbox.Control />
-                        </Checkbox.Root>
                       </Flex>
 
                       {isExpanded && (
@@ -745,11 +1106,16 @@ const SnowflakeFileExportSchema = ({
               </Flex>
 
               {totalPages > 1 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={jumpToPage}
-                />
+                <Box
+                  opacity={activeTableForCopy ? 0.5 : 1}
+                  pointerEvents={activeTableForCopy ? "none" : "auto"}
+                >
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={jumpToPage}
+                  />
+                </Box>
               )}
             </>
           )}
@@ -805,11 +1171,23 @@ const SnowflakeFileExportSchema = ({
                     borderRadius={4}
                     gap={1}
                     minHeight={COLLAPSED_ROW_MIN_HEIGHT}
-                    draggable
-                    onDragStart={() => setDraggedTable(item.table)}
-                    onDragOver={handleDragOver}
-                    onDrop={() => handleTableDrop(item.table)}
-                    onDragEnd={() => setDraggedTable(null)}
+                    draggable={!activeTableForCopy}
+                    onDragStart={
+                      activeTableForCopy
+                        ? undefined
+                        : () => setDraggedTable(item.table)
+                    }
+                    onDragOver={activeTableForCopy ? undefined : handleDragOver}
+                    onDrop={
+                      activeTableForCopy
+                        ? undefined
+                        : () => handleTableDrop(item.table)
+                    }
+                    onDragEnd={
+                      activeTableForCopy
+                        ? undefined
+                        : () => setDraggedTable(null)
+                    }
                   >
                     <Flex
                       alignItems="center"
@@ -819,6 +1197,40 @@ const SnowflakeFileExportSchema = ({
                       transition="background 0.2s"
                       borderRadius="md"
                     >
+                      <Box
+                        w="24px"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        flexShrink={0}
+                        pl={1}
+                      >
+                        {activeTableForCopy ? (
+                          item.table === activeTableForCopy ? (
+                            <Box
+                              w="8px"
+                              h="8px"
+                              borderRadius="full"
+                              bg="brand.600"
+                            />
+                          ) : (
+                            <Checkbox.Root
+                              colorPalette="brand"
+                              checked={selectedCopyTargets.includes(item.table)}
+                              onCheckedChange={(details) => {
+                                setSelectedCopyTargets((prev) =>
+                                  details.checked === true
+                                    ? [...prev, item.table]
+                                    : prev.filter((t) => t !== item.table),
+                                );
+                              }}
+                            >
+                              <Checkbox.HiddenInput />
+                              <Checkbox.Control />
+                            </Checkbox.Root>
+                          )
+                        ) : null}
+                      </Box>
                       <Flex
                         alignItems="center"
                         gap={2}
@@ -876,35 +1288,48 @@ const SnowflakeFileExportSchema = ({
                           );
                         })()}
 
-                        <Tooltip content="Select Export Fields">
-                          <IconButton
-                            size="xs"
-                            variant="ghost"
-                            colorPalette="brand"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveTableForFields(item.table);
-                              setFieldModalOpen(true);
-                            }}
-                            borderRadius="full"
-                            height="22px"
-                            width="22px"
-                            minWidth="22px"
-                            flexShrink={0}
-                            fontSize="14px"
-                            boxShadow="none"
-                            bg="transparent"
-                            borderColor="transparent"
-                            color="gray.500"
-                            _hover={{
-                              bg: "brand.50",
-                              color: "brand.600",
-                            }}
-                            transition="all 0.2s"
-                          >
-                            <IoMdOptions />
-                          </IconButton>
-                        </Tooltip>
+                        {(() => {
+                          const hasSelectedFields = !!(
+                            item.selected_fields &&
+                            item.selected_fields.length > 0
+                          );
+                          return (
+                            <Tooltip content="Select Export Fields">
+                              <IconButton
+                                size="xs"
+                                variant={hasSelectedFields ? "subtle" : "ghost"}
+                                colorPalette="brand"
+                                disabled={!!activeTableForCopy}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveTableForFields(item.table);
+                                  setFieldModalOpen(true);
+                                }}
+                                borderRadius="full"
+                                height="22px"
+                                width="22px"
+                                minWidth="22px"
+                                flexShrink={0}
+                                fontSize="14px"
+                                boxShadow="none"
+                                bg={
+                                  hasSelectedFields ? "brand.50" : "transparent"
+                                }
+                                color={
+                                  hasSelectedFields ? "brand.600" : "gray.500"
+                                }
+                                borderColor="transparent"
+                                _hover={{
+                                  bg: "brand.50",
+                                  color: "brand.600",
+                                }}
+                                transition="all 0.2s"
+                              >
+                                <IoMdOptions />
+                              </IconButton>
+                            </Tooltip>
+                          );
+                        })()}
 
                         {isEmailSupportedDestination &&
                           (() => {
@@ -915,42 +1340,87 @@ const SnowflakeFileExportSchema = ({
                                 ?.notification_email_group_ids?.length ?? 0) > 0
                             );
                             return (
-                              <Tooltip content="Select Email Notifications">
-                                <IconButton
-                                  size="xs"
-                                  variant={
-                                    isEmailConfigured ? "subtle" : "ghost"
-                                  }
-                                  colorPalette="brand"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTableForEmail(item.table);
-                                    setEmailModalOpen(true);
-                                  }}
-                                  borderRadius="full"
-                                  height="22px"
-                                  width="22px"
-                                  minWidth="22px"
-                                  flexShrink={0}
-                                  fontSize="14px"
-                                  boxShadow="none"
-                                  bg={
-                                    isEmailConfigured
-                                      ? "brand.50"
-                                      : "transparent"
-                                  }
-                                  color={
-                                    isEmailConfigured ? "brand.600" : "gray.500"
-                                  }
-                                  borderColor="transparent"
-                                  _hover={{
-                                    bg: "brand.50",
-                                    color: "brand.600",
-                                  }}
-                                  transition="all 0.2s"
+                              <Tooltip content="Email Notifications">
+                                <Menu.Root
+                                  positioning={{ placement: "bottom-end" }}
                                 >
-                                  <IoMdMail />
-                                </IconButton>
+                                  <Menu.Trigger asChild>
+                                    <IconButton
+                                      size="xs"
+                                      variant={
+                                        isEmailConfigured ? "subtle" : "ghost"
+                                      }
+                                      colorPalette="brand"
+                                      disabled={!!activeTableForCopy}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                      }}
+                                      borderRadius="md"
+                                      height="22px"
+                                      px={1.5}
+                                      minWidth="34px"
+                                      flexShrink={0}
+                                      boxShadow="none"
+                                      bg={
+                                        isEmailConfigured
+                                          ? "brand.50"
+                                          : "transparent"
+                                      }
+                                      color={
+                                        isEmailConfigured
+                                          ? "brand.600"
+                                          : "gray.500"
+                                      }
+                                      borderColor="transparent"
+                                      _hover={{
+                                        bg: "brand.50",
+                                        color: "brand.600",
+                                      }}
+                                      transition="all 0.2s"
+                                    >
+                                      <Flex alignItems="center" gap={0.5}>
+                                        <IoMdMail />
+                                        <IoCaretDownSharp
+                                          style={{ fontSize: "8px" }}
+                                        />
+                                      </Flex>
+                                    </IconButton>
+                                  </Menu.Trigger>
+                                  <Portal>
+                                    <Menu.Positioner>
+                                      <Menu.Content>
+                                        <Menu.Item
+                                          value="edit-email"
+                                          cursor="pointer"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveTableForEmail(item.table);
+                                            setEmailModalOpen(true);
+                                          }}
+                                        >
+                                          Edit
+                                        </Menu.Item>
+                                        <Menu.Item
+                                          value="copy-email"
+                                          cursor="pointer"
+                                          disabled={
+                                            selectedTables.length <= 1 ||
+                                            !item.selected ||
+                                            !isEmailConfigured
+                                          }
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveTableForCopy(item.table);
+                                            setCopyType("email");
+                                            setSelectedCopyTargets([]);
+                                          }}
+                                        >
+                                          Copy
+                                        </Menu.Item>
+                                      </Menu.Content>
+                                    </Menu.Positioner>
+                                  </Portal>
+                                </Menu.Root>
                               </Tooltip>
                             );
                           })()}
@@ -962,33 +1432,73 @@ const SnowflakeFileExportSchema = ({
                               : "Export Settings"
                           }
                         >
-                          <IconButton
-                            size="xs"
-                            variant="ghost"
-                            colorPalette={hasError ? "red" : "brand"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveTableForSettings(item.table);
-                              setSettingsModalOpen(true);
-                            }}
-                            borderRadius="full"
-                            height="22px"
-                            width="22px"
-                            minWidth="22px"
-                            flexShrink={0}
-                            fontSize="14px"
-                            boxShadow="none"
-                            bg="transparent"
-                            borderColor="transparent"
-                            color={hasError ? "red.500" : "gray.500"}
-                            _hover={{
-                              bg: hasError ? "red.50" : "brand.50",
-                              color: hasError ? "red.600" : "brand.600",
-                            }}
-                            transition="all 0.2s"
-                          >
-                            <IoMdSettings />
-                          </IconButton>
+                          <Menu.Root positioning={{ placement: "bottom-end" }}>
+                            <Menu.Trigger asChild>
+                              <IconButton
+                                size="xs"
+                                variant="ghost"
+                                colorPalette={hasError ? "red" : "brand"}
+                                disabled={!!activeTableForCopy}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                                borderRadius="md"
+                                height="22px"
+                                px={1.5}
+                                minWidth="34px"
+                                flexShrink={0}
+                                boxShadow="none"
+                                bg="transparent"
+                                borderColor="transparent"
+                                color={hasError ? "red.500" : "gray.500"}
+                                _hover={{
+                                  bg: hasError ? "red.50" : "brand.50",
+                                  color: hasError ? "red.600" : "brand.600",
+                                }}
+                                transition="all 0.2s"
+                              >
+                                <Flex alignItems="center" gap={0.5}>
+                                  <IoMdSettings />
+                                  <IoCaretDownSharp
+                                    style={{ fontSize: "8px" }}
+                                  />
+                                </Flex>
+                              </IconButton>
+                            </Menu.Trigger>
+                            <Portal>
+                              <Menu.Positioner>
+                                <Menu.Content>
+                                  <Menu.Item
+                                    value="edit-settings"
+                                    cursor="pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTableForSettings(item.table);
+                                      setSettingsModalOpen(true);
+                                    }}
+                                  >
+                                    Edit
+                                  </Menu.Item>
+                                  <Menu.Item
+                                    value="copy-settings"
+                                    cursor="pointer"
+                                    disabled={
+                                      selectedTables.length <= 1 ||
+                                      !item.selected
+                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTableForCopy(item.table);
+                                      setCopyType("export");
+                                      setSelectedCopyTargets([]);
+                                    }}
+                                  >
+                                    Copy
+                                  </Menu.Item>
+                                </Menu.Content>
+                              </Menu.Positioner>
+                            </Portal>
+                          </Menu.Root>
                         </Tooltip>
 
                         {(() => {
@@ -1025,6 +1535,7 @@ const SnowflakeFileExportSchema = ({
                                       size="xs"
                                       variant="ghost"
                                       colorPalette="red"
+                                      disabled={!!activeTableForCopy}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         updateSelectedFields(
@@ -1080,16 +1591,87 @@ const SnowflakeFileExportSchema = ({
             </VStack>
           )}
 
-          <Flex justifyContent="flex-end" pt={2} mt="auto">
-            <Button
-              size="sm"
-              colorPalette="brand"
-              onClick={handleSaveSelection}
-              loading={isSavingSelection}
-              disabled={isDisabled || !isSelectionDirty}
-            >
-              Save
-            </Button>
+          <Flex
+            justifyContent="space-between"
+            alignItems="center"
+            pt={2}
+            mt="auto"
+          >
+            {activeTableForCopy ? (
+              <Flex gap={3} alignItems="center" w="100%">
+                <Checkbox.Root
+                  colorPalette="brand"
+                  checked={
+                    selectedCopyTargets.length > 0 &&
+                    selectedCopyTargets.length ===
+                      filteredSelectedTables.filter(
+                        (t) => t.table !== activeTableForCopy,
+                      ).length
+                      ? true
+                      : selectedCopyTargets.length > 0 &&
+                          selectedCopyTargets.length <
+                            filteredSelectedTables.filter(
+                              (t) => t.table !== activeTableForCopy,
+                            ).length
+                        ? "indeterminate"
+                        : false
+                  }
+                  onCheckedChange={(details) => {
+                    if (details.checked === true) {
+                      setSelectedCopyTargets(
+                        filteredSelectedTables
+                          .map((t) => t.table)
+                          .filter((t) => t !== activeTableForCopy),
+                      );
+                    } else {
+                      setSelectedCopyTargets([]);
+                    }
+                  }}
+                >
+                  <Checkbox.HiddenInput />
+                  <Checkbox.Control />
+                  <Text fontSize="xs" color="gray.600" fontWeight="semibold">
+                    Select All
+                  </Text>
+                </Checkbox.Root>
+                <Flex gap={2} alignItems="center" ml="auto">
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => {
+                      setActiveTableForCopy(null);
+                      setCopyType(null);
+                      setSelectedCopyTargets([]);
+                    }}
+                    disabled={isSavingSelection}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="xs"
+                    colorPalette="brand"
+                    onClick={() => {
+                      handleCopySettings(selectedCopyTargets);
+                    }}
+                    loading={isSavingSelection}
+                    disabled={selectedCopyTargets.length === 0}
+                  >
+                    Paste
+                  </Button>
+                </Flex>
+              </Flex>
+            ) : (
+              <Button
+                size="sm"
+                colorPalette="brand"
+                onClick={handleSaveSelection}
+                loading={isSavingSelection}
+                disabled={isDisabled || !isSelectionDirty}
+                ml="auto"
+              >
+                Save
+              </Button>
+            )}
           </Flex>
         </Flex>
       </Grid>
@@ -1115,6 +1697,13 @@ const SnowflakeFileExportSchema = ({
               ?.notification_email_group_ids) ||
           []
         }
+        initialEmailCustomFields={
+          activeTableForEmail
+            ? tableExportSettings[activeTableForEmail]?.email_custom_fields
+            : undefined
+        }
+        destinationName={connector.destination_name || ""}
+        pathLabel={exportConfig?.destination?.path_label}
         onSave={handleSaveEmailGroups}
         isSaving={isUpdatingEmails}
       />
@@ -1130,6 +1719,7 @@ const SnowflakeFileExportSchema = ({
           settings={activeTableSettings}
           tableFields={activeTableFields}
           isSaving={isUpdatingSettings}
+          supportedFormats={exportConfig?.destination?.supported_formats}
           onSave={(localSettings) => {
             const normalizedSettings = sanitizeTableExportSetting(
               {
@@ -1139,6 +1729,7 @@ const SnowflakeFileExportSchema = ({
                   activeTableForSettings,
               },
               isEmailSupportedDestination,
+              activeTableForSettings,
             );
 
             updateTableExportSettings(

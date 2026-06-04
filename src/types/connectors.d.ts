@@ -61,6 +61,8 @@ export interface Connector {
   reloadingTables?: string[];
   setReloadingTables?: React.Dispatch<React.SetStateAction<string[]>>;
   disable_update_schema?: boolean;
+  is_file_based?: boolean;
+  supports_notification_groups?: boolean;
 }
 
 export interface ConnectorTabsProps {
@@ -98,6 +100,8 @@ export type ConnectorSettingsApiResponse = {
   destination_title: string;
   company_name: string;
   migration_status?: string;
+  is_file_based?: boolean;
+  supports_notification_groups?: boolean;
 };
 
 export interface ExcelHeaderStyle {
@@ -210,6 +214,48 @@ export type ConnectorTable = {
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
   notification_email_group_ids?: number[] | null;
+  email_custom_fields?: {
+    subject?: string;
+    subject_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    body_fields?: string[];
+    greeting_name?: string;
+    greeting_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    body_content?: string;
+    body_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    team_name?: string;
+    team_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+  } | null;
   excel_sheet_name?: string | null;
   excel_options?: ExcelOptions | null;
   excel_conditional_formats?: ExcelConditionalFormat[] | null;
@@ -232,6 +278,48 @@ export interface ConnectorSelectedTable {
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
   notification_email_group_ids?: number[] | null;
+  email_custom_fields?: {
+    subject?: string;
+    subject_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    body_fields?: string[];
+    greeting_name?: string;
+    greeting_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    body_content?: string;
+    body_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    team_name?: string;
+    team_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+  } | null;
   excel_sheet_name?: string | null;
   excel_options?: ExcelOptions | null;
   excel_conditional_formats?: ExcelConditionalFormat[] | null;

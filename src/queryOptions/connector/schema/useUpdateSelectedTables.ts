@@ -21,6 +21,48 @@ type UpdateSelectedTablesPayload = {
       csv_quote_char?: string;
       add_utc_timestamp?: boolean;
       notification_email_group_ids?: number[];
+      email_custom_fields?: {
+        subject?: string;
+        subject_styles?: {
+          bold?: boolean;
+          italic?: boolean;
+          color?: string;
+          font_family?: string;
+          font_size?: string;
+        } | null;
+        body_fields?: string[];
+        greeting_name?: string;
+        greeting_styles?: {
+          bold?: boolean;
+          italic?: boolean;
+          color?: string;
+          font_family?: string;
+          font_size?: string;
+        } | null;
+        body_content?: string;
+        body_styles?: {
+          bold?: boolean;
+          italic?: boolean;
+          color?: string;
+          font_family?: string;
+          font_size?: string;
+        } | null;
+        team_name?: string;
+        team_styles?: {
+          bold?: boolean;
+          italic?: boolean;
+          color?: string;
+          font_family?: string;
+          font_size?: string;
+        } | null;
+        styles?: {
+          bold?: boolean;
+          italic?: boolean;
+          color?: string;
+          font_family?: string;
+          font_size?: string;
+        } | null;
+      };
       excel_sheet_name?: string;
       excel_options?: ExcelOptions;
       excel_conditional_formats?: ExcelConditionalFormat[];

@@ -32,6 +32,7 @@ interface ExcelSettingsProps {
   excelSheetName: string | undefined;
   conditionalFormats: ExcelConditionalFormat[] | undefined;
   tableFields: Record<string, string>;
+  tableName: string;
   onChange: (_patch: {
     excel_sheet_name?: string;
     excel_options?: ExcelOptions;
@@ -87,6 +88,107 @@ const getCssColor = (hex: string | undefined, defaultColor: string): string => {
 export const normalizeRuleType = (type: string | undefined): string => {
   if (!type) return "";
   return type.toLowerCase().replace(/[^a-z0-9]/g, "");
+};
+
+export type ColumnDataType = "numeric" | "datetime" | "boolean" | "text";
+
+export const getColumnDataType = (
+  typeStr: string | undefined,
+): ColumnDataType => {
+  if (!typeStr) return "text";
+  const lower = typeStr.toLowerCase();
+  if (
+    lower.includes("number") ||
+    lower.includes("int") ||
+    lower.includes("float") ||
+    lower.includes("double") ||
+    lower.includes("decimal") ||
+    lower.includes("numeric") ||
+    lower.includes("real")
+  ) {
+    return "numeric";
+  }
+  if (
+    lower.includes("date") ||
+    lower.includes("time") ||
+    lower.includes("timestamp")
+  ) {
+    return "datetime";
+  }
+  if (lower.includes("bool")) {
+    return "boolean";
+  }
+  return "text";
+};
+
+export const isRuleTypeAllowed = (
+  ruleType: string,
+  colDataType: ColumnDataType,
+): boolean => {
+  const norm = ruleType.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (colDataType === "boolean") {
+    return ["cellis", "formula"].includes(norm);
+  }
+  if (colDataType === "text") {
+    return [
+      "cellis",
+      "containstext",
+      "notcontainstext",
+      "beginswith",
+      "endswith",
+      "duplicaterecords",
+      "uniquerecords",
+      "formula",
+    ].includes(norm);
+  }
+  if (colDataType === "datetime") {
+    return ["cellis", "formula", "duplicaterecords", "uniquerecords"].includes(
+      norm,
+    );
+  }
+  return ![
+    "containstext",
+    "notcontainstext",
+    "beginswith",
+    "endswith",
+  ].includes(norm);
+};
+
+export const isOperatorAllowed = (
+  operator: string,
+  colDataType: ColumnDataType,
+): boolean => {
+  if (colDataType === "boolean" || colDataType === "text") {
+    return ["equal", "notEqual"].includes(operator);
+  }
+  return true;
+};
+
+export const getValidationError = (
+  value: string | string[] | undefined,
+  colDataType: ColumnDataType,
+): string | null => {
+  if (value === undefined || value === null) return null;
+  const valStr = Array.isArray(value) ? value[0] : value;
+  if (!valStr || valStr.trim() === "") return null;
+  if (valStr.trim().startsWith("=")) return null;
+
+  if (colDataType === "numeric") {
+    const num = Number(valStr);
+    if (isNaN(num)) {
+      return "Value must be a number or a formula starting with '='";
+    }
+  }
+
+  if (colDataType === "datetime") {
+    const timestamp = Date.parse(valStr);
+    const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(valStr.trim());
+    if (isNaN(timestamp) && !isIsoDate) {
+      return "Value must be a valid date or a formula starting with '='";
+    }
+  }
+
+  return null;
 };
 
 const getIconSetPreview = (style: string) => {
@@ -447,6 +549,7 @@ export default function ExcelSettings({
   excelSheetName,
   conditionalFormats = [],
   tableFields,
+  tableName,
   onChange,
 }: ExcelSettingsProps) {
   const [activeTab, setActiveTab] = useState<
@@ -576,27 +679,41 @@ export default function ExcelSettings({
     patch: Partial<ExcelConditionalFormat>,
   ) => {
     const updated = [...rules];
+    const mergedRule = {
+      ...updated[index],
+      ...patch,
+    };
+
+    const colName = mergedRule.column_name || "";
+    const rawType = tableFields[colName] || "";
+    const colDataType = getColumnDataType(rawType);
+
+    let targetType = normalizeRuleType(mergedRule.type);
+    if (!isRuleTypeAllowed(targetType, colDataType)) {
+      targetType = "cellis";
+    }
+
+    let targetOperator = mergedRule.operator || "equal";
+    if (
+      targetType === "cellis" &&
+      !isOperatorAllowed(targetOperator, colDataType)
+    ) {
+      targetOperator = "equal";
+    }
+
     const prevType = updated[index].type;
-    const newType = patch.type;
-
-    if (newType && normalizeRuleType(newType) !== normalizeRuleType(prevType)) {
-      const typeNorm = normalizeRuleType(newType);
-      const baseRule = {
-        ...updated[index],
-        ...patch,
+    if (targetType !== normalizeRuleType(prevType)) {
+      updated[index] = {
+        type: targetType,
+        column_name: colName,
+        operator: targetOperator,
       };
-
-      const cleanNewRule: ExcelConditionalFormat = {
-        type: typeNorm,
-        range: baseRule.range,
-        column_name: baseRule.column_name,
-      };
-
-      updated[index] = cleanNewRule;
     } else {
       updated[index] = {
         ...updated[index],
         ...patch,
+        type: targetType,
+        operator: targetOperator,
       };
     }
 
@@ -1287,7 +1404,9 @@ export default function ExcelSettings({
                       minHeight={`${24 * (options.sheet_header_row_span ?? 1)}px`}
                       textAlign={sheetHeaderStyle.horizontal || "center"}
                     >
-                      {options.sheet_header || "Report Title Header"}
+                      {options.sheet_header ||
+                        tableName ||
+                        "Report Title Header"}
                     </Flex>
                   </Box>
                 </>
@@ -1937,6 +2056,33 @@ export default function ExcelSettings({
               {rules.map((rule, idx) => {
                 const ruleStyle = rule.style || {};
                 const typeNorm = normalizeRuleType(rule.type);
+                const colName = rule.column_name || "";
+                const rawType = tableFields[colName] || "";
+                const colDataType = getColumnDataType(rawType);
+
+                const minVal = Array.isArray(rule.formula)
+                  ? (rule.formula[0] ?? "")
+                  : (rule.formula ?? "");
+                const minValErr = getValidationError(minVal, colDataType);
+
+                const maxVal = Array.isArray(rule.formula)
+                  ? (rule.formula[1] ?? "")
+                  : "";
+                const maxValErr = getValidationError(maxVal, colDataType);
+
+                const singleVal = Array.isArray(rule.formula)
+                  ? rule.formula.join(",")
+                  : (rule.formula ?? "");
+                const singleValErr = getValidationError(singleVal, colDataType);
+
+                const formulaExpr = Array.isArray(rule.formula)
+                  ? (rule.formula[0] ?? "")
+                  : (rule.formula ?? "");
+                const formulaExprErr =
+                  formulaExpr && !formulaExpr.trim().startsWith("=")
+                    ? "Formula must start with '=' (e.g. =A2>100)"
+                    : null;
+
                 const isStylingInternally = [
                   "colorscale",
                   "databar",
@@ -2007,29 +2153,82 @@ export default function ExcelSettings({
                                   })
                                 }
                               >
-                                <option value="cellis">Cell Value Is</option>
-                                <option value="containstext">
-                                  Contains Text
-                                </option>
-                                <option value="notcontainstext">
-                                  Does Not Contain Text
-                                </option>
-                                <option value="beginswith">Begins With</option>
-                                <option value="endswith">Ends With</option>
-                                <option value="duplicaterecords">
-                                  Duplicate Values
-                                </option>
-                                <option value="uniquerecords">
-                                  Unique Values
-                                </option>
-                                <option value="aboveaverage">
-                                  Above/Below Average
-                                </option>
-                                <option value="top10">Top/Bottom 10</option>
-                                <option value="formula">Custom Formula</option>
-                                <option value="colorscale">Color Scale</option>
-                                <option value="databar">Data Bar</option>
-                                <option value="iconset">Icon Set</option>
+                                {isRuleTypeAllowed("cellis", colDataType) && (
+                                  <option value="cellis">Cell Value Is</option>
+                                )}
+                                {isRuleTypeAllowed(
+                                  "containstext",
+                                  colDataType,
+                                ) && (
+                                  <option value="containstext">
+                                    Contains Text
+                                  </option>
+                                )}
+                                {isRuleTypeAllowed(
+                                  "notcontainstext",
+                                  colDataType,
+                                ) && (
+                                  <option value="notcontainstext">
+                                    Does Not Contain Text
+                                  </option>
+                                )}
+                                {isRuleTypeAllowed(
+                                  "beginswith",
+                                  colDataType,
+                                ) && (
+                                  <option value="beginswith">
+                                    Begins With
+                                  </option>
+                                )}
+                                {isRuleTypeAllowed("endswith", colDataType) && (
+                                  <option value="endswith">Ends With</option>
+                                )}
+                                {isRuleTypeAllowed(
+                                  "duplicaterecords",
+                                  colDataType,
+                                ) && (
+                                  <option value="duplicaterecords">
+                                    Duplicate Values
+                                  </option>
+                                )}
+                                {isRuleTypeAllowed(
+                                  "uniquerecords",
+                                  colDataType,
+                                ) && (
+                                  <option value="uniquerecords">
+                                    Unique Values
+                                  </option>
+                                )}
+                                {isRuleTypeAllowed(
+                                  "aboveaverage",
+                                  colDataType,
+                                ) && (
+                                  <option value="aboveaverage">
+                                    Above/Below Average
+                                  </option>
+                                )}
+                                {isRuleTypeAllowed("top10", colDataType) && (
+                                  <option value="top10">Top/Bottom 10</option>
+                                )}
+                                {isRuleTypeAllowed("formula", colDataType) && (
+                                  <option value="formula">
+                                    Custom Formula
+                                  </option>
+                                )}
+                                {isRuleTypeAllowed(
+                                  "colorscale",
+                                  colDataType,
+                                ) && (
+                                  <option value="colorscale">
+                                    Color Scale
+                                  </option>
+                                )}
+                                {isRuleTypeAllowed("databar", colDataType) && (
+                                  <option value="databar">Data Bar</option>
+                                )}
+                                {isRuleTypeAllowed("iconset", colDataType) && (
+                                  <option value="iconset">Icon Set</option>
+                                )}
                               </NativeSelect.Field>
                               <NativeSelect.Indicator />
                             </NativeSelect.Root>
@@ -2105,24 +2304,66 @@ export default function ExcelSettings({
                                       })
                                     }
                                   >
-                                    <option value="equal">Equal to</option>
-                                    <option value="notEqual">
-                                      Not equal to
-                                    </option>
-                                    <option value="greaterThan">
-                                      Greater than
-                                    </option>
-                                    <option value="lessThan">Less than</option>
-                                    <option value="greaterThanOrEqual">
-                                      Greater than or equal to
-                                    </option>
-                                    <option value="lessThanOrEqual">
-                                      Less than or equal to
-                                    </option>
-                                    <option value="between">Between</option>
-                                    <option value="notBetween">
-                                      Not between
-                                    </option>
+                                    {isOperatorAllowed(
+                                      "equal",
+                                      colDataType,
+                                    ) && (
+                                      <option value="equal">Equal to</option>
+                                    )}
+                                    {isOperatorAllowed(
+                                      "notEqual",
+                                      colDataType,
+                                    ) && (
+                                      <option value="notEqual">
+                                        Not equal to
+                                      </option>
+                                    )}
+                                    {isOperatorAllowed(
+                                      "greaterThan",
+                                      colDataType,
+                                    ) && (
+                                      <option value="greaterThan">
+                                        Greater than
+                                      </option>
+                                    )}
+                                    {isOperatorAllowed(
+                                      "lessThan",
+                                      colDataType,
+                                    ) && (
+                                      <option value="lessThan">
+                                        Less than
+                                      </option>
+                                    )}
+                                    {isOperatorAllowed(
+                                      "greaterThanOrEqual",
+                                      colDataType,
+                                    ) && (
+                                      <option value="greaterThanOrEqual">
+                                        Greater than or equal to
+                                      </option>
+                                    )}
+                                    {isOperatorAllowed(
+                                      "lessThanOrEqual",
+                                      colDataType,
+                                    ) && (
+                                      <option value="lessThanOrEqual">
+                                        Less than or equal to
+                                      </option>
+                                    )}
+                                    {isOperatorAllowed(
+                                      "between",
+                                      colDataType,
+                                    ) && (
+                                      <option value="between">Between</option>
+                                    )}
+                                    {isOperatorAllowed(
+                                      "notBetween",
+                                      colDataType,
+                                    ) && (
+                                      <option value="notBetween">
+                                        Not between
+                                      </option>
+                                    )}
                                   </NativeSelect.Field>
                                   <NativeSelect.Indicator />
                                 </NativeSelect.Root>
@@ -2165,6 +2406,16 @@ export default function ExcelSettings({
                                       }}
                                       placeholder="Min"
                                     />
+                                    {minValErr && (
+                                      <Text
+                                        color="red.500"
+                                        fontSize="9px"
+                                        mt={0.5}
+                                        lineHeight="normal"
+                                      >
+                                        {minValErr}
+                                      </Text>
+                                    )}
                                   </Field.Root>
                                   <Field.Root gap={0}>
                                     <Field.Label
@@ -2198,6 +2449,16 @@ export default function ExcelSettings({
                                       }}
                                       placeholder="Max"
                                     />
+                                    {maxValErr && (
+                                      <Text
+                                        color="red.500"
+                                        fontSize="9px"
+                                        mt={0.5}
+                                        lineHeight="normal"
+                                      >
+                                        {maxValErr}
+                                      </Text>
+                                    )}
                                   </Field.Root>
                                 </Grid>
                               ) : (
@@ -2228,6 +2489,16 @@ export default function ExcelSettings({
                                     }}
                                     placeholder='e.g. 10 or "Draft"'
                                   />
+                                  {singleValErr && (
+                                    <Text
+                                      color="red.500"
+                                      fontSize="9px"
+                                      mt={0.5}
+                                      lineHeight="normal"
+                                    >
+                                      {singleValErr}
+                                    </Text>
+                                  )}
                                 </Field.Root>
                               )}
                             </Grid>
@@ -2260,30 +2531,60 @@ export default function ExcelSettings({
                           )}
 
                           {typeNorm === "formula" && (
-                            <Field.Root gap={0}>
-                              <Field.Label
-                                fontSize="xs"
-                                color="gray.600"
-                                mb={1}
-                              >
-                                Formula Expression
-                              </Field.Label>
-                              <Input
-                                size="xs"
-                                bg="white"
-                                value={
-                                  Array.isArray(rule.formula)
-                                    ? (rule.formula[0] ?? "")
-                                    : (rule.formula ?? "")
-                                }
-                                onChange={(e) =>
-                                  handleUpdateRule(idx, {
-                                    formula: [e.target.value],
-                                  })
-                                }
-                                placeholder="e.g. =A2>100"
-                              />
-                            </Field.Root>
+                            <VStack align="stretch" gap={2}>
+                              <Field.Root gap={0}>
+                                <Field.Label
+                                  fontSize="xs"
+                                  color="gray.600"
+                                  mb={1}
+                                >
+                                  Formula Expression
+                                </Field.Label>
+                                <Input
+                                  size="xs"
+                                  bg="white"
+                                  value={
+                                    Array.isArray(rule.formula)
+                                      ? (rule.formula[0] ?? "")
+                                      : (rule.formula ?? "")
+                                  }
+                                  onChange={(e) =>
+                                    handleUpdateRule(idx, {
+                                      formula: [e.target.value],
+                                    })
+                                  }
+                                  placeholder="e.g. =A2>100"
+                                />
+                                {formulaExprErr && (
+                                  <Text
+                                    color="red.500"
+                                    fontSize="9px"
+                                    mt={0.5}
+                                    lineHeight="normal"
+                                  >
+                                    {formulaExprErr}
+                                  </Text>
+                                )}
+                              </Field.Root>
+                              <Flex h="24px" align="center">
+                                <Checkbox.Root
+                                  size="xs"
+                                  colorPalette="brand"
+                                  checked={rule.stop_if_true ?? false}
+                                  onCheckedChange={(details) =>
+                                    handleUpdateRule(idx, {
+                                      stop_if_true: !!details.checked,
+                                    })
+                                  }
+                                >
+                                  <Checkbox.HiddenInput />
+                                  <Checkbox.Control />
+                                  <Checkbox.Label fontSize="xs">
+                                    Stop If True
+                                  </Checkbox.Label>
+                                </Checkbox.Root>
+                              </Flex>
+                            </VStack>
                           )}
 
                           {typeNorm === "top10" && (

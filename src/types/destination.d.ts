@@ -21,6 +21,8 @@ export interface Destination {
   name: string;
   config_data: Record<string, unknown>;
   fields?: FieldConfig[]; // Fields with read_only property from backend in edit mode
+  is_file_based?: boolean;
+  supports_notification_groups?: boolean;
 }
 
 export type DestinationTableItem = {
@@ -31,4 +33,6 @@ export type DestinationTableItem = {
   updated_at: string;
   cmp: number;
   is_active: boolean;
+  is_file_based?: boolean;
+  supports_notification_groups?: boolean;
 };

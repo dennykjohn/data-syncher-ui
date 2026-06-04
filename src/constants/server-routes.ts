@@ -40,6 +40,8 @@ const ServerRoutes = {
     testDestination: (id: number) => `/destinations/test/${id}/`,
     deleteDestination: (id: number) => `destinations/delete/${id}/`,
     checkKeyPair: () => "dest-check-key-pair/",
+    fetchExportConfig: (destinationName: string) =>
+      `destinations/${destinationName}/export-config/`,
   },
   connector: {
     listConnectorsByPage: ({
