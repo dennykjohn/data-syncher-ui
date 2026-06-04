@@ -94,13 +94,9 @@ const ReverseSchema = () => {
   ]);
 
   const totalDisabledState = shouldShowDisabledState || isMigrationInProgress;
-  const normalizedDestinationName =
-    context.destination_name?.toLowerCase().replace(/[\s\-._]/g, "") || "";
   const isSnowflakeToFileExport =
     context.source_name?.toLowerCase() === "snowflake" &&
-    ["sftp", "sharepoint", "googledrive", "amazons3"].includes(
-      normalizedDestinationName,
-    );
+    !!context.is_file_based;
 
   const handleDrop = (sourceTable: string, destinationTable: string) => {
     mappedRef.current?.handleDrop(sourceTable, destinationTable);

@@ -45,6 +45,7 @@ interface TableExportSettingsModalProps {
   tableFields: Record<string, string | { data_type: string }>;
   onSave: (_settings: TableExportSetting) => void;
   isSaving?: boolean;
+  supportedFormats?: string[];
 }
 
 const TableExportSettingsModal = ({
@@ -55,6 +56,7 @@ const TableExportSettingsModal = ({
   tableFields,
   onSave,
   isSaving = false,
+  supportedFormats,
 }: TableExportSettingsModalProps) => {
   const [prevOpen, setPrevOpen] = useState(open);
   const [localSettings, setLocalSettings] =
@@ -236,10 +238,22 @@ const TableExportSettingsModal = ({
                         })
                       }
                     >
-                      <option value="csv">CSV</option>
-                      <option value="excel">Excel</option>
-                      <option value="json">JSON</option>
-                      <option value="parquet">Parquet</option>
+                      {(supportedFormats && supportedFormats.length > 0
+                        ? supportedFormats
+                        : ["csv", "excel", "json", "parquet"]
+                      ).map((format) => (
+                        <option key={format} value={format}>
+                          {format === "csv"
+                            ? "CSV"
+                            : format === "excel"
+                              ? "Excel"
+                              : format === "json"
+                                ? "JSON"
+                                : format === "parquet"
+                                  ? "Parquet"
+                                  : format.toUpperCase()}
+                        </option>
+                      ))}
                     </NativeSelect.Field>
                     <NativeSelect.Indicator />
                   </NativeSelect.Root>
@@ -296,6 +310,7 @@ const TableExportSettingsModal = ({
                     excelSheetName={localSettings.excel_sheet_name}
                     conditionalFormats={localSettings.excel_conditional_formats}
                     tableFields={normalizedTableFields}
+                    tableName={tableName}
                     onChange={(patch) => updateLocalSetting(patch)}
                   />
                 )}

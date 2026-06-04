@@ -6,6 +6,48 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 type UpdateTableEmailGroupsPayload = {
   tableName: string;
   notification_email_group_ids: number[];
+  email_custom_fields?: {
+    subject?: string;
+    subject_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    body_fields?: string[];
+    greeting_name?: string;
+    greeting_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    body_content?: string;
+    body_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    team_name?: string;
+    team_styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+    styles?: {
+      bold?: boolean;
+      italic?: boolean;
+      color?: string;
+      font_family?: string;
+      font_size?: string;
+    } | null;
+  };
 };
 
 const updateTableEmailGroups = (
@@ -17,7 +59,10 @@ const updateTableEmailGroups = (
       connectorId,
       payload.tableName,
     ),
-    { notification_email_group_ids: payload.notification_email_group_ids },
+    {
+      notification_email_group_ids: payload.notification_email_group_ids,
+      email_custom_fields: payload.email_custom_fields,
+    },
   );
 
 const useUpdateTableEmailGroups = ({
