@@ -63,6 +63,8 @@ export interface Connector {
   disable_update_schema?: boolean;
   is_file_based?: boolean;
   supports_notification_groups?: boolean;
+  root_folder?: string | null;
+  display_name?: string;
 }
 
 export interface ConnectorTabsProps {

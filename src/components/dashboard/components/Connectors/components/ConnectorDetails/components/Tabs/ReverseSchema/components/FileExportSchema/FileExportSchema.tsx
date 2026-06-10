@@ -266,7 +266,7 @@ const normalizeTableSetting = (
             raw.email_custom_fields.team_name !== undefined &&
             raw.email_custom_fields.team_name !== null
               ? raw.email_custom_fields.team_name
-              : "",
+              : "Thanks & Regards,",
           team_styles: raw.email_custom_fields.team_styles
             ? {
                 bold: !!raw.email_custom_fields.team_styles.bold,
@@ -943,6 +943,18 @@ const SnowflakeFileExportSchema = ({
     if (!activeTableForFields) return null;
     return sourceTables.find((t) => t.table === activeTableForFields);
   }, [activeTableForFields, sourceTables]);
+
+  const emailTableData = useMemo(() => {
+    if (!activeTableForEmail) return null;
+    return sourceTables.find((t) => t.table === activeTableForEmail);
+  }, [activeTableForEmail, sourceTables]);
+
+  const emailTableColumnsCount = useMemo(() => {
+    if (!emailTableData) return undefined;
+    return emailTableData.selected_fields
+      ? emailTableData.selected_fields.length
+      : Object.keys(emailTableData.table_fields || {}).length;
+  }, [emailTableData]);
 
   return (
     <>
@@ -1706,6 +1718,26 @@ const SnowflakeFileExportSchema = ({
         pathLabel={exportConfig?.destination?.path_label}
         onSave={handleSaveEmailGroups}
         isSaving={isUpdatingEmails}
+        rootFolder={connector.root_folder}
+        targetFolder={
+          activeTableForEmail
+            ? tableExportSettings[activeTableForEmail]?.target_folder
+            : undefined
+        }
+        outputFileName={
+          activeTableForEmail
+            ? tableExportSettings[activeTableForEmail]?.output_file_name
+            : undefined
+        }
+        fileFormat={
+          activeTableForEmail
+            ? tableExportSettings[activeTableForEmail]?.file_format
+            : undefined
+        }
+        connectionName={connector.source_title}
+        companyName={connector.company_name}
+        sourceDisplayName={connector.display_name}
+        columnsCount={emailTableColumnsCount}
       />
 
       {activeTableForSettings && activeTableSettings && (

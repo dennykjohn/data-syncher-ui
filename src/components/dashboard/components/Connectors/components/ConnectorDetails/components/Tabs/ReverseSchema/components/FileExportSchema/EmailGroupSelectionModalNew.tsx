@@ -126,6 +126,14 @@ interface EmailGroupSelectionModalProps {
     },
   ) => void;
   isSaving?: boolean;
+  rootFolder?: string | null;
+  targetFolder?: string | null;
+  outputFileName?: string | null;
+  fileFormat?: string | null;
+  connectionName?: string;
+  companyName?: string;
+  sourceDisplayName?: string;
+  columnsCount?: number;
 }
 
 const BODY_FIELDS_OPTIONS = [
@@ -144,7 +152,7 @@ const DEFAULT_BODY_FIELDS: string[] = [];
 const DEFAULT_SUBJECT_TEMPLATE =
   "The {destination} export for {table} finished successfully.";
 const DEFAULT_BODY_CONTENT = "";
-const DEFAULT_TEAM_NAME = "";
+const DEFAULT_TEAM_NAME = "Thanks & Regards,";
 
 const getPathLabel = (dest: string, customPathLabel?: string | null) => {
   if (customPathLabel) return customPathLabel;
@@ -164,23 +172,31 @@ const renderTemplateText = (
   template: string,
   tableName: string,
   destination: string,
+  resolvedPath?: string,
+  connectionName?: string,
+  companyName?: string,
+  sourceDisplayName?: string,
+  columnsCount?: number,
 ) => {
   if (!template) return "";
   let val = template;
   val = val.replace(/{table}/g, tableName || "CRYSTAL_VAULT");
   val = val.replace(/{destination}/g, getDestinationTitle(destination));
-  val = val.replace(/{connection}/g, "OC_CONNECTOR");
+  val = val.replace(/{connection}/g, connectionName || "OC_CONNECTOR");
   val = val.replace(
     /{service}/g,
-    `Snowflake to ${getDestinationTitle(destination)}`,
+    `${sourceDisplayName || "Snowflake"} to ${getDestinationTitle(destination)}`,
   );
   val = val.replace(/{status}/g, "successfully");
-  val = val.replace(/{company}/g, "ATC");
-  val = val.replace(/{rows}/g, "30");
-  val = val.replace(/{columns}/g, "7");
+  val = val.replace(/{company}/g, companyName || "ATC");
+  val = val.replace(/{rows}/g, "1,250");
+  val = val.replace(
+    /{columns}/g,
+    columnsCount !== undefined ? String(columnsCount) : "7",
+  );
   val = val.replace(
     /{path}/g,
-    `Snowflake data/${tableName || "CRYSTAL_VAULT"}.xlsx`,
+    resolvedPath || `Snowflake data/${tableName || "CRYSTAL_VAULT"}.xlsx`,
   );
   val = val.replace(/{timestamp}/g, "2026-05-29 07:35:47 UTC");
   return val;
@@ -190,11 +206,21 @@ const renderSubject = (
   template: string,
   tableName: string,
   destination: string,
+  resolvedPath?: string,
+  connectionName?: string,
+  companyName?: string,
+  sourceDisplayName?: string,
+  columnsCount?: number,
 ) => {
   return renderTemplateText(
     template || DEFAULT_SUBJECT_TEMPLATE,
     tableName,
     destination,
+    resolvedPath,
+    connectionName,
+    companyName,
+    sourceDisplayName,
+    columnsCount,
   );
 };
 
@@ -292,8 +318,59 @@ const EmailGroupSelectionModalNew = ({
   pathLabel,
   onSave,
   isSaving,
+  rootFolder,
+  targetFolder,
+  outputFileName,
+  fileFormat,
+  connectionName,
+  companyName,
+  sourceDisplayName,
+  columnsCount,
 }: EmailGroupSelectionModalProps) => {
   const navigate = useNavigate();
+
+  const getFileExtension = (format: string | null | undefined): string => {
+    const norm = format?.toLowerCase() || "";
+    if (norm === "excel") return ".xlsx";
+    if (norm === "parquet") return ".parquet";
+    if (norm === "json") return ".json";
+    return ".csv";
+  };
+
+  const buildPreviewPath = (): string => {
+    let fileName = (outputFileName || "").trim();
+    if (!fileName) {
+      const ext = getFileExtension(fileFormat);
+      fileName = `${tableName || "CRYSTAL_VAULT"}${ext}`;
+    } else {
+      const hasExt = /\.(csv|xlsx|xls|json|parquet)$/i.test(fileName);
+      if (!hasExt) {
+        const ext = getFileExtension(fileFormat);
+        fileName = `${fileName}${ext}`;
+      }
+    }
+
+    const parts = [rootFolder, targetFolder, fileName].map((p) =>
+      (p || "").trim(),
+    );
+    const pathParts = parts
+      .filter(Boolean)
+      .map((p) => {
+        return p.replace(/^\/+|\/+$/g, "");
+      })
+      .filter(Boolean);
+
+    let fullPath = pathParts.join("/");
+
+    const startsWithSlash = rootFolder && rootFolder.trim().startsWith("/");
+    if (startsWithSlash && !fullPath.startsWith("/")) {
+      fullPath = "/" + fullPath;
+    }
+
+    return fullPath || `Snowflake data/${tableName || "CRYSTAL_VAULT"}.xlsx`;
+  };
+
+  const resolvedPath = buildPreviewPath();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [selectedBodyFields, setSelectedBodyFields] =
     useState<string[]>(DEFAULT_BODY_FIELDS);
@@ -1510,6 +1587,10 @@ const EmailGroupSelectionModalNew = ({
                             subjectTemplate,
                             tableName,
                             destinationName,
+                            resolvedPath,
+                            connectionName,
+                            companyName,
+                            sourceDisplayName,
                           ) || (
                             <span
                               style={{
@@ -1842,6 +1923,11 @@ const EmailGroupSelectionModalNew = ({
                                 bodyContent,
                                 tableName,
                                 destinationName,
+                                resolvedPath,
+                                connectionName,
+                                companyName,
+                                sourceDisplayName,
+                                columnsCount,
                               ) || (
                                 <span
                                   style={{
@@ -1883,15 +1969,16 @@ const EmailGroupSelectionModalNew = ({
                               switch (fieldId) {
                                 case "service":
                                   label = "Service";
-                                  valueElement = `Snowflake to ${getDestinationTitle(destinationName)}`;
+                                  valueElement = `${sourceDisplayName || "Snowflake"} to ${getDestinationTitle(destinationName)}`;
                                   break;
                                 case "connection":
                                   label = "Connection";
-                                  valueElement = "OC_CONNECTOR";
+                                  valueElement =
+                                    connectionName || "OC_CONNECTOR";
                                   break;
                                 case "company":
                                   label = "Company";
-                                  valueElement = "ATC";
+                                  valueElement = companyName || "ATC";
                                   break;
                                 case "table":
                                   label = "Table";
@@ -1899,11 +1986,14 @@ const EmailGroupSelectionModalNew = ({
                                   break;
                                 case "rows":
                                   label = "Rows Exported";
-                                  valueElement = "30";
+                                  valueElement = "1,250 (Example)";
                                   break;
                                 case "columns":
                                   label = "Columns Exported";
-                                  valueElement = "7";
+                                  valueElement =
+                                    columnsCount !== undefined
+                                      ? String(columnsCount)
+                                      : "7";
                                   break;
                                 case "path":
                                   label = getPathLabel(
@@ -1923,8 +2013,7 @@ const EmailGroupSelectionModalNew = ({
                                         bodyStyles.italic ? "italic" : "normal"
                                       }
                                     >
-                                      Snowflake data/
-                                      {tableName || "CRYSTAL_VAULT"}.xlsx
+                                      {resolvedPath}
                                     </Text>
                                   );
                                   break;
@@ -2013,31 +2102,19 @@ const EmailGroupSelectionModalNew = ({
                           setActiveSection("team");
                         }}
                       >
-                        <Text
-                          fontFamily={teamStyles.fontFamily}
-                          color={teamStyles.color}
-                          fontSize={teamStyles.fontSize}
-                          fontWeight={teamStyles.bold ? "bold" : "normal"}
-                          fontStyle={teamStyles.italic ? "italic" : "normal"}
-                        >
-                          Thanks & Regards,
-                        </Text>
                         {isEditingTeam ? (
                           <Flex
                             gap={1.5}
-                            align="center"
+                            align="flex-start"
                             mt={1}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Input
+                            <Textarea
                               size="xs"
-                              w="160px"
+                              w="220px"
                               value={tempTeam}
                               onChange={(e) => setTempTeam(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") saveTeamInline();
-                                if (e.key === "Escape") cancelTeamInline();
-                              }}
+                              rows={3}
                               autoFocus
                               bg="white"
                               color={teamStyles.color}
@@ -2048,32 +2125,34 @@ const EmailGroupSelectionModalNew = ({
                                 teamStyles.italic ? "italic" : "normal"
                               }
                               borderColor="gray.300"
-                              h="22px"
+                              _focus={{ borderColor: "brand.500" }}
                             />
-                            <IconButton
-                              aria-label="Save team"
-                              size="xs"
-                              variant="ghost"
-                              colorPalette="green"
-                              onClick={saveTeamInline}
-                              h="20px"
-                              w="20px"
-                              minW="20px"
-                            >
-                              <LuCheck size={11} />
-                            </IconButton>
-                            <IconButton
-                              aria-label="Cancel team"
-                              size="xs"
-                              variant="ghost"
-                              colorPalette="red"
-                              onClick={cancelTeamInline}
-                              h="20px"
-                              w="20px"
-                              minW="20px"
-                            >
-                              <LuX size={11} />
-                            </IconButton>
+                            <Flex direction="column" gap={1}>
+                              <IconButton
+                                aria-label="Save team"
+                                size="xs"
+                                variant="ghost"
+                                colorPalette="green"
+                                onClick={saveTeamInline}
+                                h="20px"
+                                w="20px"
+                                minW="20px"
+                              >
+                                <LuCheck size={11} />
+                              </IconButton>
+                              <IconButton
+                                aria-label="Cancel team"
+                                size="xs"
+                                variant="ghost"
+                                colorPalette="red"
+                                onClick={cancelTeamInline}
+                                h="20px"
+                                w="20px"
+                                minW="20px"
+                              >
+                                <LuX size={11} />
+                              </IconButton>
+                            </Flex>
                           </Flex>
                         ) : (
                           <Box
@@ -2112,6 +2191,7 @@ const EmailGroupSelectionModalNew = ({
                               fontStyle={
                                 teamStyles.italic ? "italic" : "normal"
                               }
+                              whiteSpace="pre-wrap"
                             >
                               {teamName || (
                                 <span
