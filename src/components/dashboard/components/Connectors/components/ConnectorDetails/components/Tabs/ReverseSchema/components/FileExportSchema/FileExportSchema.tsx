@@ -1346,10 +1346,22 @@ const SnowflakeFileExportSchema = ({
                         {isEmailSupportedDestination &&
                           (() => {
                             const isEmailConfigured = !!(
-                              tableExportSettings?.[item.table]
-                                ?.notification_email_group_ids &&
                               (tableExportSettings?.[item.table]
-                                ?.notification_email_group_ids?.length ?? 0) > 0
+                                ?.notification_email_group_ids?.length ?? 0) >
+                                0 ||
+                              (item.notification_email_group_ids?.length ?? 0) >
+                                0 ||
+                              tableExportSettings?.[item.table]
+                                ?.email_custom_fields?.subject ||
+                              tableExportSettings?.[item.table]
+                                ?.email_custom_fields?.body_content ||
+                              (tableExportSettings?.[item.table]
+                                ?.email_custom_fields?.body_fields?.length ??
+                                0) > 0 ||
+                              item.email_custom_fields?.subject ||
+                              item.email_custom_fields?.body_content ||
+                              (item.email_custom_fields?.body_fields?.length ??
+                                0) > 0
                             );
                             return (
                               <Tooltip content="Email Notifications">
@@ -1437,81 +1449,121 @@ const SnowflakeFileExportSchema = ({
                             );
                           })()}
 
-                        <Tooltip
-                          content={
-                            hasError
-                              ? targetFolderErrors[item.table]
-                              : "Export Settings"
-                          }
-                        >
-                          <Menu.Root positioning={{ placement: "bottom-end" }}>
-                            <Menu.Trigger asChild>
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                colorPalette={hasError ? "red" : "brand"}
-                                disabled={!!activeTableForCopy}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                }}
-                                borderRadius="md"
-                                height="22px"
-                                px={1.5}
-                                minWidth="34px"
-                                flexShrink={0}
-                                boxShadow="none"
-                                bg="transparent"
-                                borderColor="transparent"
-                                color={hasError ? "red.500" : "gray.500"}
-                                _hover={{
-                                  bg: hasError ? "red.50" : "brand.50",
-                                  color: hasError ? "red.600" : "brand.600",
-                                }}
-                                transition="all 0.2s"
+                        {(() => {
+                          const isSettingsConfigured =
+                            hasApiTableExportSettings(item) ||
+                            !!(
+                              tableExportSettings?.[item.table] &&
+                              (tableExportSettings[item.table].target_folder ||
+                                tableExportSettings[item.table]
+                                  .output_file_name !== item.table ||
+                                tableExportSettings[item.table].file_format !==
+                                  (exportConfig?.destination?.default_format ||
+                                    "csv") ||
+                                tableExportSettings[item.table]
+                                  .excel_sheet_name ||
+                                tableExportSettings[item.table].excel_options ||
+                                (tableExportSettings[item.table]
+                                  .excel_conditional_formats?.length ?? 0) > 0)
+                            );
+                          return (
+                            <Tooltip
+                              content={
+                                hasError
+                                  ? targetFolderErrors[item.table]
+                                  : "Export Settings"
+                              }
+                            >
+                              <Menu.Root
+                                positioning={{ placement: "bottom-end" }}
                               >
-                                <Flex alignItems="center" gap={0.5}>
-                                  <IoMdSettings />
-                                  <IoCaretDownSharp
-                                    style={{ fontSize: "8px" }}
-                                  />
-                                </Flex>
-                              </IconButton>
-                            </Menu.Trigger>
-                            <Portal>
-                              <Menu.Positioner>
-                                <Menu.Content>
-                                  <Menu.Item
-                                    value="edit-settings"
-                                    cursor="pointer"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveTableForSettings(item.table);
-                                      setSettingsModalOpen(true);
-                                    }}
-                                  >
-                                    Edit
-                                  </Menu.Item>
-                                  <Menu.Item
-                                    value="copy-settings"
-                                    cursor="pointer"
-                                    disabled={
-                                      selectedTables.length <= 1 ||
-                                      !item.selected
+                                <Menu.Trigger asChild>
+                                  <IconButton
+                                    size="xs"
+                                    variant={
+                                      hasError
+                                        ? "ghost"
+                                        : isSettingsConfigured
+                                          ? "subtle"
+                                          : "ghost"
                                     }
+                                    colorPalette={hasError ? "red" : "brand"}
+                                    disabled={!!activeTableForCopy}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setActiveTableForCopy(item.table);
-                                      setCopyType("export");
-                                      setSelectedCopyTargets([]);
                                     }}
+                                    borderRadius="md"
+                                    height="22px"
+                                    px={1.5}
+                                    minWidth="34px"
+                                    flexShrink={0}
+                                    boxShadow="none"
+                                    bg={
+                                      hasError
+                                        ? "transparent"
+                                        : isSettingsConfigured
+                                          ? "brand.50"
+                                          : "transparent"
+                                    }
+                                    borderColor="transparent"
+                                    color={
+                                      hasError
+                                        ? "red.500"
+                                        : isSettingsConfigured
+                                          ? "brand.600"
+                                          : "gray.500"
+                                    }
+                                    _hover={{
+                                      bg: hasError ? "red.50" : "brand.50",
+                                      color: hasError ? "red.600" : "brand.600",
+                                    }}
+                                    transition="all 0.2s"
                                   >
-                                    Copy
-                                  </Menu.Item>
-                                </Menu.Content>
-                              </Menu.Positioner>
-                            </Portal>
-                          </Menu.Root>
-                        </Tooltip>
+                                    <Flex alignItems="center" gap={0.5}>
+                                      <IoMdSettings />
+                                      <IoCaretDownSharp
+                                        style={{ fontSize: "8px" }}
+                                      />
+                                    </Flex>
+                                  </IconButton>
+                                </Menu.Trigger>
+                                <Portal>
+                                  <Menu.Positioner>
+                                    <Menu.Content>
+                                      <Menu.Item
+                                        value="edit-settings"
+                                        cursor="pointer"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveTableForSettings(item.table);
+                                          setSettingsModalOpen(true);
+                                        }}
+                                      >
+                                        Edit
+                                      </Menu.Item>
+                                      <Menu.Item
+                                        value="copy-settings"
+                                        cursor="pointer"
+                                        disabled={
+                                          selectedTables.length <= 1 ||
+                                          !item.selected
+                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveTableForCopy(item.table);
+                                          setCopyType("export");
+                                          setSelectedCopyTargets([]);
+                                        }}
+                                      >
+                                        Copy
+                                      </Menu.Item>
+                                    </Menu.Content>
+                                  </Menu.Positioner>
+                                </Portal>
+                              </Menu.Root>
+                            </Tooltip>
+                          );
+                        })()}
 
                         {(() => {
                           const hasSelectedFields = !!(
