@@ -1677,7 +1677,7 @@ const EmailGroupSelectionModalNew = ({
                                 if (e.key === "Enter") saveGreetingInline();
                                 if (e.key === "Escape") cancelGreetingInline();
                               }}
-                              placeholder="Enter greeting (e.g., Hi, Rahul)..."
+                              placeholder="Enter greeting (e.g., Hi)..."
                               autoFocus
                               bg="white"
                               color={greetingStyles.color}

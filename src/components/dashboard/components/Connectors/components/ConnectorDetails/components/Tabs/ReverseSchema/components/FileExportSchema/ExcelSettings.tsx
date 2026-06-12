@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -84,6 +83,14 @@ const getCssColor = (hex: string | undefined, defaultColor: string): string => {
   if (clean.startsWith("#")) return clean;
   if (/^[0-9A-Fa-f]{3,6}$/.test(clean)) return `#${clean}`;
   return clean;
+};
+
+const getCssAlignItems = (valign: string | undefined): string => {
+  if (!valign) return "center";
+  const v = valign.toLowerCase();
+  if (v === "top") return "flex-start";
+  if (v === "bottom") return "flex-end";
+  return "center";
 };
 
 export const normalizeRuleType = (type: string | undefined): string => {
@@ -299,6 +306,8 @@ export const cleanRulePayload = (
   if (rule.stop_if_true !== undefined) {
     base.stop_if_true = rule.stop_if_true;
   }
+
+  base.highlight_scope = rule.highlight_scope || "cell";
 
   const cleanStyle = (
     s: ExcelDifferentialStyle | undefined,
@@ -566,6 +575,24 @@ export default function ExcelSettings({
     options.sheet_header_style || DEFAULT_SHEET_HEADER_STYLE;
   const colNames = Object.keys(tableFields || {});
   const rules = conditionalFormats || [];
+  console.log("ExcelSettings render rules:", rules);
+
+  const prevRulesLengthRef = useRef(rules.length);
+
+  useEffect(() => {
+    if (rules.length > prevRulesLengthRef.current) {
+      setTimeout(() => {
+        const lastRuleEl = document.getElementById(
+          `excel-rule-${rules.length - 1}`,
+        );
+        if (lastRuleEl) {
+          lastRuleEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      }, 50);
+    }
+    prevRulesLengthRef.current = rules.length;
+  }, [rules.length]);
+
   const sheetName = options.sheet_name || excelSheetName || "";
   const isSheetHeaderEnabled = !!(
     options.sheet_header_enabled ?? options.sheet_header !== undefined
@@ -679,6 +706,7 @@ export default function ExcelSettings({
     index: number,
     patch: Partial<ExcelConditionalFormat>,
   ) => {
+    console.log("handleUpdateRule index:", index, "patch:", patch);
     const updated = [...rules];
     const mergedRule = {
       ...updated[index],
@@ -718,8 +746,15 @@ export default function ExcelSettings({
       };
     }
 
+    console.log("handleUpdateRule output updated rule:", updated[index]);
+    const cleaned = updated.map(cleanRulePayload);
+    console.log(
+      "handleUpdateRule calling onChange with cleaned rules:",
+      cleaned,
+    );
+
     onChange({
-      excel_conditional_formats: updated.map(cleanRulePayload),
+      excel_conditional_formats: cleaned,
     });
   };
 
@@ -1328,6 +1363,33 @@ export default function ExcelSettings({
                       </NativeSelect.Root>
                     </Field.Root>
 
+                    <Field.Root gap={0} width="160px">
+                      <Field.Label
+                        fontSize="xs"
+                        fontWeight="semibold"
+                        color="gray.600"
+                        mb={0.5}
+                      >
+                        Vertical Alignment
+                      </Field.Label>
+                      <NativeSelect.Root size="xs">
+                        <NativeSelect.Field
+                          bg="white"
+                          value={sheetHeaderStyle.vertical ?? "center"}
+                          onChange={(e) =>
+                            updateSheetHeaderStyle({
+                              vertical: e.target.value,
+                            })
+                          }
+                        >
+                          <option value="top">Top</option>
+                          <option value="center">Center</option>
+                          <option value="bottom">Bottom</option>
+                        </NativeSelect.Field>
+                        <NativeSelect.Indicator />
+                      </NativeSelect.Root>
+                    </Field.Root>
+
                     <HStack gap={4} height="24px" align="center">
                       <Checkbox.Root
                         size="sm"
@@ -1398,11 +1460,11 @@ export default function ExcelSettings({
                       fontSize={`${sheetHeaderStyle.font_size ?? 16}px`}
                       fontFamily={sheetHeaderStyle.font_name || "Calibri"}
                       justifyContent={sheetHeaderStyle.horizontal || "center"}
-                      alignItems={sheetHeaderStyle.vertical || "center"}
+                      alignItems={getCssAlignItems(sheetHeaderStyle.vertical)}
                       borderRadius="sm"
                       border="1px solid"
                       borderColor="gray.300"
-                      minHeight={`${24 * (options.sheet_header_row_span ?? 1)}px`}
+                      minHeight={`${Math.max(45, 24 * (options.sheet_header_row_span ?? 1))}px`}
                       textAlign={sheetHeaderStyle.horizontal || "center"}
                     >
                       {options.sheet_header ||
@@ -1546,6 +1608,31 @@ export default function ExcelSettings({
                   </NativeSelect.Root>
                 </Field.Root>
 
+                <Field.Root gap={0} width="160px">
+                  <Field.Label
+                    fontSize="xs"
+                    fontWeight="semibold"
+                    color="gray.600"
+                    mb={0.5}
+                  >
+                    Vertical Alignment
+                  </Field.Label>
+                  <NativeSelect.Root size="xs">
+                    <NativeSelect.Field
+                      bg="white"
+                      value={headerStyle.vertical ?? "center"}
+                      onChange={(e) =>
+                        updateHeaderStyle({ vertical: e.target.value })
+                      }
+                    >
+                      <option value="top">Top</option>
+                      <option value="center">Center</option>
+                      <option value="bottom">Bottom</option>
+                    </NativeSelect.Field>
+                    <NativeSelect.Indicator />
+                  </NativeSelect.Root>
+                </Field.Root>
+
                 <HStack gap={4} height="24px" align="center">
                   <Checkbox.Root
                     size="sm"
@@ -1632,11 +1719,11 @@ export default function ExcelSettings({
                   fontSize={`${headerStyle.font_size ?? 11}px`}
                   fontFamily={headerStyle.font_name || "Calibri"}
                   justifyContent={headerStyle.horizontal || "center"}
-                  alignItems={headerStyle.vertical || "center"}
+                  alignItems={getCssAlignItems(headerStyle.vertical)}
                   borderRadius="sm"
                   border="1px solid"
                   borderColor="gray.300"
-                  minHeight="24px"
+                  minHeight="45px"
                   textAlign={headerStyle.horizontal || "center"}
                 >
                   {sheetName || "Sheet1"} Header Column
@@ -2093,6 +2180,7 @@ export default function ExcelSettings({
                 return (
                   <Box
                     key={idx}
+                    id={`excel-rule-${idx}`}
                     p={2}
                     bg="white"
                     border="1px solid"
@@ -3397,6 +3485,117 @@ export default function ExcelSettings({
                               </Checkbox.Label>
                             </Checkbox.Root>
                           </Flex>
+
+                          {/* Highlight Scope Selection */}
+                          <Field.Root gap={0} mt={1}>
+                            <Field.Label
+                              fontSize="xs"
+                              fontWeight="semibold"
+                              color="gray.600"
+                              mb={1}
+                            >
+                              Highlight Scope
+                            </Field.Label>
+                            <HStack
+                              gap={4}
+                              height="24px"
+                              className="checkbox-row"
+                              align="center"
+                            >
+                              <Flex
+                                align="center"
+                                gap={1.5}
+                                cursor="pointer"
+                                userSelect="none"
+                                onClick={() => {
+                                  console.log("Cell Only clicked");
+                                  handleUpdateRule(idx, {
+                                    highlight_scope: "cell",
+                                  });
+                                }}
+                              >
+                                <Box
+                                  w="14px"
+                                  h="14px"
+                                  borderRadius="full"
+                                  border="1px solid"
+                                  borderColor={
+                                    rule.highlight_scope !== "entire_row"
+                                      ? "brand.500"
+                                      : "gray.300"
+                                  }
+                                  bg="white"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  transition="border-color 0.2s"
+                                >
+                                  {rule.highlight_scope !== "entire_row" && (
+                                    <Box
+                                      w="6px"
+                                      h="6px"
+                                      borderRadius="full"
+                                      bg="brand.500"
+                                    />
+                                  )}
+                                </Box>
+                                <Text
+                                  fontSize="xs"
+                                  color="gray.700"
+                                  fontWeight="medium"
+                                >
+                                  Cell Only
+                                </Text>
+                              </Flex>
+
+                              <Flex
+                                align="center"
+                                gap={1.5}
+                                cursor="pointer"
+                                userSelect="none"
+                                onClick={() => {
+                                  console.log("Entire Row clicked");
+                                  handleUpdateRule(idx, {
+                                    highlight_scope: "entire_row",
+                                  });
+                                }}
+                              >
+                                <Box
+                                  w="14px"
+                                  h="14px"
+                                  borderRadius="full"
+                                  border="1px solid"
+                                  borderColor={
+                                    rule.highlight_scope === "entire_row"
+                                      ? "brand.500"
+                                      : "gray.300"
+                                  }
+                                  bg="white"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  transition="border-color 0.2s"
+                                >
+                                  {rule.highlight_scope === "entire_row" && (
+                                    <Box
+                                      w="6px"
+                                      h="6px"
+                                      borderRadius="full"
+                                      bg="brand.500"
+                                    />
+                                  )}
+                                </Box>
+                                <Text
+                                  fontSize="xs"
+                                  color="gray.700"
+                                  fontWeight="medium"
+                                >
+                                  Entire Row
+                                </Text>
+                              </Flex>
+                            </HStack>
+                          </Field.Root>
+
                           {/* Live Preview Box */}
                           <Box
                             mt={1}

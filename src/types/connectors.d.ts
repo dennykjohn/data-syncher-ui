@@ -84,6 +84,10 @@ export interface Connector {
   created_by_name?: string | null;
   updated_by_name?: string | null;
   modified_by_name?: string | null;
+  is_file_based?: boolean;
+  supports_notification_groups?: boolean;
+  root_folder?: string | null;
+  display_name?: string;
 }
 
 export interface ConnectorTabsProps {
@@ -129,6 +133,8 @@ export type ConnectorSettingsApiResponse = {
   created_by_name?: string | null;
   updated_by_name?: string | null;
   modified_by_name?: string | null;
+  is_file_based?: boolean;
+  supports_notification_groups?: boolean;
 };
 
 export interface ExcelHeaderStyle {
@@ -202,6 +208,7 @@ export interface ExcelConditionalFormat {
   type: string;
   range?: string;
   column_name?: string;
+  highlight_scope?: "cell" | "entire_row";
   formula?: string | string[];
   stop_if_true?: boolean;
   operator?: string;

@@ -21,6 +21,8 @@ export interface Destination {
   name: string;
   config_data: Record<string, unknown>;
   fields?: FieldConfig[]; // Fields with read_only property from backend in edit mode
+  is_file_based?: boolean;
+  supports_notification_groups?: boolean;
 }
 
 type AuditUser = {
@@ -45,4 +47,6 @@ export type DestinationTableItem = {
   created_by_name?: string | null;
   updated_by_name?: string | null;
   modified_by_name?: string | null;
+  is_file_based?: boolean;
+  supports_notification_groups?: boolean;
 };
