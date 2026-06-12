@@ -35,6 +35,11 @@ const getModifiedByName = (destination: DestinationTableItem) =>
   getFirstName(destination.updated_by_name) ||
   "";
 
+const getCreatedByName = (destination: DestinationTableItem) =>
+  getFirstName(destination.created_by) ||
+  getFirstName(destination.created_by_name) ||
+  "";
+
 const columns: Column<DestinationTableItem>[] = [
   { header: "Name", accessor: "name" },
   {
@@ -71,13 +76,7 @@ const columns: Column<DestinationTableItem>[] = [
       <Text fontSize="sm">{getCreatedByName(destination) || "--"}</Text>
     ),
   },
-  {
-    header: "Modified By",
-    accessor: "modified_by",
-    render: (_, destination) => (
-      <Text fontSize="sm">{getModifiedByName(destination) || "--"}</Text>
-    ),
-  },
+
   {
     header: "Modified At",
     accessor: "modified_at",
