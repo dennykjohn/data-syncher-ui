@@ -85,6 +85,14 @@ const getCssColor = (hex: string | undefined, defaultColor: string): string => {
   return clean;
 };
 
+const getCssAlignItems = (valign: string | undefined): string => {
+  if (!valign) return "center";
+  const v = valign.toLowerCase();
+  if (v === "top") return "flex-start";
+  if (v === "bottom") return "flex-end";
+  return "center";
+};
+
 export const normalizeRuleType = (type: string | undefined): string => {
   if (!type) return "";
   return type.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -565,6 +573,23 @@ export default function ExcelSettings({
     options.sheet_header_style || DEFAULT_SHEET_HEADER_STYLE;
   const colNames = Object.keys(tableFields || {});
   const rules = conditionalFormats || [];
+
+  const prevRulesLengthRef = useRef(rules.length);
+
+  useEffect(() => {
+    if (rules.length > prevRulesLengthRef.current) {
+      setTimeout(() => {
+        const lastRuleEl = document.getElementById(
+          `excel-rule-${rules.length - 1}`,
+        );
+        if (lastRuleEl) {
+          lastRuleEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      }, 50);
+    }
+    prevRulesLengthRef.current = rules.length;
+  }, [rules.length]);
+
   const sheetName = options.sheet_name || excelSheetName || "";
   const isSheetHeaderEnabled = !!(
     options.sheet_header_enabled ?? options.sheet_header !== undefined
@@ -1327,6 +1352,33 @@ export default function ExcelSettings({
                       </NativeSelect.Root>
                     </Field.Root>
 
+                    <Field.Root gap={0} width="160px">
+                      <Field.Label
+                        fontSize="xs"
+                        fontWeight="semibold"
+                        color="gray.600"
+                        mb={0.5}
+                      >
+                        Vertical Alignment
+                      </Field.Label>
+                      <NativeSelect.Root size="xs">
+                        <NativeSelect.Field
+                          bg="white"
+                          value={sheetHeaderStyle.vertical ?? "center"}
+                          onChange={(e) =>
+                            updateSheetHeaderStyle({
+                              vertical: e.target.value,
+                            })
+                          }
+                        >
+                          <option value="top">Top</option>
+                          <option value="center">Center</option>
+                          <option value="bottom">Bottom</option>
+                        </NativeSelect.Field>
+                        <NativeSelect.Indicator />
+                      </NativeSelect.Root>
+                    </Field.Root>
+
                     <HStack gap={4} height="24px" align="center">
                       <Checkbox.Root
                         size="sm"
@@ -1397,11 +1449,11 @@ export default function ExcelSettings({
                       fontSize={`${sheetHeaderStyle.font_size ?? 16}px`}
                       fontFamily={sheetHeaderStyle.font_name || "Calibri"}
                       justifyContent={sheetHeaderStyle.horizontal || "center"}
-                      alignItems={sheetHeaderStyle.vertical || "center"}
+                      alignItems={getCssAlignItems(sheetHeaderStyle.vertical)}
                       borderRadius="sm"
                       border="1px solid"
                       borderColor="gray.300"
-                      minHeight={`${24 * (options.sheet_header_row_span ?? 1)}px`}
+                      minHeight={`${Math.max(45, 24 * (options.sheet_header_row_span ?? 1))}px`}
                       textAlign={sheetHeaderStyle.horizontal || "center"}
                     >
                       {options.sheet_header ||
@@ -1545,6 +1597,31 @@ export default function ExcelSettings({
                   </NativeSelect.Root>
                 </Field.Root>
 
+                <Field.Root gap={0} width="160px">
+                  <Field.Label
+                    fontSize="xs"
+                    fontWeight="semibold"
+                    color="gray.600"
+                    mb={0.5}
+                  >
+                    Vertical Alignment
+                  </Field.Label>
+                  <NativeSelect.Root size="xs">
+                    <NativeSelect.Field
+                      bg="white"
+                      value={headerStyle.vertical ?? "center"}
+                      onChange={(e) =>
+                        updateHeaderStyle({ vertical: e.target.value })
+                      }
+                    >
+                      <option value="top">Top</option>
+                      <option value="center">Center</option>
+                      <option value="bottom">Bottom</option>
+                    </NativeSelect.Field>
+                    <NativeSelect.Indicator />
+                  </NativeSelect.Root>
+                </Field.Root>
+
                 <HStack gap={4} height="24px" align="center">
                   <Checkbox.Root
                     size="sm"
@@ -1631,11 +1708,11 @@ export default function ExcelSettings({
                   fontSize={`${headerStyle.font_size ?? 11}px`}
                   fontFamily={headerStyle.font_name || "Calibri"}
                   justifyContent={headerStyle.horizontal || "center"}
-                  alignItems={headerStyle.vertical || "center"}
+                  alignItems={getCssAlignItems(headerStyle.vertical)}
                   borderRadius="sm"
                   border="1px solid"
                   borderColor="gray.300"
-                  minHeight="24px"
+                  minHeight="45px"
                   textAlign={headerStyle.horizontal || "center"}
                 >
                   {sheetName || "Sheet1"} Header Column
@@ -2092,6 +2169,7 @@ export default function ExcelSettings({
                 return (
                   <Box
                     key={idx}
+                    id={`excel-rule-${idx}`}
                     p={2}
                     bg="white"
                     border="1px solid"
