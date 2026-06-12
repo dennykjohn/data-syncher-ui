@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 
-import { Box, Flex, Grid } from "@chakra-ui/react";
+import { Box, Flex, Grid, Text } from "@chakra-ui/react";
 
+import { format } from "date-fns";
 import { useNavigate, useParams } from "react-router";
 
 import DynamicForm from "@/components/dashboard/helpers/DynamicForm";
@@ -9,6 +10,7 @@ import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
+import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useCreateConnection from "@/queryOptions/connector/useCreateConnection";
 import useFetchConnectorConfig from "@/queryOptions/connector/useFetchConnectorConfig";
@@ -16,10 +18,54 @@ import { useFetchConnectorById } from "@/queryOptions/connector/useFetchConnecto
 import useUpdateConnectorConfig from "@/queryOptions/connector/useUpdateConnectorConfig";
 import useFetchAllUserCreatedDestinationList from "@/queryOptions/destination/useFetchAllUserCreatedDestinationList";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
+import { type AuditUser, type Connector } from "@/types/connectors";
 
 import { type ConnectorFormState } from "../../type";
 import ConnectorDocsHelperPanel from "./ConnectorDocsHelperPanel";
 import S3ConnectorConfiguration from "./S3ConnectorConfiguration";
+
+const getFirstName = (user?: AuditUser | string | null) => {
+  if (!user) return "";
+  if (typeof user === "string") return user.trim().split(/\s+/)[0] || "";
+  return user.first_name || "";
+};
+
+const getModifiedByName = (connector?: Connector) =>
+  connector
+    ? getFirstName(connector.modified_by) ||
+      getFirstName(connector.updated_by) ||
+      getFirstName(connector.modified_by_name) ||
+      getFirstName(connector.updated_by_name) ||
+      ""
+    : "";
+
+const formatDateTime = (date?: string | number | null) => {
+  if (!date || date === "None") return "--";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "--";
+  return format(parsed, dateTimeFormat);
+};
+
+const ModifiedAuditInfo = ({ connector }: { connector?: Connector }) => {
+  if (!connector) return null;
+
+  return (
+    <Flex gap={4} wrap="wrap">
+      <Flex gap={1}>
+        <Text fontSize="sm">Modified by:</Text>
+        <Text fontSize="sm" fontWeight="semibold">
+          {getModifiedByName(connector) || "--"}
+        </Text>
+      </Flex>
+      <Flex gap={1}>
+        <Text fontSize="sm">Modified at:</Text>
+        <Text fontSize="sm" fontWeight="semibold">
+          {formatDateTime(connector.modified_at)}
+        </Text>
+      </Flex>
+    </Flex>
+  );
+};
 
 /**
  * Generic configuration component for all other connectors
@@ -203,11 +249,18 @@ const GenericConnectorConfiguration = ({
                   : "Enter authorization details"
               }
               subtitle={
-                mode === "edit"
-                  ? "Modify the connector configuration"
-                  : "Provide the necessary details to authorize the connector"
+                mode === "create"
+                  ? "Provide the necessary details to authorize the connector"
+                  : undefined
               }
-            />
+            >
+              {mode === "edit" && (
+                <Flex align="center" gap={4} wrap="wrap">
+                  <Text fontSize="sm">Modify the connector configuration</Text>
+                  <ModifiedAuditInfo connector={connectorData} />
+                </Flex>
+              )}
+            </PageHeader>
             <DynamicForm
               mode={mode}
               config={{

@@ -1,4 +1,5 @@
 import AmazonS3Illustration from "@/assets/images/amazon-s3.svg";
+import AzureDataLakeStorageIllustration from "@/assets/images/azure-data-lake-storage.svg";
 import DataBricksIllustration from "@/assets/images/databricks.svg";
 import GoogleDriveIllustration from "@/assets/images/google-drive.svg";
 import GoogleReviewIllustration from "@/assets/images/google-review.svg";
@@ -23,6 +24,7 @@ const IMAGE_MAP = {
   googlereviews: GoogleReviewIllustration,
 
   // Destinations
+  azuredatalakestorage: AzureDataLakeStorageIllustration,
   salesforce: SalesForceIllustration,
   salesforcesandbox: SalesforceSandboxIllustration,
   sftp: SFTPIllustration,
@@ -63,6 +65,7 @@ export const getSourceImage = (name: string, fallback?: string): string => {
     salesforce: SalesForceIllustration,
     googlereviews: GoogleReviewIllustration,
     googledrive: GoogleDriveIllustration,
+    azuredatalake: AzureDataLakeStorageIllustration,
     amazons3: AmazonS3Illustration,
     sftp: SFTPIllustration,
     sharepoint: SharepointIllustration,

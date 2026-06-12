@@ -24,6 +24,21 @@ import PageHeader from "../../wrapper/PageHeader";
 import TableFilter from "../../wrapper/TableFilter";
 import NoConnections from "./components/NoConnections";
 
+type AuditUser = NonNullable<ConnectorTableItem["modified_by"]>;
+
+const getFirstName = (user?: AuditUser | null) => {
+  if (!user) return "";
+  if (typeof user === "string") return user.trim().split(/\s+/)[0] || "";
+  return user.first_name || "";
+};
+
+const getModifiedByName = (connector: ConnectorTableItem) =>
+  getFirstName(connector.modified_by) ||
+  getFirstName(connector.updated_by) ||
+  getFirstName(connector.modified_by_name) ||
+  getFirstName(connector.updated_by_name) ||
+  "";
+
 const getStatusColor = (status: ConnectorStatus) => {
   switch (status) {
     case "A":
@@ -69,6 +84,13 @@ const columns: Column<ConnectorTableItem>[] = [
         />
         <Text fontSize="xs">{destination_name}</Text>
       </HStack>
+    ),
+  },
+  {
+    header: "Modified By",
+    accessor: "modified_by",
+    render: (_, connector) => (
+      <Text fontSize="xs">{getModifiedByName(connector) || "--"}</Text>
     ),
   },
   {

@@ -2,6 +2,13 @@ import { type FieldConfig } from "./form";
 
 export type ConnectorStatus = "A" | "P" | "E" | "S" | "B";
 
+export type AuditUser = {
+  user_id?: number;
+  email?: string;
+  first_name?: string | null;
+  last_name?: string | null;
+};
+
 export interface CreateConnectionPayload {
   connection_name: string;
   destination_schema: string;
@@ -30,9 +37,17 @@ export interface ConnectorTableItem {
   last_synced_new: string;
   next_sync_time: string;
   connected_on: number;
+  created_at?: string | number | null;
+  modified_at?: string | number | null;
   migration_status: string;
   migration_status_name: string;
   error_message?: string | null;
+  created_by?: AuditUser | string | null;
+  updated_by?: AuditUser | string | null;
+  modified_by?: AuditUser | string | null;
+  created_by_name?: string | null;
+  updated_by_name?: string | null;
+  modified_by_name?: string | null;
 }
 
 export interface Connector {
@@ -57,10 +72,18 @@ export interface Connector {
   next_sync_time: string;
   is_reverse_etl: boolean;
   connected_on: number | string;
+  created_at?: string | number | null;
+  modified_at?: string | number | null;
   migration_status?: string;
   reloadingTables?: string[];
   setReloadingTables?: React.Dispatch<React.SetStateAction<string[]>>;
   disable_update_schema?: boolean;
+  created_by?: AuditUser | string | null;
+  updated_by?: AuditUser | string | null;
+  modified_by?: AuditUser | string | null;
+  created_by_name?: string | null;
+  updated_by_name?: string | null;
+  modified_by_name?: string | null;
   is_file_based?: boolean;
   supports_notification_groups?: boolean;
   root_folder?: string | null;
@@ -102,6 +125,14 @@ export type ConnectorSettingsApiResponse = {
   destination_title: string;
   company_name: string;
   migration_status?: string;
+  created_at?: string | number | null;
+  modified_at?: string | number | null;
+  created_by?: AuditUser | string | null;
+  updated_by?: AuditUser | string | null;
+  modified_by?: AuditUser | string | null;
+  created_by_name?: string | null;
+  updated_by_name?: string | null;
+  modified_by_name?: string | null;
   is_file_based?: boolean;
   supports_notification_groups?: boolean;
 };
