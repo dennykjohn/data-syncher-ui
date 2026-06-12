@@ -177,6 +177,7 @@ export interface ExcelConditionalFormat {
   type: string;
   range?: string;
   column_name?: string;
+  highlight_scope?: "cell" | "entire_row";
   formula?: string | string[];
   stop_if_true?: boolean;
   operator?: string;
