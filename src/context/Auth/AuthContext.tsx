@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 
 import Cookies from "js-cookie";
 
@@ -14,6 +14,9 @@ import {
 } from "@/types/auth";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const IDLE_CHECK_INTERVAL_MS = 60 * 1000;
 
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [authState, setAuthState] = useState<AuthState>({
@@ -107,7 +110,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setAuthState({
       isAuthenticated: false,
       user: null,
@@ -115,8 +118,36 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       refresh_token: null,
     });
     Cookies.remove("access_token");
+    Cookies.remove("refresh_token");
     window.location.href = ClientRoutes.AUTH;
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!authState.isAuthenticated) return;
+
+    let lastActivityAt = Date.now();
+    const resetIdleTimer = () => {
+      lastActivityAt = Date.now();
+    };
+
+    const activityEvents = ["mousemove", "keydown", "scroll"];
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, resetIdleTimer, { passive: true });
+    });
+
+    const idleInterval = window.setInterval(() => {
+      if (Date.now() - lastActivityAt >= IDLE_TIMEOUT_MS) {
+        logout();
+      }
+    }, IDLE_CHECK_INTERVAL_MS);
+
+    return () => {
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, resetIdleTimer);
+      });
+      window.clearInterval(idleInterval);
+    };
+  }, [authState.isAuthenticated, logout]);
 
   return (
     <AuthContext.Provider value={{ authState, login, logout }}>

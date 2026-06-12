@@ -422,6 +422,12 @@ const GUIDE_URL_MAP: Record<
       docsUrl:
         "https://qa.datasyncher.com/docs/destinations/google-drive-destination",
     },
+    azuredatalakestorage: {
+      jsonUrl:
+        "https://qa.datasyncher.com/docs/guides/destinations/azure-data-lake-storage.json",
+      docsUrl:
+        "https://qa.datasyncher.com/docs/destinations/azure-data-lake-storage",
+    },
   },
 };
 

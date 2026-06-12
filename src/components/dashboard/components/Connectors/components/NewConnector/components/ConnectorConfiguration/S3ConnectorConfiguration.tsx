@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { Box, Flex, Grid } from "@chakra-ui/react";
+import { Box, Flex, Grid, Text } from "@chakra-ui/react";
 
+import { format } from "date-fns";
 import { useNavigate, useParams } from "react-router";
 
 import PrimaryKeySelection from "@/components/dashboard/components/Connectors/components/NewConnector/components/PrimaryKeySelection/PrimaryKeySelection";
@@ -12,6 +13,7 @@ import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
+import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useCreateConnection from "@/queryOptions/connector/useCreateConnection";
 import useFetchConnectorConfig from "@/queryOptions/connector/useFetchConnectorConfig";
@@ -21,11 +23,58 @@ import useSuggestPrimaryKeys, {
 } from "@/queryOptions/connector/useSuggestPrimaryKeys";
 import useUpdateConnectorConfig from "@/queryOptions/connector/useUpdateConnectorConfig";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
-import { type CreateConnectionPayload } from "@/types/connectors";
+import {
+  type AuditUser,
+  type Connector,
+  type CreateConnectionPayload,
+} from "@/types/connectors";
 
 import { type ConnectorFormState } from "../../type";
 import S3DocsHelperPanel from "./S3DocsHelperPanel";
 import { useQueryClient } from "@tanstack/react-query";
+
+const getFirstName = (user?: AuditUser | string | null) => {
+  if (!user) return "";
+  if (typeof user === "string") return user.trim().split(/\s+/)[0] || "";
+  return user.first_name || "";
+};
+
+const getModifiedByName = (connector?: Connector) =>
+  connector
+    ? getFirstName(connector.modified_by) ||
+      getFirstName(connector.updated_by) ||
+      getFirstName(connector.modified_by_name) ||
+      getFirstName(connector.updated_by_name) ||
+      ""
+    : "";
+
+const formatDateTime = (date?: string | number | null) => {
+  if (!date || date === "None") return "--";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "--";
+  return format(parsed, dateTimeFormat);
+};
+
+const ModifiedAuditInfo = ({ connector }: { connector?: Connector }) => {
+  if (!connector) return null;
+
+  return (
+    <Flex gap={4} wrap="wrap">
+      <Flex gap={1}>
+        <Text fontSize="sm">Modified by:</Text>
+        <Text fontSize="sm" fontWeight="semibold">
+          {getModifiedByName(connector) || "--"}
+        </Text>
+      </Flex>
+      <Flex gap={1}>
+        <Text fontSize="sm">Modified at:</Text>
+        <Text fontSize="sm" fontWeight="semibold">
+          {formatDateTime(connector.modified_at)}
+        </Text>
+      </Flex>
+    </Flex>
+  );
+};
 
 const S3ConnectorConfiguration = ({
   state,
@@ -706,11 +755,20 @@ const S3ConnectorConfiguration = ({
                   : "Enter S3 authorization details"
               }
               subtitle={
-                mode === "edit"
-                  ? "Modify the S3 connector configuration"
-                  : "Provide the necessary details to authorize the S3 connector"
+                mode === "create"
+                  ? "Provide the necessary details to authorize the S3 connector"
+                  : undefined
               }
-            />
+            >
+              {mode === "edit" && (
+                <Flex align="center" gap={4} wrap="wrap">
+                  <Text fontSize="sm">
+                    Modify the S3 connector configuration
+                  </Text>
+                  <ModifiedAuditInfo connector={connectorData} />
+                </Flex>
+              )}
+            </PageHeader>
             <S3DynamicForm
               schema={schemaFields as S3FieldSchema[]}
               onSubmit={handleFormSubmit}

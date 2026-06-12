@@ -12,6 +12,26 @@ import { type Connector } from "@/types/connectors";
 
 import Form from "./Form";
 
+type AuditUser = NonNullable<Connector["modified_by"]>;
+
+const getFirstName = (user?: AuditUser | null) => {
+  if (!user) return "";
+  if (typeof user === "string") return user.trim().split(/\s+/)[0] || "";
+  return user.first_name || "";
+};
+
+const getCreatedByName = (connector: Connector) =>
+  getFirstName(connector.created_by) ||
+  getFirstName(connector.created_by_name) ||
+  "";
+
+const formatDateTime = (date?: string | number | null) => {
+  if (!date || date === "None") return "--";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "--";
+  return format(parsed, dateTimeFormat);
+};
+
 const Settings = () => {
   const connector = useOutletContext<Connector>();
   const navigate = useNavigate();
@@ -38,19 +58,17 @@ const Settings = () => {
         direction={{ base: "column", md: "row" }}
         gap={4}
       >
-        <Flex gap={4}>
+        <Flex gap={4} wrap="wrap">
           <Flex gap={1}>
-            <Text fontSize="sm">Connected by:</Text>
+            <Text fontSize="sm">Created by:</Text>
             <Text fontSize="sm" fontWeight="semibold">
-              {connector?.company_name}
+              {getCreatedByName(connector) || "--"}
             </Text>
           </Flex>
           <Flex gap={1}>
             <Text fontSize="sm">Connected on:</Text>
             <Text fontSize="sm" fontWeight="semibold">
-              {connector?.connected_on
-                ? format(new Date(connector.connected_on), dateTimeFormat)
-                : "--"}
+              {formatDateTime(connector?.connected_on)}
             </Text>
           </Flex>
         </Flex>

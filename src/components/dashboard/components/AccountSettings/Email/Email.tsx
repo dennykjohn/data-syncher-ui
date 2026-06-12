@@ -19,6 +19,8 @@ import {
 
 import { LuPencil, LuPlus, LuTrash2 } from "react-icons/lu";
 
+import { useSearchParams } from "react-router";
+
 import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
@@ -501,9 +503,21 @@ const NotificationsTab = () => {
 };
 
 const Email = () => {
-  const [pageTab, setPageTab] = useState<"dataload" | "notifications">(
-    "dataload",
-  );
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageTab =
+    (searchParams.get("tab") as "dataload" | "notifications") || "dataload";
+
+  const handleTabChange = (tabId: "dataload" | "notifications") => {
+    setSearchParams((prev) => {
+      const nextParams = new URLSearchParams(prev);
+      if (tabId === "dataload") {
+        nextParams.delete("tab");
+      } else {
+        nextParams.set("tab", tabId);
+      }
+      return nextParams;
+    });
+  };
 
   return (
     <Flex flexDirection="column" gap={VIEW_CONFIG.pageGap} h="100%">
@@ -529,7 +543,9 @@ const Email = () => {
             fontWeight={pageTab === tab.id ? "700" : "500"}
             color={pageTab === tab.id ? "purple.600" : "gray.600"}
             position="relative"
-            onClick={() => setPageTab(tab.id as "dataload" | "notifications")}
+            onClick={() =>
+              handleTabChange(tab.id as "dataload" | "notifications")
+            }
             pb={2}
             borderBottom="2px solid"
             borderColor={pageTab === tab.id ? "purple.600" : "transparent"}

@@ -23,12 +23,26 @@ export interface Destination {
   fields?: FieldConfig[]; // Fields with read_only property from backend in edit mode
 }
 
+type AuditUser = {
+  user_id?: number;
+  email?: string;
+  first_name?: string | null;
+  last_name?: string | null;
+};
+
 export type DestinationTableItem = {
   dst_config_id: number;
   name: string;
   dst: string;
   created_at: string;
   updated_at: string;
+  modified_at?: string | null;
   cmp: number;
   is_active: boolean;
+  created_by?: AuditUser | string | null;
+  updated_by?: AuditUser | string | null;
+  modified_by?: AuditUser | string | null;
+  created_by_name?: string | null;
+  updated_by_name?: string | null;
+  modified_by_name?: string | null;
 };
