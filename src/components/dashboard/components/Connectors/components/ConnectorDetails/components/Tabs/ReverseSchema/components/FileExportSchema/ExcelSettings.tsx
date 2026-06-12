@@ -307,6 +307,8 @@ export const cleanRulePayload = (
     base.stop_if_true = rule.stop_if_true;
   }
 
+  base.highlight_scope = rule.highlight_scope || "cell";
+
   const cleanStyle = (
     s: ExcelDifferentialStyle | undefined,
   ): ExcelDifferentialStyle | undefined => {
@@ -573,6 +575,7 @@ export default function ExcelSettings({
     options.sheet_header_style || DEFAULT_SHEET_HEADER_STYLE;
   const colNames = Object.keys(tableFields || {});
   const rules = conditionalFormats || [];
+  console.log("ExcelSettings render rules:", rules);
 
   const prevRulesLengthRef = useRef(rules.length);
 
@@ -703,6 +706,7 @@ export default function ExcelSettings({
     index: number,
     patch: Partial<ExcelConditionalFormat>,
   ) => {
+    console.log("handleUpdateRule index:", index, "patch:", patch);
     const updated = [...rules];
     const mergedRule = {
       ...updated[index],
@@ -742,8 +746,15 @@ export default function ExcelSettings({
       };
     }
 
+    console.log("handleUpdateRule output updated rule:", updated[index]);
+    const cleaned = updated.map(cleanRulePayload);
+    console.log(
+      "handleUpdateRule calling onChange with cleaned rules:",
+      cleaned,
+    );
+
     onChange({
-      excel_conditional_formats: updated.map(cleanRulePayload),
+      excel_conditional_formats: cleaned,
     });
   };
 
@@ -3474,6 +3485,117 @@ export default function ExcelSettings({
                               </Checkbox.Label>
                             </Checkbox.Root>
                           </Flex>
+
+                          {/* Highlight Scope Selection */}
+                          <Field.Root gap={0} mt={1}>
+                            <Field.Label
+                              fontSize="xs"
+                              fontWeight="semibold"
+                              color="gray.600"
+                              mb={1}
+                            >
+                              Highlight Scope
+                            </Field.Label>
+                            <HStack
+                              gap={4}
+                              height="24px"
+                              className="checkbox-row"
+                              align="center"
+                            >
+                              <Flex
+                                align="center"
+                                gap={1.5}
+                                cursor="pointer"
+                                userSelect="none"
+                                onClick={() => {
+                                  console.log("Cell Only clicked");
+                                  handleUpdateRule(idx, {
+                                    highlight_scope: "cell",
+                                  });
+                                }}
+                              >
+                                <Box
+                                  w="14px"
+                                  h="14px"
+                                  borderRadius="full"
+                                  border="1px solid"
+                                  borderColor={
+                                    rule.highlight_scope !== "entire_row"
+                                      ? "brand.500"
+                                      : "gray.300"
+                                  }
+                                  bg="white"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  transition="border-color 0.2s"
+                                >
+                                  {rule.highlight_scope !== "entire_row" && (
+                                    <Box
+                                      w="6px"
+                                      h="6px"
+                                      borderRadius="full"
+                                      bg="brand.500"
+                                    />
+                                  )}
+                                </Box>
+                                <Text
+                                  fontSize="xs"
+                                  color="gray.700"
+                                  fontWeight="medium"
+                                >
+                                  Cell Only
+                                </Text>
+                              </Flex>
+
+                              <Flex
+                                align="center"
+                                gap={1.5}
+                                cursor="pointer"
+                                userSelect="none"
+                                onClick={() => {
+                                  console.log("Entire Row clicked");
+                                  handleUpdateRule(idx, {
+                                    highlight_scope: "entire_row",
+                                  });
+                                }}
+                              >
+                                <Box
+                                  w="14px"
+                                  h="14px"
+                                  borderRadius="full"
+                                  border="1px solid"
+                                  borderColor={
+                                    rule.highlight_scope === "entire_row"
+                                      ? "brand.500"
+                                      : "gray.300"
+                                  }
+                                  bg="white"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  transition="border-color 0.2s"
+                                >
+                                  {rule.highlight_scope === "entire_row" && (
+                                    <Box
+                                      w="6px"
+                                      h="6px"
+                                      borderRadius="full"
+                                      bg="brand.500"
+                                    />
+                                  )}
+                                </Box>
+                                <Text
+                                  fontSize="xs"
+                                  color="gray.700"
+                                  fontWeight="medium"
+                                >
+                                  Entire Row
+                                </Text>
+                              </Flex>
+                            </HStack>
+                          </Field.Root>
+
                           {/* Live Preview Box */}
                           <Box
                             mt={1}
