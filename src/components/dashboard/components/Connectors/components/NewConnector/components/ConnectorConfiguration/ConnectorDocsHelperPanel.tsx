@@ -396,6 +396,12 @@ const GUIDE_URL_MAP: Record<
     },
   },
   destination: {
+    amazons3: {
+      jsonUrl:
+        "https://qa.datasyncher.com/docs/guides/destinations/amazon-s3-destination.json",
+      docsUrl:
+        "https://qa.datasyncher.com/docs/destinations/amazon-s3-destination",
+    },
     snowflake: {
       jsonUrl:
         "https://qa.datasyncher.com/docs/guides/destinations/snowflake.json",
@@ -424,9 +430,13 @@ const GUIDE_URL_MAP: Record<
     },
     azuredatalakestorage: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/destinations/azure-data-lake-storage.json",
-      docsUrl:
-        "https://qa.datasyncher.com/docs/destinations/azure-data-lake-storage",
+        "https://qa.datasyncher.com/docs/guides/destinations/adls-destination.json",
+      docsUrl: "https://qa.datasyncher.com/docs/destinations/adls-destination",
+    },
+    adls: {
+      jsonUrl:
+        "https://qa.datasyncher.com/docs/guides/destinations/adls-destination.json",
+      docsUrl: "https://qa.datasyncher.com/docs/destinations/adls-destination",
     },
   },
 };

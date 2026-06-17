@@ -50,13 +50,14 @@ const ModifiedAuditInfo = ({ connector }: { connector?: Connector }) => {
   if (!connector) return null;
 
   return (
-    <Flex gap={4} wrap="wrap">
+    <Flex gap={3} align="center" wrap="wrap">
       <Flex gap={1}>
         <Text fontSize="sm">Modified by:</Text>
         <Text fontSize="sm" fontWeight="semibold">
           {getModifiedByName(connector) || "--"}
         </Text>
       </Flex>
+      <Box w="1px" h="14px" bg="gray.300" />
       <Flex gap={1}>
         <Text fontSize="sm">Modified at:</Text>
         <Text fontSize="sm" fontWeight="semibold">
@@ -255,9 +256,16 @@ const GenericConnectorConfiguration = ({
               }
             >
               {mode === "edit" && (
-                <Flex align="center" gap={4} wrap="wrap">
-                  <Text fontSize="sm">Modify the connector configuration</Text>
-                  <ModifiedAuditInfo connector={connectorData} />
+                <Flex align="center" gap={3} wrap="wrap">
+                  <Text fontSize="sm" color="gray.600">
+                    Modify the connector configuration
+                  </Text>
+                  {connectorData && (
+                    <>
+                      <Box w="1px" h="14px" bg="gray.300" />
+                      <ModifiedAuditInfo connector={connectorData} />
+                    </>
+                  )}
                 </Flex>
               )}
             </PageHeader>
