@@ -5,6 +5,7 @@ const ServerRoutes = {
   },
   auth: {
     login: () => "/authentication/",
+    refresh: () => "authentication/refresh/",
     profile: () => "user/profile/",
 
     companyDetails: ({ companyId }: { companyId: string }) =>
