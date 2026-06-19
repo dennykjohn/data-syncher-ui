@@ -1,10 +1,14 @@
 import AmazonS3Illustration from "@/assets/images/amazon-s3.svg";
+import AzureDataLakeStorageIllustration from "@/assets/images/azure-data-lake-storage.svg";
 import DataBricksIllustration from "@/assets/images/databricks.svg";
+import GoogleDriveIllustration from "@/assets/images/google-drive.svg";
 import GoogleReviewIllustration from "@/assets/images/google-review.svg";
 import MicrosoftDynamicsIllustration from "@/assets/images/ms-dynamics.svg";
 import PostgreSQLIllustration from "@/assets/images/postgres.svg";
 import SalesforceSandboxIllustration from "@/assets/images/salesforce-sandbox.svg";
 import SalesForceIllustration from "@/assets/images/salesforce.svg";
+import SFTPIllustration from "@/assets/images/sftp.svg";
+import SharepointIllustration from "@/assets/images/sharepoint.svg";
 import SnowFlakeIllustration from "@/assets/images/snowflake.svg";
 import MySQLIllustration from "@/assets/images/sql.svg";
 
@@ -20,8 +24,12 @@ const IMAGE_MAP = {
   googlereviews: GoogleReviewIllustration,
 
   // Destinations
+  azuredatalakestorage: AzureDataLakeStorageIllustration,
   salesforce: SalesForceIllustration,
   salesforcesandbox: SalesforceSandboxIllustration,
+  sftp: SFTPIllustration,
+  sharepoint: SharepointIllustration,
+  googledrive: GoogleDriveIllustration,
 } as const;
 
 // Default fallback image
@@ -56,7 +64,11 @@ export const getSourceImage = (name: string, fallback?: string): string => {
     mysql: MySQLIllustration,
     salesforce: SalesForceIllustration,
     googlereviews: GoogleReviewIllustration,
+    googledrive: GoogleDriveIllustration,
+    azuredatalake: AzureDataLakeStorageIllustration,
     amazons3: AmazonS3Illustration,
+    sftp: SFTPIllustration,
+    sharepoint: SharepointIllustration,
   };
 
   for (const [key, image] of Object.entries(partialMatches)) {

@@ -5,7 +5,12 @@ import { Box, Button, Flex, Grid } from "@chakra-ui/react";
 import { CiTrash } from "react-icons/ci";
 import { MdRefresh } from "react-icons/md";
 
-import { useLocation, useNavigate, useParams } from "react-router";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router";
 
 import ConnectorDocsHelperPanel from "@/components/dashboard/components/Connectors/components/NewConnector/components/ConnectorConfiguration/ConnectorDocsHelperPanel";
 import DynamicForm from "@/components/dashboard/helpers/DynamicForm";
@@ -20,19 +25,25 @@ import useTriggerDestination from "@/queryOptions/destination/useTriggerDestinat
 import { useUpdateDestination } from "@/queryOptions/destination/useUpdateDestination";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
 import { type Destination } from "@/types/destination";
+import { type ErrorResponseType } from "@/types/error";
 
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
+import GoogleDriveFolderConfirmDialog from "./GoogleDriveFolderConfirmDialog";
 import {
   BreadcrumbsForEditDestination,
   BreadcrumbsForNewDestination,
 } from "./helper";
 import { initialState, newDestinationFormReducer } from "./reducer";
 
+const GDRIVE_FOLDER_CONFIRMATION_ERROR =
+  "GOOGLE_DRIVE_FOLDER_CONFIRMATION_REQUIRED";
+
 const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams<{ destinationId: string }>();
   const { destinationId, destinationName } = location.state || {};
+  const [searchParams] = useSearchParams();
 
   const { mutate: createDestination, isPending } = useCreateDestination();
   const { data: destinationData, isPending: isFetchDestinationByIdPending } =
@@ -61,20 +72,86 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
     }
   }, [destinationId, destinationName, mode, navigate]);
 
+  useEffect(() => {
+    const oauthStatus = searchParams.get("oauth_status");
+    const oauthError = searchParams.get("oauth_error");
+
+    if (oauthStatus === "error" && oauthError) {
+      toaster.error({
+        title: oauthError,
+      });
+
+      // Remove query params from the URL using replaceState
+      const url = new URL(window.location.href);
+      url.searchParams.delete("oauth_status");
+      url.searchParams.delete("oauth_error");
+      window.history.replaceState(
+        {},
+        document.title,
+        url.pathname + url.search,
+      );
+    }
+  }, [searchParams]);
+
   const [formState] = useReducer(newDestinationFormReducer, initialState);
   const [currentFormValues, setCurrentFormValues] = useState<
     Record<string, string>
   >({});
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const handleFormSubmit = (values: Record<string, string>) => {
-    const payload: Destination = {
-      dst: mode === "add" ? destinationName : destinationData?.dst,
-      name: values["destination_name"],
-      config_data: { ...values },
+  // ─── Google Drive folder-creation confirmation ────────────────────────────
+  const [gDrivePendingPayload, setGDrivePendingPayload] =
+    useState<Destination | null>(null);
+  const [gDrivePendingFiles, setGDrivePendingFiles] = useState<Record<
+    string,
+    File | null
+  > | null>(null);
+  const [gDriveFolderName, setGDriveFolderName] = useState("");
+  const [showGDriveConfirm, setShowGDriveConfirm] = useState(false);
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Called once on first submit (create_folder_if_missing = false) and again
+   *  on confirmed retry (create_folder_if_missing = true). */
+  const submitDestination = (
+    payload: Destination,
+    files?: Record<string, File | null>,
+    isConfirmedRetry = false,
+  ) => {
+    const basePayload: Destination = {
+      ...payload,
+      config_data: {
+        ...payload.config_data,
+        create_folder_if_missing: isConfirmedRetry,
+      },
     };
+
+    let finalPayload: Destination | FormData = basePayload;
+
+    if (files && files["client_certificate_file"]) {
+      const formData = new FormData();
+      formData.append("config_data", JSON.stringify(basePayload));
+      formData.append(
+        "client_certificate_file",
+        files["client_certificate_file"],
+      );
+      finalPayload = formData;
+    }
+
+    const handleGDrive409 = (err: ErrorResponseType) => {
+      if (
+        err.error === GDRIVE_FOLDER_CONFIRMATION_ERROR &&
+        err.requires_confirmation &&
+        err.folder_name
+      ) {
+        setGDrivePendingPayload(payload); // store the original payload (without the flag)
+        setGDrivePendingFiles(files || null);
+        setGDriveFolderName(err.folder_name);
+        setShowGDriveConfirm(true);
+      }
+    };
+
     if (mode === "edit") {
-      updateDestination(payload, {
+      updateDestination(finalPayload, {
         onSuccess: (response) => {
           const responseWithAuth = response as unknown as {
             auth_url?: string;
@@ -88,10 +165,11 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
             });
           }
         },
+        onError: handleGDrive409,
       });
       return;
     }
-    createDestination(payload, {
+    createDestination(finalPayload, {
       onSuccess: (response: { auth_url?: string; message?: string }) => {
         if (response.auth_url) {
           window.location.href = response.auth_url;
@@ -105,6 +183,43 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
           );
         }
       },
+      onError: handleGDrive409,
+    });
+  };
+
+  const handleFormSubmit = (
+    values: Record<string, string>,
+    files?: Record<string, File | null>,
+  ) => {
+    const payload: Destination = {
+      dst: mode === "add" ? destinationName : destinationData?.dst,
+      name: values["destination_name"],
+      config_data: { ...values },
+    };
+    // First attempt — always send create_folder_if_missing: false
+    submitDestination(payload, files, false);
+  };
+
+  /** Called when user clicks "Yes, create folder" in the confirmation dialog */
+  const handleGDriveConfirm = () => {
+    if (!gDrivePendingPayload) return;
+    setShowGDriveConfirm(false);
+    submitDestination(
+      gDrivePendingPayload,
+      gDrivePendingFiles || undefined,
+      true,
+    );
+  };
+
+  /** Called when user clicks "No, keep editing" */
+  const handleGDriveCancel = () => {
+    setShowGDriveConfirm(false);
+    setGDrivePendingPayload(null);
+    setGDrivePendingFiles(null);
+    setGDriveFolderName("");
+    toaster.error({
+      title:
+        "Folder was not created. Enter an existing Google Drive folder name or confirm folder creation to continue.",
     });
   };
 
@@ -173,13 +288,13 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
                     ? destinationData.fields
                     : formSchema || [],
               }}
-              onSubmit={(values) => {
-                handleFormSubmit(values);
+              onSubmit={(values, files) => {
+                handleFormSubmit(values, files);
               }}
               loading={isPending || isUpdateDestinationPending}
               defaultValues={
                 mode === "edit" && destinationData
-                  ? destinationData.config_data
+                  ? (destinationData.config_data as Record<string, string>)
                   : undefined
               }
               onValuesChange={setCurrentFormValues}
@@ -200,8 +315,8 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
                 mode === "edit" && params.destinationId ? (
                   <Button
                     variant="outline"
-                    colorPalette="red"
-                    color="red.500"
+                    colorPalette="brand"
+                    color="brand.500"
                     loading={isTriggeringBackend}
                     onClick={() =>
                       triggerBackend(
@@ -263,6 +378,15 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
           />
         </Box>
       </Grid>
+
+      {/* Google Drive folder creation confirmation dialog */}
+      <GoogleDriveFolderConfirmDialog
+        open={showGDriveConfirm}
+        folderName={gDriveFolderName}
+        isLoading={isPending || isUpdateDestinationPending}
+        onConfirm={handleGDriveConfirm}
+        onCancel={handleGDriveCancel}
+      />
     </Box>
   );
 };

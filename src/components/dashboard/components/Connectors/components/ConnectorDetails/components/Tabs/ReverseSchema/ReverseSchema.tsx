@@ -2,16 +2,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Flex, Grid } from "@chakra-ui/react";
 
-import { useOutletContext } from "react-router";
+import { Navigate, useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
+import ClientRoutes from "@/constants/client-routes";
 import useFetchReverseSchema from "@/queryOptions/connector/reverseSchema/useFetchReverseSchema";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import { type Connector } from "@/types/connectors";
 
+import { isSnowflakeToSnowflakeConnector } from "../../../helpers";
 import Actions from "./Actions";
 import Destination from "./components/Destination/Destination";
+import FileExportSchema from "./components/FileExportSchema/FileExportSchema";
 import Mapped, { type MappedRef } from "./components/Mapped/Mapped";
 import Source from "./components/Source/Source";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
@@ -93,6 +96,10 @@ const ReverseSchema = () => {
   ]);
 
   const totalDisabledState = shouldShowDisabledState || isMigrationInProgress;
+  const isSnowflakeToSnowflake = isSnowflakeToSnowflakeConnector(context);
+  const isSnowflakeToFileExport =
+    context.source_name?.toLowerCase() === "snowflake" &&
+    !!context.is_file_based;
 
   const handleDrop = (sourceTable: string, destinationTable: string) => {
     mappedRef.current?.handleDrop(sourceTable, destinationTable);
@@ -102,29 +109,41 @@ const ReverseSchema = () => {
     return <LoadingSpinner />;
   }
 
+  if (isSnowflakeToSnowflake) {
+    return <Navigate to={`../${ClientRoutes.CONNECTORS.SCHEMA}`} replace />;
+  }
+
   return (
     <Flex flexDirection="column" gap={4} pb={8} w="100%">
       <Actions
         shouldShowDisabledState={totalDisabledState}
         setShouldShowDisabledState={setShouldShowDisabledState}
       />
-      <Grid
-        templateColumns={["1fr", "1fr 1fr 1fr"]}
-        gap={4}
-        style={{ overflow: "visible" }}
-        w="100%"
-      >
-        <Source reverseSchemaData={reverseSchemaData || null} />
-        <Destination
-          onDrop={handleDrop}
-          reverseSchemaData={reverseSchemaData || null}
-        />
-        <Mapped
-          ref={mappedRef}
+      {isSnowflakeToFileExport ? (
+        <FileExportSchema
+          connector={context}
           reverseSchemaData={reverseSchemaData || null}
           isDisabled={totalDisabledState}
         />
-      </Grid>
+      ) : (
+        <Grid
+          templateColumns={["1fr", "1fr 1fr 1fr"]}
+          gap={4}
+          style={{ overflow: "visible" }}
+          w="100%"
+        >
+          <Source reverseSchemaData={reverseSchemaData || null} />
+          <Destination
+            onDrop={handleDrop}
+            reverseSchemaData={reverseSchemaData || null}
+          />
+          <Mapped
+            ref={mappedRef}
+            reverseSchemaData={reverseSchemaData || null}
+            isDisabled={totalDisabledState}
+          />
+        </Grid>
+      )}
     </Flex>
   );
 };

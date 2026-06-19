@@ -21,6 +21,14 @@ const MenuItem = ({
 }) => {
   const navigate = useNavigate();
 
+  const handleClick = () => {
+    void onClick?.();
+    if (path) {
+      navigate(path);
+    }
+    onMenuItemClick?.();
+  };
+
   return (
     <Flex
       key={label}
@@ -30,11 +38,7 @@ const MenuItem = ({
       cursor={"pointer"}
       gap={2}
       onClick={() => {
-        void onClick?.();
-        if (path) {
-          navigate(path);
-        }
-        onMenuItemClick?.();
+        void handleClick();
       }}
       color={active ? "brand.accentOrange" : "white"}
       _hover={{

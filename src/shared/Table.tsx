@@ -92,10 +92,12 @@ const Table = <T,>({
           variant="outline"
           striped
           colorPalette="gray"
-          tableLayout="fixed"
+          tableLayout="auto"
+          w="full"
+          minW="max-content"
         >
-          <ChakraTable.Header h={12} bg="white">
-            <ChakraTable.Row h={12}>
+          <ChakraTable.Header h={10} bg="white">
+            <ChakraTable.Row h={10}>
               {columns.map((column) => (
                 <ChakraTable.ColumnHeader
                   key={String(column.accessor)}
@@ -105,6 +107,9 @@ const Table = <T,>({
                   }}
                   textAlign={column.textAlign || "left"}
                   width={column.width}
+                  fontSize="xs"
+                  whiteSpace="nowrap"
+                  px={2}
                 >
                   {column.header}
                 </ChakraTable.ColumnHeader>
@@ -115,7 +120,7 @@ const Table = <T,>({
             {data.map((item, index) => (
               <ChakraTable.Row
                 key={index}
-                h={12}
+                h={10}
                 cursor={onRowClick ? rowCursor : "default"}
                 onClick={() => handleRowClick(item, index)}
                 _hover={onRowClick ? { bg: "gray.100" } : {}}
@@ -130,6 +135,9 @@ const Table = <T,>({
                     }}
                     textAlign={column.textAlign || "left"}
                     width={column.width}
+                    fontSize="xs"
+                    whiteSpace="nowrap"
+                    px={2}
                   >
                     {column.render
                       ? column.render(item[column.accessor as keyof T], item)

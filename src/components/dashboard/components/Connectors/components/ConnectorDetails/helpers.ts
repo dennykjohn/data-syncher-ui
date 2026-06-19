@@ -1,7 +1,7 @@
 import { format, isValid } from "date-fns";
 
 import { dateTimeFormat } from "@/constants/common";
-import { type SchemaStatusResponse } from "@/types/connectors";
+import { type Connector, type SchemaStatusResponse } from "@/types/connectors";
 
 type StatusParams = {
   isUpdateSchemaInProgress: number;
@@ -28,6 +28,15 @@ export const formatTimeFrequency = (freq: string) => {
   }
   return `${freqNum} ${freqNum === 1 ? "minute" : "minutes"}`;
 };
+
+export const normalizeConnectorName = (name?: string | null) =>
+  name?.toLowerCase().replace(/[\s\-._]/g, "") || "";
+
+export const isSnowflakeToSnowflakeConnector = (
+  connector?: Pick<Connector, "source_name" | "destination_name">,
+) =>
+  normalizeConnectorName(connector?.source_name) === "snowflake" &&
+  normalizeConnectorName(connector?.destination_name) === "snowflake";
 
 export const getStatusMessage = ({
   isUpdateSchemaInProgress,
