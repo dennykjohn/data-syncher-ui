@@ -2,14 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Flex, Grid } from "@chakra-ui/react";
 
-import { useOutletContext } from "react-router";
+import { Navigate, useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
+import ClientRoutes from "@/constants/client-routes";
 import useFetchReverseSchema from "@/queryOptions/connector/reverseSchema/useFetchReverseSchema";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import { type Connector } from "@/types/connectors";
 
+import { isSnowflakeToSnowflakeConnector } from "../../../helpers";
 import Actions from "./Actions";
 import Destination from "./components/Destination/Destination";
 import FileExportSchema from "./components/FileExportSchema/FileExportSchema";
@@ -94,6 +96,7 @@ const ReverseSchema = () => {
   ]);
 
   const totalDisabledState = shouldShowDisabledState || isMigrationInProgress;
+  const isSnowflakeToSnowflake = isSnowflakeToSnowflakeConnector(context);
   const isSnowflakeToFileExport =
     context.source_name?.toLowerCase() === "snowflake" &&
     !!context.is_file_based;
@@ -104,6 +107,10 @@ const ReverseSchema = () => {
 
   if (isLoading && !reverseSchemaData) {
     return <LoadingSpinner />;
+  }
+
+  if (isSnowflakeToSnowflake) {
+    return <Navigate to={`../${ClientRoutes.CONNECTORS.SCHEMA}`} replace />;
   }
 
   return (

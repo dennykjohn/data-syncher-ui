@@ -9,6 +9,11 @@ import usePermissions from "@/hooks/usePermissions";
 import { Permissions } from "@/types/auth";
 import { type Connector } from "@/types/connectors";
 
+import {
+  isSnowflakeToSnowflakeConnector,
+  normalizeConnectorName,
+} from "../../helpers";
+
 interface ConnectorTabsProps {
   connector?: Connector;
 }
@@ -18,11 +23,16 @@ const ConnectorTabs = ({ connector }: ConnectorTabsProps) => {
   const navigate = useNavigate();
   const { connectionId } = useParams();
   const { can } = usePermissions();
-  const normalizedDestinationName =
-    connector?.destination_name?.toLowerCase().replace(/[\s\-._]/g, "") || "";
+  const normalizedDestinationName = normalizeConnectorName(
+    connector?.destination_name,
+  );
   const isFileExportDestination = ["sftp", "googledrive", "amazons3"].includes(
     normalizedDestinationName,
   );
+  const shouldUseReverseSchema =
+    (connector?.is_reverse_etl &&
+      !isSnowflakeToSnowflakeConnector(connector)) ||
+    isFileExportDestination;
 
   // Build the tab list with permissions
   const fullTabList: {
@@ -37,10 +47,9 @@ const ConnectorTabs = ({ connector }: ConnectorTabsProps) => {
     },
     {
       label: "Schema",
-      route:
-        connector?.is_reverse_etl || isFileExportDestination
-          ? ClientRoutes.CONNECTORS.REVERSE_SCHEMA
-          : ClientRoutes.CONNECTORS.SCHEMA,
+      route: shouldUseReverseSchema
+        ? ClientRoutes.CONNECTORS.REVERSE_SCHEMA
+        : ClientRoutes.CONNECTORS.SCHEMA,
       permission: "can_view_tables",
     },
     {
