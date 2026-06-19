@@ -15,7 +15,7 @@ import { FiExternalLink, FiFileText, FiHome, FiLink } from "react-icons/fi";
 
 import { toaster } from "@/components/ui/toaster";
 
-const DEFAULT_SITE_ORIGIN = "https://qa.datasyncher.com";
+const DEFAULT_SITE_ORIGIN = "https://qa-kubernetes.datasyncher.com";
 
 type GuideImage =
   | string
@@ -57,7 +57,7 @@ const getAssetUrlCandidates = (src: string, assetsBaseUrl?: string) => {
 
   const candidates: string[] = [];
   const origin =
-    getOriginFromUrl(assetsBaseUrl) || "https://qa.datasyncher.com";
+    getOriginFromUrl(assetsBaseUrl) || "https://qa-kubernetes.datasyncher.com";
   const base =
     assetsBaseUrl && /^https?:\/\//i.test(assetsBaseUrl)
       ? assetsBaseUrl.replace(/\/$/, "")
@@ -369,74 +369,74 @@ const GUIDE_URL_MAP: Record<
     // Use explicit mappings where possible to avoid probing multiple candidate
     // URLs (which results in extra requests that are often aborted/cancelled).
     awss3: {
-      jsonUrl: "https://qa.datasyncher.com/docs/guides/connectors/aws-s3.json",
+      jsonUrl: "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/aws-s3.json",
     },
     amazons3: {
-      jsonUrl: "https://qa.datasyncher.com/docs/guides/connectors/aws-s3.json",
+      jsonUrl: "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/aws-s3.json",
     },
     microsoftdynamics365fo: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/connectors/dynamics-365-fo.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/dynamics-365-fo.json",
     },
     snowflake: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/connectors/snowflake-source.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/snowflake-source.json",
     },
     salesforce: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/connectors/salesforce.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/salesforce.json",
     },
     salesforcesandbox: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/connectors/salesforce-sandbox.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/salesforce-sandbox.json",
     },
     googlereviews: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/connectors/google-reviews.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/google-reviews.json",
     },
   },
   destination: {
     amazons3: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/destinations/amazon-s3-destination.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/amazon-s3-destination.json",
       docsUrl:
-        "https://qa.datasyncher.com/docs/destinations/amazon-s3-destination",
+        "https://qa-kubernetes.datasyncher.com/docs/destinations/amazon-s3-destination",
     },
     snowflake: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/destinations/snowflake.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/snowflake.json",
     },
     salesforce: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/destinations/salesforce-destination.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/salesforce-destination.json",
     },
     salesforcesandbox: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/destinations/salesforce-sandbox-destination.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/salesforce-sandbox-destination.json",
     },
     sharepoint: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/destinations/sharepoint-destination.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/sharepoint-destination.json",
     },
     sftp: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/destinations/sftp-destination.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/sftp-destination.json",
     },
     googledrive: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/destinations/google-drive-destination.json",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/google-drive-destination.json",
       docsUrl:
-        "https://qa.datasyncher.com/docs/destinations/google-drive-destination",
+        "https://qa-kubernetes.datasyncher.com/docs/destinations/google-drive-destination",
     },
     azuredatalakestorage: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/destinations/adls-destination.json",
-      docsUrl: "https://qa.datasyncher.com/docs/destinations/adls-destination",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/adls-destination.json",
+      docsUrl: "https://qa-kubernetes.datasyncher.com/docs/destinations/adls-destination",
     },
     adls: {
       jsonUrl:
-        "https://qa.datasyncher.com/docs/guides/destinations/adls-destination.json",
-      docsUrl: "https://qa.datasyncher.com/docs/destinations/adls-destination",
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/adls-destination.json",
+      docsUrl: "https://qa-kubernetes.datasyncher.com/docs/destinations/adls-destination",
     },
   },
 };
