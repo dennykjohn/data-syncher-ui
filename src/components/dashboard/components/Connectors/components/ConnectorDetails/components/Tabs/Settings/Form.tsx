@@ -44,17 +44,25 @@ const Form = (props: Connector) => {
     safety_interval,
     execution_order,
     chunk_count,
+    effective_max_chunk,
+    min_count,
+    max_count,
     status,
     dst_min_count,
     dst_max_count,
   } = props;
+
+  const minChunkCount = min_count ?? dst_min_count ?? 10;
+  const maxChunkCount = max_count ?? dst_max_count ?? 1000000;
+  const transferPacketSize =
+    effective_max_chunk ?? chunk_count ?? minChunkCount;
 
   const initialFormState = {
     sync_start_date: sync_start_date ?? "",
     time_frequency: time_frequency ?? "",
     safety_interval: safety_interval ?? "",
     execution_order: execution_order ?? "",
-    chunk_count: chunk_count ?? dst_min_count ?? 10,
+    chunk_count: transferPacketSize,
   };
 
   const [formState, dispatch] = useReducer(reducer, initialFormState);
@@ -167,7 +175,9 @@ const Form = (props: Connector) => {
           <Field.Label>Transfer packet size</Field.Label>
           <NumberInput.Root
             disabled={!canEdit}
-            value={String(formState.chunk_count ?? 10)}
+            min={minChunkCount}
+            max={maxChunkCount}
+            value={String(formState.chunk_count ?? transferPacketSize)}
             onValueChange={(e) => {
               const value = Number(e.value);
               if (isNaN(value)) return;
@@ -187,8 +197,8 @@ const Form = (props: Connector) => {
             <Field.ErrorText>{chunkCountError}</Field.ErrorText>
           ) : (
             <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
-              Min count: {dst_min_count?.toLocaleString() || "10,000"} | Max
-              count: {dst_max_count?.toLocaleString() || "1,000,000"}
+              Min count: {minChunkCount.toLocaleString()} | Max count:{" "}
+              {maxChunkCount.toLocaleString()}
             </Field.HelperText>
           )}
         </Field.Root>
