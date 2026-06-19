@@ -55,7 +55,7 @@ const Form = (props: Connector) => {
   const minChunkCount = min_count ?? dst_min_count ?? 10;
   const maxChunkCount = max_count ?? dst_max_count ?? 1000000;
   const transferPacketSize =
-    effective_max_chunk ?? chunk_count ?? minChunkCount;
+    chunk_count ?? effective_max_chunk ?? minChunkCount;
 
   const initialFormState = {
     sync_start_date: sync_start_date ?? "",
