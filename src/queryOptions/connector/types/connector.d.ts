@@ -7,6 +7,24 @@ export interface S3ListFilesRequest {
   file_type?: string;
   include_subfolders?: string;
   file_mapping_method?: string;
+  isSftp?: boolean;
+}
+
+export interface SFTPListFilesRequest {
+  connection_id?: number;
+  sftp_host?: string;
+  sftp_port?: string;
+  sftp_username?: string;
+  sftp_password?: string;
+  sftp_private_key?: string;
+  sftp_passphrase?: string;
+  root_folder?: string;
+  base_folder_path?: string;
+  file_type?: string;
+  include_subfolders?: string;
+  file_mapping_method?: string;
+  isSftp?: boolean;
+  [key: string]: unknown;
 }
 
 export interface S3FileItem {
@@ -35,6 +53,25 @@ export interface PreviewPatternRequest {
   multi_files_prefix?: string;
   include_subfolders?: string;
   file_mapping_method?: string;
+  isSftp?: boolean;
+}
+
+export interface SFTPPreviewPatternRequest {
+  connection_id?: number;
+  sftp_host?: string;
+  sftp_port?: string;
+  sftp_username?: string;
+  sftp_password?: string;
+  sftp_private_key?: string;
+  sftp_passphrase?: string;
+  root_folder?: string;
+  base_folder_path?: string;
+  file_type?: string;
+  multi_files_prefix?: string;
+  include_subfolders?: string;
+  file_mapping_method?: string;
+  isSftp?: boolean;
+  [key: string]: unknown;
 }
 
 export interface MatchedTable {
@@ -72,6 +109,9 @@ export interface SuggestPrimaryKeysRequest {
   aws_secret_access_key?: string;
   base_folder_path?: string;
   file_type?: string;
+  isSftp?: boolean;
+  sftp_host?: string;
+  root_folder?: string;
   [key: string]: unknown;
 }
 
