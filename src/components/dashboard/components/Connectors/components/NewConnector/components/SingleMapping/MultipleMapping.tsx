@@ -30,6 +30,7 @@ interface MultipleMappingProps {
   loading?: boolean;
   readOnly?: boolean;
   connectionId?: number;
+  isSftp?: boolean;
 }
 
 const MultipleMapping: React.FC<MultipleMappingProps> = ({
@@ -41,6 +42,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
   loading: saveLoading,
   readOnly = false,
   connectionId,
+  isSftp: propIsSftp,
 }) => {
   const getDefaultPrefix = (fileType: string | undefined): string => {
     if (!fileType) return "";
@@ -61,8 +63,20 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
     () => isEditMode && !!prefix.trim(),
   );
 
+  const isSftp = useMemo(() => {
+    if (propIsSftp !== undefined) return propIsSftp;
+    return !!(formValues?.sftp_host || formValues?.root_folder);
+  }, [formValues, propIsSftp]);
+
   const hasRequiredCreds = useMemo(() => {
     if (connectionId) return true;
+    if (isSftp) {
+      return (
+        !!formValues?.sftp_host &&
+        !!formValues?.sftp_username &&
+        !!formValues?.root_folder
+      );
+    }
     return (
       !!formValues?.s3_bucket &&
       !!formValues?.aws_access_key_id &&
@@ -72,11 +86,35 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
     formValues?.s3_bucket,
     formValues?.aws_access_key_id,
     formValues?.aws_secret_access_key,
+    formValues?.sftp_host,
+    formValues?.sftp_username,
+    formValues?.root_folder,
     connectionId,
+    isSftp,
   ]);
 
   const previewParams = useMemo(() => {
     if (!hasRequiredCreds || !prefix.trim() || !shouldFetchPreview) return null;
+    if (isSftp) {
+      return {
+        sftp_host: String(formValues?.sftp_host || "").trim(),
+        sftp_port: formValues?.sftp_port,
+        sftp_username: String(formValues?.sftp_username || "").trim(),
+        sftp_password: formValues?.sftp_password,
+        sftp_private_key: formValues?.sftp_private_key,
+        sftp_passphrase: formValues?.sftp_passphrase,
+        root_folder: String(formValues?.root_folder || "").trim(),
+        base_folder_path: formValues?.base_folder_path as string | undefined,
+        file_type: formValues?.file_type as string | undefined,
+        multi_files_prefix: prefix.trim(),
+        include_subfolders: String(formValues?.include_subfolders || "false"),
+        file_mapping_method: formValues?.file_mapping_method as
+          | string
+          | undefined,
+        connection_id: connectionId,
+        isSftp: true,
+      } as unknown as PreviewPatternRequest;
+    }
     return {
       s3_bucket: String(formValues?.s3_bucket || "").trim(),
       aws_access_key_id: String(formValues?.aws_access_key_id || "").trim(),
@@ -94,13 +132,8 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
     } as PreviewPatternRequest;
   }, [
     hasRequiredCreds,
-    formValues?.s3_bucket,
-    formValues?.aws_access_key_id,
-    formValues?.aws_secret_access_key,
-    formValues?.base_folder_path,
-    formValues?.file_type,
-    formValues?.include_subfolders,
-    formValues?.file_mapping_method,
+    isSftp,
+    formValues,
     prefix,
     shouldFetchPreview,
     connectionId,
@@ -286,8 +319,8 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                   No files configured
                 </Text>
                 <Text fontSize="xs" textAlign="center">
-                  S3 credentials are not available in edit mode for security.
-                  The saved file list is shown below.
+                  {isSftp ? "SFTP" : "S3"} credentials are not available in edit
+                  mode for security. The saved file list is shown below.
                 </Text>
               </VStack>
             ) : !hasRequiredCreds && matchedTables.length > 0 ? (
@@ -302,7 +335,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 >
                   <Text fontSize="xs" color="blue.700" textAlign="center">
                     📝 Edit Mode: Showing saved files. Preview not available
-                    without S3 credentials.
+                    without {isSftp ? "SFTP" : "S3"} credentials.
                   </Text>
                 </VStack>
                 {matchedTables.map((table, index) => (

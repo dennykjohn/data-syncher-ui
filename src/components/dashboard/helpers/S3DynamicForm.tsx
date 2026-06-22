@@ -61,6 +61,7 @@ interface S3DynamicFormProps {
   mode?: "create" | "edit";
   destinationName?: string;
   sourceName?: string;
+  isSftp?: boolean;
   hideSubmitButton?: boolean;
   leftButtons?: React.ReactNode;
   rightButtons?: React.ReactNode;
@@ -97,6 +98,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   mode,
   destinationName: _destinationName,
   sourceName: _sourceName,
+  isSftp,
   hideSubmitButton = false,
   leftButtons,
   rightButtons,
@@ -222,81 +224,28 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
     const mappingsExist = hasAnyMapping(currentVals);
 
-    let clearedReason:
-      | "base_folder_path"
-      | "include_subfolders"
-      | "file_type"
-      | "s3_bucket"
-      | null = null;
+    let clearedReason: string | null = null;
 
-    if (
-      name === "base_folder_path" &&
-      value !== currentVals.base_folder_path &&
-      mappingsExist
-    ) {
-      clearedReason = "base_folder_path";
-    } else if (
-      name === "include_subfolders" &&
-      value !== currentVals.include_subfolders &&
-      mappingsExist
-    ) {
-      clearedReason = "include_subfolders";
-    } else if (
-      name === "file_type" &&
-      value !== currentVals.file_type &&
-      mappingsExist
-    ) {
-      clearedReason = "file_type";
-    } else if (
-      name === "s3_bucket" &&
-      value !== currentVals.s3_bucket &&
-      mappingsExist
-    ) {
-      clearedReason = "s3_bucket";
+    const isConfigurationField =
+      name === "base_folder_path" ||
+      name === "include_subfolders" ||
+      name === "file_type" ||
+      name === "s3_bucket" ||
+      name === "sftp_host" ||
+      name === "sftp_port" ||
+      name === "sftp_username" ||
+      name === "sftp_password" ||
+      name === "sftp_private_key" ||
+      name === "sftp_passphrase" ||
+      name === "root_folder";
+
+    if (isConfigurationField && value !== currentVals[name] && mappingsExist) {
+      clearedReason = name;
     }
 
     setValues((prev) => {
       let newValues = { ...prev, [name]: value };
-      if (clearedReason === "base_folder_path") {
-        newValues = {
-          ...newValues,
-          mapping_config: "",
-          mapping_id: "",
-          mappings: "",
-          single_file_table_mapping: "",
-          table_to_files_mapping: "",
-          multi_files_table_name: "",
-          multi_files_prefix: "",
-        };
-      }
-
-      if (clearedReason === "include_subfolders") {
-        newValues = {
-          ...newValues,
-          mapping_config: "",
-          mapping_id: "",
-          mappings: "",
-          single_file_table_mapping: "",
-          table_to_files_mapping: "",
-          multi_files_table_name: "",
-          multi_files_prefix: "",
-        };
-      }
-
-      if (clearedReason === "file_type") {
-        newValues = {
-          ...newValues,
-          mapping_config: "",
-          mapping_id: "",
-          mappings: "",
-          single_file_table_mapping: "",
-          table_to_files_mapping: "",
-          multi_files_table_name: "",
-          multi_files_prefix: "",
-        };
-      }
-
-      if (clearedReason === "s3_bucket") {
+      if (clearedReason) {
         newValues = {
           ...newValues,
           mapping_config: "",
@@ -313,17 +262,11 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       return newValues;
     });
     if (clearedReason) {
-      const descriptions: Record<typeof clearedReason, string> = {
-        base_folder_path:
-          "Base folder path changed. Please configure the mapping again.",
-        include_subfolders:
-          "Include Subfolders changed. Please configure the mapping again.",
-        file_type: "File type changed. Please configure the mapping again.",
-        s3_bucket: "S3 bucket changed. Please configure the mapping again.",
-      };
+      const fieldLabel =
+        schema.find((f) => f.name === clearedReason)?.label || clearedReason;
       toaster.warning({
         title: "Mapping cleared",
-        description: descriptions[clearedReason],
+        description: `${fieldLabel} changed. Please configure the mapping again.`,
       });
     }
 
@@ -928,7 +871,11 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       );
     }
 
-    if (field.type === "CharField" && field.widget === "PasswordInput") {
+    if (
+      (field.type as string) === "PasswordInput" ||
+      (field.type as string) === "PasswordField" ||
+      field.widget === "PasswordInput"
+    ) {
       return (
         <Field.Root
           key={field.name}
@@ -1112,6 +1059,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     onSaveMappings={handleFileMappingSave}
                     loading={loading}
                     readOnly={false}
+                    isSftp={isSftp || _sourceName?.toLowerCase() === "sftp"}
                   />
                 ) : isMultiFilesSingleTable ? (
                   <MultipleMapping
@@ -1119,6 +1067,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     tableName={values.multi_files_table_name || ""}
                     selectedFiles={currentMultipleFiles}
                     connectionId={connectionId}
+                    isSftp={isSftp || _sourceName?.toLowerCase() === "sftp"}
                     onSave={(data) => {
                       // Format table_to_files_mapping as object: { "TABLE_NAME": ["file1", "file2"] }
                       const tableToFilesMapping = {

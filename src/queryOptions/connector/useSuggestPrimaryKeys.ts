@@ -17,10 +17,11 @@ export type {
 };
 
 const fetchSuggestPrimaryKeys = async (data: SuggestPrimaryKeysRequest) => {
-  const { data: responseData } = await AxiosInstance.post(
-    ServerRoutes.connector.suggestPrimaryKeys(),
-    data,
-  );
+  const isSftp = !!data.sftp_host || !!data.root_folder || !!data.isSftp;
+  const source = isSftp ? "sftp" : "s3";
+  const endpoint = ServerRoutes.connector.suggestPrimaryKeys({ source });
+
+  const { data: responseData } = await AxiosInstance.post(endpoint, data);
   return responseData as SuggestPrimaryKeysResponse;
 };
 
@@ -31,6 +32,12 @@ export default function useSuggestPrimaryKeys(
   return useQuery<SuggestPrimaryKeysResponse>({
     queryKey: ["SuggestPrimaryKeys", data],
     queryFn: () => fetchSuggestPrimaryKeys(data),
-    enabled: enabled && (!!data.connection_id || !!data.s3_bucket),
+    enabled:
+      enabled &&
+      (!!data.connection_id ||
+        !!data.s3_bucket ||
+        !!data.sftp_host ||
+        !!data.root_folder ||
+        !!data.isSftp),
   });
 }

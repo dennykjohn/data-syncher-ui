@@ -71,8 +71,10 @@ const NewConnector = () => {
       case 3: {
         if (!isStepCompleted(2)) return null;
 
-        // Determine if this is an S3 connector based on source name
-        const isS3Connector = state.source?.toLowerCase() === "amazons3";
+        // Determine if this is an S3 or SFTP connector based on source name
+        const isS3Connector =
+          state.source?.toLowerCase() === "amazons3" ||
+          state.source?.toLowerCase() === "sftp";
 
         // Route to appropriate configuration component
         return isS3Connector ? (
