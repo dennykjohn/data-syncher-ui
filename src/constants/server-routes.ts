@@ -5,6 +5,7 @@ const ServerRoutes = {
   },
   auth: {
     login: () => "/authentication/",
+    refresh: () => "authentication/refresh/",
     profile: () => "user/profile/",
 
     companyDetails: ({ companyId }: { companyId: string }) =>
@@ -12,6 +13,8 @@ const ServerRoutes = {
     forgotPassword: () => "password-reset/",
     register: () => "authentication/",
     resetPassword: () => "password-reset-confirm/",
+    verifyEmail: () => "verify-email/",
+    resendOtp: () => "resend-otp/",
   },
   source: {
     listMasterSources: () => "source/all/",
@@ -38,6 +41,8 @@ const ServerRoutes = {
     testDestination: (id: number) => `/destinations/test/${id}/`,
     deleteDestination: (id: number) => `destinations/delete/${id}/`,
     checkKeyPair: () => "dest-check-key-pair/",
+    fetchExportConfig: (destinationName: string) =>
+      `destinations/${destinationName}/export-config/`,
   },
   connector: {
     listConnectorsByPage: ({
@@ -97,6 +102,14 @@ const ServerRoutes = {
     deleteConnection: (id: number) => `connection/${id}/delete/`,
     testStatus: (id: number) => `connection/${id}/test/`,
     updateSelectedTables: (id: number) => `connection/${id}/update-selection/`,
+    updateSelectedFields: (id: number, tableName: string) =>
+      `connection/${id}/tables/${tableName}/table-fields/`,
+    updateTableEmailGroups: (id: number, tableName: string) =>
+      `connection/${id}/tables/${tableName}/email-groups/`,
+    updateTableExportSettings: (id: number, tableName: string) =>
+      `connection/${id}/tables/${tableName}/export-settings/`,
+    updateSftpExportSettings: (id: number) =>
+      `connection/${id}/sftp-export-settings/`,
     updateSchema: (id: number) => `connection/${id}/fetch-tables/`,
     updateSchemaStatus: (id: number) =>
       `connection/${id}/update-schema-status/`,
@@ -195,6 +208,12 @@ const ServerRoutes = {
   communicationSupport: {
     getDetails: () => "account/communication-support/",
     update: () => "account/communication-support/",
+  },
+  emailGroups: {
+    list: () => "account/email-groups/",
+    create: () => "account/email-groups/",
+    update: (id: number | string) => `account/email-groups/${id}/`,
+    delete: (id: number | string) => `account/email-groups/${id}/`,
   },
   account: {
     profile: () => "account/profile/",

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { Flex } from "@chakra-ui/react";
+import { Box, Flex, Grid, Text } from "@chakra-ui/react";
 
+import { format } from "date-fns";
 import { useNavigate, useParams } from "react-router";
 
 import PrimaryKeySelection from "@/components/dashboard/components/Connectors/components/NewConnector/components/PrimaryKeySelection/PrimaryKeySelection";
@@ -12,6 +13,7 @@ import PageHeader from "@/components/dashboard/wrapper/PageHeader";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
+import { dateTimeFormat } from "@/constants/common";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import useCreateConnection from "@/queryOptions/connector/useCreateConnection";
 import useFetchConnectorConfig from "@/queryOptions/connector/useFetchConnectorConfig";
@@ -21,10 +23,58 @@ import useSuggestPrimaryKeys, {
 } from "@/queryOptions/connector/useSuggestPrimaryKeys";
 import useUpdateConnectorConfig from "@/queryOptions/connector/useUpdateConnectorConfig";
 import useFetchFormSchema from "@/queryOptions/useFetchFormSchema";
-import { type CreateConnectionPayload } from "@/types/connectors";
+import {
+  type AuditUser,
+  type Connector,
+  type CreateConnectionPayload,
+} from "@/types/connectors";
 
 import { type ConnectorFormState } from "../../type";
+import S3DocsHelperPanel from "./S3DocsHelperPanel";
 import { useQueryClient } from "@tanstack/react-query";
+
+const getFirstName = (user?: AuditUser | string | null) => {
+  if (!user) return "";
+  if (typeof user === "string") return user.trim().split(/\s+/)[0] || "";
+  return user.first_name || "";
+};
+
+const getModifiedByName = (connector?: Connector) =>
+  connector
+    ? getFirstName(connector.modified_by) ||
+      getFirstName(connector.updated_by) ||
+      getFirstName(connector.modified_by_name) ||
+      getFirstName(connector.updated_by_name) ||
+      ""
+    : "";
+
+const formatDateTime = (date?: string | number | null) => {
+  if (!date || date === "None") return "--";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "--";
+  return format(parsed, dateTimeFormat);
+};
+
+const ModifiedAuditInfo = ({ connector }: { connector?: Connector }) => {
+  if (!connector) return null;
+
+  return (
+    <Flex gap={4} wrap="wrap">
+      <Flex gap={1}>
+        <Text fontSize="sm">Modified by:</Text>
+        <Text fontSize="sm" fontWeight="semibold">
+          {getModifiedByName(connector) || "--"}
+        </Text>
+      </Flex>
+      <Flex gap={1}>
+        <Text fontSize="sm">Modified at:</Text>
+        <Text fontSize="sm" fontWeight="semibold">
+          {formatDateTime(connector.modified_at)}
+        </Text>
+      </Flex>
+    </Flex>
+  );
+};
 
 const S3ConnectorConfiguration = ({
   state,
@@ -649,46 +699,102 @@ const S3ConnectorConfiguration = ({
 
   // ------------------- Main form -------------------
   return (
-    <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
-      <PageHeader
-        breadcrumbs={[
-          {
-            label: "Connector",
-            route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
-          },
-          ...(mode === "edit"
-            ? [
+    <Box
+      w="full"
+      h={{ base: "auto", md: "calc(100vh - 64px)" }}
+      mt={{ base: 0, md: -6 }}
+      mb={{ base: 0, md: -6 }}
+      mr={{ base: 0, md: -6 }}
+      overflow="hidden"
+    >
+      <Grid
+        templateColumns={{
+          base: "1fr",
+          xl: "1fr 1fr",
+        }}
+        templateRows={{
+          base: "1fr 1fr",
+          xl: "1fr",
+        }}
+        alignItems="stretch"
+        gap={0}
+        w="full"
+        h="full"
+      >
+        <Box
+          w="full"
+          h="full"
+          overflowY="auto"
+          overscrollBehaviorY="contain"
+          pt={{ base: 0, md: 6 }}
+          pb={{ base: 4, md: 6 }}
+          pr={{ base: 0, xl: 4 }}
+        >
+          <Flex direction="column" gap={VIEW_CONFIG.pageGap}>
+            <PageHeader
+              breadcrumbs={[
                 {
-                  label: "Settings",
-                  route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+                  label: "Connector",
+                  route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
                 },
-              ]
-            : []),
-          { label: mode === "edit" ? "Edit S3 Connector" : "Configure S3" },
-        ]}
-        title={
-          mode === "edit"
-            ? "Edit S3 Connector"
-            : "Enter S3 authorization details"
-        }
-        subtitle={
-          mode === "edit"
-            ? "Modify the S3 connector configuration"
-            : "Provide the necessary details to authorize the S3 connector"
-        }
-      />
-      <S3DynamicForm
-        schema={schemaFields as S3FieldSchema[]}
-        onSubmit={handleFormSubmit}
-        loading={isCreateConnectorPending || isUpdateConnectorConfigPending}
-        handleBackButtonClick={handlePrevious}
-        defaultValues={s3DefaultValues}
-        mode={mode}
-        sourceName={sourceName}
-        connectionId={shouldFetch ? Number(connectionId) : undefined}
-        migrationStatus={connectorData?.migration_status}
-      />
-    </Flex>
+                ...(mode === "edit"
+                  ? [
+                      {
+                        label: "Settings",
+                        route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.EDIT}/${connectionId}/${ClientRoutes.CONNECTORS.SETTINGS}`,
+                      },
+                    ]
+                  : []),
+                {
+                  label: mode === "edit" ? "Edit S3 Connector" : "Configure S3",
+                },
+              ]}
+              title={
+                mode === "edit"
+                  ? "Edit S3 Connector"
+                  : "Enter S3 authorization details"
+              }
+              subtitle={
+                mode === "create"
+                  ? "Provide the necessary details to authorize the S3 connector"
+                  : undefined
+              }
+            >
+              {mode === "edit" && (
+                <Flex align="center" gap={4} wrap="wrap">
+                  <Text fontSize="sm">
+                    Modify the S3 connector configuration
+                  </Text>
+                  <ModifiedAuditInfo connector={connectorData} />
+                </Flex>
+              )}
+            </PageHeader>
+            <S3DynamicForm
+              schema={schemaFields as S3FieldSchema[]}
+              onSubmit={handleFormSubmit}
+              loading={
+                isCreateConnectorPending || isUpdateConnectorConfigPending
+              }
+              handleBackButtonClick={handlePrevious}
+              defaultValues={s3DefaultValues}
+              mode={mode}
+              sourceName={sourceName}
+              connectionId={shouldFetch ? Number(connectionId) : undefined}
+              migrationStatus={connectorData?.migration_status}
+            />
+          </Flex>
+        </Box>
+
+        <Box
+          w="full"
+          h="full"
+          overflow="hidden"
+          bg={{ base: "transparent", xl: "gray.50" }}
+        >
+          <S3DocsHelperPanel />
+        </Box>
+      </Grid>
+    </Box>
   );
 };
 

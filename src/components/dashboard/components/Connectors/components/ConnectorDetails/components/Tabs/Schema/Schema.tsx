@@ -497,6 +497,7 @@ const Schema = () => {
   const [userCheckedTables, setUserCheckedTables] = useState<ConnectorTable[]>(
     () => checkedTables,
   );
+
   const shouldSkipUpdateRef = useRef(false);
   /**
    * After any checkbox toggle, only `userCheckedTables` drives UI + Migration Batches until Save.
@@ -780,7 +781,8 @@ const Schema = () => {
           <ActionBar.Positioner>
             <ActionBar.Content>
               <Button
-                variant="outline"
+                variant="solid"
+                colorPalette="purple"
                 size="sm"
                 onClick={() => handleAssignTables()}
                 loading={isAssigningTables}

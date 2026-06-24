@@ -2,9 +2,10 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 
 import { Badge, Flex, HStack, Image, Text } from "@chakra-ui/react";
 
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 
 import TableWrapper from "@/components/dashboard/wrapper/TableWrapper";
+import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
 import { VIEW_CONFIG } from "@/constants/view-config";
 import usePermissions from "@/hooks/usePermissions";
@@ -17,6 +18,26 @@ import PageHeader from "../../wrapper/PageHeader";
 import TableFilter from "../../wrapper/TableFilter";
 import NoDestinations from "./components/NoDestination";
 import { formatDestinationDate } from "./destinationTableFormat";
+
+type AuditUser = NonNullable<DestinationTableItem["modified_by"]>;
+
+const getFirstName = (user?: AuditUser | null) => {
+  if (!user) return "";
+  if (typeof user === "string") return user.trim().split(/\s+/)[0] || "";
+  return user.first_name || "";
+};
+
+const getModifiedByName = (destination: DestinationTableItem) =>
+  getFirstName(destination.modified_by) ||
+  getFirstName(destination.updated_by) ||
+  getFirstName(destination.modified_by_name) ||
+  getFirstName(destination.updated_by_name) ||
+  "";
+
+const getCreatedByName = (destination: DestinationTableItem) =>
+  getFirstName(destination.created_by) ||
+  getFirstName(destination.created_by_name) ||
+  "";
 
 const columns: Column<DestinationTableItem>[] = [
   { header: "Name", accessor: "name" },
@@ -41,9 +62,24 @@ const columns: Column<DestinationTableItem>[] = [
     render: (_, { created_at }) => formatDestinationDate(created_at),
   },
   {
-    header: "Updated At",
-    accessor: "updated_at",
-    render: (_, { updated_at }) => formatDestinationDate(updated_at),
+    header: "Modified By",
+    accessor: "modified_by",
+    render: (_, destination) => (
+      <Text fontSize="sm">{getModifiedByName(destination) || "--"}</Text>
+    ),
+  },
+  {
+    header: "Created By",
+    accessor: "created_by",
+    render: (_, destination) => (
+      <Text fontSize="sm">{getCreatedByName(destination) || "--"}</Text>
+    ),
+  },
+  {
+    header: "Modified At",
+    accessor: "modified_at",
+    render: (_, { modified_at, updated_at }) =>
+      formatDestinationDate(modified_at || updated_at),
   },
   {
     header: "Status",
@@ -63,6 +99,28 @@ const SIZE = 10;
 
 const Destination = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const oauthStatus = searchParams.get("oauth_status");
+    const oauthError = searchParams.get("oauth_error");
+
+    if (oauthStatus === "error" && oauthError) {
+      toaster.error({
+        title: oauthError,
+      });
+
+      // Remove query params from the URL using replaceState
+      const url = new URL(window.location.href);
+      url.searchParams.delete("oauth_status");
+      url.searchParams.delete("oauth_error");
+      window.history.replaceState(
+        {},
+        document.title,
+        url.pathname + url.search,
+      );
+    }
+  }, [searchParams]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const { can } = usePermissions();

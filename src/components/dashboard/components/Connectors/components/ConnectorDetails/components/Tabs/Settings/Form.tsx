@@ -32,6 +32,7 @@ import { reducer } from "./reducer";
 
 const Form = (props: Connector) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [chunkCountError, setChunkCountError] = useState<string | null>(null);
   const { can } = usePermissions();
 
   const canEdit = can("can_edit_connection_settings");
@@ -43,23 +44,25 @@ const Form = (props: Connector) => {
     safety_interval,
     execution_order,
     chunk_count,
+    effective_max_chunk,
+    min_count,
+    max_count,
     status,
     dst_min_count,
     dst_max_count,
   } = props;
+
+  const minChunkCount = min_count ?? dst_min_count ?? 10;
+  const maxChunkCount = max_count ?? dst_max_count ?? 1000000;
+  const transferPacketSize =
+    chunk_count ?? effective_max_chunk ?? minChunkCount;
 
   const initialFormState = {
     sync_start_date: sync_start_date ?? "",
     time_frequency: time_frequency ?? "",
     safety_interval: safety_interval ?? "",
     execution_order: execution_order ?? "",
-    chunk_count:
-      typeof chunk_count === "number"
-        ? Math.min(
-            Math.max(chunk_count, dst_min_count ?? 0),
-            dst_max_count ?? 1000000,
-          )
-        : (dst_min_count ?? 10),
+    chunk_count: transferPacketSize,
   };
 
   const [formState, dispatch] = useReducer(reducer, initialFormState);
@@ -168,34 +171,36 @@ const Form = (props: Connector) => {
           </NativeSelect.Root>
         </Field.Root>
 
-        <Field.Root maxW="sm" disabled={!canEdit}>
+        <Field.Root maxW="sm" disabled={!canEdit} invalid={!!chunkCountError}>
           <Field.Label>Transfer packet size</Field.Label>
           <NumberInput.Root
             disabled={!canEdit}
-            min={dst_min_count ?? 1}
-            max={dst_max_count ?? 1000000}
-            value={String(formState.chunk_count ?? 10)}
+            min={minChunkCount}
+            max={maxChunkCount}
+            value={String(formState.chunk_count ?? transferPacketSize)}
             onValueChange={(e) => {
               const value = Number(e.value);
               if (isNaN(value)) return;
 
-              const min = dst_min_count ?? 1;
-              const max = dst_max_count ?? 1000000;
-
               dispatch({
                 type: "SET_FIELD",
                 field: "chunk_count",
-                value: Math.min(Math.max(value, min), max),
+                value: value,
               });
+              setChunkCountError(null);
             }}
           >
             <NumberInput.Control />
             <NumberInput.Input />
           </NumberInput.Root>
-          <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
-            Min count: {dst_min_count?.toLocaleString() || "10,000"} | Max
-            count: {dst_max_count?.toLocaleString() || "1,000,000"}
-          </Field.HelperText>
+          {chunkCountError ? (
+            <Field.ErrorText>{chunkCountError}</Field.ErrorText>
+          ) : (
+            <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+              Min count: {minChunkCount.toLocaleString()} | Max count:{" "}
+              {maxChunkCount.toLocaleString()}
+            </Field.HelperText>
+          )}
         </Field.Root>
       </Stack>
 
@@ -233,8 +238,8 @@ const Form = (props: Connector) => {
         <Flex gap={4}>
           <Button
             variant="outline"
-            colorPalette="red"
-            color="red.500"
+            colorPalette="brand"
+            color="brand.500"
             loading={isTestOperationPending}
             onClick={() =>
               testConnection(undefined, {
@@ -253,7 +258,8 @@ const Form = (props: Connector) => {
           <Button
             colorPalette="brand"
             disabled={!canEdit}
-            onClick={() =>
+            onClick={() => {
+              setChunkCountError(null);
               updateSettings(
                 {
                   ...formState,
@@ -264,9 +270,27 @@ const Form = (props: Connector) => {
                       title: "Connector settings updated",
                     });
                   },
+                  onError: (error: unknown) => {
+                    const err = error as {
+                      response?: {
+                        data?: {
+                          chunk_count?: string | string[];
+                          message?: string;
+                        };
+                      };
+                    };
+                    const errors = err.response?.data;
+                    if (errors && (errors.chunk_count || errors.message)) {
+                      const msg =
+                        (Array.isArray(errors.chunk_count)
+                          ? errors.chunk_count[0]
+                          : errors.chunk_count || errors.message) || null;
+                      setChunkCountError(msg);
+                    }
+                  },
                 },
-              )
-            }
+              );
+            }}
             loading={isUpdateOperationPending}
           >
             <MdRefresh />
