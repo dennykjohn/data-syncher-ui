@@ -15,6 +15,14 @@ import {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const authCookieOpts = {
+  expires: 7,
+  /** Secure cookies are not stored on http:// — required for local Vite + Django. */
+  secure:
+    typeof window !== "undefined" && window.location.protocol === "https:",
+  sameSite: "lax" as const,
+};
+
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
@@ -70,16 +78,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     user,
   }: LoginResponse) => {
     try {
-      Cookies.set("access_token", access_token, {
-        expires: 7,
-        secure: true,
-        sameSite: "Strict",
-      });
-      Cookies.set("refresh_token", refresh_token, {
-        expires: 7,
-        secure: true,
-        sameSite: "Strict",
-      });
+      Cookies.set("access_token", access_token, authCookieOpts);
+      Cookies.set("refresh_token", refresh_token, authCookieOpts);
 
       // Fetch latest profile so permissions/role-based redirects are stable.
       let profile = user;

@@ -63,6 +63,9 @@ const AccountProfile = lazy(
   () =>
     import("@/components/dashboard/components/AccountSettings/Profile/Profile"),
 );
+const Scheduling = lazy(
+  () => import("@/components/dashboard/components/Scheduling/Scheduling"),
+);
 
 // Pages
 //const HomePage = lazy(() => import("@/pages/website/HomePage"));
@@ -176,6 +179,14 @@ export const router = createBrowserRouter([
             element: <DestinationForm mode="edit" />,
           },
           /** End Destination Routes */
+          {
+            path: ClientRoutes.SCHEDULING,
+            element: (
+              <ProtectedRoute permission="can_view_connectors">
+                <Scheduling />
+              </ProtectedRoute>
+            ),
+          },
           {
             path: ClientRoutes.PLANS,
             element: (

@@ -3,9 +3,19 @@ import Cookies from "js-cookie";
 export const getWebSocketUrl = (path: string): string | null => {
   if (!path) return null;
 
+  const envWs =
+    (import.meta.env.VITE_WS_ORIGIN as string | undefined) ||
+    (import.meta.env.VITE_API_ORIGIN as string | undefined);
+
   let socketBaseUrl = "";
 
-  if (window.location.hostname === "localhost") {
+  if (envWs) {
+    const u = new URL(
+      envWs.replace(/^ws:/, "http:").replace(/^wss:/, "https:"),
+    );
+    u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+    socketBaseUrl = u.origin;
+  } else if (window.location.hostname === "localhost") {
     socketBaseUrl = "wss://qa.datasyncher.com";
   } else {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";

@@ -619,7 +619,7 @@ const Schema = () => {
           });
         }}
       />
-      <Flex mr="auto" mt={-4}>
+      <Flex direction="column" gap={1} mr="auto" mt={-4} w="100%" maxW="md">
         <InputGroup endElement={<MdSearch size={28} />}>
           <Input
             placeholder="Search table name"
@@ -631,18 +631,31 @@ const Schema = () => {
             }}
           />
         </InputGroup>
+        {hasLocalSelectionEdits && (
+          <Text fontSize="xs" color="gray.600">
+            Use the Save bar to write your checked tables to the server, then
+            add them to a batch.
+          </Text>
+        )}
       </Flex>
-      <Grid templateColumns="1fr 1fr" gap={4}>
+      <Grid templateColumns="1fr 1fr" gap={4} alignItems="stretch">
         <Flex
           direction="column"
-          gap={2}
           borderWidth={1}
           borderColor="gray.300"
           borderRadius="lg"
           padding={4}
           bgColor="white"
+          minH={0}
+          maxH="72vh"
+          overflow="hidden"
         >
-          <Flex mb={4} justifyContent="space-between" alignItems="center">
+          <Flex
+            mb={3}
+            justifyContent="space-between"
+            alignItems="center"
+            flexShrink={0}
+          >
             <Text fontSize="sm" fontWeight="semibold">
               Table Names
             </Text>
@@ -673,62 +686,84 @@ const Schema = () => {
 
           {!isAssigningTables && (
             <>
-              {paginatedTables.map((item, index) => {
-                const { table } = item;
-                const isExpanded = !!expanded[table];
+              <Flex
+                direction="column"
+                gap={2}
+                flex="1"
+                minH={0}
+                overflowY="auto"
+                pr={1}
+              >
+                {paginatedTables.map((item, index) => {
+                  const { table } = item;
+                  const isExpanded = !!expanded[table];
 
-                return (
-                  <TableRow
-                    key={table}
-                    item={item}
-                    index={index}
-                    connectionId={context.connection_id}
-                    isExpanded={isExpanded}
-                    onToggleExpand={toggleExpand}
-                    isSelected={effectiveSelectedKeys.has(table.toLowerCase())}
-                    onCheckedChange={(checked) => {
-                      setHasLocalSelectionEdits(true);
-                      setUserCheckedTables((prev: ConnectorTable[]) => {
-                        const base = beganLocalSelectionRef.current
-                          ? prev
-                          : checkedTables;
-                        beganLocalSelectionRef.current = true;
-                        if (checked) {
-                          if (base.some((t) => t.table === table)) return base;
-                          return [...base, item];
-                        }
-                        return base.filter(
-                          (t: ConnectorTable) => t.table !== table,
-                        );
-                      });
-                    }}
-                    reloadingTables={reloadingTables}
-                    isReloadingSingleTable={isReloadingSingleTable}
-                    isRefreshDeltaTableInProgress={
-                      isRefreshDeltaTableInProgress
-                    }
-                    isRefreshSchemaInProgress={isRefreshSchemaInProgress}
-                    shouldLockAllReloads={shouldLockAllReloads}
-                    tableStatusData={tableStatusData}
-                    inBatch={tablesInAnyBatch.has(table.toLowerCase())}
-                    onReload={() => {
-                      setShouldShowDisabledState(true);
-                      setReloadingTables((prev: string[]) => [...prev, table]);
-                      reloadTimestamps.current[table] = Date.now();
-                      reloadSingleTable({
-                        connection_id: context.connection_id,
-                        table_name: table,
-                      });
-                    }}
-                  />
-                );
-              })}
+                  return (
+                    <TableRow
+                      key={table}
+                      item={item}
+                      index={index}
+                      connectionId={context.connection_id}
+                      isExpanded={isExpanded}
+                      onToggleExpand={toggleExpand}
+                      isSelected={effectiveSelectedKeys.has(
+                        table.toLowerCase(),
+                      )}
+                      onCheckedChange={(checked) => {
+                        setHasLocalSelectionEdits(true);
+                        setUserCheckedTables((prev: ConnectorTable[]) => {
+                          const base = beganLocalSelectionRef.current
+                            ? prev
+                            : checkedTables;
+                          beganLocalSelectionRef.current = true;
+                          if (checked) {
+                            if (base.some((t) => t.table === table))
+                              return base;
+                            return [...base, item];
+                          }
+                          return base.filter(
+                            (t: ConnectorTable) => t.table !== table,
+                          );
+                        });
+                      }}
+                      reloadingTables={reloadingTables}
+                      isReloadingSingleTable={isReloadingSingleTable}
+                      isRefreshDeltaTableInProgress={
+                        isRefreshDeltaTableInProgress
+                      }
+                      isRefreshSchemaInProgress={isRefreshSchemaInProgress}
+                      shouldLockAllReloads={shouldLockAllReloads}
+                      tableStatusData={tableStatusData}
+                      inBatch={tablesInAnyBatch.has(table.toLowerCase())}
+                      onReload={() => {
+                        setShouldShowDisabledState(true);
+                        setReloadingTables((prev: string[]) => [
+                          ...prev,
+                          table,
+                        ]);
+                        reloadTimestamps.current[table] = Date.now();
+                        reloadSingleTable({
+                          connection_id: context.connection_id,
+                          table_name: table,
+                        });
+                      }}
+                    />
+                  );
+                })}
+              </Flex>
               {totalPages > 1 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={jumpToPage}
-                />
+                <Flex
+                  flexShrink={0}
+                  pt={3}
+                  borderTopWidth={1}
+                  borderColor="gray.200"
+                >
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={jumpToPage}
+                  />
+                </Flex>
               )}
             </>
           )}

@@ -130,6 +130,10 @@ const BatchGroupedPanel = ({
         borderColor="gray.400"
         borderRadius="lg"
         bgColor="gray.50"
+        display="flex"
+        flexDirection="column"
+        maxH="44vh"
+        minH={0}
         overflow="hidden"
       >
         <Flex
@@ -160,7 +164,14 @@ const BatchGroupedPanel = ({
             </Button>
           )}
         </Flex>
-        <Flex direction="column" gap={1} p={2}>
+        <Flex
+          direction="column"
+          gap={1}
+          p={2}
+          flex="1"
+          minH={0}
+          overflowY="auto"
+        >
           {displayUnassigned.map((t, index) => (
             <Flex
               key={t.table_name}
@@ -207,6 +218,8 @@ const BatchGroupedPanel = ({
         borderRadius="lg"
         bgColor="white"
         minH="200px"
+        maxH="72vh"
+        minW={0}
         overflow="hidden"
       >
         {/* Header */}
@@ -217,6 +230,7 @@ const BatchGroupedPanel = ({
           py={3}
           borderBottomWidth={1}
           borderColor="gray.200"
+          flexShrink={0}
         >
           <Text fontSize="sm" fontWeight="semibold">
             Migration Batches
@@ -253,14 +267,14 @@ const BatchGroupedPanel = ({
           </Flex>
         </Flex>
 
-        {/* Body: Unassigned first, then batch cards */}
+        {/* Body: Unassigned first, then batch cards — scrolls within panel */}
         <Flex
           direction="column"
           gap={3}
           p={3}
           overflowY="auto"
           flex="1"
-          maxH="70vh"
+          minH={0}
         >
           {isLoading && (
             <>
@@ -300,6 +314,7 @@ const BatchGroupedPanel = ({
           borderColor="gray.200"
           p={2}
           bgColor="white"
+          flexShrink={0}
         >
           <Button
             size="sm"

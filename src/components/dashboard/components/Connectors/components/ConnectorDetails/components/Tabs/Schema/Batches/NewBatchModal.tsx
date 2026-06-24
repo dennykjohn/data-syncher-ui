@@ -17,12 +17,7 @@ import {
   useAddTablesToBatch,
   useCreateBatch,
 } from "@/queryOptions/connector/schema/useBatches";
-import {
-  type BatchExecutionOrder,
-  type MigrationBatch,
-} from "@/types/connectors";
-
-import ScheduleEditor, { type ScheduleValue } from "./ScheduleEditor";
+import { type MigrationBatch } from "@/types/connectors";
 
 interface NewBatchModalProps {
   open: boolean;
@@ -39,12 +34,6 @@ interface NewBatchModalProps {
   onCreated?: (_batch: MigrationBatch) => void;
 }
 
-const DEFAULT_SCHEDULE: ScheduleValue = {
-  time_frequency: 15,
-  execution_order: "parallel" as BatchExecutionOrder,
-  sync_start_date: null,
-};
-
 const NewBatchModal = ({
   open,
   onClose,
@@ -54,7 +43,6 @@ const NewBatchModal = ({
   onCreated,
 }: NewBatchModalProps) => {
   const [name, setName] = useState<string>(defaultName ?? "");
-  const [schedule, setSchedule] = useState<ScheduleValue>(DEFAULT_SCHEDULE);
 
   const { mutate: createBatch, isPending: isCreating } =
     useCreateBatch(connectionId);
@@ -65,9 +53,12 @@ const NewBatchModal = ({
     createBatch(
       {
         name: name.trim() || undefined,
-        time_frequency: String(schedule.time_frequency),
-        execution_order: schedule.execution_order,
-        sync_start_date: schedule.sync_start_date,
+        // Scheduling is configured from the dedicated Scheduling section.
+        time_frequency: "15",
+        execution_order: "parallel",
+        schedule_type: "interval",
+        schedule_config: {},
+        sync_start_date: null,
       },
       {
         onSuccess: async (batch: MigrationBatch | undefined) => {
@@ -124,7 +115,6 @@ const NewBatchModal = ({
       onOpenChange={(e) => {
         if (e.open) {
           setName(defaultName ?? "");
-          setSchedule(DEFAULT_SCHEDULE);
         }
       }}
     >
@@ -147,8 +137,12 @@ const NewBatchModal = ({
                     autoFocus
                   />
                 </Field.Root>
-
-                <ScheduleEditor value={schedule} onChange={setSchedule} />
+                <Field.Root>
+                  <Field.HelperText>
+                    Batch schedule and execution are managed in Dashboard
+                    Scheduling.
+                  </Field.HelperText>
+                </Field.Root>
               </Flex>
             </Dialog.Body>
             <Dialog.Footer>

@@ -217,6 +217,17 @@ export type ReverseSchemaResponse = {
 
 export type BatchStatus = "active" | "paused";
 export type BatchExecutionOrder = "parallel" | "sequential";
+export type BatchScheduleType = "interval" | "cron";
+export type BatchCronType = "daily" | "weekdays" | "weekly" | "monthly";
+
+export interface BatchScheduleConfig {
+  cron_type?: BatchCronType;
+  hour?: number;
+  minute?: number;
+  timezone?: string;
+  day_of_week?: string;
+  day?: number;
+}
 
 export interface BatchTable {
   table_name: string;
@@ -229,6 +240,8 @@ export interface MigrationBatch {
   name: string;
   time_frequency: string;
   execution_order: BatchExecutionOrder;
+  schedule_type?: BatchScheduleType;
+  schedule_config?: BatchScheduleConfig;
   sync_start_date: string | null;
   status: BatchStatus;
   tables: BatchTable[];
@@ -252,6 +265,8 @@ export interface CreateBatchPayload {
   name?: string;
   time_frequency: string | number;
   execution_order: BatchExecutionOrder;
+  schedule_type?: BatchScheduleType;
+  schedule_config?: BatchScheduleConfig;
   sync_start_date?: string | null;
 }
 
@@ -259,6 +274,8 @@ export interface UpdateBatchPayload {
   name?: string;
   time_frequency?: string | number;
   execution_order?: BatchExecutionOrder;
+  schedule_type?: BatchScheduleType;
+  schedule_config?: BatchScheduleConfig;
   sync_start_date?: string | null;
   status?: BatchStatus;
 }

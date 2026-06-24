@@ -4,20 +4,15 @@ import {
   Button,
   CloseButton,
   Dialog,
-  Field,
   Flex,
   Input,
   Portal,
+  Text,
 } from "@chakra-ui/react";
 
 import { toaster } from "@/components/ui/toaster";
 import { useUpdateBatch } from "@/queryOptions/connector/schema/useBatches";
-import {
-  type BatchExecutionOrder,
-  type MigrationBatch,
-} from "@/types/connectors";
-
-import ScheduleEditor, { type ScheduleValue } from "./ScheduleEditor";
+import { type MigrationBatch } from "@/types/connectors";
 
 interface EditBatchModalProps {
   open: boolean;
@@ -33,11 +28,6 @@ const EditBatchModal = ({
   batch,
 }: EditBatchModalProps) => {
   const [name, setName] = useState<string>(batch.name);
-  const [schedule, setSchedule] = useState<ScheduleValue>({
-    time_frequency: Number(batch.time_frequency) || 15,
-    execution_order: batch.execution_order as BatchExecutionOrder,
-    sync_start_date: batch.sync_start_date,
-  });
 
   const { mutate: updateBatch, isPending } = useUpdateBatch(connectionId);
 
@@ -47,9 +37,6 @@ const EditBatchModal = ({
         batchId: batch.id,
         payload: {
           name: name.trim() || batch.name,
-          time_frequency: String(schedule.time_frequency),
-          execution_order: schedule.execution_order,
-          sync_start_date: schedule.sync_start_date,
         },
       },
       {
@@ -72,11 +59,6 @@ const EditBatchModal = ({
       onOpenChange={(e) => {
         if (e.open) {
           setName(batch.name);
-          setSchedule({
-            time_frequency: Number(batch.time_frequency) || 15,
-            execution_order: batch.execution_order as BatchExecutionOrder,
-            sync_start_date: batch.sync_start_date,
-          });
         }
       }}
     >
@@ -89,16 +71,15 @@ const EditBatchModal = ({
             </Dialog.Header>
             <Dialog.Body>
               <Flex direction="column" gap={4}>
-                <Field.Root>
-                  <Field.Label>Name</Field.Label>
-                  <Input
-                    size="sm"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </Field.Root>
-
-                <ScheduleEditor value={schedule} onChange={setSchedule} />
+                <Input
+                  size="sm"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                <Text fontSize="xs" color="gray.600">
+                  Schedule and execution settings are managed in Dashboard
+                  Scheduling.
+                </Text>
               </Flex>
             </Dialog.Body>
             <Dialog.Footer>

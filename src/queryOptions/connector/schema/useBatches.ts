@@ -51,6 +51,9 @@ export function useCreateBatch(connectionId: number) {
       queryClient.invalidateQueries({
         queryKey: batchesQueryKey(connectionId),
       });
+      queryClient.invalidateQueries({
+        queryKey: ["ConnectorTable", connectionId],
+      });
     },
   });
 }
@@ -92,6 +95,9 @@ export function useDeleteBatch(connectionId: number) {
       queryClient.invalidateQueries({
         queryKey: batchesQueryKey(connectionId),
       });
+      queryClient.invalidateQueries({
+        queryKey: ["ConnectorTable", connectionId],
+      });
     },
   });
 }
@@ -115,6 +121,9 @@ export function useAddTablesToBatch(connectionId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: batchesQueryKey(connectionId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["ConnectorTable", connectionId],
       });
     },
   });
@@ -142,6 +151,9 @@ export function useRemoveTableFromBatch(connectionId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: batchesQueryKey(connectionId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["ConnectorTable", connectionId],
       });
     },
   });

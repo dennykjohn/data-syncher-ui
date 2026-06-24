@@ -10,6 +10,7 @@ import {
 import { BiSupport } from "react-icons/bi";
 import { FaUsers } from "react-icons/fa6";
 import { MdCategory, MdOutlineArrowRightAlt, MdWrapText } from "react-icons/md";
+import { PiFlowArrowBold } from "react-icons/pi";
 
 import { useLocation, useNavigate } from "react-router";
 
@@ -60,6 +61,13 @@ const Sidebar = ({
       path: ClientRoutes.DESTINATION.ROOT,
       isAccordion: false,
       visible: can("can_view_destinations"),
+    },
+    {
+      label: "Scheduling",
+      icon: <PiFlowArrowBold size={20} />,
+      path: ClientRoutes.SCHEDULING,
+      isAccordion: false,
+      visible: can("can_view_connectors"),
     },
     {
       label: "User Settings",

@@ -28,6 +28,7 @@ const ClientRoutes = {
     EDIT: "edit",
     CONFIGURE: "configure",
   },
+  SCHEDULING: "scheduling",
   PLANS: "plans",
   SUPPORT: "support",
   USER_SETTINGS: {

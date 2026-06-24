@@ -129,6 +129,18 @@ const ServerRoutes = {
         `connection/${connectionId}/batches/${batchId}/toggle/`,
     },
   },
+  pipeline: {
+    connections: () => "pipelines/connections/",
+    list: () => "pipelines/",
+    detail: (pipelineId: number) => `pipelines/${pipelineId}/`,
+    nodes: (pipelineId: number) => `pipelines/${pipelineId}/nodes/`,
+    nodeDetail: (pipelineId: number, nodeId: number) =>
+      `pipelines/${pipelineId}/nodes/${nodeId}/`,
+    edges: (pipelineId: number) => `pipelines/${pipelineId}/edges/`,
+    edgeDetail: (pipelineId: number, edgeId: number) =>
+      `pipelines/${pipelineId}/edges/${edgeId}/`,
+    run: (pipelineId: number) => `pipelines/${pipelineId}/run/`,
+  },
   s3: {
     listFiles: () => "s3/list-files/",
     suggestTableName: () => "s3/suggest-table-name/",

@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import {
-  Badge,
   Box,
   Button,
   Flex,
@@ -28,7 +27,6 @@ import {
 import { type MigrationBatch } from "@/types/connectors";
 
 import EditBatchModal from "./EditBatchModal";
-import { frequencyLabel } from "./scheduleOptions";
 
 interface BatchCardProps {
   batch: MigrationBatch;
@@ -180,25 +178,11 @@ const BatchCard = ({ batch, connectionId }: BatchCardProps) => {
             )}
           </Box>
 
-          <Flex gap={1} alignItems="center">
-            <Badge size="sm" colorPalette="blue" variant="subtle">
-              {frequencyLabel(batch.time_frequency)}
-            </Badge>
-            <Badge
-              size="sm"
-              colorPalette={
-                batch.execution_order === "parallel" ? "purple" : "teal"
-              }
-              variant="subtle"
-            >
-              {batch.execution_order}
-            </Badge>
-            {isPaused && (
-              <Badge size="sm" colorPalette="orange">
-                Paused
-              </Badge>
-            )}
-          </Flex>
+          {isPaused && (
+            <Text fontSize="xs" color="orange.600" mr={2}>
+              Paused
+            </Text>
+          )}
 
           <Menu.Root>
             <Menu.Trigger asChild>
