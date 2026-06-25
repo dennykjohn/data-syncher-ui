@@ -13,6 +13,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 export const batchesQueryKey = (connectionId: number) =>
   ["batches", connectionId] as const;
 
+export const batchDetailQueryKey = (connectionId: number, batchId: number) =>
+  ["batchDetail", connectionId, batchId] as const;
+
 const fetchBatches = async (
   connectionId: number,
 ): Promise<FetchBatchesResponse> => {
@@ -32,6 +35,24 @@ export function useFetchBatches(connectionId: number, enabled: boolean = true) {
     enabled: !!connectionId && enabled,
     staleTime: 60 * 1000,
     refetchOnMount: true,
+  });
+}
+
+export function useFetchBatchDetail(
+  connectionId: number,
+  batchId: number,
+  enabled: boolean = true,
+) {
+  return useQuery<MigrationBatch>({
+    queryKey: batchDetailQueryKey(connectionId, batchId),
+    queryFn: async () => {
+      const { data } = await AxiosInstance.get<MigrationBatch>(
+        ServerRoutes.connector.batches.detail(connectionId, batchId),
+      );
+      return data;
+    },
+    enabled: !!connectionId && !!batchId && enabled,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -168,9 +189,12 @@ export function useRunBatchNow(connectionId: number) {
       AxiosInstance.post(
         ServerRoutes.connector.batches.runNow(connectionId, batchId),
       ),
-    onSuccess: () => {
+    onSuccess: (_data, batchId) => {
       queryClient.invalidateQueries({
         queryKey: batchesQueryKey(connectionId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: batchDetailQueryKey(connectionId, batchId),
       });
     },
   });
@@ -185,9 +209,12 @@ export function useToggleBatch(connectionId: number) {
       AxiosInstance.post(
         ServerRoutes.connector.batches.toggle(connectionId, batchId),
       ),
-    onSuccess: () => {
+    onSuccess: (_data, batchId) => {
       queryClient.invalidateQueries({
         queryKey: batchesQueryKey(connectionId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: batchDetailQueryKey(connectionId, batchId),
       });
     },
   });

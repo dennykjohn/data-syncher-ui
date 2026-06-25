@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import {
   Box,
-  Button,
   Flex,
   IconButton,
   Input,
@@ -12,16 +11,13 @@ import {
 } from "@chakra-ui/react";
 
 import { FiEdit2, FiMoreVertical, FiTrash2 } from "react-icons/fi";
-import { IoMdPause, IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
-import { MdClose, MdPlayArrow } from "react-icons/md";
+import { MdClose } from "react-icons/md";
 
 import { toaster } from "@/components/ui/toaster";
 import {
   useDeleteBatch,
   useRemoveTableFromBatch,
-  useRunBatchNow,
-  useToggleBatch,
   useUpdateBatch,
 } from "@/queryOptions/connector/schema/useBatches";
 import { type MigrationBatch } from "@/types/connectors";
@@ -42,9 +38,6 @@ const BatchCard = ({ batch, connectionId }: BatchCardProps) => {
   const { mutate: updateBatch } = useUpdateBatch(connectionId);
   const { mutate: deleteBatch, isPending: isDeleting } =
     useDeleteBatch(connectionId);
-  const { mutate: runNow, isPending: isRunning } = useRunBatchNow(connectionId);
-  const { mutate: toggle, isPending: isToggling } =
-    useToggleBatch(connectionId);
   const { mutate: removeTable } = useRemoveTableFromBatch(connectionId);
 
   const commitRename = () => {
@@ -66,30 +59,6 @@ const BatchCard = ({ batch, connectionId }: BatchCardProps) => {
     );
   };
 
-  const handleRunNow = () => {
-    if (batch.tables.length === 0) {
-      toaster.warning({ title: "Batch has no tables" });
-      return;
-    }
-    runNow(batch.id, {
-      onSuccess: () => toaster.success({ title: `Running ${batch.name}` }),
-      onError: () => toaster.error({ title: "Could not start batch" }),
-    });
-  };
-
-  const handleToggle = () => {
-    toggle(batch.id, {
-      onSuccess: () =>
-        toaster.success({
-          title:
-            batch.status === "active"
-              ? `${batch.name} paused`
-              : `${batch.name} resumed`,
-        }),
-      onError: () => toaster.error({ title: "Could not update batch status" }),
-    });
-  };
-
   const handleDelete = () => {
     deleteBatch(batch.id, {
       onSuccess: () => toaster.success({ title: "Batch deleted" }),
@@ -107,8 +76,6 @@ const BatchCard = ({ batch, connectionId }: BatchCardProps) => {
       },
     );
   };
-
-  const isPaused = batch.status === "paused";
 
   return (
     <>
@@ -178,12 +145,6 @@ const BatchCard = ({ batch, connectionId }: BatchCardProps) => {
             )}
           </Box>
 
-          {isPaused && (
-            <Text fontSize="xs" color="orange.600" mr={2}>
-              Paused
-            </Text>
-          )}
-
           <Menu.Root>
             <Menu.Trigger asChild>
               <IconButton aria-label="Batch actions" size="xs" variant="ghost">
@@ -194,24 +155,6 @@ const BatchCard = ({ batch, connectionId }: BatchCardProps) => {
               <Menu.Positioner>
                 <Menu.Content>
                   <Menu.Item
-                    value="run"
-                    onClick={handleRunNow}
-                    disabled={isRunning || batch.tables.length === 0}
-                  >
-                    <MdPlayArrow /> Run now
-                  </Menu.Item>
-                  <Menu.Item
-                    value="toggle"
-                    onClick={handleToggle}
-                    disabled={isToggling}
-                  >
-                    {isPaused ? <IoMdPlay /> : <IoMdPause />}{" "}
-                    {isPaused ? "Resume" : "Pause"}
-                  </Menu.Item>
-                  <Menu.Item value="edit" onClick={() => setIsEditOpen(true)}>
-                    <FiEdit2 /> Edit schedule
-                  </Menu.Item>
-                  <Menu.Item
                     value="rename"
                     onClick={() => {
                       setNameDraft(batch.name);
@@ -219,6 +162,9 @@ const BatchCard = ({ batch, connectionId }: BatchCardProps) => {
                     }}
                   >
                     <FiEdit2 /> Rename
+                  </Menu.Item>
+                  <Menu.Item value="edit" onClick={() => setIsEditOpen(true)}>
+                    <FiEdit2 /> Edit batch
                   </Menu.Item>
                   <Menu.Item
                     value="delete"
@@ -235,66 +181,47 @@ const BatchCard = ({ batch, connectionId }: BatchCardProps) => {
         </Flex>
 
         {expanded && (
-          <Flex direction="column" gap={1} p={2}>
+          <Flex direction="column" gap={1} p={2} minH={0}>
             {batch.tables.length === 0 && (
               <Text fontSize="xs" color="gray.500" px={2} py={2}>
                 No tables in this batch yet. Move tables from the list.
               </Text>
             )}
-            {batch.tables
-              .slice()
-              .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
-              .map((t, index) => (
-                <Flex
-                  key={t.table_name}
-                  alignItems="center"
-                  gap={2}
-                  bgColor={index % 2 === 0 ? "gray.50" : "white"}
-                  px={2}
-                  py={1.5}
-                  borderRadius="sm"
-                >
-                  <Text fontSize="sm" flex="1" title={t.table_name}>
-                    {t.table_name}
-                  </Text>
-                  {t.last_synced && (
-                    <Text fontSize="xs" color="gray.500">
-                      {t.last_synced}
-                    </Text>
-                  )}
-                  <IconButton
-                    aria-label={`Remove ${t.table_name}`}
-                    size="xs"
-                    variant="ghost"
-                    onClick={() => handleRemoveTable(t.table_name)}
-                  >
-                    <MdClose />
-                  </IconButton>
-                </Flex>
-              ))}
-
-            <Flex mt={1} justifyContent="flex-end" gap={2}>
-              <Button
-                size="xs"
-                variant="ghost"
-                onClick={handleToggle}
-                loading={isToggling}
-              >
-                {isPaused ? <IoMdPlay /> : <IoMdPause />}
-                {isPaused ? "Resume" : "Pause"}
-              </Button>
-              <Button
-                size="xs"
-                colorPalette="brand"
-                variant="outline"
-                onClick={handleRunNow}
-                loading={isRunning}
-                disabled={batch.tables.length === 0}
-              >
-                <MdPlayArrow />
-                Run now
-              </Button>
-            </Flex>
+            {batch.tables.length > 0 && (
+              <Box maxH="220px" overflowY="auto" minH={0}>
+                {batch.tables
+                  .slice()
+                  .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+                  .map((t, index) => (
+                    <Flex
+                      key={t.table_name}
+                      alignItems="center"
+                      gap={2}
+                      bgColor={index % 2 === 0 ? "gray.50" : "white"}
+                      px={2}
+                      py={1.5}
+                      borderRadius="sm"
+                    >
+                      <Text fontSize="sm" flex="1" title={t.table_name}>
+                        {t.table_name}
+                      </Text>
+                      {t.last_synced && (
+                        <Text fontSize="xs" color="gray.500">
+                          {t.last_synced}
+                        </Text>
+                      )}
+                      <IconButton
+                        aria-label={`Remove ${t.table_name}`}
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => handleRemoveTable(t.table_name)}
+                      >
+                        <MdClose />
+                      </IconButton>
+                    </Flex>
+                  ))}
+              </Box>
+            )}
           </Flex>
         )}
       </Box>

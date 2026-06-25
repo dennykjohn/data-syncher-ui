@@ -10,22 +10,14 @@ import {
 } from "@chakra-ui/react";
 
 import { GoPlus } from "react-icons/go";
-import { MdPlayArrow, MdRefresh } from "react-icons/md";
 
-import { toaster } from "@/components/ui/toaster";
-import {
-  batchesQueryKey,
-  useFetchBatches,
-  useRunBatchNow,
-} from "@/queryOptions/connector/schema/useBatches";
+import { useFetchBatches } from "@/queryOptions/connector/schema/useBatches";
 import { type UnassignedTable } from "@/types/connectors";
 
 import BatchCard from "./BatchCard";
 import BatchPickerModal from "./BatchPickerModal";
 import NewBatchModal from "./NewBatchModal";
-import { useQueryClient } from "@tanstack/react-query";
 
-/** Merged row: API wins for `last_synced`; `pending_only` = not yet on server. */
 type DisplayUnassignedRow = UnassignedTable & { pending_only?: boolean };
 
 function mergeUnassigned(
@@ -50,10 +42,6 @@ function mergeUnassigned(
 
 interface BatchGroupedPanelProps {
   connectionId: number;
-  /**
-   * Tables the user checked on the left but not yet saved, or saved but not in any batch.
-   * Merged under API `unassigned_tables` (API wins on duplicates).
-   */
   pendingUnassignedTables?: UnassignedTable[];
 }
 
@@ -61,13 +49,10 @@ const BatchGroupedPanel = ({
   connectionId,
   pendingUnassignedTables = [],
 }: BatchGroupedPanelProps) => {
-  const queryClient = useQueryClient();
   const { data, isLoading, isFetching } = useFetchBatches(connectionId);
-  const { mutateAsync: runBatch } = useRunBatchNow(connectionId);
 
   const [isNewBatchOpen, setIsNewBatchOpen] = useState(false);
   const [pickerTables, setPickerTables] = useState<string[] | null>(null);
-  const [isRunningAll, setIsRunningAll] = useState(false);
 
   const batches = useMemo(() => data?.batches ?? [], [data]);
   const apiUnassigned = useMemo<UnassignedTable[]>(
@@ -80,47 +65,11 @@ const BatchGroupedPanel = ({
     [apiUnassigned, pendingUnassignedTables],
   );
 
-  const runnableBatches = useMemo(
-    () =>
-      batches.filter(
-        (b) => b.status === "active" && (b.tables?.length ?? 0) > 0,
-      ),
-    [batches],
-  );
-
   const showEmptyState =
     !isLoading &&
     !isFetching &&
     batches.length === 0 &&
     displayUnassigned.length === 0;
-
-  const handleRunAll = async () => {
-    if (runnableBatches.length === 0) {
-      toaster.warning({
-        title: "Nothing to run",
-        description: "No active batches with tables.",
-      });
-      return;
-    }
-    setIsRunningAll(true);
-    const results = await Promise.allSettled(
-      runnableBatches.map((b) => runBatch(b.id)),
-    );
-    setIsRunningAll(false);
-
-    const ok = results.filter((r) => r.status === "fulfilled").length;
-    const failed = results.length - ok;
-    if (ok > 0) {
-      toaster.success({
-        title: `Started ${ok} batch${ok === 1 ? "" : "es"}`,
-      });
-    }
-    if (failed > 0) {
-      toaster.error({
-        title: `${failed} batch${failed === 1 ? "" : "es"} failed to start`,
-      });
-    }
-  };
 
   const unassignedSection =
     displayUnassigned.length > 0 ? (
@@ -222,7 +171,6 @@ const BatchGroupedPanel = ({
         minW={0}
         overflow="hidden"
       >
-        {/* Header */}
         <Flex
           justifyContent="space-between"
           alignItems="center"
@@ -240,34 +188,8 @@ const BatchGroupedPanel = ({
               </Text>
             )}
           </Text>
-          <Flex gap={2}>
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() =>
-                queryClient.invalidateQueries({
-                  queryKey: batchesQueryKey(connectionId),
-                })
-              }
-            >
-              <MdRefresh />
-              Reload batches
-            </Button>
-            <Button
-              size="xs"
-              colorPalette="brand"
-              variant="outline"
-              onClick={handleRunAll}
-              loading={isRunningAll}
-              disabled={runnableBatches.length === 0}
-            >
-              <MdPlayArrow />
-              Run all now
-            </Button>
-          </Flex>
         </Flex>
 
-        {/* Body: Unassigned first, then batch cards — scrolls within panel */}
         <Flex
           direction="column"
           gap={3}
@@ -307,9 +229,10 @@ const BatchGroupedPanel = ({
             ))}
         </Flex>
 
-        {/* Sticky footer */}
         <Flex
-          justifyContent="center"
+          direction="column"
+          alignItems="center"
+          gap={1}
           borderTopWidth={1}
           borderColor="gray.200"
           p={2}
@@ -325,6 +248,9 @@ const BatchGroupedPanel = ({
             <GoPlus />
             New batch
           </Button>
+          <Text fontSize="xs" color="gray.500" textAlign="center" px={2}>
+            Open Scheduling to build task chains and set cron on the root batch.
+          </Text>
         </Flex>
       </Flex>
 

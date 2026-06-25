@@ -9,7 +9,6 @@ import { useOutletContext } from "react-router";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
-import useRefreshSchema from "@/queryOptions/connector/schema/useRefreshSchema";
 import useUpdateSchema from "@/queryOptions/connector/schema/useUpdateSchema";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import { type Connector } from "@/types/connectors";
@@ -35,9 +34,6 @@ const Actions = ({
     disable_update_schema,
   } = context;
 
-  const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
-    connectorId: connection_id,
-  });
   const { mutate: updateSchema, isPending: isUpdating } = useUpdateSchema({
     connectorId: connection_id,
   });
@@ -80,11 +76,8 @@ const Actions = ({
     reloadingTables,
   ]);
 
-  const isRefreshButtonLoading = isRefreshing || isRefreshSchemaInProgress > 0;
-
   const isAnyOperationInProgress =
     isRefreshSchemaInProgress > 0 ||
-    isRefreshing ||
     isUpdateSchemaInProgress > 0 ||
     isUpdating ||
     schemaStatus?.is_in_progress === true ||
@@ -99,7 +92,6 @@ const Actions = ({
       !isAnyOperationInProgress &&
       shouldShowDisabledState &&
       !isUpdating &&
-      !isRefreshing &&
       isUpdateSchemaInProgress === 0 &&
       isRefreshSchemaInProgress === 0
     ) {
@@ -113,37 +105,11 @@ const Actions = ({
     isAnyOperationInProgress,
     shouldShowDisabledState,
     isUpdating,
-    isRefreshing,
     isUpdateSchemaInProgress,
     isRefreshSchemaInProgress,
     onUpdateSchemaComplete,
     setShouldShowDisabledState,
   ]);
-
-  const createButtonProps = (
-    isButtonLoading: boolean,
-    onAction: () => void,
-  ) => {
-    const isDisabled =
-      (shouldShowDisabledState || isAnyOperationInProgress) && !isButtonLoading;
-
-    return {
-      onClick: () => {
-        if (isDisabled) {
-          toaster.warning({
-            title: "Operation in progress",
-            description:
-              "Another migration is currently in progress. Please wait until it completes.",
-          });
-          return;
-        }
-        setShouldShowDisabledState(true);
-        onAction();
-      },
-      loading: isButtonLoading,
-      disabled: isDisabled,
-    };
-  };
 
   const createTooltipProps = (isButtonLoading: boolean) => {
     const isDisabled =
@@ -182,23 +148,6 @@ const Actions = ({
       </Flex>
 
       <Flex gap={4}>
-        <Tooltip {...createTooltipProps(isRefreshButtonLoading)}>
-          <Button
-            variant="outline"
-            colorPalette="brand"
-            {...createButtonProps(isRefreshButtonLoading, () => {
-              refreshSchema(undefined, {
-                onError: () => {
-                  setShouldShowDisabledState(false);
-                },
-              });
-            })}
-          >
-            <MdRefresh />
-            Refresh schema
-          </Button>
-        </Tooltip>
-
         {!disable_update_schema && (
           <Tooltip {...createTooltipProps(isUpdateSchemaFlowInProgress)}>
             <Button

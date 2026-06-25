@@ -69,7 +69,7 @@ interface TableRowProps {
     tables: Array<{ table: string; status?: string | null }>;
   };
   onReload: () => void;
-  inBatch?: boolean;
+  batchName?: string | null;
 }
 const TableRow = ({
   item,
@@ -83,10 +83,11 @@ const TableRow = ({
   shouldLockAllReloads,
   tableStatusData,
   onReload,
-  inBatch,
+  batchName,
 }: TableRowProps) => {
   const { table } = item;
   const isEven = index % 2 === 0;
+  const inBatch = !!batchName;
   const rowBg = inBatch ? "brand.50" : isEven ? "gray.100" : "white";
 
   const { data: tableFieldsData } = useFetchTableFields(
@@ -138,7 +139,7 @@ const TableRow = ({
             >
               {table}
             </Text>
-            {inBatch && (
+            {batchName && (
               <Text
                 as="span"
                 fontSize="2xs"
@@ -148,10 +149,11 @@ const TableRow = ({
                 px={1.5}
                 py={0.5}
                 borderRadius="sm"
-                textTransform="uppercase"
-                letterSpacing="wider"
+                maxW="140px"
+                truncate
+                title={batchName}
               >
-                In batch
+                {batchName}
               </Text>
             )}
           </Flex>
@@ -267,17 +269,17 @@ const Schema = () => {
 
   const { data: batchesData } = useFetchBatches(context.connection_id);
 
-  const tablesInAnyBatch = useMemo<Set<string>>(() => {
-    const set = new Set<string>();
+  const tableToBatchName = useMemo<Map<string, string>>(() => {
+    const map = new Map<string, string>();
     batchesData?.batches?.forEach((b) => {
       b.tables?.forEach((t) => {
         const name = t?.table_name;
         if (typeof name === "string" && name.length > 0) {
-          set.add(name.toLowerCase());
+          map.set(name.toLowerCase(), b.name);
         }
       });
     });
-    return set;
+    return map;
   }, [batchesData]);
 
   const { status: schemaStatus } = useUpdateSchemaStatus(
@@ -558,13 +560,13 @@ const Schema = () => {
    */
   const pendingUnassignedTables = useMemo<UnassignedTable[]>(() => {
     return effectiveSelectedRows
-      .filter((t) => !tablesInAnyBatch.has(t.table.toLowerCase()))
+      .filter((t) => !tableToBatchName.has(t.table.toLowerCase()))
       .map((t) => ({
         table_name: t.table,
         sequence: t.sequence ?? 0,
         last_synced: t.last_synced ?? null,
       }));
-  }, [effectiveSelectedRows, tablesInAnyBatch]);
+  }, [effectiveSelectedRows, tableToBatchName]);
 
   const toggleExpand = (table: string) =>
     setExpanded((prev) => ({
@@ -735,7 +737,7 @@ const Schema = () => {
                       isRefreshSchemaInProgress={isRefreshSchemaInProgress}
                       shouldLockAllReloads={shouldLockAllReloads}
                       tableStatusData={tableStatusData}
-                      inBatch={tablesInAnyBatch.has(table.toLowerCase())}
+                      batchName={tableToBatchName.get(table.toLowerCase())}
                       onReload={() => {
                         setShouldShowDisabledState(true);
                         setReloadingTables((prev: string[]) => [
