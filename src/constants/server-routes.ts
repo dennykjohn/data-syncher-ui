@@ -119,8 +119,11 @@ const ServerRoutes = {
     fetchConnectionMappings: (id: number) => `connection/${id}/mappings/`,
     saveConnectionMappings: () => "connection/mappings/save/",
     suggestTableName: () => "s3/suggest-table-name/",
-    previewdata: () => "s3/preview-pattern/",
-    suggestPrimaryKeys: () => "s3/suggest-primary-keys/",
+    previewdata: ({ source }: { source: string }) =>
+      `${source}/preview-pattern/`,
+    suggestPrimaryKeys: ({ source }: { source: string }) =>
+      `${source}/suggest-primary-keys/`,
+    listFiles: ({ source }: { source: string }) => `${source}/list-files/`,
     fetchLogDetails: ({
       connectionId,
       logId,
@@ -128,9 +131,21 @@ const ServerRoutes = {
       connectionId: number;
       logId: number;
     }) => `connection/${connectionId}/log/${logId}/`,
+    batches: {
+      list: (connectionId: number) => `connection/${connectionId}/batches/`,
+      detail: (connectionId: number, batchId: number) =>
+        `connection/${connectionId}/batches/${batchId}/`,
+      assignTables: (connectionId: number, batchId: number) =>
+        `connection/${connectionId}/batches/${batchId}/tables/`,
+      removeTable: (connectionId: number, batchId: number, tableName: string) =>
+        `connection/${connectionId}/batches/${batchId}/tables/${encodeURIComponent(tableName)}/`,
+      runNow: (connectionId: number, batchId: number) =>
+        `connection/${connectionId}/batches/${batchId}/run/`,
+      toggle: (connectionId: number, batchId: number) =>
+        `connection/${connectionId}/batches/${batchId}/toggle/`,
+    },
   },
   s3: {
-    listFiles: () => "s3/list-files/",
     suggestTableName: () => "s3/suggest-table-name/",
   },
   supportTickets: {

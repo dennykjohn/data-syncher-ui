@@ -30,6 +30,7 @@ import {
 } from "@/types/connectors";
 
 import { type ConnectorFormState } from "../../type";
+import ConnectorDocsHelperPanel from "./ConnectorDocsHelperPanel";
 import S3DocsHelperPanel from "./S3DocsHelperPanel";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -123,13 +124,28 @@ const S3ConnectorConfiguration = ({
     source: "source",
   });
 
+  const sourceName = state?.source || connectorData?.source_name || "";
+  const normalizedSourceName = sourceName
+    ?.toLowerCase()
+    .replace(/[\s\-._]/g, "");
+  const isSftp = normalizedSourceName === "sftp";
+  const isGoogleDrive = normalizedSourceName === "googledrive";
+  const sourceType = isSftp ? "sftp" : isGoogleDrive ? "googledrive" : "s3";
+  const displayName = isSftp ? "SFTP" : isGoogleDrive ? "Google Drive" : "S3";
+
   // Prepare params for suggest primary keys API
   const suggestPrimaryKeysParams = useMemo(() => {
-    // Create mode: pendingFormData holds the full S3 form fields
+    // Create mode: pendingFormData holds the full form fields
     if (pendingFormData?.form_data) {
       const formData = pendingFormData.form_data;
       return {
-        s3_bucket: formData.s3_bucket,
+        isSftp,
+        sourceType,
+        s3_bucket:
+          formData.s3_bucket ||
+          formData.sftp_bucket ||
+          formData.bucket ||
+          formData.host,
         aws_access_key_id: formData.aws_access_key_id,
         aws_secret_access_key: formData.aws_secret_access_key,
         base_folder_path: formData.base_folder_path,
@@ -143,8 +159,14 @@ const S3ConnectorConfiguration = ({
     if (editPendingPayload?.form_data && createdConnectionId) {
       const formData = editPendingPayload.form_data;
       return {
+        isSftp,
+        sourceType,
         connection_id: createdConnectionId,
-        s3_bucket: formData.s3_bucket,
+        s3_bucket:
+          formData.s3_bucket ||
+          formData.sftp_bucket ||
+          formData.bucket ||
+          formData.host,
         aws_access_key_id: formData.aws_access_key_id,
         aws_secret_access_key: formData.aws_secret_access_key,
         base_folder_path: formData.base_folder_path,
@@ -158,7 +180,7 @@ const S3ConnectorConfiguration = ({
     }
     // Fallback: only connection_id available
     if (createdConnectionId) {
-      return { connection_id: createdConnectionId };
+      return { connection_id: createdConnectionId, isSftp, sourceType };
     }
     return null;
   }, [
@@ -166,6 +188,8 @@ const S3ConnectorConfiguration = ({
     editPendingPayload,
     pendingKeyTables,
     createdConnectionId,
+    isSftp,
+    sourceType,
   ]);
 
   // Fetch suggested primary keys when showing primary key selection
@@ -283,8 +307,10 @@ const S3ConnectorConfiguration = ({
               window.location.href = response.auth_url;
             } else {
               toaster.success({
-                title: response.message || "S3 Connector created successfully",
-                description: "The S3 connector has been created.",
+                title:
+                  response.message ||
+                  `${displayName} Connector created successfully`,
+                description: `The ${displayName} connector has been created.`,
               });
               navigate(
                 `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
@@ -323,8 +349,8 @@ const S3ConnectorConfiguration = ({
             setShowPrimaryKeySelection(true);
           } else {
             toaster.success({
-              title: "S3 Connector updated successfully",
-              description: "The S3 connector has been updated.",
+              title: `${displayName} Connector updated successfully`,
+              description: `The ${displayName} connector has been updated.`,
             });
             refreshSchemaStatus(connectionId);
             navigate(
@@ -341,6 +367,15 @@ const S3ConnectorConfiguration = ({
     const connectionIdNum = Number(id);
     if (!connectionIdNum) return;
     queryClient.removeQueries({ queryKey: ["SchemaStatus", connectionIdNum] });
+    queryClient.removeQueries({ queryKey: ["tableFields", connectionIdNum] });
+    queryClient.removeQueries({
+      queryKey: ["ConnectorTable", connectionIdNum],
+    });
+    queryClient.removeQueries({
+      queryKey: ["SelectedTables", connectionIdNum],
+    });
+    queryClient.removeQueries({ queryKey: ["ReverseSchema", connectionIdNum] });
+
     queryClient.invalidateQueries({
       queryKey: ["SchemaStatus", connectionIdNum],
       refetchType: "active",
@@ -349,9 +384,23 @@ const S3ConnectorConfiguration = ({
       queryKey: ["TableStatus", connectionIdNum],
       refetchType: "active",
     });
+    queryClient.invalidateQueries({
+      queryKey: ["ConnectorTable", connectionIdNum],
+      refetchType: "active",
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["SelectedTables", connectionIdNum],
+      refetchType: "active",
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["tableFields", connectionIdNum],
+      refetchType: "active",
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["ReverseSchema", connectionIdNum],
+      refetchType: "active",
+    });
   };
-
-  const sourceName = state?.source || connectorData?.source_name || "";
 
   // Get the schema fields - Priority: Backend Config (Edit) > Form Schema (Create)
   const baseSchemaFields = useMemo(() => {
@@ -531,7 +580,7 @@ const S3ConnectorConfiguration = ({
               {
                 onSuccess: () => {
                   toaster.success({
-                    title: "S3 Connector created successfully",
+                    title: `${displayName} Connector created successfully`,
                     description: "Primary keys have been configured.",
                   });
                   navigate(
@@ -656,7 +705,7 @@ const S3ConnectorConfiguration = ({
                 {
                   onSuccess: () => {
                     toaster.success({
-                      title: "S3 Connector updated successfully",
+                      title: `${displayName} Connector updated successfully`,
                       description: "Primary keys have been configured.",
                     });
                     setShowPrimaryKeySelection(false);
@@ -686,7 +735,7 @@ const S3ConnectorConfiguration = ({
           onSaveAndContinue={() => {
             toaster.success({
               title: "Primary keys configured",
-              description: "Your S3 connector is now ready to use.",
+              description: `Your ${displayName} connector is now ready to use.`,
             });
             navigate(
               `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
@@ -746,24 +795,27 @@ const S3ConnectorConfiguration = ({
                     ]
                   : []),
                 {
-                  label: mode === "edit" ? "Edit S3 Connector" : "Configure S3",
+                  label:
+                    mode === "edit"
+                      ? `Edit ${displayName} Connector`
+                      : `Configure ${displayName}`,
                 },
               ]}
               title={
                 mode === "edit"
-                  ? "Edit S3 Connector"
-                  : "Enter S3 authorization details"
+                  ? `Edit ${displayName} Connector`
+                  : `Enter ${displayName} authorization details`
               }
               subtitle={
                 mode === "create"
-                  ? "Provide the necessary details to authorize the S3 connector"
+                  ? `Provide the necessary details to authorize the ${displayName} connector`
                   : undefined
               }
             >
               {mode === "edit" && (
                 <Flex align="center" gap={4} wrap="wrap">
                   <Text fontSize="sm">
-                    Modify the S3 connector configuration
+                    Modify the {displayName} connector configuration
                   </Text>
                   <ModifiedAuditInfo connector={connectorData} />
                 </Flex>
@@ -779,6 +831,7 @@ const S3ConnectorConfiguration = ({
               defaultValues={s3DefaultValues}
               mode={mode}
               sourceName={sourceName}
+              isSftp={isSftp}
               connectionId={shouldFetch ? Number(connectionId) : undefined}
               migrationStatus={connectorData?.migration_status}
             />
@@ -791,7 +844,14 @@ const S3ConnectorConfiguration = ({
           overflow="hidden"
           bg={{ base: "transparent", xl: "gray.50" }}
         >
-          <S3DocsHelperPanel />
+          {isSftp || isGoogleDrive ? (
+            <ConnectorDocsHelperPanel
+              connectorKey={isGoogleDrive ? "googledrive" : "sftp"}
+              kind="connector"
+            />
+          ) : (
+            <S3DocsHelperPanel />
+          )}
         </Box>
       </Grid>
     </Box>

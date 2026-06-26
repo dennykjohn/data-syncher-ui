@@ -42,7 +42,7 @@ import { type Connector, type ConnectorTable } from "@/types/connectors";
 
 import { isPrimaryKey } from "../ReverseSchema/utils/validation";
 import Actions from "./Actions";
-import SelectedTableList from "./SelectedTable";
+import SelectedTable from "./SelectedTable";
 import { useIsMutating } from "@tanstack/react-query";
 
 interface TableRowProps {
@@ -121,13 +121,15 @@ const TableRow = ({
         </Box>
 
         <Box>
-          <Text
-            fontSize="sm"
-            cursor="pointer"
-            onClick={() => onToggleExpand(table)}
-          >
-            {table}
-          </Text>
+          <Flex alignItems="center" gap={2}>
+            <Text
+              fontSize="sm"
+              cursor="pointer"
+              onClick={() => onToggleExpand(table)}
+            >
+              {table}
+            </Text>
+          </Flex>
 
           {isExpanded && (
             <Flex direction="column" gap={2} mt={2}>
@@ -282,7 +284,7 @@ const Schema = () => {
     () => context.setReloadingTables ?? (() => {}),
     [context.setReloadingTables],
   );
-  const [refreshingTables, setRefreshingTables] = useState<string[]>([]); // Hoist Refresh State
+  const [refreshingTables, setRefreshingTables] = useState<string[]>([]);
   const reloadTimestamps = useRef<Record<string, number>>({});
 
   useEffect(() => {
@@ -360,12 +362,11 @@ const Schema = () => {
     isRefreshDeltaTableInProgress > 0 ||
     activeRefreshes.length > 0 ||
     refreshingTables.length > 0;
-  const isAnyReloading = reloadingTables.length > 0 || isReloadingSingleTable;
   const isSchemaSyncing = isRefreshSchemaInProgress > 0;
 
   const shouldLockAllReloads = isAnyRefreshing || isSchemaSyncing;
-
-  const shouldLockAllRefreshes = isAnyReloading || isSchemaSyncing;
+  const shouldLockAllRefreshes =
+    isSchemaSyncing || isReloadingSingleTable || reloadingTables.length > 0;
 
   useEffect(() => {
     if (hasAnyTableInProgress || isReloadingSingleTable) {
@@ -457,6 +458,18 @@ const Schema = () => {
   const [userCheckedTables, setUserCheckedTables] = useState<ConnectorTable[]>(
     () => checkedTables,
   );
+
+  // Keep the right panel in sync instantly with the user's checkbox selections.
+  // (Right panel previously used `checkedTables`, which only updates after "Save"/refetch.)
+  const userCheckedTablesSorted = useMemo<ConnectorTable[]>(() => {
+    return [...userCheckedTables].sort(
+      (a: ConnectorTable, b: ConnectorTable) => {
+        const seqA = a.sequence ?? 0;
+        const seqB = b.sequence ?? 0;
+        return seqA - seqB;
+      },
+    );
+  }, [userCheckedTables]);
   const shouldSkipUpdateRef = useRef(false);
 
   useEffect(() => {
@@ -639,14 +652,14 @@ const Schema = () => {
           )}
         </Flex>
 
-        <SelectedTableList
-          selectedTablesFromMain={checkedTables}
+        <SelectedTable
+          selectedTablesFromMain={userCheckedTablesSorted}
           reloadingTables={reloadingTables}
-          refreshingTables={refreshingTables}
-          setRefreshingTables={setRefreshingTables}
           isReloadingSingleTable={isReloadingSingleTable}
           shouldLockAllReloads={shouldLockAllReloads}
           shouldLockAllRefreshes={shouldLockAllRefreshes}
+          refreshingTables={refreshingTables}
+          setRefreshingTables={setRefreshingTables}
         />
       </Grid>
 

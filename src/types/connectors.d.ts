@@ -60,6 +60,9 @@ export interface Connector {
   status: ConnectorStatus;
   readable_time_frequency: string;
   readable_safety_interval: string;
+  effective_max_chunk?: number;
+  min_count?: number;
+  max_count?: number;
   dst_min_count: number;
   dst_max_count: number;
   source_name: string;
@@ -117,6 +120,9 @@ export type ConnectorSettingsApiResponse = {
   status: ConnectorStatus;
   readable_time_frequency: string;
   readable_safety_interval: string;
+  effective_max_chunk?: number;
+  min_count?: number;
+  max_count?: number;
   dst_min_count: number;
   dst_max_count: number;
   source_name: string;
@@ -451,3 +457,67 @@ export type ReverseSchemaResponse = {
   destination_tables?: ConnectorTable[];
   tables?: ConnectorTable[];
 };
+
+// ------------------ Migration Batches ------------------
+
+export type BatchStatus = "active" | "paused";
+export type BatchExecutionOrder = "parallel" | "sequential";
+
+export interface BatchTable {
+  table_name: string;
+  sequence: number;
+  last_synced?: string | null;
+}
+
+export interface MigrationBatch {
+  id: number;
+  name: string;
+  time_frequency: string;
+  execution_order: BatchExecutionOrder;
+  sync_start_date: string | null;
+  status: BatchStatus;
+  tables: BatchTable[];
+  table_count: number;
+  readable_time_frequency?: string;
+  next_sync_time?: string | null;
+}
+
+export interface UnassignedTable {
+  table_name: string;
+  sequence: number;
+  last_synced?: string | null;
+}
+
+export interface FetchBatchesResponse {
+  batches: MigrationBatch[];
+  unassigned_tables: UnassignedTable[];
+}
+
+export interface CreateBatchPayload {
+  name?: string;
+  time_frequency: string | number;
+  execution_order: BatchExecutionOrder;
+  sync_start_date?: string | null;
+}
+
+export interface UpdateBatchPayload {
+  name?: string;
+  time_frequency?: string | number;
+  execution_order?: BatchExecutionOrder;
+  sync_start_date?: string | null;
+  status?: BatchStatus;
+}
+
+export interface AssignTablesPayload {
+  tables: string[];
+}
+
+export interface AssignTableConflict {
+  table_name: string;
+  batch_name: string;
+}
+
+export interface AssignTablesErrorResponse {
+  conflicts?: AssignTableConflict[];
+  detail?: string;
+}
