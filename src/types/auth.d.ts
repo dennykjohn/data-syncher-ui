@@ -63,6 +63,7 @@ export type User = {
 
 export type AuthState = {
   isAuthenticated: boolean;
+  isCheckingAuth: boolean;
   user: User | null;
   access_token: string | null;
   refresh_token: string | null;
