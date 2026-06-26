@@ -62,7 +62,10 @@ const Form = (props: Connector) => {
     time_frequency: time_frequency ?? "",
     safety_interval: safety_interval ?? "",
     execution_order: execution_order ?? "",
-    chunk_count: transferPacketSize,
+    chunk_count: Math.min(
+      Math.max(transferPacketSize, minChunkCount),
+      maxChunkCount,
+    ),
   };
 
   const [formState, dispatch] = useReducer(reducer, initialFormState);
@@ -177,7 +180,7 @@ const Form = (props: Connector) => {
             disabled={!canEdit}
             min={minChunkCount}
             max={maxChunkCount}
-            value={String(formState.chunk_count ?? transferPacketSize)}
+            value={String(formState.chunk_count ?? minChunkCount)}
             onValueChange={(e) => {
               const value = Number(e.value);
               if (isNaN(value)) return;
@@ -193,14 +196,10 @@ const Form = (props: Connector) => {
             <NumberInput.Control />
             <NumberInput.Input />
           </NumberInput.Root>
-          {chunkCountError ? (
-            <Field.ErrorText>{chunkCountError}</Field.ErrorText>
-          ) : (
-            <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
-              Min count: {minChunkCount.toLocaleString()} | Max count:{" "}
-              {maxChunkCount.toLocaleString()}
-            </Field.HelperText>
-          )}
+          <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+            Min count: {minChunkCount.toLocaleString()} | Max count:{" "}
+            {maxChunkCount.toLocaleString()}
+          </Field.HelperText>
         </Field.Root>
       </Stack>
 
