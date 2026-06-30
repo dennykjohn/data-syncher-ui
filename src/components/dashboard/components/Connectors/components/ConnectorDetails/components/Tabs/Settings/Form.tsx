@@ -196,10 +196,14 @@ const Form = (props: Connector) => {
             <NumberInput.Control />
             <NumberInput.Input />
           </NumberInput.Root>
-          <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
-            Min count: {minChunkCount.toLocaleString()} | Max count:{" "}
-            {maxChunkCount.toLocaleString()}
-          </Field.HelperText>
+          {chunkCountError ? (
+            <Field.ErrorText>{chunkCountError}</Field.ErrorText>
+          ) : (
+            <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+              Min count: {minChunkCount.toLocaleString()} | Max count:{" "}
+              {maxChunkCount.toLocaleString()}
+            </Field.HelperText>
+          )}
         </Field.Root>
       </Stack>
 
