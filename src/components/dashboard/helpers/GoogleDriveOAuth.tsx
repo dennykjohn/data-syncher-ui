@@ -6,8 +6,7 @@ import { FcGoogle } from "react-icons/fc";
 
 import axios from "axios";
 
-// Keys used in sessionStorage to survive the Google redirect
-const SESSION_KEY_DATA = "gdrive_oauth_data";
+const FORM_VALUES_SESSION_KEY = "gdrive_form_values";
 
 export interface GoogleDriveTokens {
   access_token: string;
@@ -53,6 +52,18 @@ const baseURL = stripTrailingSlash(
 );
 const REDIRECT_URI = `${baseURL}${GOOGLE_DRIVE_CALLBACK_PATH}`;
 
+const isSensitiveOAuthField = (fieldName: string) => {
+  const normalized = fieldName.toLowerCase().replace(/[\s\-_.]/g, "");
+  return normalized.includes("clientsecret") || normalized.includes("secret");
+};
+
+const getPersistableFormValues = (values: Record<string, string>) =>
+  Object.fromEntries(
+    Object.entries(values).filter(
+      ([fieldName]) => !isSensitiveOAuthField(fieldName),
+    ),
+  );
+
 const GoogleDriveOAuth: React.FC<GoogleDriveOAuthProps> = ({
   formValues,
   clientId,
@@ -97,7 +108,6 @@ const GoogleDriveOAuth: React.FC<GoogleDriveOAuthProps> = ({
     // Backend sent us tokens — pass them up to the form
     if (accessToken && !handledRef.current) {
       handledRef.current = true;
-      sessionStorage.removeItem(SESSION_KEY_DATA);
       setStatus("done");
 
       const tokens: GoogleDriveTokens & Record<string, string | undefined> = {
@@ -109,7 +119,7 @@ const GoogleDriveOAuth: React.FC<GoogleDriveOAuthProps> = ({
       };
 
       // Restore saved form values
-      const savedFormValues = sessionStorage.getItem("gdrive_form_values");
+      const savedFormValues = sessionStorage.getItem(FORM_VALUES_SESSION_KEY);
       if (savedFormValues) {
         const parsed = JSON.parse(savedFormValues) as Record<string, string>;
         // Merge saved form values into the tokens object so parent gets everything
@@ -128,20 +138,15 @@ const GoogleDriveOAuth: React.FC<GoogleDriveOAuthProps> = ({
     setErrorMsg("");
 
     try {
-      const oauthState = {
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: REDIRECT_URI,
-      };
-
       // Save form values before leaving the page
       const dataToSave = {
-        ...formValues,
+        ...getPersistableFormValues(formValues),
         client_id: clientId,
-        client_secret: clientSecret,
       };
-      sessionStorage.setItem(SESSION_KEY_DATA, JSON.stringify(oauthState));
-      sessionStorage.setItem("gdrive_form_values", JSON.stringify(dataToSave));
+      sessionStorage.setItem(
+        FORM_VALUES_SESSION_KEY,
+        JSON.stringify(dataToSave),
+      );
 
       const response = await axios.get<GoogleDriveAuthResponse>(
         `${baseURL}${GOOGLE_DRIVE_AUTH_PATH}`,
