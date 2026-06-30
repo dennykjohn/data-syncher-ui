@@ -176,23 +176,7 @@ const GoogleDriveOAuth: React.FC<GoogleDriveOAuthProps> = ({
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
-  if (status === "done") {
-    return (
-      <Box
-        mt={4}
-        p={3}
-        borderRadius="md"
-        border="1px solid"
-        borderColor="green.200"
-        bg="green.50"
-      >
-        <Text fontSize="sm" color="green.700" fontWeight="medium">
-          ✓ Google account connected. Fill in the remaining fields and click
-          Create Connection.
-        </Text>
-      </Box>
-    );
-  }
+  if (status === "done") return null;
 
   return (
     <Box mt={4}>
