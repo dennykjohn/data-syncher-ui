@@ -1,10 +1,14 @@
 import { createContext, useCallback, useEffect, useState } from "react";
 
-import Cookies from "js-cookie";
-
 import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
 import ServerRoutes from "@/constants/server-routes";
+import {
+  clearAuthTokens,
+  getAccessToken,
+  getRefreshToken,
+  setAuthTokens,
+} from "@/lib/auth/token-cookies";
 import AxiosInstance from "@/lib/axios/api-client";
 import {
   type AuthContextType,
@@ -21,6 +25,7 @@ const IDLE_CHECK_INTERVAL_MS = 60 * 1000;
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
+    isCheckingAuth: true,
     user: null,
     access_token: null,
     refresh_token: null,
@@ -29,8 +34,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Check for existing token and fetch profile on mount/reload
   useEffect(() => {
     const checkAuthStatus = async () => {
-      const access_token = Cookies.get("access_token");
-      const refresh_token = Cookies.get("refresh_token");
+      const access_token = getAccessToken();
+      const refresh_token = getRefreshToken();
 
       if (access_token) {
         try {
@@ -42,6 +47,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           setAuthState({
             isAuthenticated: true,
+            isCheckingAuth: false,
             user,
             access_token,
             refresh_token: refresh_token || null,
@@ -57,10 +63,20 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         } catch (error) {
           console.error("Failed to fetch profile:", error);
-          // Clear invalid tokens
-          Cookies.remove("access_token");
-          Cookies.remove("refresh_token");
+          clearAuthTokens();
+          setAuthState({
+            isAuthenticated: false,
+            isCheckingAuth: false,
+            user: null,
+            access_token: null,
+            refresh_token: null,
+          });
         }
+      } else {
+        setAuthState((current) => ({
+          ...current,
+          isCheckingAuth: false,
+        }));
       }
     };
 
@@ -73,16 +89,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     user,
   }: LoginResponse) => {
     try {
-      Cookies.set("access_token", access_token, {
-        expires: 7,
-        secure: true,
-        sameSite: "Strict",
-      });
-      Cookies.set("refresh_token", refresh_token, {
-        expires: 7,
-        secure: true,
-        sameSite: "Strict",
-      });
+      setAuthTokens(access_token, refresh_token);
 
       // Fetch latest profile so permissions/role-based redirects are stable.
       let profile = user;
@@ -98,14 +105,14 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       setAuthState({
         isAuthenticated: true,
+        isCheckingAuth: false,
         user: profile,
         access_token,
         refresh_token,
       });
     } catch (error) {
       console.error("Login failed:", error);
-      Cookies.remove("access_token");
-      Cookies.remove("refresh_token");
+      clearAuthTokens();
       throw error;
     }
   };
@@ -113,12 +120,12 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = useCallback(() => {
     setAuthState({
       isAuthenticated: false,
+      isCheckingAuth: false,
       user: null,
       access_token: null,
       refresh_token: null,
     });
-    Cookies.remove("access_token");
-    Cookies.remove("refresh_token");
+    clearAuthTokens();
     window.location.href = ClientRoutes.AUTH;
   }, []);
 

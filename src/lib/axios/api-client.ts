@@ -3,10 +3,14 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
-import Cookies from "js-cookie";
 
 import { toaster } from "@/components/ui/toaster";
 import ServerRoutes from "@/constants/server-routes";
+import {
+  getAccessToken,
+  getRefreshToken,
+  setAuthTokens,
+} from "@/lib/auth/token-cookies";
 import { type ErrorResponseType } from "@/types/error";
 
 let baseURL = "";
@@ -26,12 +30,6 @@ const AxiosInstance = axios.create({
   timeout: 30000,
 });
 
-const TOKEN_COOKIE_OPTIONS = {
-  expires: 7,
-  secure: true,
-  sameSite: "Strict" as const,
-};
-
 type RefreshTokenResponse = {
   access?: string;
   access_token?: string;
@@ -49,7 +47,7 @@ let refreshPromise: Promise<string> | null = null;
 export const refreshAccessToken = async () => {
   if (refreshPromise) return refreshPromise;
 
-  const refreshToken = Cookies.get("refresh_token");
+  const refreshToken = getRefreshToken();
 
   if (!refreshToken) {
     throw new Error("Refresh token is not available.");
@@ -71,8 +69,7 @@ export const refreshAccessToken = async () => {
         throw new Error("Refresh response did not include an access token.");
       }
 
-      Cookies.set("access_token", accessToken, TOKEN_COOKIE_OPTIONS);
-      Cookies.set("refresh_token", nextRefreshToken, TOKEN_COOKIE_OPTIONS);
+      setAuthTokens(accessToken, nextRefreshToken);
 
       return accessToken;
     })
@@ -90,8 +87,7 @@ AxiosInstance.defaults.headers.common["Pragma"] = "no-cache";
 
 AxiosInstance.interceptors.request.use(
   (config: RetryableRequestConfig): InternalAxiosRequestConfig => {
-    const token =
-      config.headers.customToken ?? Cookies.get("access_token") ?? null;
+    const token = config.headers.customToken ?? getAccessToken();
 
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;

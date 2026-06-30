@@ -43,6 +43,24 @@ const useUpdateConnectorConfig = ({
       queryClient.invalidateQueries({
         queryKey: ["connectorConfig", connectorId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["ConnectorTable", connectorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["SelectedTables", connectorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["tableFields", connectorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["SchemaStatus", connectorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["TableStatus", connectorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["ReverseSchema", connectorId],
+      });
     },
   });
 };
