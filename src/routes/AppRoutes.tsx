@@ -116,7 +116,11 @@ export const router = createBrowserRouter([
             ),
           },
           {
-            path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.ADD}`,
+            path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.ADD}/select-destination/:source?`,
+            element: <NewConnector />,
+          },
+          {
+            path: `${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.ADD}/:destination?/:source?`,
             element: <NewConnector />,
           },
           {

@@ -119,8 +119,11 @@ const ServerRoutes = {
     fetchConnectionMappings: (id: number) => `connection/${id}/mappings/`,
     saveConnectionMappings: () => "connection/mappings/save/",
     suggestTableName: () => "s3/suggest-table-name/",
-    previewdata: () => "s3/preview-pattern/",
-    suggestPrimaryKeys: () => "s3/suggest-primary-keys/",
+    previewdata: ({ source }: { source: string }) =>
+      `${source}/preview-pattern/`,
+    suggestPrimaryKeys: ({ source }: { source: string }) =>
+      `${source}/suggest-primary-keys/`,
+    listFiles: ({ source }: { source: string }) => `${source}/list-files/`,
     fetchLogDetails: ({
       connectionId,
       logId,
@@ -130,7 +133,6 @@ const ServerRoutes = {
     }) => `connection/${connectionId}/log/${logId}/`,
   },
   s3: {
-    listFiles: () => "s3/list-files/",
     suggestTableName: () => "s3/suggest-table-name/",
   },
   supportTickets: {
