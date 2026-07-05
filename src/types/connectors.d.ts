@@ -60,6 +60,9 @@ export interface Connector {
   status: ConnectorStatus;
   readable_time_frequency: string;
   readable_safety_interval: string;
+  effective_max_chunk?: number;
+  min_count?: number;
+  max_count?: number;
   dst_min_count: number;
   dst_max_count: number;
   source_name: string;
@@ -117,6 +120,9 @@ export type ConnectorSettingsApiResponse = {
   status: ConnectorStatus;
   readable_time_frequency: string;
   readable_safety_interval: string;
+  effective_max_chunk?: number;
+  min_count?: number;
+  max_count?: number;
   dst_min_count: number;
   dst_max_count: number;
   source_name: string;

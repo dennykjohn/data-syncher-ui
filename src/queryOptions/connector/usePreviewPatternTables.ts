@@ -24,6 +24,7 @@ const fetchPreviewPattern = async (
     !!(data as SFTPPreviewPatternRequest).root_folder ||
     !!data.isSftp;
   const source = isSftp ? "sftp" : "s3";
+  const source = data.sourceType || (isSftp ? "sftp" : "s3");
   const endpoint = ServerRoutes.connector.previewdata({ source });
 
   const { data: responseData } = await AxiosInstance.post(endpoint, data);

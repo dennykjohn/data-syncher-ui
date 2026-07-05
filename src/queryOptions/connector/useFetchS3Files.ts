@@ -24,6 +24,7 @@ const fetchS3Files = async (
     !!(data as SFTPListFilesRequest).root_folder ||
     !!data.isSftp;
   const source = isSftp ? "sftp" : "s3";
+  const source = data.sourceType || (isSftp ? "sftp" : "s3");
   const endpoint = ServerRoutes.connector.listFiles({ source });
 
   const { data: responseData } = await AxiosInstance.post(endpoint, data);
@@ -37,6 +38,7 @@ export default function useFetchS3Files(
   const s3Bucket = (data as S3ListFilesRequest).s3_bucket;
   const sftpHost = (data as SFTPListFilesRequest).sftp_host;
   const rootFolder = (data as SFTPListFilesRequest).root_folder;
+  const sourceType = data.sourceType;
 
   return useQuery<S3ListFilesResponse>({
     queryKey: ["S3Files", data],
@@ -44,5 +46,10 @@ export default function useFetchS3Files(
     enabled:
       enabled &&
       (!!s3Bucket || !!sftpHost || !!rootFolder || !!data.connection_id),
+      (!!s3Bucket ||
+        !!sftpHost ||
+        !!rootFolder ||
+        !!sourceType ||
+        !!data.connection_id),
   });
 }

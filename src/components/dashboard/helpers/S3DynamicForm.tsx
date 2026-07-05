@@ -32,6 +32,8 @@ import SingleMapping, {
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 
+import GoogleDriveOAuth, { GoogleDriveTokens } from "./GoogleDriveOAuth";
+
 export interface S3FieldSchema {
   name: string;
   label: string;
@@ -106,6 +108,13 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   connectionId,
   migrationStatus,
 }) => {
+  const normalizedSourceName = (_sourceName || "")
+    .toLowerCase()
+    .replace(/[\s\-._]/g, "");
+
+  const isGoogleDriveCreate =
+    normalizedSourceName === "googledrive" && mode === "create";
+
   // Initialize form values from schema and defaultValues
   const initialValues = useMemo(() => {
     const initial = schema.reduce(
@@ -146,6 +155,64 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
   const [lastMappingSavedAt, setLastMappingSavedAt] = useState<number>(0);
+
+  // ── Google Drive OAuth state ──────────────────────────────────────────────
+  const [isGoogleAuthorized, setIsGoogleAuthorized] = useState(false);
+
+  // Derived: whether both credential fields are filled (enables Authorize button).
+  // Walk the schema to find the actual field names — they may differ across environments.
+  const canAuthorize = useMemo(() => {
+    const clientIdField = schema.find((f) => {
+      const n = f.name.toLowerCase();
+      const l = (f.label ?? "").toLowerCase();
+      return (
+        n.includes("client_id") ||
+        n.includes("clientid") ||
+        l.includes("client id")
+      );
+    });
+    const clientSecretField = schema.find((f) => {
+      const n = f.name.toLowerCase();
+      const l = (f.label ?? "").toLowerCase();
+      return (
+        n.includes("client_secret") ||
+        n.includes("clientsecret") ||
+        l.includes("client secret")
+      );
+    });
+    const idFilled = !!(clientIdField && values[clientIdField.name]?.trim());
+    const secretFilled = !!(
+      clientSecretField && values[clientSecretField.name]?.trim()
+    );
+    return idFilled && secretFilled;
+  }, [schema, values]);
+
+  // Resolved actual values for the credential fields (passed explicitly to GoogleDriveOAuth)
+  const resolvedClientId = useMemo(() => {
+    const f = schema.find((field) => {
+      const n = field.name.toLowerCase();
+      const l = (field.label ?? "").toLowerCase();
+      return (
+        n.includes("client_id") ||
+        n.includes("clientid") ||
+        l.includes("client id")
+      );
+    });
+    return f ? (values[f.name] ?? "") : "";
+  }, [schema, values]);
+
+  const resolvedClientSecret = useMemo(() => {
+    const f = schema.find((field) => {
+      const n = field.name.toLowerCase();
+      const l = (field.label ?? "").toLowerCase();
+      return (
+        n.includes("client_secret") ||
+        n.includes("clientsecret") ||
+        l.includes("client secret")
+      );
+    });
+    return f ? (values[f.name] ?? "") : "";
+  }, [schema, values]);
 
   const valuesRef = useRef(values);
   const mappingOverridesRef = useRef<Record<string, string>>({});
@@ -319,11 +386,40 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       return true;
     });
 
+    if (isGoogleDriveCreate) {
+      if (!isGoogleAuthorized) {
+        // Phase 1: only show the 4 auth fields + the OAuth button (rendered by renderFieldWithGoogleButton)
+        return filtered.filter((f) => {
+          const n = f.name.toLowerCase();
+          const l = f.label?.toLowerCase() || "";
+          return (
+            n.includes("connection_name") ||
+            n.includes("destination_schema") ||
+            n.includes("client_id") ||
+            l.includes("client id") ||
+            n.includes("client_secret") ||
+            l.includes("client secret")
+          );
+        });
+      }
+      // Phase 2: after OAuth — hide token/credential fields (injected silently),
+      // show everything else so user can fill remaining fields
+      return filtered.filter((f) => {
+        const n = f.name.toLowerCase();
+        const isCredential =
+          n.includes("access_token") ||
+          n.includes("refresh_token") ||
+          n.includes("token_expires");
+        return !isCredential;
+      });
+    }
+
     return filtered;
-  }, [schema, values]);
+  }, [schema, values, isGoogleDriveCreate, isGoogleAuthorized]);
 
   const handleSubmit = () => {
     const latestValues = valuesRef.current;
+
     const newErrors: Record<string, string> = {};
 
     visibleFields.forEach((field) => {
@@ -354,10 +450,15 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
       const value = latestValues[key];
       const hasValue =
         value && (typeof value === "string" ? value.trim() !== "" : true);
+      const isOAuthToken =
+        key === "access_token" ||
+        key === "refresh_token" ||
+        key === "token_expires_at";
 
       if (
         (isVisible && hasValue) ||
         isHiddenField ||
+        isOAuthToken ||
         key === "include_subfolders"
       ) {
         filteredValues[key] = latestValues[key];
@@ -580,6 +681,27 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
     values.multi_files_prefix,
     values.table_to_files_mapping,
   ]);
+
+  // Called by GoogleDriveOAuth once tokens are exchanged
+  const handleGoogleTokens = (tokens: GoogleDriveTokens) => {
+    const saved = JSON.parse(
+      sessionStorage.getItem("gdrive_form_values") || "{}",
+    );
+
+    setValues((prev) => ({
+      ...prev,
+      ...saved, // ← restore ALL saved fields first
+      // then override with fresh tokens
+      access_token: tokens.access_token ?? "",
+      refresh_token: tokens.refresh_token ?? "",
+      token_expires_at: tokens.token_expires_at ?? "",
+      folder_id: tokens.folder_id ?? saved.folder_id ?? prev.folder_id ?? "",
+      folder_name:
+        tokens.folder_name ?? saved.folder_name ?? prev.folder_name ?? "",
+    }));
+    sessionStorage.removeItem("gdrive_form_values");
+    setIsGoogleAuthorized(true);
+  };
 
   const handleClearMapping = () => {
     defaultValuesSerializedRef.current = null;
@@ -956,11 +1078,35 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
   // ---------- NEW: Render fields with dependent fields inside a box ----------
   const renderedParents = new Set<string>();
 
+  const renderFieldWithGoogleButton = (field: S3FieldSchema) => {
+    const baseElement = renderField(field);
+    const isClientSecret =
+      field.name === "client_secret" ||
+      field.label?.toLowerCase() === "client secret" ||
+      field.name.toLowerCase().includes("client_secret");
+
+    if (normalizedSourceName === "googledrive" && isClientSecret) {
+      return (
+        <Box key={`google-wrap-${field.name}`}>
+          {baseElement}
+          <GoogleDriveOAuth
+            formValues={values}
+            clientId={resolvedClientId}
+            clientSecret={resolvedClientSecret}
+            canAuthorize={canAuthorize}
+            onTokensReceived={handleGoogleTokens}
+          />
+        </Box>
+      );
+    }
+    return baseElement;
+  };
+
   const renderFieldsWithDependencies = () => {
     return visibleFields.map((field) => {
       if (field.depend_on && renderedParents.has(field.depend_on)) return null;
 
-      const parentFieldElement = renderField(field);
+      const parentFieldElement = renderFieldWithGoogleButton(field);
 
       const dependentFields = visibleFields.filter(
         (f) =>
@@ -985,7 +1131,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             bg="white"
           >
             <VStack gap={3} align="stretch">
-              {dependentFields.map((dep) => renderField(dep))}
+              {dependentFields.map((dep) => renderFieldWithGoogleButton(dep))}
             </VStack>
           </Box>
         </Box>
@@ -1023,17 +1169,18 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             </Flex>
             <Flex gap={4}>
               {rightButtons}
-              {!hideSubmitButton && (
-                <Button
-                  colorPalette="brand"
-                  onClick={handleSubmit}
-                  loading={loading}
-                  disabled={loading}
-                >
-                  <MdOutlineSave />
-                  {mode === "create" ? "Create" : "Save"}
-                </Button>
-              )}
+              {!hideSubmitButton &&
+                !(isGoogleDriveCreate && !isGoogleAuthorized) && (
+                  <Button
+                    colorPalette="brand"
+                    onClick={handleSubmit}
+                    loading={loading}
+                    disabled={loading}
+                  >
+                    <MdOutlineSave />
+                    {mode === "create" ? "Create" : "Save"}
+                  </Button>
+                )}
             </Flex>
           </Flex>
         </VStack>
@@ -1060,6 +1207,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     loading={loading}
                     readOnly={false}
                     isSftp={isSftp || _sourceName?.toLowerCase() === "sftp"}
+                    sourceType={normalizedSourceName}
                   />
                 ) : isMultiFilesSingleTable ? (
                   <MultipleMapping
@@ -1068,6 +1216,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
                     selectedFiles={currentMultipleFiles}
                     connectionId={connectionId}
                     isSftp={isSftp || _sourceName?.toLowerCase() === "sftp"}
+                    sourceType={normalizedSourceName}
                     onSave={(data) => {
                       // Format table_to_files_mapping as object: { "TABLE_NAME": ["file1", "file2"] }
                       const tableToFilesMapping = {

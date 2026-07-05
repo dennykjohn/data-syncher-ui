@@ -330,6 +330,14 @@ const ConnectorConfiguration = (props: {
   const isS3Connector =
     sourceName?.toLowerCase() === "amazons3" ||
     sourceName?.toLowerCase() === "sftp";
+  // Determine if this source should use the file-based connector flow.
+  const normalizedSourceName = sourceName
+    ?.toLowerCase()
+    .replace(/[\s\-._]/g, "");
+  const isS3Connector =
+    normalizedSourceName === "amazons3" ||
+    normalizedSourceName === "sftp" ||
+    normalizedSourceName === "googledrive";
 
   if (shouldFetch && isFetchConnectorByIdPending) {
     return <LoadingSpinner />;

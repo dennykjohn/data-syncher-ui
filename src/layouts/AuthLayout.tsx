@@ -4,13 +4,14 @@ import { Navigate, Outlet } from "react-router";
 
 import Banner from "@/components/auth/Banner";
 import Navbar from "@/components/auth/Navbar";
+import LoadingSpinner from "@/components/shared/Spinner";
 import AuthContainer from "@/components/ui/AuthContainer";
 import ClientRoutes from "@/constants/client-routes";
 import useAuth from "@/context/Auth/useAuth";
 
 export default function AuthLayout() {
   const {
-    authState: { isAuthenticated },
+    authState: { isAuthenticated, isCheckingAuth },
   } = useAuth();
 
   const gridTemplateAreas = useBreakpointValue({
@@ -27,6 +28,10 @@ export default function AuthLayout() {
     base: "80px 1fr",
     md: "80px 1fr",
   });
+
+  if (isCheckingAuth) {
+    return <LoadingSpinner />;
+  }
 
   // Redirect to dashboard if already authenticated
   if (isAuthenticated) {
