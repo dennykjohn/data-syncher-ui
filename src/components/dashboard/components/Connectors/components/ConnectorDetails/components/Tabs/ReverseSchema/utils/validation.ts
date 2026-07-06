@@ -50,31 +50,6 @@ export const validateTableMapping = (
   sourceField: string,
   destinationField: string,
 ): ValidationResult => {
-  const sourcePK = findPrimaryKey(sourceTableData);
-  const destinationPK = findPrimaryKey(destinationTableData);
-
-  if (!sourcePK || !destinationPK) {
-    return {
-      isValid: false,
-      error: {
-        title: "Primary Key Not Found",
-        description:
-          "Both source and destination tables must have primary keys to create a mapping.",
-      },
-    };
-  }
-
-  // Strict case sensitivity: ID !== Id
-  if (sourcePK !== destinationPK) {
-    return {
-      isValid: false,
-      error: {
-        title: "Primary Key Mismatch",
-        description: `Primary keys do not match exactly. Source: "${sourcePK}", Destination: "${destinationPK}".`,
-      },
-    };
-  }
-
   if (!hasMatchingFields(sourceTableData, destinationTableData)) {
     return {
       isValid: false,
@@ -121,35 +96,6 @@ export const validateTableToTableMapping = (
   sourceTableData: ConnectorTable,
   destinationTableData: ConnectorTable,
 ): ValidationResult => {
-  const sourcePK = findPrimaryKey(sourceTableData);
-  const destinationPKs = Object.entries(destinationTableData.table_fields)
-    .filter(([fieldName, fieldInfo]) => isPrimaryKey(fieldName, fieldInfo))
-    .map(([fieldName]) => fieldName);
-
-  if (!sourcePK || destinationPKs.length === 0) {
-    return {
-      isValid: false,
-      error: {
-        title: "Primary Key Not Found",
-        description:
-          "Both source and destination tables must have primary keys to create a mapping.",
-      },
-    };
-  }
-
-  // Strict case sensitivity for PK matching
-  const primaryKeyMatch = destinationPKs.some((destPK) => destPK === sourcePK);
-
-  if (!primaryKeyMatch) {
-    return {
-      isValid: false,
-      error: {
-        title: "Primary Key Mismatch",
-        description: `At least one primary key must match exactly in both tables. Source: "${sourcePK}", Destination: "${destinationPKs.join(", ")}".`,
-      },
-    };
-  }
-
   const sourceFields = Object.keys(sourceTableData.table_fields).filter(
     (field) => !isPrimaryKey(field, sourceTableData.table_fields[field]),
   );
