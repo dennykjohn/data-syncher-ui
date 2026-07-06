@@ -36,6 +36,7 @@ interface SingleMappingProps {
   readOnly?: boolean;
   connectionId?: number;
   isSftp?: boolean;
+  sourceType?: string;
 }
 
 const extractTableName = (fileName: string) =>
@@ -50,6 +51,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
   readOnly = false,
   connectionId,
   isSftp: propIsSftp,
+  sourceType: propSourceType,
 }) => {
   const [localMappings, setLocalMappings] = useState<Mapping[]>(() => {
     // Initialize with props; scan will reconcile this later
@@ -68,8 +70,23 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     return !!(formValues?.sftp_host || formValues?.root_folder);
   }, [formValues, propIsSftp]);
 
+  const sourceType = propSourceType || (isSftp ? "sftp" : "s3");
+  const isGoogleDrive = sourceType === "googledrive";
+
   const hasRequiredCreds = useMemo(() => {
     if (connectionId) return true;
+    if (isGoogleDrive) {
+      return !!(
+        formValues?.root_folder ||
+        formValues?.base_folder_path ||
+        formValues?.folder_path ||
+        formValues?.folder_id ||
+        formValues?.folder_name ||
+        formValues?.client_id ||
+        formValues?.client_secret ||
+        formValues?.service_account_json
+      );
+    }
     if (isSftp) {
       return (
         !!formValues?.sftp_host &&
@@ -82,10 +99,22 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       !!formValues?.aws_access_key_id &&
       !!formValues?.aws_secret_access_key
     );
-  }, [formValues, connectionId, isSftp]);
+  }, [formValues, connectionId, isSftp, isGoogleDrive]);
 
   const s3Params = useMemo(() => {
     if (!hasRequiredCreds) return null;
+    if (isGoogleDrive) {
+      return {
+        ...formValues,
+        base_folder_path: formValues.base_folder_path || undefined,
+        root_folder: formValues.root_folder || undefined,
+        file_type: formValues.file_type || undefined,
+        include_subfolders: formValues.include_subfolders || "false",
+        file_mapping_method: formValues.file_mapping_method || undefined,
+        connection_id: connectionId,
+        sourceType,
+      } as unknown as S3ListFilesRequest;
+    }
     if (isSftp) {
       return {
         sftp_host: (formValues.sftp_host || "").trim(),
@@ -101,6 +130,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
         file_mapping_method: formValues.file_mapping_method || undefined,
         connection_id: connectionId,
         isSftp: true,
+        sourceType,
       } as unknown as S3ListFilesRequest;
     }
     return {
@@ -112,6 +142,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       include_subfolders: formValues.include_subfolders || "false",
       file_mapping_method: formValues.file_mapping_method || undefined,
       connection_id: connectionId,
+      sourceType,
     } as S3ListFilesRequest;
   }, [
     hasRequiredCreds,
@@ -305,7 +336,9 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                     Provide{" "}
                     {isSftp
                       ? "SFTP root folder and credentials"
-                      : "S3 bucket and credentials"}{" "}
+                      : isGoogleDrive
+                        ? "Google Drive folder details"
+                        : "S3 bucket and credentials"}{" "}
                     to load files
                   </Text>
                 </VStack>
@@ -419,7 +452,9 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                     Provide{" "}
                     {isSftp
                       ? "SFTP root folder and credentials"
-                      : "S3 bucket and credentials"}{" "}
+                      : isGoogleDrive
+                        ? "Google Drive folder details"
+                        : "S3 bucket and credentials"}{" "}
                     to load files
                   </Text>
                 </VStack>

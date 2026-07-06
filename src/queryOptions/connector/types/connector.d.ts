@@ -8,6 +8,8 @@ export interface S3ListFilesRequest {
   include_subfolders?: string;
   file_mapping_method?: string;
   isSftp?: boolean;
+  sourceType?: string;
+  [key: string]: unknown;
 }
 
 export interface SFTPListFilesRequest {
@@ -24,6 +26,7 @@ export interface SFTPListFilesRequest {
   include_subfolders?: string;
   file_mapping_method?: string;
   isSftp?: boolean;
+  sourceType?: string;
   [key: string]: unknown;
 }
 
@@ -54,6 +57,8 @@ export interface PreviewPatternRequest {
   include_subfolders?: string;
   file_mapping_method?: string;
   isSftp?: boolean;
+  sourceType?: string;
+  [key: string]: unknown;
 }
 
 export interface SFTPPreviewPatternRequest {
@@ -71,6 +76,7 @@ export interface SFTPPreviewPatternRequest {
   include_subfolders?: string;
   file_mapping_method?: string;
   isSftp?: boolean;
+  sourceType?: string;
   [key: string]: unknown;
 }
 
@@ -110,6 +116,7 @@ export interface SuggestPrimaryKeysRequest {
   base_folder_path?: string;
   file_type?: string;
   isSftp?: boolean;
+  sourceType?: string;
   sftp_host?: string;
   root_folder?: string;
   [key: string]: unknown;

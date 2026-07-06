@@ -18,7 +18,7 @@ export type {
 
 const fetchSuggestPrimaryKeys = async (data: SuggestPrimaryKeysRequest) => {
   const isSftp = !!data.sftp_host || !!data.root_folder || !!data.isSftp;
-  const source = isSftp ? "sftp" : "s3";
+  const source = data.sourceType || (isSftp ? "sftp" : "s3");
   const endpoint = ServerRoutes.connector.suggestPrimaryKeys({ source });
 
   const { data: responseData } = await AxiosInstance.post(endpoint, data);
@@ -38,6 +38,7 @@ export default function useSuggestPrimaryKeys(
         !!data.s3_bucket ||
         !!data.sftp_host ||
         !!data.root_folder ||
+        !!data.sourceType ||
         !!data.isSftp),
   });
 }

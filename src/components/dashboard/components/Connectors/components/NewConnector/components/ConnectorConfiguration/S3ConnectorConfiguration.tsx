@@ -125,8 +125,13 @@ const S3ConnectorConfiguration = ({
   });
 
   const sourceName = state?.source || connectorData?.source_name || "";
-  const isSftp = sourceName?.toLowerCase() === "sftp";
-  const displayName = isSftp ? "SFTP" : "S3";
+  const normalizedSourceName = sourceName
+    ?.toLowerCase()
+    .replace(/[\s\-._]/g, "");
+  const isSftp = normalizedSourceName === "sftp";
+  const isGoogleDrive = normalizedSourceName === "googledrive";
+  const sourceType = isSftp ? "sftp" : isGoogleDrive ? "googledrive" : "s3";
+  const displayName = isSftp ? "SFTP" : isGoogleDrive ? "Google Drive" : "S3";
 
   // Prepare params for suggest primary keys API
   const suggestPrimaryKeysParams = useMemo(() => {
@@ -135,6 +140,7 @@ const S3ConnectorConfiguration = ({
       const formData = pendingFormData.form_data;
       return {
         isSftp,
+        sourceType,
         s3_bucket:
           formData.s3_bucket ||
           formData.sftp_bucket ||
@@ -154,6 +160,7 @@ const S3ConnectorConfiguration = ({
       const formData = editPendingPayload.form_data;
       return {
         isSftp,
+        sourceType,
         connection_id: createdConnectionId,
         s3_bucket:
           formData.s3_bucket ||
@@ -173,7 +180,7 @@ const S3ConnectorConfiguration = ({
     }
     // Fallback: only connection_id available
     if (createdConnectionId) {
-      return { connection_id: createdConnectionId, isSftp };
+      return { connection_id: createdConnectionId, isSftp, sourceType };
     }
     return null;
   }, [
@@ -182,6 +189,7 @@ const S3ConnectorConfiguration = ({
     pendingKeyTables,
     createdConnectionId,
     isSftp,
+    sourceType,
   ]);
 
   // Fetch suggested primary keys when showing primary key selection
@@ -836,8 +844,11 @@ const S3ConnectorConfiguration = ({
           overflow="hidden"
           bg={{ base: "transparent", xl: "gray.50" }}
         >
-          {isSftp ? (
-            <ConnectorDocsHelperPanel connectorKey="sftp" kind="connector" />
+          {isSftp || isGoogleDrive ? (
+            <ConnectorDocsHelperPanel
+              connectorKey={isGoogleDrive ? "googledrive" : "sftp"}
+              kind="connector"
+            />
           ) : (
             <S3DocsHelperPanel />
           )}

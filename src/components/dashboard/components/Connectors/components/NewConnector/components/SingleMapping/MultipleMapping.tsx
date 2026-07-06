@@ -31,6 +31,7 @@ interface MultipleMappingProps {
   readOnly?: boolean;
   connectionId?: number;
   isSftp?: boolean;
+  sourceType?: string;
 }
 
 const MultipleMapping: React.FC<MultipleMappingProps> = ({
@@ -43,6 +44,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
   readOnly = false,
   connectionId,
   isSftp: propIsSftp,
+  sourceType: propSourceType,
 }) => {
   const getDefaultPrefix = (fileType: string | undefined): string => {
     if (!fileType) return "";
@@ -68,8 +70,24 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
     return !!(formValues?.sftp_host || formValues?.root_folder);
   }, [formValues, propIsSftp]);
 
+  const sourceType = propSourceType || (isSftp ? "sftp" : "s3");
+  const isGoogleDrive = sourceType === "googledrive";
+  const sourceLabel = isSftp ? "SFTP" : isGoogleDrive ? "Google Drive" : "S3";
+
   const hasRequiredCreds = useMemo(() => {
     if (connectionId) return true;
+    if (isGoogleDrive) {
+      return !!(
+        formValues?.root_folder ||
+        formValues?.base_folder_path ||
+        formValues?.folder_path ||
+        formValues?.folder_id ||
+        formValues?.folder_name ||
+        formValues?.client_id ||
+        formValues?.client_secret ||
+        formValues?.service_account_json
+      );
+    }
     if (isSftp) {
       return (
         !!formValues?.sftp_host &&
@@ -86,6 +104,21 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
 
   const previewParams = useMemo(() => {
     if (!hasRequiredCreds || !prefix.trim() || !shouldFetchPreview) return null;
+    if (isGoogleDrive) {
+      return {
+        ...formValues,
+        base_folder_path: formValues?.base_folder_path as string | undefined,
+        root_folder: formValues?.root_folder as string | undefined,
+        file_type: formValues?.file_type as string | undefined,
+        multi_files_prefix: prefix.trim(),
+        include_subfolders: String(formValues?.include_subfolders || "false"),
+        file_mapping_method: formValues?.file_mapping_method as
+          | string
+          | undefined,
+        connection_id: connectionId,
+        sourceType,
+      } as unknown as PreviewPatternRequest;
+    }
     if (isSftp) {
       return {
         sftp_host: String(formValues?.sftp_host || "").trim(),
@@ -104,6 +137,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
           | undefined,
         connection_id: connectionId,
         isSftp: true,
+        sourceType,
       } as unknown as PreviewPatternRequest;
     }
     return {
@@ -120,14 +154,17 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
         | string
         | undefined,
       connection_id: connectionId,
+      sourceType,
     } as PreviewPatternRequest;
   }, [
     hasRequiredCreds,
     isSftp,
+    isGoogleDrive,
     formValues,
     prefix,
     shouldFetchPreview,
     connectionId,
+    sourceType,
   ]);
 
   const { data: previewData, isLoading: isPreviewLoading } =
@@ -312,6 +349,8 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 <Text fontSize="xs" textAlign="center">
                   {isSftp ? "SFTP" : "S3"} credentials are not available in edit
                   mode for security. The saved file list is shown below.
+                  {sourceLabel} credentials are not available in edit mode for
+                  security. The saved file list is shown below.
                 </Text>
               </VStack>
             ) : !hasRequiredCreds && matchedTables.length > 0 ? (
@@ -326,7 +365,8 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 >
                   <Text fontSize="xs" color="blue.700" textAlign="center">
                     📝 Edit Mode: Showing saved files. Preview not available
-                    without {isSftp ? "SFTP" : "S3"} credentials.
+                    without {isSftp ? "SFTP" : "S3"} credentials. without{" "}
+                    {sourceLabel} credentials.
                   </Text>
                 </VStack>
                 {matchedTables.map((table, index) => (
