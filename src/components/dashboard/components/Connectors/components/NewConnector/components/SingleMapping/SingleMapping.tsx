@@ -116,21 +116,10 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
   }, [
     hasRequiredCreds,
     isSftp,
-    formValues.sftp_host,
-    formValues.sftp_port,
-    formValues.sftp_username,
-    formValues.sftp_password,
-    formValues.sftp_private_key,
-    formValues.sftp_passphrase,
-    formValues.root_folder,
-    formValues.s3_bucket,
-    formValues.aws_access_key_id,
-    formValues.aws_secret_access_key,
-    formValues.base_folder_path,
-    formValues.file_type,
-    formValues.include_subfolders,
-    formValues.file_mapping_method,
+    isGoogleDrive,
+    formValues,
     connectionId,
+    sourceType,
   ]);
 
   const { data: s3Files, isPending: isS3Loading } = useFetchS3Files(

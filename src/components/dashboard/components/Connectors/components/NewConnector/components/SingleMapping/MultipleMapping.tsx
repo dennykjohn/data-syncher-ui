@@ -82,16 +82,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       !!formValues?.aws_access_key_id &&
       !!formValues?.aws_secret_access_key
     );
-  }, [
-    formValues?.s3_bucket,
-    formValues?.aws_access_key_id,
-    formValues?.aws_secret_access_key,
-    formValues?.sftp_host,
-    formValues?.sftp_username,
-    formValues?.root_folder,
-    connectionId,
-    isSftp,
-  ]);
+  }, [formValues, connectionId, isSftp, isGoogleDrive]);
 
   const previewParams = useMemo(() => {
     if (!hasRequiredCreds || !prefix.trim() || !shouldFetchPreview) return null;
