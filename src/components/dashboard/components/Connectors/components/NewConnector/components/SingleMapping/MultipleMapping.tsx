@@ -69,6 +69,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
     if (propIsSftp !== undefined) return propIsSftp;
     return !!(formValues?.sftp_host || formValues?.root_folder);
   }, [formValues, propIsSftp]);
+
   const sourceType = propSourceType || (isSftp ? "sftp" : "s3");
   const isGoogleDrive = sourceType === "googledrive";
   const sourceLabel = isSftp ? "SFTP" : isGoogleDrive ? "Google Drive" : "S3";
@@ -99,17 +100,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       !!formValues?.aws_access_key_id &&
       !!formValues?.aws_secret_access_key
     );
-  }, [
-    formValues?.s3_bucket,
-    formValues?.aws_access_key_id,
-    formValues?.aws_secret_access_key,
-    formValues?.sftp_host,
-    formValues?.sftp_username,
-    formValues?.root_folder,
-    connectionId,
-    isSftp,
-    isGoogleDrive,
-  ]);
+  }, [formValues, connectionId, isSftp, isGoogleDrive]);
 
   const previewParams = useMemo(() => {
     if (!hasRequiredCreds || !prefix.trim() || !shouldFetchPreview) return null;
@@ -356,6 +347,8 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                   No files configured
                 </Text>
                 <Text fontSize="xs" textAlign="center">
+                  {isSftp ? "SFTP" : "S3"} credentials are not available in edit
+                  mode for security. The saved file list is shown below.
                   {sourceLabel} credentials are not available in edit mode for
                   security. The saved file list is shown below.
                 </Text>
@@ -372,7 +365,8 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                 >
                   <Text fontSize="xs" color="blue.700" textAlign="center">
                     📝 Edit Mode: Showing saved files. Preview not available
-                    without {sourceLabel} credentials.
+                    without {isSftp ? "SFTP" : "S3"} credentials. without{" "}
+                    {sourceLabel} credentials.
                   </Text>
                 </VStack>
                 {matchedTables.map((table, index) => (
