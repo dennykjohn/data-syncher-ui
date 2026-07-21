@@ -270,8 +270,13 @@ function pipelineToFlow(
   const { nextSyncLabel } = startNodeScheduleLabels(pipeline);
 
   const publishedNodeIdSet = new Set(published?.node_ids ?? []);
-  if (isPublishedView && published?.start_node_id !== null) {
-    publishedNodeIdSet.add(published.start_node_id);
+  const publishedStartNodeId = published?.start_node_id;
+  if (
+    isPublishedView &&
+    publishedStartNodeId !== null &&
+    publishedStartNodeId !== undefined
+  ) {
+    publishedNodeIdSet.add(publishedStartNodeId);
   } else if (isPublishedView && startNode) {
     publishedNodeIdSet.add(startNode.id);
   }
@@ -391,7 +396,9 @@ function pipelineToFlow(
           !selectedNode.isStart &&
           selectedNode.nodeId === n.id,
         onDelete: isPublishedView ? undefined : onDeleteNode,
-        ...(overlayRunStatus && pipelineRun?.pipeline_run_id !== null
+        ...(overlayRunStatus &&
+        pipelineRun?.pipeline_run_id !== null &&
+        pipelineRun?.pipeline_run_id !== undefined
           ? { runFillKey: pipelineRun.pipeline_run_id }
           : {}),
         ...runVisual,
@@ -512,7 +519,9 @@ const PipelineCanvas = ({
 
   const isPublishedView = graphView === "published";
   const isRunLive =
-    pipelineRun !== null && resolvePipelineRunStatus(pipelineRun) === "running";
+    pipelineRun !== null &&
+    pipelineRun !== undefined &&
+    resolvePipelineRunStatus(pipelineRun) === "running";
   const hasPublishedGraph = Boolean(
     selectedPipeline?.has_published_graph && selectedPipeline?.published_graph,
   );
@@ -1478,6 +1487,7 @@ const Scheduling = () => {
     batchNodeCount > 0 && roots.length > 0 && !selectedPipeline?.schedule_type;
   const hasRunningPipelineRun =
     (pipelineRun !== null &&
+      pipelineRun !== undefined &&
       resolvePipelineRunStatus(pipelineRun) === "running") ||
     pipelineRuns.some(
       (run) => resolvePipelineRunStatus(run as PipelineRunDetail) === "running",
