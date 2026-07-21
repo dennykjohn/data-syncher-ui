@@ -4,7 +4,6 @@ import {
   Button,
   Field,
   Flex,
-  Input,
   NativeSelect,
   NumberInput,
   Stack,
@@ -21,14 +20,11 @@ import useTestConnection from "@/queryOptions/connector/useTestConnection";
 import { type Connector } from "@/types/connectors";
 
 import DeleteConfirmationDialog from "./DeleteConfirmationDialog";
-import {
-  executionOrderOptions,
-  fromLocalDateTimeInput,
-  safetyIntervalOptions,
-  syncFrequenciesOptions,
-  toLocalDateTimeInput,
-} from "./helpers";
+import { safetyIntervalOptions } from "./helpers";
 import { reducer } from "./reducer";
+
+/** Matches backend DEFAULT_MIN_CHUNK_FLOOR in chunk_limit_resolver.py */
+const PLAN_MIN_CHUNK_FLOOR = 100;
 
 const Form = (props: Connector) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -39,36 +35,25 @@ const Form = (props: Connector) => {
   const canDelete = can("can_delete_connectors");
 
   const {
-    sync_start_date,
-    time_frequency,
     safety_interval,
-    execution_order,
     chunk_count,
     effective_max_chunk,
     min_count,
     max_count,
     status,
-    dst_min_count,
-    dst_max_count,
   } = props;
 
-  const minChunkCount = min_count ?? dst_min_count ?? 10;
-  const maxChunkCount = max_count ?? dst_max_count ?? 1000000;
+  const minChunkCount = Math.max(min_count ?? 0, PLAN_MIN_CHUNK_FLOOR);
+  const maxChunkCount = effective_max_chunk ?? max_count ?? 1_000_000;
   const transferPacketSize =
     chunk_count ?? effective_max_chunk ?? minChunkCount;
 
   const initialFormState = {
-    sync_start_date: sync_start_date ?? "",
-    time_frequency: time_frequency ?? "",
     safety_interval: safety_interval ?? "",
-    execution_order: execution_order ?? "",
     chunk_count: transferPacketSize,
   };
 
   const [formState, dispatch] = useReducer(reducer, initialFormState);
-  const [syncStartLocal, setSyncStartLocal] = useState(
-    toLocalDateTimeInput(formState?.sync_start_date),
-  );
 
   const { mutate: updateSettings, isPending: isUpdateOperationPending } =
     useUpdateConnectionSettings({
@@ -81,50 +66,6 @@ const Form = (props: Connector) => {
   return (
     <Flex direction="column" gap={4} mb={8}>
       <Stack gap="8" flexWrap="wrap" direction="row">
-        <Field.Root maxW="sm" disabled={!canEdit}>
-          <Field.Label>Start date & time (UTC)</Field.Label>
-          <Input
-            placeholder="Choose date and time"
-            type="datetime-local"
-            value={syncStartLocal ?? ""}
-            disabled={!canEdit}
-            onChange={(e) => {
-              // Convert local datetime-local value to UTC ISO and store that in formState
-              const iso = fromLocalDateTimeInput(e.currentTarget.value);
-              dispatch({
-                type: "SET_FIELD",
-                field: "sync_start_date",
-                value: iso ?? "",
-              });
-              // Keep the local representation for the input control
-              setSyncStartLocal(e.currentTarget.value);
-            }}
-          />
-        </Field.Root>
-
-        <Field.Root maxW="sm" disabled={!canEdit}>
-          <Field.Label>Sync Frequency</Field.Label>
-          <NativeSelect.Root disabled={!canEdit}>
-            <NativeSelect.Field
-              value={formState.time_frequency}
-              onChange={(e) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "time_frequency",
-                  value: e.currentTarget.value,
-                })
-              }
-            >
-              {syncFrequenciesOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
-        </Field.Root>
-
         <Field.Root maxW="sm" disabled={!canEdit}>
           <Field.Label>Safety Interval</Field.Label>
           <NativeSelect.Root disabled={!canEdit}>
@@ -139,29 +80,6 @@ const Form = (props: Connector) => {
               }
             >
               {safetyIntervalOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
-        </Field.Root>
-
-        <Field.Root maxW="sm" disabled={!canEdit}>
-          <Field.Label>Execution Order</Field.Label>
-          <NativeSelect.Root disabled={!canEdit}>
-            <NativeSelect.Field
-              value={formState.execution_order}
-              onChange={(e) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "execution_order",
-                  value: e.currentTarget.value,
-                })
-              }
-            >
-              {executionOrderOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -262,7 +180,8 @@ const Form = (props: Connector) => {
               setChunkCountError(null);
               updateSettings(
                 {
-                  ...formState,
+                  safety_interval: formState.safety_interval,
+                  chunk_count: formState.chunk_count,
                 },
                 {
                   onSuccess: () => {

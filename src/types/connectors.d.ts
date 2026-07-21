@@ -383,6 +383,12 @@ export type ConnectorActivityLog = {
   log_type?: string;
   ui_state?: string;
   trigger_type?: string;
+  batch_id?: number | null;
+  batch_name?: string | null;
+  batch_names?: string[];
+  pipeline_run_id?: number | null;
+  pipeline_id?: number | null;
+  pipeline_name?: string | null;
 };
 
 export type MigrationRecord = {
@@ -412,6 +418,7 @@ export interface ConnectorActivityDetailResponse {
   migration_session_id?: number;
   connection_id?: number;
   overall_status?: string;
+  job_level_message?: string | null;
   tables?: {
     table_name: string;
     status: string;
@@ -463,7 +470,7 @@ export type ReverseSchemaResponse = {
 
 export type BatchStatus = "active" | "paused";
 export type BatchExecutionOrder = "parallel" | "sequential";
-export type BatchScheduleType = "interval" | "cron";
+export type BatchScheduleType = "manual" | "interval" | "cron";
 export type BatchCronType = "daily" | "weekdays" | "weekly" | "monthly";
 
 export interface BatchScheduleConfig {
@@ -472,7 +479,15 @@ export interface BatchScheduleConfig {
   minute?: number;
   timezone?: string;
   day_of_week?: string;
+  days_of_week?: string[];
   day?: number;
+  interval_unit?: string;
+  interval_value?: number;
+  monthly_mode?: string;
+  monthly_week?: string;
+  monthly_weekday?: string;
+  monthly_day_cron?: string;
+  recurrence_pattern?: string;
 }
 
 export interface BatchTable {
@@ -500,6 +515,8 @@ export interface UnassignedTable {
   table_name: string;
   sequence: number;
   last_synced?: string | null;
+  /** Reverse ETL: destination table this source was mapped to (UI only). */
+  mapped_destination?: string;
 }
 
 export interface FetchBatchesResponse {

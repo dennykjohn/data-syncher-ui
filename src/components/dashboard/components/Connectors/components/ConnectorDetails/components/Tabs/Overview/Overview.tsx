@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Box, Flex, Grid, NativeSelect, Text } from "@chakra-ui/react";
 
 import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
+import { patchActivityLogForMigration } from "@/helpers/activityLog";
 import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
@@ -14,8 +15,10 @@ import Filter from "./Filter";
 import Item from "./Item";
 import MigrationProgressTable from "./components/MigrationProgressTable";
 import TableSelectionDetails from "./components/TableSelectionDetails";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Overview = () => {
+  const queryClient = useQueryClient();
   const context = useOutletContext<
     Connector & { filterDays: number; setFilterDays: (_days: number) => void }
   >();
@@ -72,14 +75,53 @@ const Overview = () => {
   // Keep WS connected for the selected migration so terminal updates are not missed.
   const migrationIdForWS = migrationIdToFetch ?? null;
 
-  useMigrationStatusWS(migrationIdForWS);
+  useMigrationStatusWS(migrationIdForWS, context.connection_id);
 
   const { data: logDetails, isLoading: isLoadingDetails } =
     useFetchConnectorActivityDetails({
       migrationId: migrationIdToFetch,
-      connectionId: logIdToFetch ? context.connection_id : undefined,
+      // Always scope details to this connector — session IDs can collide across connections.
+      connectionId: migrationIdToFetch
+        ? context.connection_id
+        : logIdToFetch
+          ? context.connection_id
+          : undefined,
       logId: logIdToFetch,
     });
+
+  // Reset selected log when switching connectors to avoid stale details.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset selection when connection changes
+    setUserSelectedLog(null);
+  }, [context.connection_id]);
+
+  useEffect(() => {
+    if (!migrationIdToFetch || !logDetails?.overall_status) return;
+    const status = logDetails.overall_status.toLowerCase();
+    if (
+      !status.includes("completed") &&
+      !status.includes("success") &&
+      !status.includes("failed") &&
+      !status.includes("error")
+    ) {
+      return;
+    }
+    patchActivityLogForMigration(
+      queryClient,
+      context.connection_id,
+      migrationIdToFetch,
+      {
+        overallStatus: status,
+        message: logDetails.job_level_message || undefined,
+      },
+    );
+  }, [
+    context.connection_id,
+    logDetails?.job_level_message,
+    logDetails?.overall_status,
+    migrationIdToFetch,
+    queryClient,
+  ]);
 
   if (isLoading) return <LoadingSpinner />;
 
@@ -209,7 +251,7 @@ const Overview = () => {
                     <Text color="gray.500">Select a log to view details</Text>
                   </Flex>
                 )}
-                {effectiveSelectedLog && (
+                {effectiveSelectedLog && activeLog && (
                   <Box p={0} h="full">
                     {logDetails?.changes ? (
                       <TableSelectionDetails

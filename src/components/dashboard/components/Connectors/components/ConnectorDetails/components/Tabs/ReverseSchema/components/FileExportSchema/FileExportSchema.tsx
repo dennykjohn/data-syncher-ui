@@ -16,6 +16,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 
+import { GrRefresh } from "react-icons/gr";
 import {
   IoMdMail,
   IoMdOptions,
@@ -36,6 +37,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { type ReverseSchemaResponse } from "@/queryOptions/connector/reverseSchema/useFetchReverseSchema";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import { usePagination } from "@/queryOptions/connector/schema/usePagination";
+import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import {
   type ExportConfigResponse,
@@ -122,6 +124,8 @@ interface SnowflakeFileExportSchemaProps {
   connector: Connector;
   reverseSchemaData: ReverseSchemaResponse | null;
   isDisabled: boolean;
+  tableToBatchName?: Map<string, string>;
+  onSelectionChange?: (_tables: string[], _isDirty: boolean) => void;
 }
 
 const ITEMS_PER_PAGE = 50;
@@ -391,8 +395,13 @@ const SnowflakeFileExportSchema = ({
   connector,
   reverseSchemaData,
   isDisabled,
+  tableToBatchName,
+  onSelectionChange,
 }: SnowflakeFileExportSchemaProps) => {
   const queryClient = useQueryClient();
+  const reloadingTables = connector.reloadingTables ?? [];
+  const setReloadingTables = connector.setReloadingTables ?? (() => {});
+
   const { mutate: updateSelectedTables, isPending: isSavingSelection } =
     useUpdateSelectedTables({
       connectorId: connector.connection_id,
@@ -466,6 +475,9 @@ const SnowflakeFileExportSchema = ({
       connectorId: connector.connection_id,
     });
 
+  const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
+    useReloadSingleTable({ connectionId: connector.connection_id });
+
   const activeTableSettings = useMemo(() => {
     if (!activeTableForSettings) return null;
     return (
@@ -537,6 +549,46 @@ const SnowflakeFileExportSchema = ({
     }
     setIsSelectionDirty(false);
   }, [sourceTables, isSelectionDirty, isSavingSelection, exportConfig]);
+
+  useEffect(() => {
+    onSelectionChange?.(selectedTables, isSelectionDirty);
+  }, [selectedTables, isSelectionDirty, onSelectionChange]);
+
+  const isTableReloading = (tableName: string) =>
+    reloadingTables.some(
+      (name) => name.toLowerCase() === tableName.toLowerCase(),
+    );
+
+  const isTableInProgress = (tableName: string) =>
+    tableStatusData?.tables?.some(
+      (t) => t.table === tableName && t.status === "in_progress",
+    ) ?? false;
+
+  const handleReloadTable = (tableName: string) => {
+    if (
+      isDisabled ||
+      isTableReloading(tableName) ||
+      isTableInProgress(tableName)
+    ) {
+      return;
+    }
+    setReloadingTables([...reloadingTables, tableName]);
+    reloadSingleTable(
+      { connection_id: connector.connection_id, table_name: tableName },
+      {
+        onSettled: () => {
+          setReloadingTables(
+            reloadingTables.filter(
+              (name) => name.toLowerCase() !== tableName.toLowerCase(),
+            ),
+          );
+          queryClient.invalidateQueries({
+            queryKey: ["ReverseSchema", connector.connection_id],
+          });
+        },
+      },
+    );
+  };
 
   const filteredSourcePanelTables = useMemo(() => {
     const query = sourceSearch.trim().toLowerCase();
@@ -1001,6 +1053,13 @@ const SnowflakeFileExportSchema = ({
                   const rowBg = isEven ? "gray.100" : "gray.50";
                   const isExpanded = !!expanded[table];
                   const isSelected = selectedTables.includes(table);
+                  const batchName = tableToBatchName?.get(table.toLowerCase());
+                  const reloadDisabled =
+                    isDisabled ||
+                    !!activeTableForCopy ||
+                    isTableReloading(table) ||
+                    isTableInProgress(table) ||
+                    isReloadingSingleTable;
 
                   return (
                     <Flex
@@ -1063,7 +1122,56 @@ const SnowflakeFileExportSchema = ({
                           >
                             {table}
                           </Text>
+                          {batchName && (
+                            <Text
+                              as="span"
+                              fontSize="2xs"
+                              fontWeight="semibold"
+                              color="brand.700"
+                              bgColor="brand.100"
+                              px={1.5}
+                              py={0.5}
+                              borderRadius="sm"
+                              maxW="120px"
+                              truncate
+                              title={batchName}
+                            >
+                              {batchName}
+                            </Text>
+                          )}
                         </Flex>
+                        <Tooltip
+                          content={
+                            reloadDisabled
+                              ? "Another migration is currently in progress."
+                              : "Reload table"
+                          }
+                          disabled={!reloadDisabled}
+                        >
+                          <Box
+                            color={reloadDisabled ? "gray.400" : "inherit"}
+                            opacity={reloadDisabled ? 0.5 : 1}
+                            p={1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!reloadDisabled) handleReloadTable(table);
+                            }}
+                            cursor={reloadDisabled ? "not-allowed" : "pointer"}
+                            _hover={{
+                              color: reloadDisabled ? "gray.400" : "brand.500",
+                            }}
+                          >
+                            {isTableReloading(table) ? (
+                              <Image
+                                src={SandtimeIcon}
+                                boxSize="16px"
+                                objectFit="contain"
+                              />
+                            ) : (
+                              <GrRefresh />
+                            )}
+                          </Box>
+                        </Tooltip>
                       </Flex>
 
                       {isExpanded && (
@@ -1172,6 +1280,9 @@ const SnowflakeFileExportSchema = ({
               {filteredSelectedTables.map((item, index) => {
                 const rowBg = index % 2 === 0 ? "gray.100" : "gray.50";
                 const hasError = !!targetFolderErrors[item.table];
+                const batchName = tableToBatchName?.get(
+                  item.table.toLowerCase(),
+                );
 
                 return (
                   <Flex
@@ -1259,6 +1370,23 @@ const SnowflakeFileExportSchema = ({
                         >
                           {item.table}
                         </Text>
+                        {batchName && (
+                          <Text
+                            as="span"
+                            fontSize="2xs"
+                            fontWeight="semibold"
+                            color="brand.700"
+                            bgColor="brand.100"
+                            px={1.5}
+                            py={0.5}
+                            borderRadius="sm"
+                            maxW="100px"
+                            truncate
+                            title={batchName}
+                          >
+                            {batchName}
+                          </Text>
+                        )}
                       </Flex>
                       <Flex gap={1.5} alignItems="center" pr={1} flexShrink={0}>
                         {(() => {

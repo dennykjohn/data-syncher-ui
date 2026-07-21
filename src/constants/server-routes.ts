@@ -153,6 +153,11 @@ const ServerRoutes = {
     edgeDetail: (pipelineId: number, edgeId: number) =>
       `pipelines/${pipelineId}/edges/${edgeId}/`,
     run: (pipelineId: number) => `pipelines/${pipelineId}/run/`,
+    validate: (pipelineId: number) => `pipelines/${pipelineId}/validate/`,
+    reset: (pipelineId: number) => `pipelines/${pipelineId}/reset/`,
+    runs: (pipelineId: number) => `pipelines/${pipelineId}/runs/`,
+    runDetail: (pipelineId: number, runId: number) =>
+      `pipelines/${pipelineId}/runs/${runId}/`,
   },
   s3: {
     listFiles: () => "s3/list-files/",

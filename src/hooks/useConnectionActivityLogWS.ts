@@ -170,29 +170,51 @@ export const useConnectionActivityLogWS = (connectionId: number | null) => {
                 let updatedLogs: ConnectorActivityLog[];
                 if (logIndex > -1) {
                   updatedLogs = [...logs];
+                  const prior = updatedLogs[logIndex];
+                  const nextMessage =
+                    message.message ||
+                    (newStatus === "S"
+                      ? "Migration completed successfully"
+                      : newStatus === "E"
+                        ? "Migration failed"
+                        : prior.message);
                   updatedLogs[logIndex] = {
-                    ...updatedLogs[logIndex],
+                    ...prior,
                     status: newStatus,
                     ui_state: uiState,
-                    message: message.message || updatedLogs[logIndex].message,
-                    timestamp:
-                      message.timestamp || updatedLogs[logIndex].timestamp,
-                    trigger_type:
-                      message.trigger_type ||
-                      updatedLogs[logIndex].trigger_type,
+                    message: nextMessage,
+                    timestamp: message.timestamp || prior.timestamp,
+                    trigger_type: message.trigger_type || prior.trigger_type,
+                    batch_name: message.batch_name || prior.batch_name,
+                    batch_names: message.batch_names || prior.batch_names,
+                    pipeline_name: message.pipeline_name || prior.pipeline_name,
+                    pipeline_id: message.pipeline_id ?? prior.pipeline_id,
+                    pipeline_run_id:
+                      message.pipeline_run_id ?? prior.pipeline_run_id,
                   };
                 } else {
                   updatedLogs = [
                     {
                       migration_id: numericSessionId,
                       session_id: numericSessionId,
-                      message: message.message || "Migration initiated...",
+                      message:
+                        message.message ||
+                        (newStatus === "S"
+                          ? "Migration completed successfully"
+                          : newStatus === "E"
+                            ? "Migration failed"
+                            : "Migration initiated..."),
                       status: newStatus,
                       ui_state: uiState,
                       timestamp: message.timestamp || new Date().toISOString(),
                       user_name: message.user_name || "System",
                       is_clickable: true,
                       trigger_type: message.trigger_type,
+                      batch_name: message.batch_name,
+                      batch_names: message.batch_names,
+                      pipeline_name: message.pipeline_name,
+                      pipeline_id: message.pipeline_id,
+                      pipeline_run_id: message.pipeline_run_id,
                     },
                     ...logs,
                   ];

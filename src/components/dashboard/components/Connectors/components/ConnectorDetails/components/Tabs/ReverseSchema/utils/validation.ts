@@ -121,56 +121,16 @@ export const validateTableToTableMapping = (
   sourceTableData: ConnectorTable,
   destinationTableData: ConnectorTable,
 ): ValidationResult => {
-  const sourcePK = findPrimaryKey(sourceTableData);
-  const destinationPKs = Object.entries(destinationTableData.table_fields)
-    .filter(([fieldName, fieldInfo]) => isPrimaryKey(fieldName, fieldInfo))
-    .map(([fieldName]) => fieldName);
-
-  if (!sourcePK || destinationPKs.length === 0) {
-    return {
-      isValid: false,
-      error: {
-        title: "Primary Key Not Found",
-        description:
-          "Both source and destination tables must have primary keys to create a mapping.",
-      },
-    };
-  }
-
-  // Strict case sensitivity for PK matching
-  const primaryKeyMatch = destinationPKs.some((destPK) => destPK === sourcePK);
-
-  if (!primaryKeyMatch) {
-    return {
-      isValid: false,
-      error: {
-        title: "Primary Key Mismatch",
-        description: `At least one primary key must match exactly in both tables. Source: "${sourcePK}", Destination: "${destinationPKs.join(", ")}".`,
-      },
-    };
-  }
-
-  const sourceFields = Object.keys(sourceTableData.table_fields).filter(
-    (field) => !isPrimaryKey(field, sourceTableData.table_fields[field]),
-  );
-  const destinationFields = Object.keys(
-    destinationTableData.table_fields,
-  ).filter(
-    (field) => !isPrimaryKey(field, destinationTableData.table_fields[field]),
-  );
-
-  // Strict case sensitivity for common fields
-  const hasCommonField = sourceFields.some((sourceField) =>
-    destinationFields.some((destField) => sourceField === destField),
-  );
-
-  if (!hasCommonField) {
+  // Do not require matching primary keys — PKs often differ by system
+  // (e.g. Salesforce "Id" vs Snowflake "ACCOUNT_ID"). Allow mapping when
+  // the tables share at least one field name (any field, including PK).
+  if (!hasMatchingFields(sourceTableData, destinationTableData)) {
     return {
       isValid: false,
       error: {
         title: "No Matching Fields",
         description:
-          "At least one other field (excluding primary keys) must have an exact matching name in both tables.",
+          "Source and destination tables must have at least one field with the same name.",
       },
     };
   }

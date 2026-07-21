@@ -13,3 +13,19 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* One-way fill: left → right, then restart (no reverse). */
+@keyframes pipelineNodeProgress {
+  0% {
+    transform: scaleX(0.06);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.pipeline-node-color-progress {
+  transform-origin: left center;
+  opacity: calc(150 / 255);
+  animation: pipelineNodeProgress 9s ease-out infinite;
+}

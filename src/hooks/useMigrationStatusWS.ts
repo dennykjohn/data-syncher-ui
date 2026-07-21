@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import useWebSocket from "react-use-websocket";
 
+import { patchActivityLogForMigration } from "@/helpers/activityLog";
 import { getWebSocketUrl } from "@/helpers/websocket";
 import { ConnectorActivityDetailResponse } from "@/types/connectors";
 
@@ -18,11 +19,15 @@ interface MigrationWSMessage {
   error_message?: string;
   message?: string;
   timestamp?: string;
+  job_level_message?: string | null;
   tables?: ConnectorActivityDetailResponse["tables"];
   logs?: ConnectorActivityDetailResponse["logs"];
 }
 
-export const useMigrationStatusWS = (migrationId: number | null) => {
+export const useMigrationStatusWS = (
+  migrationId: number | null,
+  connectionId?: number | null,
+) => {
   const queryClient = useQueryClient();
 
   const socketUrl = getWebSocketUrl(
@@ -33,16 +38,35 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
     (event: WebSocketEventMap["message"]) => {
       if (!migrationId) return;
 
-      let message: MigrationWSMessage;
+      let message: MigrationWSMessage & { connection_id?: number };
       try {
-        message = JSON.parse(event.data) as MigrationWSMessage;
+        message = JSON.parse(event.data) as MigrationWSMessage & {
+          connection_id?: number;
+        };
       } catch {
         return;
       }
+
+      // Ignore WS payloads for a different connection when session IDs collide.
+      if (
+        connectionId !== null &&
+        connectionId !== undefined &&
+        message.connection_id !== null &&
+        message.connection_id !== undefined &&
+        Number(message.connection_id) !== Number(connectionId)
+      ) {
+        return;
+      }
+
       const numericMigrationId = Number(migrationId);
 
       queryClient.setQueryData(
-        ["connectorActivityDetails", numericMigrationId, undefined, undefined],
+        [
+          "connectorActivityDetails",
+          numericMigrationId,
+          connectionId ?? undefined,
+          undefined,
+        ],
         (oldData: ConnectorActivityDetailResponse | undefined) => {
           // Spread top-level fields but handle 'tables' separately to avoid overwriting
           const { tables: _wsTablesIgnored, ...messageWithoutTables } = message;
@@ -182,12 +206,37 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
         },
       );
 
-      // When the migration reaches a terminal state, do a fresh fetch after a
-      // short delay so the definitive end_time (written by the backend on
-      // completion) comes through without requiring a manual page refresh.
+      const derivedOverall = (() => {
+        const raw = (
+          message.overall_status ||
+          message.status_icon ||
+          message.status ||
+          ""
+        ).toLowerCase();
+        if (raw) return raw;
+        const tables = message.tables || [];
+        if (!tables.length) return "";
+        const allDone = tables.every((table) => {
+          const icon = (table.status_icon || table.status || "").toLowerCase();
+          return (
+            icon.includes("completed") ||
+            icon.includes("success") ||
+            icon.includes("failed") ||
+            icon.includes("error")
+          );
+        });
+        if (!allDone) return "";
+        const anyFailed = tables.some((table) => {
+          const icon = (table.status_icon || table.status || "").toLowerCase();
+          return icon.includes("failed") || icon.includes("error");
+        });
+        return anyFailed ? "failed" : "completed";
+      })();
+
       const terminalStatus = (
         message.overall_status ||
         message.status ||
+        derivedOverall ||
         ""
       ).toLowerCase();
       if (
@@ -196,19 +245,37 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
         terminalStatus.includes("failed") ||
         terminalStatus.includes("error")
       ) {
+        if (connectionId) {
+          patchActivityLogForMigration(
+            queryClient,
+            connectionId,
+            numericMigrationId,
+            {
+              overallStatus: terminalStatus,
+              message: message.job_level_message || message.message,
+            },
+          );
+        }
+
         setTimeout(() => {
           void queryClient.invalidateQueries({
             queryKey: [
               "connectorActivityDetails",
               numericMigrationId,
-              undefined,
+              connectionId ?? undefined,
               undefined,
             ],
           });
+          if (connectionId) {
+            void queryClient.invalidateQueries({
+              queryKey: ["connectorActivity", connectionId],
+              refetchType: "active",
+            });
+          }
         }, 2000); // 2 s buffer for the backend to commit the final record
       }
     },
-    [migrationId, queryClient],
+    [connectionId, migrationId, queryClient],
   );
 
   const onError = useCallback(

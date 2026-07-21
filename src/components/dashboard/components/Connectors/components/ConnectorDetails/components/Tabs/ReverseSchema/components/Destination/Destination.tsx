@@ -24,6 +24,7 @@ const Destination = (props: DestinationProps) => {
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   const toggleExpand = (table: string) =>
     setExpanded((prev) => ({
@@ -65,12 +66,13 @@ const Destination = (props: DestinationProps) => {
       maxW="100%"
       overflow="hidden"
     >
-      <Flex mb={4} justifyContent="space-between" alignItems="center">
-        <Flex alignItems="center" gap={2}>
-          <Text fontSize="sm" fontWeight="semibold">
-            Destination Tables
-          </Text>
-        </Flex>
+      <Flex mb={4} direction="column" gap={1}>
+        <Text fontSize="sm" fontWeight="semibold">
+          Destination Tables
+        </Text>
+        <Text fontSize="xs" color="gray.500">
+          Drop a source table here to create a mapping.
+        </Text>
       </Flex>
 
       <Flex mb={4}>
@@ -108,19 +110,26 @@ const Destination = (props: DestinationProps) => {
                   onDragEnter={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    setDropTarget(table);
                   }}
                   onDragOver={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     e.dataTransfer.dropEffect = "move";
+                    setDropTarget(table);
                   }}
                   onDragLeave={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    // Only clear when leaving the row itself, not child nodes.
+                    if (e.currentTarget === e.target) {
+                      setDropTarget((prev) => (prev === table ? null : prev));
+                    }
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    setDropTarget(null);
 
                     let sourceTable: string | undefined =
                       e.dataTransfer.getData("source-table") || undefined;
@@ -157,19 +166,24 @@ const Destination = (props: DestinationProps) => {
                     }
                   }}
                   justifyContent="space-between"
-                  backgroundColor={rowBg}
+                  backgroundColor={dropTarget === table ? "green.50" : rowBg}
                   alignItems="center"
                   direction={isExpanded ? "column" : "row"}
                   padding={2}
                   borderRadius={4}
                   minHeight="60px"
                   width="100%"
+                  borderWidth={dropTarget === table ? 2 : 0}
+                  borderColor={
+                    dropTarget === table ? "green.400" : "transparent"
+                  }
                   style={{
                     position: "relative",
                     transition: "all 0.2s ease",
                   }}
                   _hover={{
-                    backgroundColor: "gray.50",
+                    backgroundColor:
+                      dropTarget === table ? "green.50" : "gray.50",
                   }}
                 >
                   <Flex

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Flex, Grid } from "@chakra-ui/react";
 
@@ -6,24 +6,65 @@ import { Navigate, useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
+import ServerRoutes from "@/constants/server-routes";
+import AxiosInstance from "@/lib/axios/api-client";
 import useFetchReverseSchema from "@/queryOptions/connector/reverseSchema/useFetchReverseSchema";
+import {
+  batchesQueryKey,
+  useFetchBatches,
+} from "@/queryOptions/connector/schema/useBatches";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
-import { type Connector } from "@/types/connectors";
+import { type Connector, type UnassignedTable } from "@/types/connectors";
+import { type TableMappingDTO } from "@/types/mappings";
 
 import { isSnowflakeToSnowflakeConnector } from "../../../helpers";
+import BatchGroupedPanel from "../Schema/Batches/BatchGroupedPanel";
 import Actions from "./Actions";
 import Destination from "./components/Destination/Destination";
 import FileExportSchema from "./components/FileExportSchema/FileExportSchema";
 import Mapped, { type MappedRef } from "./components/Mapped/Mapped";
 import Source from "./components/Source/Source";
-import { useIsMutating, useQueryClient } from "@tanstack/react-query";
+import { useIsMutating, useQuery, useQueryClient } from "@tanstack/react-query";
+
+const normalizeMappedPairs = (
+  raw: unknown,
+): { source: string; destination?: string }[] => {
+  const list =
+    (Array.isArray((raw as { mappings?: TableMappingDTO[] })?.mappings)
+      ? (raw as { mappings: TableMappingDTO[] }).mappings
+      : Array.isArray(raw)
+        ? (raw as TableMappingDTO[])
+        : Array.isArray((raw as { data?: TableMappingDTO[] })?.data)
+          ? (raw as { data: TableMappingDTO[] }).data
+          : []) ?? [];
+
+  const pairs: { source: string; destination?: string }[] = [];
+  const seen = new Set<string>();
+  for (const item of list) {
+    const source =
+      item.source_table ?? (item as { sourceTable?: string }).sourceTable;
+    if (!source || seen.has(source.toLowerCase())) continue;
+    seen.add(source.toLowerCase());
+    const destination =
+      item.destination_table ??
+      (item as { destinationTable?: string }).destinationTable;
+    pairs.push({ source, destination: destination || undefined });
+  }
+  return pairs;
+};
 
 const ReverseSchema = () => {
   const context = useOutletContext<Connector>();
   const mappedRef = useRef<MappedRef>(null);
+  const queryClient = useQueryClient();
 
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
+  const [fileExportSelectedTables, setFileExportSelectedTables] = useState<
+    string[]
+  >([]);
+  const [fileExportSelectionDirty, setFileExportSelectionDirty] =
+    useState(false);
 
   const { data: reverseSchemaData, isLoading } = useFetchReverseSchema(
     context.connection_id,
@@ -34,23 +75,21 @@ const ReverseSchema = () => {
     true,
   );
 
+  const { data: batchesData } = useFetchBatches(context.connection_id);
+
   const { status: schemaStatus } = useUpdateSchemaStatus(
     context.connection_id,
     true,
   );
 
-  const queryClient = useQueryClient();
   const isCheckingSchemaStatus = !!schemaStatus?.is_in_progress;
   const prevIsCheckingRef = useRef(false);
 
-  // Track the transition from in_progress=true to in_progress=false
   useEffect(() => {
     if (isCheckingSchemaStatus && !prevIsCheckingRef.current) {
       prevIsCheckingRef.current = true;
     } else if (!isCheckingSchemaStatus && prevIsCheckingRef.current) {
-      // Transition from true to false: schema refresh just finished
       prevIsCheckingRef.current = false;
-      // Refetch the reverse schema data to show updated source and destination tables
       queryClient.invalidateQueries({
         queryKey: ["ReverseSchema", context.connection_id],
       });
@@ -101,9 +140,105 @@ const ReverseSchema = () => {
     context.source_name?.toLowerCase() === "snowflake" &&
     !!context.is_file_based;
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset file export selection when connection changes
+    setFileExportSelectionDirty(false);
+    setFileExportSelectedTables([]);
+  }, [context.connection_id]);
+
+  const { data: mappedPairs = [] } = useQuery({
+    queryKey: ["connectionMappings", context.connection_id],
+    queryFn: async () => {
+      const { data } = await AxiosInstance.get(
+        ServerRoutes.connector.fetchConnectionMappings(context.connection_id),
+      );
+      return normalizeMappedPairs(data);
+    },
+    enabled: !isSnowflakeToFileExport && !isSnowflakeToSnowflake,
+    staleTime: 30 * 1000,
+  });
+
+  const tableToBatchName = useMemo<Map<string, string>>(() => {
+    const map = new Map<string, string>();
+    batchesData?.batches?.forEach((b) => {
+      b.tables?.forEach((t) => {
+        const name = t?.table_name;
+        if (typeof name === "string" && name.length > 0) {
+          map.set(name.toLowerCase(), b.name);
+        }
+      });
+    });
+    return map;
+  }, [batchesData]);
+
+  const savedFileExportSelected = useMemo(
+    () =>
+      reverseSchemaData?.source_tables
+        ?.filter((item) => item.selected)
+        .map((item) => item.table) ?? [],
+    [reverseSchemaData?.source_tables],
+  );
+
+  const effectiveFileExportSelected = useMemo(
+    () =>
+      fileExportSelectionDirty
+        ? fileExportSelectedTables
+        : savedFileExportSelected,
+    [
+      fileExportSelectionDirty,
+      fileExportSelectedTables,
+      savedFileExportSelected,
+    ],
+  );
+
+  const pendingUnassignedTables = useMemo<UnassignedTable[]>(() => {
+    if (isSnowflakeToFileExport) {
+      return effectiveFileExportSelected
+        .filter((name) => !tableToBatchName.has(name.toLowerCase()))
+        .map((name, index) => ({
+          table_name: name,
+          sequence: index,
+        }));
+    }
+
+    return mappedPairs
+      .filter((p) => !tableToBatchName.has(p.source.toLowerCase()))
+      .map((p, index) => ({
+        table_name: p.source,
+        sequence: index,
+        mapped_destination: p.destination,
+      }));
+  }, [
+    effectiveFileExportSelected,
+    isSnowflakeToFileExport,
+    mappedPairs,
+    tableToBatchName,
+  ]);
+
+  const handleFileExportSelectionChange = useCallback(
+    (tables: string[], isDirty: boolean) => {
+      setFileExportSelectedTables(tables);
+      setFileExportSelectionDirty(isDirty);
+    },
+    [],
+  );
+
+  const invalidateMappingAndBatches = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["connectionMappings", context.connection_id],
+    });
+    queryClient.invalidateQueries({
+      queryKey: batchesQueryKey(context.connection_id),
+    });
+  }, [context.connection_id, queryClient]);
+
   const handleDrop = (sourceTable: string, destinationTable: string) => {
     mappedRef.current?.handleDrop(sourceTable, destinationTable);
   };
+
+  const handleUnmapSource = useCallback((sourceTable: string) => {
+    mappedRef.current?.removeBySourceTable(sourceTable);
+  }, []);
 
   if (isLoading && !reverseSchemaData) {
     return <LoadingSpinner />;
@@ -120,29 +255,53 @@ const ReverseSchema = () => {
         setShouldShowDisabledState={setShouldShowDisabledState}
       />
       {isSnowflakeToFileExport ? (
-        <FileExportSchema
-          connector={context}
-          reverseSchemaData={reverseSchemaData || null}
-          isDisabled={totalDisabledState}
-        />
-      ) : (
         <Grid
-          templateColumns={["1fr", "1fr 1fr 1fr"]}
+          templateColumns={["1fr", "1fr minmax(280px, 380px)"]}
           gap={4}
-          style={{ overflow: "visible" }}
           w="100%"
+          alignItems="start"
         >
-          <Source reverseSchemaData={reverseSchemaData || null} />
-          <Destination
-            onDrop={handleDrop}
+          <FileExportSchema
+            connector={context}
             reverseSchemaData={reverseSchemaData || null}
+            isDisabled={totalDisabledState}
+            tableToBatchName={tableToBatchName}
+            onSelectionChange={handleFileExportSelectionChange}
           />
+          <BatchGroupedPanel
+            connectionId={context.connection_id}
+            pendingUnassignedTables={pendingUnassignedTables}
+          />
+        </Grid>
+      ) : (
+        <>
+          <Grid
+            templateColumns={["1fr", "1fr 1fr minmax(280px, 380px)"]}
+            gap={4}
+            w="100%"
+            alignItems="start"
+          >
+            <Source reverseSchemaData={reverseSchemaData || null} />
+            <Destination
+              onDrop={handleDrop}
+              reverseSchemaData={reverseSchemaData || null}
+            />
+            <BatchGroupedPanel
+              connectionId={context.connection_id}
+              pendingUnassignedTables={pendingUnassignedTables}
+              flowHint="mapping"
+              onUnmapSource={handleUnmapSource}
+            />
+          </Grid>
+          {/* Mapping save/drop logic only — no visible Mapped column. */}
           <Mapped
             ref={mappedRef}
             reverseSchemaData={reverseSchemaData || null}
             isDisabled={totalDisabledState}
+            onMappingsChange={invalidateMappingAndBatches}
+            hideUi
           />
-        </Grid>
+        </>
       )}
     </Flex>
   );

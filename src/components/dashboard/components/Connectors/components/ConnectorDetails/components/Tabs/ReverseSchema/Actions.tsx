@@ -8,12 +8,9 @@ import { useOutletContext } from "react-router";
 
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
-import useRefreshSchema from "@/queryOptions/connector/schema/useRefreshSchema";
 import useUpdateSchema from "@/queryOptions/connector/schema/useUpdateSchema";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import { type Connector } from "@/types/connectors";
-
-import { useQueryClient } from "@tanstack/react-query";
 
 const Actions = ({
   shouldShowDisabledState,
@@ -24,17 +21,11 @@ const Actions = ({
   setShouldShowDisabledState: (_value: boolean) => void;
   onUpdateSchemaStart?: () => void;
 }) => {
-  const queryClient = useQueryClient();
   const context = useOutletContext<Connector>();
   const { connection_id, disable_update_schema } = context;
 
-  const [activeOperation, setActiveOperation] = useState<
-    "refresh" | "update" | null
-  >(null);
+  const [activeOperation, setActiveOperation] = useState<"update" | null>(null);
 
-  const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
-    connectorId: connection_id,
-  });
   const { mutate: updateSchema, isPending: isUpdating } = useUpdateSchema({
     connectorId: connection_id,
   });
@@ -49,7 +40,6 @@ const Actions = ({
     if (
       !isSchemaOperationInProgress &&
       !isUpdating &&
-      !isRefreshing &&
       activeOperation !== null
     ) {
       startTransition(() => {
@@ -60,7 +50,6 @@ const Actions = ({
   }, [
     isSchemaOperationInProgress,
     isUpdating,
-    isRefreshing,
     activeOperation,
     setShouldShowDisabledState,
   ]);
@@ -113,38 +102,6 @@ const Actions = ({
       mb={2}
       w="100%"
     >
-      <Tooltip {...createTooltipProps(isRefreshing)}>
-        <Button
-          variant="outline"
-          colorPalette="brand"
-          {...createButtonProps(
-            isRefreshing,
-            () => {
-              setActiveOperation("refresh");
-              refreshSchema(undefined, {
-                onSuccess: () => {
-                  // Immediately invalidate ReverseSchema on successful refresh with a delay
-                  setTimeout(() => {
-                    queryClient.invalidateQueries({
-                      queryKey: ["ReverseSchema", connection_id],
-                      refetchType: "active",
-                    });
-                  }, 500);
-                },
-                onError: () => {
-                  setActiveOperation(null);
-                  setShouldShowDisabledState(false);
-                },
-              });
-            },
-            false,
-          )}
-        >
-          <MdRefresh />
-          Refresh schema
-        </Button>
-      </Tooltip>
-
       {!disable_update_schema && (
         <Tooltip {...createTooltipProps(isUpdating)}>
           <Button

@@ -6,9 +6,14 @@ import { useQuery } from "@tanstack/react-query";
 
 const fetchConnectorActivityDetails = async (
   migrationId: number,
+  connectionId?: number,
 ): Promise<ConnectorActivityDetailResponse> => {
+  const qs =
+    connectionId !== null && connectionId !== undefined
+      ? `?connection_id=${connectionId}`
+      : "";
   const { data } = await AxiosInstance.get<ConnectorActivityDetailResponse>(
-    ServerRoutes.connector.fetchMigrationStatus(migrationId),
+    `${ServerRoutes.connector.fetchMigrationStatus(migrationId)}${qs}`,
   );
   return data;
 };
@@ -36,7 +41,7 @@ const useFetchConnectorActivityDetails = ({
     queryKey: ["connectorActivityDetails", migrationId, connectionId, logId],
     queryFn: () => {
       if (migrationId) {
-        return fetchConnectorActivityDetails(migrationId);
+        return fetchConnectorActivityDetails(migrationId, connectionId);
       }
       if (connectionId && logId) {
         return fetchLogDetails(connectionId, logId);

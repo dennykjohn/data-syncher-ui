@@ -21,6 +21,7 @@ import { GrRefresh } from "react-icons/gr";
 import { IoMdPlay } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
+import { SlRefresh } from "react-icons/sl";
 import { TbDelta } from "react-icons/tb";
 
 import { useOutletContext } from "react-router";
@@ -36,6 +37,7 @@ import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetch
 import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import { usePagination } from "@/queryOptions/connector/schema/usePagination";
+import useRefreshDeltaTable from "@/queryOptions/connector/schema/useRefreshDeltaTable";
 import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
@@ -61,15 +63,17 @@ interface TableRowProps {
   isSelected: boolean;
   onCheckedChange: (_checked: boolean) => void;
   reloadingTables: string[];
-  isReloadingSingleTable: boolean;
-  isRefreshDeltaTableInProgress: number;
-  isRefreshSchemaInProgress: number;
-  shouldLockAllReloads: boolean; // New prop for Cross-Blocking
+  refreshingTables: string[];
+  shouldLockAllReloads: boolean;
+  shouldLockAllRefreshes: boolean;
   tableStatusData?: {
     tables: Array<{ table: string; status?: string | null }>;
   };
   onReload: () => void;
+  onRefresh: () => void;
   batchName?: string | null;
+  /** Tables assigned to a batch are treated as selected but cannot be unchecked here. */
+  selectionLocked?: boolean;
 }
 const TableRow = ({
   item,
@@ -80,10 +84,14 @@ const TableRow = ({
   isSelected,
   onCheckedChange,
   reloadingTables,
+  refreshingTables,
   shouldLockAllReloads,
+  shouldLockAllRefreshes,
   tableStatusData,
   onReload,
+  onRefresh,
   batchName,
+  selectionLocked = false,
 }: TableRowProps) => {
   const { table } = item;
   const isEven = index % 2 === 0;
@@ -100,6 +108,10 @@ const TableRow = ({
     reloadingTables?.some((t) => t.toLowerCase() === table.toLowerCase()) ??
     false;
 
+  const isThisTableRefreshing =
+    refreshingTables?.some((t) => t.toLowerCase() === table.toLowerCase()) ??
+    false;
+
   const isThisTableInProgress =
     tableStatusData?.tables?.some(
       (t) => t.table === table && t.status === "in_progress",
@@ -107,6 +119,13 @@ const TableRow = ({
 
   const isReloadButtonDisabled =
     shouldLockAllReloads || isThisTableReloading || isThisTableInProgress;
+
+  const isRefreshButtonDisabled =
+    shouldLockAllRefreshes ||
+    isThisTableRefreshing ||
+    isThisTableInProgress ||
+    isThisTableReloading ||
+    !item.is_delta;
 
   return (
     <Flex
@@ -197,11 +216,50 @@ const TableRow = ({
           <Flex justifyContent="center" minW="40px">
             <Tooltip
               content={
+                isRefreshButtonDisabled
+                  ? !item.is_delta
+                    ? "Refresh is only available for delta tables"
+                    : "Another migration is currently in progress. Please wait until it completes."
+                  : "Refresh delta"
+              }
+            >
+              <Box
+                color={isRefreshButtonDisabled ? "gray.400" : "inherit"}
+                opacity={isRefreshButtonDisabled ? 0.5 : 1}
+                p={1}
+                onClick={(e) => {
+                  if (isRefreshButtonDisabled) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  onRefresh();
+                }}
+                cursor={isRefreshButtonDisabled ? "not-allowed" : "pointer"}
+                _hover={{
+                  color: isRefreshButtonDisabled ? "gray.400" : "brand.500",
+                }}
+              >
+                {isThisTableRefreshing ? (
+                  <Image
+                    src={SandtimeIcon}
+                    boxSize="16px"
+                    objectFit="contain"
+                  />
+                ) : (
+                  <SlRefresh />
+                )}
+              </Box>
+            </Tooltip>
+          </Flex>
+
+          <Flex justifyContent="center" minW="40px">
+            <Tooltip
+              content={
                 isReloadButtonDisabled
                   ? "Another migration is currently in progress. Please wait until it completes."
-                  : ""
+                  : "Reload table"
               }
-              disabled={!isReloadButtonDisabled}
             >
               <Box
                 color={isReloadButtonDisabled ? "gray.400" : "inherit"}
@@ -227,7 +285,7 @@ const TableRow = ({
                 {isThisTableReloading ? (
                   <Image
                     src={SandtimeIcon}
-                    boxSize="16px" // Match icon size
+                    boxSize="16px"
                     objectFit="contain"
                   />
                 ) : (
@@ -238,17 +296,29 @@ const TableRow = ({
           </Flex>
 
           <Flex justifyContent="center" minW="40px">
-            <Checkbox.Root
-              colorPalette="brand"
-              variant="solid"
-              onCheckedChange={({ checked }) =>
-                onCheckedChange(checked === true)
+            <Tooltip
+              content={
+                selectionLocked
+                  ? `Assigned to batch "${batchName}" — remove from batch to deselect`
+                  : undefined
               }
-              checked={isSelected}
+              disabled={!selectionLocked}
             >
-              <Checkbox.HiddenInput />
-              <Checkbox.Control cursor="pointer" />
-            </Checkbox.Root>
+              <Checkbox.Root
+                colorPalette="brand"
+                variant="solid"
+                disabled={selectionLocked}
+                onCheckedChange={({ checked }) =>
+                  onCheckedChange(checked === true)
+                }
+                checked={isSelected || selectionLocked}
+              >
+                <Checkbox.HiddenInput />
+                <Checkbox.Control
+                  cursor={selectionLocked ? "not-allowed" : "pointer"}
+                />
+              </Checkbox.Root>
+            </Tooltip>
           </Flex>
         </Flex>
       </Grid>
@@ -326,9 +396,9 @@ const Schema = () => {
     () => context.setReloadingTables ?? (() => {}),
     [context.setReloadingTables],
   );
-  // Delta-refresh progress is now owned by the Batches panel; left panel no longer tracks it.
-  const refreshingTables = useMemo<string[]>(() => [], []);
+  const [refreshingTables, setRefreshingTables] = useState<string[]>([]);
   const reloadTimestamps = useRef<Record<string, number>>({});
+  const refreshTimestamps = useRef<Record<string, number>>({});
 
   useEffect(() => {
     reloadingTables.forEach((table: string) => {
@@ -337,6 +407,14 @@ const Schema = () => {
       }
     });
   }, [reloadingTables]);
+
+  useEffect(() => {
+    refreshingTables.forEach((table: string) => {
+      if (!refreshTimestamps.current[table]) {
+        refreshTimestamps.current[table] = 0;
+      }
+    });
+  }, [refreshingTables]);
 
   const filteredTables = useMemo(() => {
     const filtered =
@@ -358,6 +436,10 @@ const Schema = () => {
 
   const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
     useReloadSingleTable({ connectionId: context.connection_id });
+
+  const { mutate: refreshDeltaTable } = useRefreshDeltaTable({
+    connectionId: context.connection_id,
+  });
 
   const isRefreshDeltaTableInProgress = useIsMutating({
     mutationKey: ["refreshDeltaTable", context.connection_id],
@@ -406,22 +488,36 @@ const Schema = () => {
     activeRefreshes.length > 0 ||
     refreshingTables.length > 0;
   const isSchemaSyncing = isRefreshSchemaInProgress > 0;
+  const isReloadingActive =
+    isReloadingSingleTable || reloadingTables.length > 0;
 
   const shouldLockAllReloads = isAnyRefreshing || isSchemaSyncing;
+  const shouldLockAllRefreshes = isReloadingActive || isSchemaSyncing;
 
   useEffect(() => {
-    if (hasAnyTableInProgress || isReloadingSingleTable) {
+    if (hasAnyTableInProgress || isReloadingSingleTable || isAnyRefreshing) {
       setTimeout(() => {
         setShouldShowDisabledState(true);
       }, 0);
-    } else if (reloadingTables.length === 0 && !hasAnyTableInProgress) {
+    } else if (
+      reloadingTables.length === 0 &&
+      refreshingTables.length === 0 &&
+      !hasAnyTableInProgress
+    ) {
       setTimeout(() => {
         setShouldShowDisabledState(false);
       }, 0);
     }
-  }, [hasAnyTableInProgress, isReloadingSingleTable, reloadingTables]);
+  }, [
+    hasAnyTableInProgress,
+    isReloadingSingleTable,
+    reloadingTables,
+    refreshingTables,
+    isAnyRefreshing,
+  ]);
 
   const hasSeenInProgressRef = useRef<Record<string, boolean>>({});
+  const refreshHasSeenInProgressRef = useRef<Record<string, boolean>>({});
 
   // Clean up completed reloads
   useEffect(() => {
@@ -482,16 +578,80 @@ const Schema = () => {
     isReloadingSingleTable,
   ]);
 
+  useEffect(() => {
+    if (refreshingTables.length === 0 || !tableStatusData?.tables) return;
+
+    const tablesToRemove = refreshingTables.filter((table: string) => {
+      const statusItem = tableStatusData.tables.find(
+        (t: { table: string; status?: string | null }) =>
+          t.table.toLowerCase() === table.toLowerCase(),
+      );
+      const startTime = refreshTimestamps.current[table];
+      const isTimeSafe = !startTime || startTime === 0;
+
+      const status = statusItem?.status;
+      if (status === "in_progress") {
+        refreshHasSeenInProgressRef.current[table] = true;
+        return false;
+      }
+
+      const hasSeenInProgress = refreshHasSeenInProgressRef.current[table];
+      const isFinished =
+        status === "completed" || status === "failed" || status === null;
+
+      if (statusItem && isFinished && (hasSeenInProgress || isTimeSafe)) {
+        return true;
+      }
+
+      if (!startTime) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (tablesToRemove.length > 0) {
+      setRefreshingTables((prev: string[]) =>
+        prev.filter((t: string) => !tablesToRemove.includes(t)),
+      );
+
+      tablesToRemove.forEach((t) => {
+        delete refreshTimestamps.current[t];
+        delete refreshHasSeenInProgressRef.current[t];
+      });
+
+      queryClient.refetchQueries({
+        queryKey: ["ConnectorTable", context.connection_id],
+      });
+      queryClient.refetchQueries({
+        queryKey: ["TableStatus", context.connection_id],
+      });
+    }
+  }, [tableStatusData, refreshingTables, context.connection_id]);
+
   const checkedTables = useMemo<ConnectorTable[]>(() => {
     if (!AllTableList) return [];
-    return AllTableList.filter((t: ConnectorTable) =>
-      isConnectorTableMarkedSelected(t.selected),
-    ).sort((a: ConnectorTable, b: ConnectorTable) => {
-      const seqA = a.sequence ?? 0;
-      const seqB = b.sequence ?? 0;
-      return seqA - seqB;
-    });
-  }, [AllTableList]);
+    const byKey = new Map<string, ConnectorTable>();
+    for (const t of AllTableList) {
+      if (isConnectorTableMarkedSelected(t.selected)) {
+        byKey.set(t.table.toLowerCase(), t);
+      }
+    }
+    // Batched tables count as selected even if the API selected flag is still false.
+    for (const t of AllTableList) {
+      const key = t.table.toLowerCase();
+      if (tableToBatchName.has(key) && !byKey.has(key)) {
+        byKey.set(key, t);
+      }
+    }
+    return Array.from(byKey.values()).sort(
+      (a: ConnectorTable, b: ConnectorTable) => {
+        const seqA = a.sequence ?? 0;
+        const seqB = b.sequence ?? 0;
+        return seqA - seqB;
+      },
+    );
+  }, [AllTableList, tableToBatchName]);
 
   const [copyOfInitialCheckedTables, setCopyOfInitialCheckedTables] = useState<
     ConnectorTable[]
@@ -667,6 +827,9 @@ const Schema = () => {
                 Delta
               </Text>
               <Text fontSize="sm" fontWeight="semibold" minW="40px">
+                Refresh
+              </Text>
+              <Text fontSize="sm" fontWeight="semibold" minW="40px">
                 Reload
               </Text>
               <Text fontSize="sm" fontWeight="semibold" minW="40px">
@@ -700,6 +863,7 @@ const Schema = () => {
                 {paginatedTables.map((item, index) => {
                   const { table } = item;
                   const isExpanded = !!expanded[table];
+                  const batchName = tableToBatchName.get(table.toLowerCase());
 
                   return (
                     <TableRow
@@ -712,6 +876,7 @@ const Schema = () => {
                       isSelected={effectiveSelectedKeys.has(
                         table.toLowerCase(),
                       )}
+                      selectionLocked={!!batchName}
                       onCheckedChange={(checked) => {
                         setHasLocalSelectionEdits(true);
                         setUserCheckedTables((prev: ConnectorTable[]) => {
@@ -730,14 +895,34 @@ const Schema = () => {
                         });
                       }}
                       reloadingTables={reloadingTables}
-                      isReloadingSingleTable={isReloadingSingleTable}
-                      isRefreshDeltaTableInProgress={
-                        isRefreshDeltaTableInProgress
-                      }
-                      isRefreshSchemaInProgress={isRefreshSchemaInProgress}
+                      refreshingTables={refreshingTables}
                       shouldLockAllReloads={shouldLockAllReloads}
+                      shouldLockAllRefreshes={shouldLockAllRefreshes}
                       tableStatusData={tableStatusData}
-                      batchName={tableToBatchName.get(table.toLowerCase())}
+                      batchName={batchName}
+                      onRefresh={() => {
+                        setShouldShowDisabledState(true);
+                        delete refreshHasSeenInProgressRef.current[table];
+                        setRefreshingTables((prev: string[]) => [
+                          ...prev,
+                          table,
+                        ]);
+                        refreshTimestamps.current[table] = Date.now();
+                        refreshDeltaTable(
+                          {
+                            connection_id: context.connection_id,
+                            table_name: table,
+                          },
+                          {
+                            onError: () => {
+                              setRefreshingTables((prev: string[]) =>
+                                prev.filter((t: string) => t !== table),
+                              );
+                              setShouldShowDisabledState(false);
+                            },
+                          },
+                        );
+                      }}
                       onReload={() => {
                         setShouldShowDisabledState(true);
                         setReloadingTables((prev: string[]) => [

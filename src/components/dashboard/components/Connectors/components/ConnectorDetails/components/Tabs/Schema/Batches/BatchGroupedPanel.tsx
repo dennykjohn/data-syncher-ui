@@ -9,6 +9,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 
+import { CiTrash } from "react-icons/ci";
 import { GoPlus } from "react-icons/go";
 
 import { useFetchBatches } from "@/queryOptions/connector/schema/useBatches";
@@ -29,8 +30,14 @@ function mergeUnassigned(
     map.set(u.table_name, { ...u, pending_only: false });
   }
   for (const p of pendingRows ?? []) {
-    if (!map.has(p.table_name)) {
+    const existing = map.get(p.table_name);
+    if (!existing) {
       map.set(p.table_name, { ...p, pending_only: true });
+    } else if (p.mapped_destination && !existing.mapped_destination) {
+      map.set(p.table_name, {
+        ...existing,
+        mapped_destination: p.mapped_destination,
+      });
     }
   }
   return Array.from(map.values()).sort((a, b) => {
@@ -43,13 +50,23 @@ function mergeUnassigned(
 interface BatchGroupedPanelProps {
   connectionId: number;
   pendingUnassignedTables?: UnassignedTable[];
+  /**
+   * selection = regular ETL / file export (checkbox save).
+   * mapping = reverse table-to-table (map first → Unassigned → batches).
+   */
+  flowHint?: "selection" | "mapping";
+  /** Reverse ETL: remove source→destination mapping for this source table. */
+  onUnmapSource?: (_sourceTable: string) => void;
 }
 
 const BatchGroupedPanel = ({
   connectionId,
   pendingUnassignedTables = [],
+  flowHint = "selection",
+  onUnmapSource,
 }: BatchGroupedPanelProps) => {
   const { data, isLoading, isFetching } = useFetchBatches(connectionId);
+  const isMappingFlow = flowHint === "mapping";
 
   const [isNewBatchOpen, setIsNewBatchOpen] = useState(false);
   const [pickerTables, setPickerTables] = useState<string[] | null>(null);
@@ -69,94 +86,153 @@ const BatchGroupedPanel = ({
     !isLoading &&
     !isFetching &&
     batches.length === 0 &&
-    displayUnassigned.length === 0;
+    displayUnassigned.length === 0 &&
+    !isMappingFlow;
 
-  const unassignedSection =
-    displayUnassigned.length > 0 ? (
-      <Box
-        borderWidth={1}
+  const showUnassignedSection =
+    displayUnassigned.length > 0 || (isMappingFlow && !isLoading);
+
+  const unassignedSection = showUnassignedSection ? (
+    <Box
+      borderWidth={1}
+      borderStyle="dashed"
+      borderColor="gray.300"
+      borderRadius="md"
+      bgColor="gray.50"
+      display="flex"
+      flexDirection="column"
+      maxH="44vh"
+      minH={0}
+      overflow="hidden"
+      flexShrink={0}
+    >
+      <Flex
+        alignItems="center"
+        gap={2}
+        px={3}
+        py={2.5}
+        minH="40px"
+        borderBottomWidth={1}
+        borderColor="gray.200"
         borderStyle="dashed"
-        borderColor="gray.400"
-        borderRadius="lg"
-        bgColor="gray.50"
-        display="flex"
-        flexDirection="column"
-        maxH="44vh"
-        minH={0}
-        overflow="hidden"
+        flexShrink={0}
       >
-        <Flex
-          alignItems="center"
-          gap={2}
-          px={3}
-          py={2}
-          borderBottomWidth={1}
-          borderColor="gray.200"
-          borderStyle="dashed"
-        >
-          <Text fontSize="sm" fontWeight="semibold">
-            Unassigned
-          </Text>
-          <Text fontSize="xs" color="gray.500">
-            ({displayUnassigned.length})
-          </Text>
-          <Box flex="1" />
-          {displayUnassigned.length > 1 && (
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() =>
-                setPickerTables(displayUnassigned.map((u) => u.table_name))
-              }
-            >
-              Move all
-            </Button>
-          )}
-        </Flex>
+        <Text fontSize="sm" fontWeight="semibold">
+          Unassigned
+        </Text>
+        <Text fontSize="xs" color="gray.500">
+          ({displayUnassigned.length})
+        </Text>
+        <Box flex="1" />
+        {displayUnassigned.length > 1 && (
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() =>
+              setPickerTables(displayUnassigned.map((u) => u.table_name))
+            }
+          >
+            Move all
+          </Button>
+        )}
+      </Flex>
+      {displayUnassigned.length === 0 ? (
         <Flex
           direction="column"
+          alignItems="center"
           gap={1}
-          p={2}
+          px={3}
+          py={6}
+          color="gray.600"
+        >
+          <Text fontSize="sm" textAlign="center">
+            No tables here yet.
+          </Text>
+          <Text fontSize="xs" textAlign="center" color="gray.500">
+            Drag a source table onto a destination — it lands here, then move it
+            into a batch.
+          </Text>
+        </Flex>
+      ) : (
+        <Box
           flex="1"
           minH={0}
           overflowY="auto"
+          borderWidth={1}
+          borderColor="gray.100"
+          borderRadius="md"
+          mx={2}
+          mb={2}
+          bg="white"
         >
           {displayUnassigned.map((t, index) => (
             <Flex
               key={t.table_name}
               alignItems="center"
               gap={2}
-              bgColor={index % 2 === 0 ? "white" : "gray.100"}
-              px={2}
-              py={1.5}
-              borderRadius="sm"
+              minH="36px"
+              bgColor={index % 2 === 0 ? "gray.50" : "white"}
+              px={2.5}
+              py={2}
+              borderBottomWidth={index < displayUnassigned.length - 1 ? 1 : 0}
+              borderColor="gray.100"
             >
-              <Text fontSize="sm" flex="1" title={t.table_name}>
-                {t.table_name}
-              </Text>
-              {t.pending_only && (
-                <Text fontSize="xs" color="orange.600" whiteSpace="nowrap">
+              <Flex direction="column" flex="1" minW={0} gap={0}>
+                <Text
+                  fontSize="sm"
+                  lineHeight="short"
+                  truncate
+                  title={
+                    t.mapped_destination
+                      ? `${t.table_name} → ${t.mapped_destination}`
+                      : t.table_name
+                  }
+                >
+                  {t.table_name}
+                </Text>
+                {t.mapped_destination && (
+                  <Text fontSize="xs" color="gray.500" truncate>
+                    → {t.mapped_destination}
+                  </Text>
+                )}
+              </Flex>
+              {t.pending_only && !isMappingFlow && (
+                <Text
+                  fontSize="xs"
+                  color="orange.600"
+                  whiteSpace="nowrap"
+                  flexShrink={0}
+                >
                   Save selection
                 </Text>
               )}
-              {t.last_synced && (
-                <Text fontSize="xs" color="gray.500">
-                  {t.last_synced}
-                </Text>
+              {isMappingFlow && onUnmapSource && (
+                <IconButton
+                  aria-label={`Remove mapping for ${t.table_name}`}
+                  size="xs"
+                  variant="ghost"
+                  colorPalette="red"
+                  flexShrink={0}
+                  onClick={() => onUnmapSource(t.table_name)}
+                >
+                  <CiTrash />
+                </IconButton>
               )}
               <IconButton
                 aria-label={`Move ${t.table_name} to batch`}
                 size="xs"
                 variant="outline"
+                flexShrink={0}
                 onClick={() => setPickerTables([t.table_name])}
               >
                 <GoPlus />
               </IconButton>
             </Flex>
           ))}
-        </Flex>
-      </Box>
-    ) : null;
+        </Box>
+      )}
+    </Box>
+  ) : null;
 
   return (
     <>
@@ -174,6 +250,7 @@ const BatchGroupedPanel = ({
         <Flex
           justifyContent="space-between"
           alignItems="center"
+          gap={2}
           px={4}
           py={3}
           borderBottomWidth={1}
@@ -188,15 +265,26 @@ const BatchGroupedPanel = ({
               </Text>
             )}
           </Text>
+          <Button
+            size="xs"
+            colorPalette="brand"
+            variant="outline"
+            onClick={() => setIsNewBatchOpen(true)}
+            flexShrink={0}
+          >
+            <GoPlus />
+            New batch
+          </Button>
         </Flex>
 
         <Flex
           direction="column"
-          gap={3}
+          gap={2}
           p={3}
           overflowY="auto"
           flex="1"
           minH={0}
+          alignItems="stretch"
         >
           {isLoading && (
             <>
@@ -227,6 +315,15 @@ const BatchGroupedPanel = ({
             batches.map((b) => (
               <BatchCard key={b.id} batch={b} connectionId={connectionId} />
             ))}
+
+          {!isLoading &&
+            isMappingFlow &&
+            batches.length === 0 &&
+            displayUnassigned.length > 0 && (
+              <Text fontSize="xs" color="gray.500" textAlign="center" px={1}>
+                Use + to move unassigned tables into a batch.
+              </Text>
+            )}
         </Flex>
 
         <Flex
@@ -239,17 +336,10 @@ const BatchGroupedPanel = ({
           bgColor="white"
           flexShrink={0}
         >
-          <Button
-            size="sm"
-            colorPalette="brand"
-            variant="outline"
-            onClick={() => setIsNewBatchOpen(true)}
-          >
-            <GoPlus />
-            New batch
-          </Button>
           <Text fontSize="xs" color="gray.500" textAlign="center" px={2}>
-            Open Scheduling to build task chains and set cron on the root batch.
+            {isMappingFlow
+              ? "Map source → destination → Unassigned → batches. Then open Scheduling for task chains and cron."
+              : "Open Scheduling to build task chains and set cron on the root batch."}
           </Text>
         </Flex>
       </Flex>

@@ -17,14 +17,12 @@ export const getUiState = (
   const hasError =
     lowerMessage.includes("error") || lowerMessage.includes("failed");
 
-  if (lowerStatus === "s" && hasInitiated) {
-    return "in_progress";
-  }
-  if (lowerStatus === "s" && hasCompleted) {
+  // Terminal DB status wins over stale "Migration in progress" message text.
+  if (["s", "success", "completed"].includes(lowerStatus)) {
     return "success";
   }
-  if (lowerStatus === "f" && hasError) {
-    return "error";
+  if (["f", "e", "error", "failed"].includes(lowerStatus)) {
+    return hasCompleted && !hasError ? "warning" : "error";
   }
   if (lowerStatus === "p") return "warning";
 

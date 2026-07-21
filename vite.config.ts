@@ -1,7 +1,7 @@
 import path from "path";
-import { defineConfig } from "vite";
 
 import react from "@vitejs/plugin-react-swc";
+import { defineConfig } from "vitest/config";
 
 // Local Django (runserver). Override with VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000
 const devApiTarget =
@@ -15,6 +15,10 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "src"),
     },
+  },
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.ts"],
   },
   server: {
     proxy: {

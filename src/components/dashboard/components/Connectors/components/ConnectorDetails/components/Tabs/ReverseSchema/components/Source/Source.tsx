@@ -63,12 +63,13 @@ const Source = ({ reverseSchemaData }: SourceProps) => {
       w="100%"
       maxW="100%"
     >
-      <Flex mb={4} justifyContent="space-between" alignItems="center">
-        <Flex alignItems="center" gap={2}>
-          <Text fontSize="sm" fontWeight="semibold">
-            Source Tables
-          </Text>
-        </Flex>
+      <Flex mb={4} direction="column" gap={1}>
+        <Text fontSize="sm" fontWeight="semibold">
+          Source Tables
+        </Text>
+        <Text fontSize="xs" color="gray.500">
+          Drag a table onto a destination to map it.
+        </Text>
       </Flex>
 
       <Flex mb={4}>
@@ -102,21 +103,24 @@ const Source = ({ reverseSchemaData }: SourceProps) => {
               return (
                 <Flex
                   key={table}
-                  draggable={isSelected}
+                  draggable
                   onClick={() => setSelectedTable(isSelected ? null : table)}
                   onDragStart={(e) => {
-                    if (!isSelected) {
-                      e.preventDefault();
-                      return;
-                    }
+                    setSelectedTable(table);
                     setDraggedTable(table);
                     e.dataTransfer.effectAllowed = "move";
                     e.dataTransfer.setData("text/plain", table);
                     e.dataTransfer.setData("source-table", table);
+                    // Fallback for browsers that drop empty dataTransfer on drop.
+                    (
+                      window as { __currentDragSource?: string }
+                    ).__currentDragSource = table;
                   }}
                   onDragEnd={() => {
                     setDraggedTable(null);
                     setSelectedTable(null);
+                    delete (window as { __currentDragSource?: string })
+                      .__currentDragSource;
                   }}
                   justifyContent="space-between"
                   backgroundColor={
@@ -126,12 +130,9 @@ const Source = ({ reverseSchemaData }: SourceProps) => {
                   direction={isExpanded ? "column" : "row"}
                   padding={2}
                   borderRadius={4}
+                  title="Drag onto a destination table to create a mapping"
                   style={{
-                    cursor: isDragging
-                      ? "grabbing"
-                      : isSelected
-                        ? "grab"
-                        : "pointer",
+                    cursor: isDragging ? "grabbing" : "grab",
                     userSelect: "none",
                     WebkitUserSelect: "none",
                     opacity: isDragging ? 0.8 : 1,

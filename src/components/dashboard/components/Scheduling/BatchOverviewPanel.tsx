@@ -7,28 +7,24 @@ import {
   Flex,
   IconButton,
   Skeleton,
+  Tabs,
   Text,
 } from "@chakra-ui/react";
 
 import { MdClose, MdPlayArrow } from "react-icons/md";
 
+import BatchExecutionPanel from "@/components/dashboard/components/Scheduling/BatchExecutionPanel";
+import BatchNotificationPanel from "@/components/dashboard/components/Scheduling/BatchNotificationPanel";
 import { toaster } from "@/components/ui/toaster";
+import { getUiState } from "@/helpers/log";
 import { useFetchBatchDetail } from "@/queryOptions/connector/schema/useBatches";
+import { useRunPipeline } from "@/queryOptions/pipeline/usePipeline";
 import {
-  usePatchPipeline,
-  useRunPipeline,
-  useUpdatePipelineNode,
-} from "@/queryOptions/pipeline/usePipeline";
-import { type PipelineDetail } from "@/types/pipeline";
+  type PipelineDetail,
+  type PipelineRunNodeDetail,
+} from "@/types/pipeline";
 
-import ScheduleEditor from "./ScheduleEditor";
 import { computeRootNodeIds, getParentBatchName } from "./pipelineLayout";
-import {
-  type ScheduleValue,
-  fromPipelineSchedule,
-  pipelineScheduleLabel,
-  toApiSchedule,
-} from "./scheduleOptions";
 
 type BatchOverviewPanelProps = {
   pipeline: PipelineDetail;
@@ -36,8 +32,18 @@ type BatchOverviewPanelProps = {
   connectionId: number;
   batchId: number;
   connectionName: string;
+  runNode?: PipelineRunNodeDetail | null;
+  onRunStarted?: (_runId: number) => void;
   onClose: () => void;
 };
+
+function tableStatusBadgeColor(status: string) {
+  const s = status.toLowerCase();
+  if (s === "completed" || s === "success") return "green";
+  if (s === "failed" || s === "error") return "red";
+  if (s === "running" || s === "in_progress") return "blue";
+  return "gray";
+}
 
 const BatchOverviewPanel = ({
   pipeline,
@@ -45,12 +51,13 @@ const BatchOverviewPanel = ({
   connectionId,
   batchId,
   connectionName,
+  runNode,
+  onRunStarted,
   onClose,
 }: BatchOverviewPanelProps) => {
   const { data: batch, isLoading } = useFetchBatchDetail(connectionId, batchId);
-  const patchPipeline = usePatchPipeline(pipeline.id);
-  const updateNode = useUpdatePipelineNode(pipeline.id);
   const runPipeline = useRunPipeline();
+  const [activeTab, setActiveTab] = useState("overview");
 
   const rootNodeIds = useMemo(
     () =>
@@ -65,51 +72,41 @@ const BatchOverviewPanel = ({
   );
 
   const pipelineNode = pipeline.nodes.find((n) => n.id === nodeId);
+  const pipelinePaused = pipeline.status === "paused";
 
-  const [scheduleDraft, setScheduleDraft] = useState<ScheduleValue>(() => {
-    const base = fromPipelineSchedule(pipeline);
-    return {
-      ...base,
-      execution_order: pipelineNode?.execution_order ?? "parallel",
-    };
-  });
-
-  const handleSaveSchedule = async () => {
-    try {
-      const apiSchedule = toApiSchedule(scheduleDraft);
-      await patchPipeline.mutateAsync({
-        ...apiSchedule,
-        sync_start_date: scheduleDraft.sync_start_date,
-      });
-      if (
-        pipelineNode &&
-        scheduleDraft.execution_order !== pipelineNode.execution_order
-      ) {
-        await updateNode.mutateAsync({
-          nodeId,
-          payload: { execution_order: scheduleDraft.execution_order },
-        });
-      }
-      toaster.success({ title: "Pipeline schedule saved" });
-    } catch {
-      toaster.error({ title: "Could not save schedule" });
+  const tableStatusMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const tables = runNode?.migration_status?.tables ?? [];
+    for (const t of tables) {
+      const uiState = getUiState(t.status_icon, t.status, t.error_message);
+      map.set(t.table_name, uiState);
     }
-  };
+    return map;
+  }, [runNode]);
 
   const handleRunPipeline = async () => {
+    if (!pipeline.has_published_graph) {
+      toaster.error({
+        title: "Validate before running",
+        description:
+          "Validate the Draft flow first, then run the published flow.",
+      });
+      return;
+    }
     try {
       const result = await runPipeline.mutateAsync(pipeline.id);
+      onRunStarted?.(result.pipeline_run_id);
       toaster.success({
         title: "Pipeline started",
         description: result.message,
       });
-    } catch {
-      toaster.error({ title: "Failed to run pipeline" });
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error ?? "Failed to run pipeline.";
+      toaster.error({ title: "Failed to run pipeline", description: message });
     }
   };
-
-  const scheduleSummary = pipelineScheduleLabel(pipeline);
-  const pipelinePaused = pipeline.status === "paused";
 
   return (
     <Flex
@@ -124,17 +121,17 @@ const BatchOverviewPanel = ({
       <Flex
         alignItems="center"
         justifyContent="space-between"
-        px={4}
-        py={3}
+        px={3}
+        py={2}
         borderBottomWidth={1}
         borderColor="gray.200"
         flexShrink={0}
       >
-        <Text fontSize="sm" fontWeight="semibold">
-          Batch overview
+        <Text fontSize="sm" fontWeight="semibold" color="gray.800">
+          {batch?.name ?? "Batch"}
         </Text>
         <IconButton
-          aria-label="Close overview"
+          aria-label="Close panel"
           size="xs"
           variant="ghost"
           onClick={onClose}
@@ -143,111 +140,207 @@ const BatchOverviewPanel = ({
         </IconButton>
       </Flex>
 
-      <Box flex="1" overflowY="auto" p={4} minH={0}>
-        {isLoading && (
-          <Flex direction="column" gap={3}>
-            <Skeleton height={6} />
-            <Skeleton height={4} />
-            <Skeleton height={24} />
-          </Flex>
-        )}
+      <Tabs.Root
+        value={activeTab}
+        onValueChange={(d) => setActiveTab(d.value)}
+        variant="line"
+        colorPalette="brand"
+        flex="1"
+        display="flex"
+        flexDirection="column"
+        minH={0}
+      >
+        <Tabs.List px={2} borderBottomWidth={1} borderColor="gray.100" gap={0}>
+          <Tabs.Trigger value="overview" fontSize="xs" py={2} px={2.5}>
+            Overview
+          </Tabs.Trigger>
+          <Tabs.Trigger value="execution" fontSize="xs" py={2} px={2.5}>
+            Execution
+          </Tabs.Trigger>
+          <Tabs.Trigger value="email" fontSize="xs" py={2} px={2.5}>
+            Email
+          </Tabs.Trigger>
+          <Tabs.Trigger value="tables" fontSize="xs" py={2} px={2.5}>
+            Tables
+          </Tabs.Trigger>
+        </Tabs.List>
 
-        {!isLoading && batch && (
-          <Flex direction="column" gap={4}>
-            <Box>
-              <Text fontSize="lg" fontWeight="bold">
-                {batch.name}
-              </Text>
-              <Text fontSize="sm" color="gray.600" mt={1}>
-                {connectionName}
-              </Text>
-            </Box>
-
-            <Flex gap={2} flexWrap="wrap">
-              {isRoot ? (
-                <Badge colorPalette="purple" variant="subtle">
-                  Root task
-                </Badge>
-              ) : (
-                <Badge colorPalette="gray" variant="subtle">
-                  After: {parentBatchName ?? "parent"}
-                </Badge>
-              )}
-              <Badge colorPalette="gray" variant="subtle">
-                {batch.table_count} table{batch.table_count === 1 ? "" : "s"}
-              </Badge>
-              <Badge
-                colorPalette={
-                  (pipelineNode?.execution_order ?? batch.execution_order) ===
-                  "sequential"
-                    ? "orange"
-                    : "blue"
-                }
-                variant="subtle"
-              >
-                {pipelineNode?.execution_order ?? batch.execution_order}
-              </Badge>
-              {pipelinePaused && (
-                <Badge colorPalette="orange" variant="subtle">
-                  Pipeline paused
-                </Badge>
-              )}
+        <Tabs.Content value="overview" flex="1" overflowY="auto" p={3} minH={0}>
+          {isLoading && (
+            <Flex direction="column" gap={3}>
+              <Skeleton height={6} />
+              <Skeleton height={4} />
+              <Skeleton height={24} />
             </Flex>
+          )}
 
-            {isRoot ? (
-              <Flex direction="column" gap={3}>
-                <Box>
-                  <Text
-                    fontSize="xs"
-                    color="gray.500"
-                    textTransform="uppercase"
-                    mb={1}
+          {!isLoading && batch && (
+            <Flex direction="column" gap={3}>
+              <Box>
+                <Text fontSize="xs" color="gray.500">
+                  {connectionName}
+                </Text>
+              </Box>
+
+              <Flex gap={1.5} flexWrap="wrap">
+                <Badge colorPalette="purple" variant="outline" size="sm">
+                  Pipeline: {pipeline.name}
+                </Badge>
+                {!isRoot && (
+                  <Badge colorPalette="gray" variant="subtle" size="sm">
+                    After: {parentBatchName ?? "parent"}
+                  </Badge>
+                )}
+                <Badge colorPalette="gray" variant="subtle" size="sm">
+                  {batch.table_count} table{batch.table_count === 1 ? "" : "s"}
+                </Badge>
+                <Badge colorPalette="gray" variant="outline" size="sm">
+                  Process:{" "}
+                  {pipelineNode?.execution_order ?? batch.execution_order}
+                </Badge>
+                {pipelinePaused && (
+                  <Badge colorPalette="orange" variant="subtle" size="sm">
+                    Pipeline paused
+                  </Badge>
+                )}
+                {runNode?.status && (
+                  <Badge
+                    colorPalette={tableStatusBadgeColor(runNode.status)}
+                    variant="subtle"
+                    size="sm"
                   >
-                    Pipeline schedule (root cron)
-                  </Text>
-                  <Text fontSize="sm" fontWeight="medium">
-                    {scheduleSummary || "Not configured"}
-                  </Text>
-                </Box>
-                <ScheduleEditor
-                  value={scheduleDraft}
-                  onChange={setScheduleDraft}
-                  disabled={pipelinePaused}
-                />
-                <Button
-                  size="sm"
-                  colorPalette="brand"
-                  onClick={handleSaveSchedule}
-                  loading={patchPipeline.isPending || updateNode.isPending}
-                  disabled={pipelinePaused}
-                >
-                  Save schedule
-                </Button>
+                    Run: {runNode.status}
+                  </Badge>
+                )}
               </Flex>
-            ) : (
+
               <Box
                 borderWidth={1}
                 borderColor="gray.200"
                 borderRadius="md"
-                p={3}
+                p={2.5}
                 bg="gray.50"
               >
-                <Text fontSize="sm" color="gray.700">
-                  Runs after{" "}
-                  <Text as="span" fontWeight="semibold">
-                    {parentBatchName ?? "parent batch"}
-                  </Text>{" "}
-                  completes. Schedule is set on the pipeline root task only.
+                <Text fontSize="xs" color="gray.700">
+                  {isRoot ? (
+                    <>
+                      In pipeline{" "}
+                      <Text as="span" fontWeight="semibold">
+                        {pipeline.name}
+                      </Text>
+                      . Runs in the first wave after{" "}
+                      <Text as="span" fontWeight="semibold">
+                        Start
+                      </Text>{" "}
+                      ({pipelineNode?.execution_order ?? batch.execution_order}{" "}
+                      process). Set timing on the Start node Schedule tab.
+                    </>
+                  ) : (
+                    <>
+                      In pipeline{" "}
+                      <Text as="span" fontWeight="semibold">
+                        {pipeline.name}
+                      </Text>
+                      . Runs after{" "}
+                      <Text as="span" fontWeight="semibold">
+                        {parentBatchName ?? "parent batch"}
+                      </Text>{" "}
+                      ({pipelineNode?.execution_order ?? batch.execution_order}{" "}
+                      process). Pipeline schedule is configured on the Start
+                      node.
+                    </>
+                  )}
                 </Text>
               </Box>
-            )}
 
+              {runNode?.error && (
+                <Text fontSize="xs" color="red.600">
+                  {runNode.error}
+                </Text>
+              )}
+
+              {runNode && (
+                <Text fontSize="2xs" color="gray.500">
+                  Table progress and per-task logs are in the center Execution
+                  logs tab.
+                </Text>
+              )}
+
+              <Button
+                size="sm"
+                colorPalette="brand"
+                onClick={handleRunPipeline}
+                loading={runPipeline.isPending}
+                disabled={
+                  pipeline.nodes.length === 0 || !pipeline.has_published_graph
+                }
+                title={
+                  !pipeline.has_published_graph
+                    ? "Validate the Draft flow before running"
+                    : undefined
+                }
+              >
+                <MdPlayArrow />
+                Run pipeline now
+              </Button>
+            </Flex>
+          )}
+        </Tabs.Content>
+
+        <Tabs.Content
+          value="execution"
+          flex="1"
+          overflowY="auto"
+          p={3}
+          minH={0}
+        >
+          {!isLoading && batch && (
+            <BatchExecutionPanel
+              pipelineId={pipeline.id}
+              nodeId={nodeId}
+              pipelineNode={pipelineNode}
+              disabled={pipelinePaused}
+              embedded
+            />
+          )}
+        </Tabs.Content>
+
+        <Tabs.Content value="email" flex="1" overflowY="auto" p={3} minH={0}>
+          {!isLoading && batch && (
+            <BatchNotificationPanel
+              pipelineId={pipeline.id}
+              nodeId={nodeId}
+              pipelineNode={pipelineNode}
+              disabled={pipelinePaused}
+              embedded
+            />
+          )}
+        </Tabs.Content>
+
+        <Tabs.Content value="tables" flex="1" overflowY="auto" p={3} minH={0}>
+          {isLoading && <Skeleton height="120px" />}
+
+          {!isLoading && batch && (
             <Flex direction="column" gap={2} minH={0}>
-              <Text fontSize="xs" color="gray.500" textTransform="uppercase">
-                Tables
-              </Text>
+              {runNode?.status && (
+                <Badge
+                  size="sm"
+                  alignSelf="flex-start"
+                  colorPalette={tableStatusBadgeColor(runNode.status)}
+                  variant="subtle"
+                >
+                  Task: {runNode.status}
+                </Badge>
+              )}
+
+              {runNode?.error && (
+                <Text fontSize="xs" color="red.600">
+                  {runNode.error}
+                </Text>
+              )}
+
               {batch.tables.length === 0 ? (
-                <Text fontSize="sm" color="gray.500">
+                <Text fontSize="xs" color="gray.500">
                   No tables in this batch.
                 </Text>
               ) : (
@@ -255,56 +348,53 @@ const BatchOverviewPanel = ({
                   borderWidth={1}
                   borderColor="gray.200"
                   borderRadius="md"
-                  maxH="220px"
+                  flex="1"
                   overflowY="auto"
                 >
                   {batch.tables
                     .slice()
                     .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
-                    .map((t, index) => (
-                      <Flex
-                        key={t.table_name}
-                        px={3}
-                        py={2}
-                        gap={2}
-                        alignItems="center"
-                        bg={index % 2 === 0 ? "gray.50" : "white"}
-                        borderBottomWidth={
-                          index < batch.tables.length - 1 ? 1 : 0
-                        }
-                        borderColor="gray.100"
-                      >
-                        <Text fontSize="sm" flex="1" title={t.table_name}>
-                          {t.table_name}
-                        </Text>
-                        {t.last_synced && (
+                    .map((t, index) => {
+                      const runStatus = tableStatusMap.get(t.table_name);
+                      return (
+                        <Flex
+                          key={t.table_name}
+                          px={2.5}
+                          py={1.5}
+                          gap={2}
+                          alignItems="center"
+                          bg={index % 2 === 0 ? "gray.50" : "white"}
+                          borderBottomWidth={
+                            index < batch.tables.length - 1 ? 1 : 0
+                          }
+                          borderColor="gray.100"
+                        >
                           <Text
                             fontSize="xs"
-                            color="gray.500"
-                            whiteSpace="nowrap"
+                            flex="1"
+                            truncate
+                            title={t.table_name}
                           >
-                            {t.last_synced}
+                            {t.table_name}
                           </Text>
-                        )}
-                      </Flex>
-                    ))}
+                          {runStatus && (
+                            <Badge
+                              size="sm"
+                              variant="subtle"
+                              colorPalette={tableStatusBadgeColor(runStatus)}
+                            >
+                              {runStatus}
+                            </Badge>
+                          )}
+                        </Flex>
+                      );
+                    })}
                 </Box>
               )}
             </Flex>
-
-            <Button
-              size="sm"
-              colorPalette="brand"
-              onClick={handleRunPipeline}
-              loading={runPipeline.isPending}
-              disabled={pipeline.nodes.length === 0}
-            >
-              <MdPlayArrow />
-              Run pipeline now
-            </Button>
-          </Flex>
-        )}
-      </Box>
+          )}
+        </Tabs.Content>
+      </Tabs.Root>
     </Flex>
   );
 };

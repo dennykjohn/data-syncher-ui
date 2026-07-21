@@ -1,3 +1,7 @@
+import {
+  pipelineRunRefetchInterval,
+  resolvePipelineRunStatus,
+} from "@/components/dashboard/components/Scheduling/pipelineRunHelpers";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 import {
@@ -9,6 +13,9 @@ import {
   type PipelineDetail,
   type PipelineEdgeDto,
   type PipelineNodeDto,
+  type PipelineRunDetail,
+  type PipelineRunSummary,
+  type PipelineValidationResult,
 } from "@/types/pipeline";
 
 import {
@@ -251,6 +258,8 @@ export function useDeletePipelineEdge(pipelineId: number) {
 }
 
 export function useRunPipeline() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationKey: ["runPipeline"],
     mutationFn: async (pipelineId: number) => {
@@ -260,5 +269,105 @@ export function useRunPipeline() {
       }>(ServerRoutes.pipeline.run(pipelineId), {});
       return data;
     },
+    onSuccess: async (_data, pipelineId) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["pipelineRun", pipelineId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["pipelineRuns", pipelineId],
+      });
+    },
+  });
+}
+
+export function useValidatePipeline() {
+  return useMutation({
+    mutationKey: ["validatePipeline"],
+    mutationFn: async (pipelineId: number) => {
+      const { data } = await AxiosInstance.post<PipelineValidationResult>(
+        ServerRoutes.pipeline.validate(pipelineId),
+        {},
+        {
+          // Validation failures return 400 with a structured errors[] body.
+          validateStatus: (status) => status === 200 || status === 400,
+        },
+      );
+      return data;
+    },
+  });
+}
+
+export function useResetPipeline() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ["resetPipeline"],
+    mutationFn: async (pipelineId: number) => {
+      const { data } = await AxiosInstance.post<PipelineValidationResult>(
+        ServerRoutes.pipeline.reset(pipelineId),
+        {},
+      );
+      return data;
+    },
+    onSuccess: async (_data, pipelineId) => {
+      await refreshPipelines(queryClient);
+      await queryClient.invalidateQueries({
+        queryKey: ["pipelineRuns", pipelineId],
+      });
+    },
+  });
+}
+
+export function pipelineRunsQueryKey(pipelineId: number) {
+  return ["pipelineRuns", pipelineId] as const;
+}
+
+export function usePipelineRuns(pipelineId: number | null) {
+  return useQuery<{ runs: PipelineRunSummary[] }>({
+    queryKey: pipelineRunsQueryKey(pipelineId ?? 0),
+    queryFn: async () => {
+      const { data } = await AxiosInstance.get<{ runs: PipelineRunSummary[] }>(
+        ServerRoutes.pipeline.runs(pipelineId!),
+      );
+      return { runs: data.runs ?? [] };
+    },
+    enabled: !!pipelineId,
+    refetchInterval: (query) =>
+      query.state.data?.runs.some(
+        (run) => resolvePipelineRunStatus(run) === "running",
+      )
+        ? 4000
+        : false,
+    staleTime: 15 * 1000,
+  });
+}
+
+export function pipelineRunQueryKey(
+  pipelineId: number,
+  runId: number | null | undefined,
+) {
+  return ["pipelineRun", pipelineId, runId] as const;
+}
+
+export function usePipelineRun(
+  pipelineId: number | null,
+  runId: number | null,
+) {
+  return useQuery<PipelineRunDetail>({
+    queryKey: pipelineRunQueryKey(pipelineId ?? 0, runId),
+    queryFn: async () => {
+      const { data } = await AxiosInstance.get<PipelineRunDetail>(
+        ServerRoutes.pipeline.runDetail(pipelineId!, runId!),
+      );
+      return data;
+    },
+    enabled: !!pipelineId && !!runId,
+    refetchInterval: (query) =>
+      pipelineRunRefetchInterval(
+        query.state.data
+          ? resolvePipelineRunStatus(query.state.data)
+          : undefined,
+      ),
+    staleTime: 0,
   });
 }

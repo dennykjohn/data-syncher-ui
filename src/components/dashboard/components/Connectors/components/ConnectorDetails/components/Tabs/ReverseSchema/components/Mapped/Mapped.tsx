@@ -19,11 +19,15 @@ export interface MappedRef {
   handleDrop: (_sourceTable: string, _destinationTable: string) => void;
   hasMapping: (_sourceTable: string, _destinationTable: string) => boolean;
   getMappings: () => TableMapping[];
+  removeBySourceTable: (_sourceTable: string) => void;
 }
 
 interface MappedProps {
   reverseSchemaData: ReverseSchemaResponse | null;
   isDisabled?: boolean;
+  onMappingsChange?: () => void;
+  /** When true, keep save/drop logic mounted but do not render the Mapped column. */
+  hideUi?: boolean;
 }
 
 const normalizeMappings = (raw: unknown): TableMapping[] => {
@@ -50,7 +54,7 @@ const normalizeMappings = (raw: unknown): TableMapping[] => {
 };
 
 const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
-  const { reverseSchemaData, isDisabled } = props;
+  const { reverseSchemaData, isDisabled, onMappingsChange, hideUi } = props;
   const context = useOutletContext<Connector>();
   const [mappings, setMappings] = useState<TableMapping[]>([]);
 
@@ -88,9 +92,26 @@ const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
       );
 
       setMappings(updated);
+      onMappingsChange?.();
       onSuccess?.();
-    } catch {
-      // Error handled silently
+    } catch (err) {
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? String(
+              (
+                err as {
+                  response?: { data?: { detail?: string; message?: string } };
+                }
+              ).response?.data?.detail ??
+                (err as { response?: { data?: { message?: string } } }).response
+                  ?.data?.message ??
+                "Failed to save mapping.",
+            )
+          : "Failed to save mapping.";
+      toaster.error({
+        title: "Could not save mapping",
+        description: message,
+      });
     }
   };
 
@@ -178,13 +199,6 @@ const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
   // Get current mappings
   const getMappings = () => mappings;
 
-  // Expose methods to parent via ref
-  useImperativeHandle(ref, () => ({
-    handleDrop,
-    hasMapping,
-    getMappings,
-  }));
-
   // Handle remove mapping
   const handleRemoveMapping = (mappingToRemove: TableMapping) => {
     if (isDisabled) {
@@ -208,8 +222,42 @@ const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
         title: "Mapping Deleted",
         description: `The mapping "${mappingToRemove.sourceTable} → ${mappingToRemove.destinationTable}" has been deleted.`,
       });
+      onMappingsChange?.();
     });
   };
+
+  const removeBySourceTable = (sourceTable: string) => {
+    const matches = mappings.filter((m) => m.sourceTable === sourceTable);
+    if (matches.length === 0) return;
+    const updatedMappings = mappings.filter(
+      (m) => m.sourceTable !== sourceTable,
+    );
+    saveMappings(updatedMappings, () => {
+      toaster.success({
+        title: "Mapping Removed",
+        description:
+          matches.length === 1
+            ? `Removed "${matches[0].sourceTable} → ${matches[0].destinationTable}".`
+            : `Removed ${matches.length} mappings for "${sourceTable}".`,
+      });
+    });
+  };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      handleDrop,
+      hasMapping,
+      getMappings,
+      removeBySourceTable,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rebind when drop inputs change
+    [isDisabled, mappings, reverseSchemaData, context.connection_id],
+  );
+
+  if (hideUi) {
+    return null;
+  }
 
   const safeMappings = mappings || [];
 
@@ -226,19 +274,28 @@ const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
       maxW="100%"
       overflow="hidden"
     >
-      <Text fontSize="sm" fontWeight="semibold" mb={4}>
-        Mapped Tables
-      </Text>
+      <Flex direction="column" gap={1} mb={4}>
+        <Text fontSize="sm" fontWeight="semibold">
+          Mapped Tables
+        </Text>
+        <Text fontSize="xs" color="gray.500">
+          Mapped tables appear in Unassigned until you assign them to a batch.
+        </Text>
+      </Flex>
 
       {safeMappings.length === 0 ? (
         <Flex
           direction="column"
           alignItems="center"
           justifyContent="center"
+          gap={1}
           p={8}
         >
-          <Text fontSize="sm" color="gray.500">
-            No mappings yet. Drag and drop tables to create mappings.
+          <Text fontSize="sm" color="gray.500" textAlign="center">
+            No mappings yet. Drag a source table onto a destination.
+          </Text>
+          <Text fontSize="xs" color="gray.400" textAlign="center">
+            After mapping, move tables from Unassigned into a batch.
           </Text>
         </Flex>
       ) : (
