@@ -396,6 +396,29 @@ const GUIDE_URL_MAP: Record<
       jsonUrl:
         "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/google-reviews.json",
     },
+    // File sources reuse destination guide JSON until dedicated source guides exist.
+    sftp: {
+      jsonUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/sftp-destination.json",
+    },
+    googledrive: {
+      jsonUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/google-drive-destination.json",
+      docsUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/destinations/google-drive-destination",
+    },
+    azuredatalakestorage: {
+      jsonUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/adls-destination.json",
+      docsUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/destinations/adls-destination",
+    },
+    adls: {
+      jsonUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/adls-destination.json",
+      docsUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/destinations/adls-destination",
+    },
   },
   destination: {
     amazons3: {

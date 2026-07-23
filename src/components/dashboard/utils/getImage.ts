@@ -22,14 +22,15 @@ const IMAGE_MAP = {
   mysql: MySQLIllustration,
   amazons3: AmazonS3Illustration,
   googlereviews: GoogleReviewIllustration,
+  // File-based sources (also valid as destinations)
+  sftp: SFTPIllustration,
+  googledrive: GoogleDriveIllustration,
+  azuredatalakestorage: AzureDataLakeStorageIllustration,
 
   // Destinations
-  azuredatalakestorage: AzureDataLakeStorageIllustration,
   salesforce: SalesForceIllustration,
   salesforcesandbox: SalesforceSandboxIllustration,
-  sftp: SFTPIllustration,
   sharepoint: SharepointIllustration,
-  googledrive: GoogleDriveIllustration,
 } as const;
 
 // Default fallback image

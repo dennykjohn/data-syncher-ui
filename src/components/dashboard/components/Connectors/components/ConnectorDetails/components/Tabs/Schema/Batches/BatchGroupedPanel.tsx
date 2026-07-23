@@ -24,19 +24,36 @@ type DisplayUnassignedRow = UnassignedTable & { pending_only?: boolean };
 function mergeUnassigned(
   apiRows: UnassignedTable[],
   pendingRows: UnassignedTable[] | undefined,
+  sourceToDestination?: Map<string, string>,
 ): DisplayUnassignedRow[] {
   const map = new Map<string, DisplayUnassignedRow>();
+  const keyOf = (name: string) => name.toLowerCase();
+
   for (const u of apiRows) {
-    map.set(u.table_name, { ...u, pending_only: false });
+    const dest =
+      u.mapped_destination ||
+      sourceToDestination?.get(keyOf(u.table_name)) ||
+      undefined;
+    map.set(keyOf(u.table_name), {
+      ...u,
+      mapped_destination: dest,
+      pending_only: false,
+    });
   }
   for (const p of pendingRows ?? []) {
-    const existing = map.get(p.table_name);
+    const key = keyOf(p.table_name);
+    const existing = map.get(key);
+    const dest =
+      p.mapped_destination ||
+      existing?.mapped_destination ||
+      sourceToDestination?.get(key) ||
+      undefined;
     if (!existing) {
-      map.set(p.table_name, { ...p, pending_only: true });
-    } else if (p.mapped_destination && !existing.mapped_destination) {
-      map.set(p.table_name, {
+      map.set(key, { ...p, mapped_destination: dest, pending_only: true });
+    } else {
+      map.set(key, {
         ...existing,
-        mapped_destination: p.mapped_destination,
+        mapped_destination: dest ?? existing.mapped_destination,
       });
     }
   }
@@ -57,6 +74,8 @@ interface BatchGroupedPanelProps {
   flowHint?: "selection" | "mapping";
   /** Reverse ETL: remove source→destination mapping for this source table. */
   onUnmapSource?: (_sourceTable: string) => void;
+  /** Reverse ETL: source table (lower) → destination for Unassigned + batch rows. */
+  sourceToDestination?: Map<string, string>;
 }
 
 const BatchGroupedPanel = ({
@@ -64,6 +83,7 @@ const BatchGroupedPanel = ({
   pendingUnassignedTables = [],
   flowHint = "selection",
   onUnmapSource,
+  sourceToDestination,
 }: BatchGroupedPanelProps) => {
   const { data, isLoading, isFetching } = useFetchBatches(connectionId);
   const isMappingFlow = flowHint === "mapping";
@@ -78,8 +98,13 @@ const BatchGroupedPanel = ({
   );
 
   const displayUnassigned = useMemo(
-    () => mergeUnassigned(apiUnassigned, pendingUnassignedTables),
-    [apiUnassigned, pendingUnassignedTables],
+    () =>
+      mergeUnassigned(
+        apiUnassigned,
+        pendingUnassignedTables,
+        sourceToDestination,
+      ),
+    [apiUnassigned, pendingUnassignedTables, sourceToDestination],
   );
 
   const showEmptyState =
@@ -313,7 +338,14 @@ const BatchGroupedPanel = ({
 
           {!isLoading &&
             batches.map((b) => (
-              <BatchCard key={b.id} batch={b} connectionId={connectionId} />
+              <BatchCard
+                key={b.id}
+                batch={b}
+                connectionId={connectionId}
+                sourceToDestination={
+                  isMappingFlow ? sourceToDestination : undefined
+                }
+              />
             ))}
 
           {!isLoading &&

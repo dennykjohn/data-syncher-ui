@@ -25,7 +25,7 @@ export interface MappedRef {
 interface MappedProps {
   reverseSchemaData: ReverseSchemaResponse | null;
   isDisabled?: boolean;
-  onMappingsChange?: () => void;
+  onMappingsChange?: (_mappings: TableMapping[]) => void;
   /** When true, keep save/drop logic mounted but do not render the Mapped column. */
   hideUi?: boolean;
 }
@@ -92,7 +92,7 @@ const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
       );
 
       setMappings(updated);
-      onMappingsChange?.();
+      onMappingsChange?.(updated);
       onSuccess?.();
     } catch (err) {
       const message =
@@ -222,7 +222,6 @@ const Mapped = forwardRef<MappedRef, MappedProps>((props, ref) => {
         title: "Mapping Deleted",
         description: `The mapping "${mappingToRemove.sourceTable} → ${mappingToRemove.destinationTable}" has been deleted.`,
       });
-      onMappingsChange?.();
     });
   };
 

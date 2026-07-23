@@ -191,6 +191,16 @@ const ReverseSchema = () => {
     ],
   );
 
+  const sourceToDestination = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of mappedPairs) {
+      if (p.destination) {
+        map.set(p.source.toLowerCase(), p.destination);
+      }
+    }
+    return map;
+  }, [mappedPairs]);
+
   const pendingUnassignedTables = useMemo<UnassignedTable[]>(() => {
     if (isSnowflakeToFileExport) {
       return effectiveFileExportSelected
@@ -231,6 +241,20 @@ const ReverseSchema = () => {
       queryKey: batchesQueryKey(context.connection_id),
     });
   }, [context.connection_id, queryClient]);
+
+  const handleMappingsChange = useCallback(
+    (mappings: { sourceTable: string; destinationTable: string }[]) => {
+      queryClient.setQueryData(
+        ["connectionMappings", context.connection_id],
+        mappings.map((m) => ({
+          source: m.sourceTable,
+          destination: m.destinationTable,
+        })),
+      );
+      invalidateMappingAndBatches();
+    },
+    [context.connection_id, invalidateMappingAndBatches, queryClient],
+  );
 
   const handleDrop = (sourceTable: string, destinationTable: string) => {
     mappedRef.current?.handleDrop(sourceTable, destinationTable);
@@ -291,6 +315,7 @@ const ReverseSchema = () => {
               pendingUnassignedTables={pendingUnassignedTables}
               flowHint="mapping"
               onUnmapSource={handleUnmapSource}
+              sourceToDestination={sourceToDestination}
             />
           </Grid>
           {/* Mapping save/drop logic only — no visible Mapped column. */}
@@ -298,7 +323,7 @@ const ReverseSchema = () => {
             ref={mappedRef}
             reverseSchemaData={reverseSchemaData || null}
             isDisabled={totalDisabledState}
-            onMappingsChange={invalidateMappingAndBatches}
+            onMappingsChange={handleMappingsChange}
             hideUi
           />
         </>

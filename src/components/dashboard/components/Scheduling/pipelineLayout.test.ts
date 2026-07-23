@@ -106,6 +106,41 @@ describe("pipelineLayout", () => {
     expect(positions.get(3)?.x).toBeGreaterThan(positions.get(2)!.x);
   });
 
+  it("orders columns by parent position to avoid crossed edges", () => {
+    // Mirrors the last-column X in the flow UI: smaller-id sink on top by
+    // id-sort would cross parents, but barycenter keeps edges parallel.
+    const batch = (
+      id: number,
+      name: string,
+      order_index: number,
+    ): PipelineNodeDto => ({
+      ...nodes[1],
+      id,
+      batch_id: id * 10,
+      batch_name: name,
+      node_label: name,
+      order_index,
+    });
+    const graphNodes: PipelineNodeDto[] = [
+      startNode,
+      batch(10, "financ", 0),
+      batch(20, "accnt", 1),
+      batch(5, "master-data", 2), // smaller id — id-sort would put this first
+      batch(30, "retl", 3),
+    ];
+    const graphEdges: PipelineEdgeDto[] = [
+      { id: 1, pipeline_id: 1, from_node_id: 1, to_node_id: 10 },
+      { id: 2, pipeline_id: 1, from_node_id: 1, to_node_id: 20 },
+      { id: 3, pipeline_id: 1, from_node_id: 10, to_node_id: 30 },
+      { id: 4, pipeline_id: 1, from_node_id: 20, to_node_id: 5 },
+    ];
+
+    const positions = layoutPipelineLR(graphNodes, graphEdges);
+    expect(positions.get(10)!.y).toBeLessThan(positions.get(20)!.y);
+    // RETL follows FINANC (top); Master Data follows ACCNT (bottom) — no X.
+    expect(positions.get(30)!.y).toBeLessThan(positions.get(5)!.y);
+  });
+
   it("assigns positions for disconnected nodes", () => {
     const solo: PipelineNodeDto[] = [{ ...nodes[0], id: 99 }];
     const positions = layoutPipelineLR(solo, []);

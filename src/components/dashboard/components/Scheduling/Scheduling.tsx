@@ -281,17 +281,29 @@ function pipelineToFlow(
     publishedNodeIdSet.add(startNode.id);
   }
 
-  const batchNodes = isPublishedView
-    ? allBatchNodes.filter((n) => publishedNodeIdSet.has(n.id))
-    : allBatchNodes;
+  // When overlaying a selected run, freeze the canvas to that run's nodes so
+  // batches added after the run do not appear on the historical flow.
+  const runNodeIdSet =
+    overlayRunStatus && pipelineRun?.nodes?.length
+      ? new Set(pipelineRun.nodes.map((n) => n.node_id))
+      : null;
 
-  const viewNodes = isPublishedView
-    ? pipeline.nodes.filter(
-        (n) => isStartNode(n) || publishedNodeIdSet.has(n.id),
-      )
-    : pipeline.nodes;
+  const batchNodes = allBatchNodes.filter((n) => {
+    if (isPublishedView && !publishedNodeIdSet.has(n.id)) return false;
+    if (runNodeIdSet && !runNodeIdSet.has(n.id)) return false;
+    return true;
+  });
 
-  const viewEdges = isPublishedView
+  const viewNodes = pipeline.nodes.filter((n) => {
+    if (isStartNode(n)) {
+      return !isPublishedView || publishedNodeIdSet.has(n.id);
+    }
+    if (isPublishedView && !publishedNodeIdSet.has(n.id)) return false;
+    if (runNodeIdSet && !runNodeIdSet.has(n.id)) return false;
+    return true;
+  });
+
+  const baseEdges = isPublishedView
     ? (published?.edges ?? [])
         .filter(
           (e) =>
@@ -320,6 +332,11 @@ function pipelineToFlow(
           };
         })
     : pipeline.edges;
+
+  const viewNodeIdSet = new Set(viewNodes.map((n) => n.id));
+  const viewEdges = baseEdges.filter(
+    (e) => viewNodeIdSet.has(e.from_node_id) && viewNodeIdSet.has(e.to_node_id),
+  );
 
   const rootIds = new Set(
     isPublishedView
@@ -1462,7 +1479,6 @@ const Scheduling = () => {
   const handleRunStarted = useCallback((runId: number) => {
     setPinnedRunId(null);
     setActiveRunId(runId);
-    setCenterViewTab("logs");
   }, []);
 
   const handleCenterViewTabChange = useCallback((tab: "flow" | "logs") => {

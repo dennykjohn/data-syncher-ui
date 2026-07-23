@@ -162,6 +162,13 @@ export function layoutPipelineLR(
     }
   }
 
+  const parentsOf = new Map<number, number[]>();
+  for (const edge of edges) {
+    const list = parentsOf.get(edge.to_node_id) ?? [];
+    list.push(edge.from_node_id);
+    parentsOf.set(edge.to_node_id, list);
+  }
+
   const byRank = new Map<number, number[]>();
   for (const node of batches) {
     const r = rank.get(node.id) ?? 1;
@@ -170,9 +177,35 @@ export function layoutPipelineLR(
     byRank.set(r, list);
   }
 
-  for (const [r, ids] of byRank.entries()) {
-    ids.sort((a, b) => a - b);
-    ids.forEach((id, index) => {
+  // Vertical order: barycenter of parents (reduces edge crossings).
+  // Sorting by node id alone ignores wiring and can cross last-column edges.
+  const orderIndex = new Map<number, number>();
+  if (start) {
+    orderIndex.set(start.id, 0);
+  }
+
+  const sortedRanks = [...byRank.keys()].sort((a, b) => a - b);
+  for (const r of sortedRanks) {
+    const ids = byRank.get(r) ?? [];
+    const scored = ids.map((id) => {
+      const parents = parentsOf.get(id) ?? [];
+      const known = parents
+        .map((pid) => orderIndex.get(pid))
+        .filter((idx): idx is number => idx !== undefined);
+      const barycenter =
+        known.length > 0
+          ? known.reduce((sum, idx) => sum + idx, 0) / known.length
+          : Number.POSITIVE_INFINITY;
+      return { id, barycenter };
+    });
+    scored.sort((a, b) => {
+      if (a.barycenter !== b.barycenter) {
+        return a.barycenter - b.barycenter;
+      }
+      return a.id - b.id;
+    });
+    scored.forEach(({ id }, index) => {
+      orderIndex.set(id, index);
       positions.set(id, {
         x: r * COLUMN_WIDTH,
         y: index * ROW_HEIGHT,

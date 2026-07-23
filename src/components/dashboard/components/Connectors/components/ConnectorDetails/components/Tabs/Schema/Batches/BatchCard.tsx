@@ -25,9 +25,15 @@ import { type MigrationBatch } from "@/types/connectors";
 interface BatchCardProps {
   batch: MigrationBatch;
   connectionId: number;
+  /** Reverse ETL: source table (lower) → destination table name. */
+  sourceToDestination?: Map<string, string>;
 }
 
-const BatchCard = ({ batch, connectionId }: BatchCardProps) => {
+const BatchCard = ({
+  batch,
+  connectionId,
+  sourceToDestination,
+}: BatchCardProps) => {
   const [expanded, setExpanded] = useState(true);
   const [isRenaming, setIsRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState(batch.name);
@@ -193,41 +199,57 @@ const BatchCard = ({ batch, connectionId }: BatchCardProps) => {
               {batch.tables
                 .slice()
                 .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
-                .map((t, index) => (
-                  <Flex
-                    key={t.table_name}
-                    alignItems="center"
-                    gap={2}
-                    minH="36px"
-                    bgColor={index % 2 === 0 ? "gray.50" : "white"}
-                    px={2.5}
-                    py={2}
-                    borderBottomWidth={index < batch.tables.length - 1 ? 1 : 0}
-                    borderColor="gray.100"
-                  >
-                    <Text
-                      fontSize="sm"
-                      flex="1"
-                      minW={0}
-                      lineHeight="short"
-                      truncate
-                      title={t.table_name}
+                .map((t, index) => {
+                  const mappedDestination = sourceToDestination?.get(
+                    t.table_name.toLowerCase(),
+                  );
+                  return (
+                    <Flex
+                      key={t.table_name}
+                      alignItems="center"
+                      gap={2}
+                      minH="36px"
+                      bgColor={index % 2 === 0 ? "gray.50" : "white"}
+                      px={2.5}
+                      py={2}
+                      borderBottomWidth={
+                        index < batch.tables.length - 1 ? 1 : 0
+                      }
+                      borderColor="gray.100"
                     >
-                      {t.table_name}
-                    </Text>
-                    <IconButton
-                      aria-label={`Remove ${t.table_name}`}
-                      size="xs"
-                      variant="ghost"
-                      flexShrink={0}
-                      color="gray.500"
-                      _hover={{ color: "red.500", bg: "red.50" }}
-                      onClick={() => handleRemoveTable(t.table_name)}
-                    >
-                      <MdClose />
-                    </IconButton>
-                  </Flex>
-                ))}
+                      <Flex direction="column" flex="1" minW={0} gap={0}>
+                        <Text
+                          fontSize="sm"
+                          lineHeight="short"
+                          truncate
+                          title={
+                            mappedDestination
+                              ? `${t.table_name} → ${mappedDestination}`
+                              : t.table_name
+                          }
+                        >
+                          {t.table_name}
+                        </Text>
+                        {mappedDestination && (
+                          <Text fontSize="xs" color="gray.500" truncate>
+                            → {mappedDestination}
+                          </Text>
+                        )}
+                      </Flex>
+                      <IconButton
+                        aria-label={`Remove ${t.table_name}`}
+                        size="xs"
+                        variant="ghost"
+                        flexShrink={0}
+                        color="gray.500"
+                        _hover={{ color: "red.500", bg: "red.50" }}
+                        onClick={() => handleRemoveTable(t.table_name)}
+                      >
+                        <MdClose />
+                      </IconButton>
+                    </Flex>
+                  );
+                })}
             </Box>
           )}
         </Box>
