@@ -57,6 +57,7 @@ export const refreshAccessToken = async () => {
     .post<RefreshTokenResponse>(
       `${baseURL}/api/v1/${ServerRoutes.auth.refresh()}`,
       {
+        refresh: refreshToken,
         refresh_token: refreshToken,
       },
     )
