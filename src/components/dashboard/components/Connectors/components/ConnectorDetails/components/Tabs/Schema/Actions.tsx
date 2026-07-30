@@ -21,11 +21,21 @@ const Actions = ({
   setShouldShowDisabledState,
   onUpdateSchemaComplete,
   reloadingTables,
+  updateSchemaLabel,
+  updateSchemaIcon,
+  onUpdateSchemaClick,
+  leftChild,
+  updateSchemaPosition = "right",
 }: {
   shouldShowDisabledState: boolean;
   setShouldShowDisabledState: (_value: boolean) => void;
   onUpdateSchemaComplete?: () => void;
   reloadingTables: string[];
+  updateSchemaLabel?: string;
+  updateSchemaIcon?: React.ReactNode;
+  onUpdateSchemaClick?: () => void;
+  leftChild?: React.ReactNode;
+  updateSchemaPosition?: "left" | "right";
 }) => {
   const context = useOutletContext<Connector>();
   const {
@@ -33,7 +43,11 @@ const Actions = ({
     target_database,
     target_schema,
     disable_update_schema,
+    destination_name,
   } = context;
+
+  const isSnowflakeDest =
+    destination_name?.toLowerCase().replace(/[\s\-.]/g, "") === "snowflake";
 
   const { mutate: refreshSchema, isPending: isRefreshing } = useRefreshSchema({
     connectorId: connection_id,
@@ -158,28 +172,81 @@ const Actions = ({
     };
   };
 
+  const renderUpdateSchemaButton = () => {
+    if (disable_update_schema) return null;
+    return (
+      <Tooltip {...createTooltipProps(isUpdateSchemaFlowInProgress)}>
+        <Button
+          variant="outline"
+          colorPalette="brand"
+          loading={isUpdateSchemaFlowInProgress}
+          disabled={
+            (shouldShowDisabledState || isAnyOperationInProgress) &&
+            !isUpdateSchemaFlowInProgress
+          }
+          onClick={() => {
+            if (onUpdateSchemaClick) {
+              onUpdateSchemaClick();
+              return;
+            }
+            if (
+              (shouldShowDisabledState || isAnyOperationInProgress) &&
+              !isUpdateSchemaFlowInProgress
+            ) {
+              toaster.warning({
+                title: "Operation in progress",
+                description:
+                  "Another migration is currently in progress. Please wait until it completes.",
+              });
+              return;
+            }
+            setShouldShowDisabledState(true);
+            updateSchema(undefined, {
+              onError: () => {
+                setShouldShowDisabledState(false);
+              },
+            });
+          }}
+        >
+          {updateSchemaIcon !== undefined ? updateSchemaIcon : <MdRefresh />}
+          {updateSchemaLabel || "Update schema"}
+        </Button>
+      </Tooltip>
+    );
+  };
+
   return (
     <Flex
-      justifyContent="space-between"
+      justifyContent={
+        isSnowflakeDest || leftChild ? "space-between" : "flex-end"
+      }
       alignItems="center"
       flexWrap="wrap"
       gap={4}
       mb={2}
       minW="xl"
+      w="100%"
     >
-      <Flex direction="column" gap={2}>
-        <Text fontWeight="semibold">Destination Details</Text>
-        <Flex gap={12} alignItems="center" flexWrap="wrap">
-          <Flex gap={2}>
-            <Text color="gray.600">Database:</Text>
-            <Text fontWeight="semibold">{target_database}</Text>
-          </Flex>
-          <Flex gap={2}>
-            <Text color="gray.600">Schema:</Text>
-            <Text fontWeight="semibold">{target_schema}</Text>
+      {isSnowflakeDest ? (
+        <Flex direction="column" gap={2}>
+          <Text fontWeight="semibold">Destination Details</Text>
+          <Flex gap={12} alignItems="center" flexWrap="wrap">
+            <Flex gap={2}>
+              <Text color="gray.600">Database:</Text>
+              <Text fontWeight="semibold">{target_database}</Text>
+            </Flex>
+            <Flex gap={2}>
+              <Text color="gray.600">Schema:</Text>
+              <Text fontWeight="semibold">{target_schema}</Text>
+            </Flex>
           </Flex>
         </Flex>
-      </Flex>
+      ) : (
+        <Flex gap={4} alignItems="center">
+          {leftChild}
+          {updateSchemaPosition === "left" && renderUpdateSchemaButton()}
+        </Flex>
+      )}
 
       <Flex gap={4}>
         <Tooltip {...createTooltipProps(isRefreshButtonLoading)}>
@@ -199,41 +266,7 @@ const Actions = ({
           </Button>
         </Tooltip>
 
-        {!disable_update_schema && (
-          <Tooltip {...createTooltipProps(isUpdateSchemaFlowInProgress)}>
-            <Button
-              variant="outline"
-              colorPalette="brand"
-              loading={isUpdateSchemaFlowInProgress}
-              disabled={
-                (shouldShowDisabledState || isAnyOperationInProgress) &&
-                !isUpdateSchemaFlowInProgress
-              }
-              onClick={() => {
-                if (
-                  (shouldShowDisabledState || isAnyOperationInProgress) &&
-                  !isUpdateSchemaFlowInProgress
-                ) {
-                  toaster.warning({
-                    title: "Operation in progress",
-                    description:
-                      "Another migration is currently in progress. Please wait until it completes.",
-                  });
-                  return;
-                }
-                setShouldShowDisabledState(true);
-                updateSchema(undefined, {
-                  onError: () => {
-                    setShouldShowDisabledState(false);
-                  },
-                });
-              }}
-            >
-              <MdRefresh />
-              Update schema
-            </Button>
-          </Tooltip>
-        )}
+        {updateSchemaPosition !== "left" && renderUpdateSchemaButton()}
       </Flex>
     </Flex>
   );

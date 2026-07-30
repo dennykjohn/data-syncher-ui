@@ -14,7 +14,7 @@ export type FieldConfig = {
    * Optional choices for dropdown fields.
    * Each choice should have a string value and a display.
    */
-  choices?: Array<{ value: string; display: string }>;
+  choices?: Array<{ value: string; display: string; description?: string }>;
   required: boolean;
   read_only?: boolean; // If true, field will be read-only in edit mode
   widget?: string | null;
@@ -25,6 +25,8 @@ export type FieldConfig = {
   dependency_value?: string | null;
   // Some schemas use `dependency` instead of `dependency_value`.
   dependency?: string | null;
+  description?: string;
+  placeholder?: string;
 };
 
 export interface KeyPair {
