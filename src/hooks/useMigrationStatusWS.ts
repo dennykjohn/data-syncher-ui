@@ -205,6 +205,9 @@ export const useMigrationStatusWS = (migrationId: number | null) => {
               undefined,
             ],
           });
+          void queryClient.invalidateQueries({
+            queryKey: ["connectorActivity"],
+          });
         }, 2000); // 2 s buffer for the backend to commit the final record
       }
     },

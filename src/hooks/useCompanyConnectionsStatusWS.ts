@@ -41,6 +41,9 @@ export const useCompanyConnectionsStatusWS = (cmpId: number | null) => {
           void queryClient.invalidateQueries({
             queryKey: ["connectors"],
           });
+          void queryClient.invalidateQueries({
+            queryKey: ["connectorActivity"],
+          });
         }, 2000);
       }
     },
