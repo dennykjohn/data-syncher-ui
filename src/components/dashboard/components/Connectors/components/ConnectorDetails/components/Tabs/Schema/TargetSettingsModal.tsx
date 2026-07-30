@@ -30,6 +30,66 @@ interface TargetSettings {
   delete_and_load?: boolean;
 }
 
+const LabeledField = ({
+  label,
+  children,
+  extra,
+}: {
+  label: string;
+  children: React.ReactNode;
+  extra?: React.ReactNode;
+}) => (
+  <Field.Root>
+    <Field.Label
+      fontSize="sm"
+      fontWeight="semibold"
+      color="gray.700"
+      mb={1}
+      display={extra ? "flex" : undefined}
+      justifyContent={extra ? "space-between" : undefined}
+      alignItems={extra ? "center" : undefined}
+      width={extra ? "100%" : undefined}
+    >
+      <Text as="span">{label}</Text>
+      {extra}
+    </Field.Label>
+    {children}
+  </Field.Root>
+);
+
+const LockableCheckbox = ({
+  label,
+  checked,
+  locked,
+  onChange,
+  dimWhenLocked = false,
+}: {
+  label: string;
+  checked: boolean;
+  locked: boolean;
+  onChange: (_v: boolean) => void;
+  dimWhenLocked?: boolean;
+}) => (
+  <Flex align="center" gap={2} py={0}>
+    <Text
+      fontSize="sm"
+      color={dimWhenLocked && locked ? "gray.400" : "gray.700"}
+    >
+      {label}
+    </Text>
+    <Checkbox.Root
+      size="sm"
+      colorPalette="brand"
+      disabled={locked}
+      checked={checked}
+      onCheckedChange={(details) => onChange(!!details.checked)}
+    >
+      <Checkbox.HiddenInput />
+      <Checkbox.Control cursor={locked ? "not-allowed" : "pointer"} />
+    </Checkbox.Root>
+  </Flex>
+);
+
 interface TargetSettingsModalProps {
   open: boolean;
   onClose: () => void;
@@ -75,6 +135,9 @@ const TargetSettingsModal = ({
       delete_and_load: !!settings.delete_and_load,
     };
   });
+
+  const patchSettings = (patch: Partial<TargetSettings>) =>
+    setLocalSettings((prev) => ({ ...prev, ...patch }));
 
   // State for the delete/reset confirmation dialog
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
@@ -192,15 +255,7 @@ const TargetSettingsModal = ({
               <Dialog.Body p={3} overflowY="auto">
                 <Flex width="100%" direction="column" gap={2}>
                   {/* Load Method */}
-                  <Field.Root>
-                    <Field.Label
-                      fontSize="sm"
-                      fontWeight="semibold"
-                      color="gray.700"
-                      mb={1}
-                    >
-                      Load method
-                    </Field.Label>
+                  <LabeledField label="Load method">
                     <Flex align="center" gap={2} width="100%">
                       <NativeSelect.Root
                         size="sm"
@@ -211,10 +266,7 @@ const TargetSettingsModal = ({
                           {...{ disabled: isLoadMethodLocked }}
                           value={localSettings.load_method}
                           onChange={(e) =>
-                            setLocalSettings((prev) => ({
-                              ...prev,
-                              load_method: e.target.value,
-                            }))
+                            patchSettings({ load_method: e.target.value })
                           }
                         >
                           {isDelta ? (
@@ -257,81 +309,36 @@ const TargetSettingsModal = ({
                         </Tooltip>
                       )}
                     </Flex>
-                  </Field.Root>
+                  </LabeledField>
 
                   {/* Delete and Load Checkbox (only if load_method is initial) */}
                   {currentLoadMethod === "initial" && (
-                    <Flex align="center" gap={2} py={0}>
-                      <Text fontSize="sm" color="gray.700">
-                        Delete and Load
-                      </Text>
-                      <Checkbox.Root
-                        size="sm"
-                        colorPalette="brand"
-                        disabled={isLoadMethodLocked}
-                        checked={!!localSettings.delete_and_load}
-                        onCheckedChange={(details) =>
-                          setLocalSettings((prev) => ({
-                            ...prev,
-                            delete_and_load: !!details.checked,
-                          }))
-                        }
-                      >
-                        <Checkbox.HiddenInput />
-                        <Checkbox.Control
-                          cursor={
-                            isLoadMethodLocked ? "not-allowed" : "pointer"
-                          }
-                        />
-                      </Checkbox.Root>
-                    </Flex>
+                    <LockableCheckbox
+                      label="Delete and Load"
+                      checked={!!localSettings.delete_and_load}
+                      locked={isLoadMethodLocked}
+                      onChange={(v) => patchSettings({ delete_and_load: v })}
+                    />
                   )}
 
                   {/* Partition Delta by Date Checkbox (only if isDelta and load_method is not initial) */}
                   {showPartitionCheckbox && (
-                    <Flex align="center" gap={2} py={0}>
-                      <Text
-                        fontSize="sm"
-                        color={isLoadMethodLocked ? "gray.400" : "gray.700"}
-                      >
-                        Partition Delta by Date
-                      </Text>
-                      <Checkbox.Root
-                        size="sm"
-                        colorPalette="brand"
-                        disabled={isLoadMethodLocked}
-                        checked={!!localSettings.partition_delta_by_date}
-                        onCheckedChange={(details) =>
-                          setLocalSettings((prev) => ({
-                            ...prev,
-                            partition_delta_by_date: !!details.checked,
-                          }))
-                        }
-                      >
-                        <Checkbox.HiddenInput />
-                        <Checkbox.Control
-                          cursor={
-                            isLoadMethodLocked ? "not-allowed" : "pointer"
-                          }
-                        />
-                      </Checkbox.Root>
-                    </Flex>
+                    <LockableCheckbox
+                      label="Partition Delta by Date"
+                      checked={!!localSettings.partition_delta_by_date}
+                      locked={isLoadMethodLocked}
+                      dimWhenLocked
+                      onChange={(v) =>
+                        patchSettings({ partition_delta_by_date: v })
+                      }
+                    />
                   )}
 
                   {/* Target Name */}
-                  <Field.Root>
-                    <Field.Label
-                      fontSize="sm"
-                      fontWeight="semibold"
-                      color="gray.700"
-                      mb={1}
-                      display="flex"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      width="100%"
-                    >
-                      <Text as="span">{targetLabel}</Text>
-                      {formattedFirstSync && (
+                  <LabeledField
+                    label={targetLabel}
+                    extra={
+                      formattedFirstSync && (
                         <Text
                           as="span"
                           fontSize="xs"
@@ -341,32 +348,22 @@ const TargetSettingsModal = ({
                           {"Initialisation => "}
                           {formattedFirstSync}
                         </Text>
-                      )}
-                    </Field.Label>
+                      )
+                    }
+                  >
                     <Input
                       size="sm"
                       disabled={isLoadMethodLocked}
                       value={localSettings.output_file_name}
                       onChange={(e) =>
-                        setLocalSettings((prev) => ({
-                          ...prev,
-                          output_file_name: e.target.value,
-                        }))
+                        patchSettings({ output_file_name: e.target.value })
                       }
                       placeholder={targetLabel}
                     />
-                  </Field.Root>
+                  </LabeledField>
 
                   {/* File Type */}
-                  <Field.Root>
-                    <Field.Label
-                      fontSize="sm"
-                      fontWeight="semibold"
-                      color="gray.700"
-                      mb={1}
-                    >
-                      File type
-                    </Field.Label>
+                  <LabeledField label="File type">
                     <NativeSelect.Root size="sm" disabled>
                       <NativeSelect.Field
                         {...{ disabled: true }}
@@ -376,27 +373,16 @@ const TargetSettingsModal = ({
                       </NativeSelect.Field>
                       <NativeSelect.Indicator />
                     </NativeSelect.Root>
-                  </Field.Root>
+                  </LabeledField>
 
                   {/* Compression Method */}
-                  <Field.Root>
-                    <Field.Label
-                      fontSize="sm"
-                      fontWeight="semibold"
-                      color="gray.700"
-                      mb={1}
-                    >
-                      Compression method
-                    </Field.Label>
+                  <LabeledField label="Compression method">
                     <NativeSelect.Root size="sm" disabled={isLoadMethodLocked}>
                       <NativeSelect.Field
                         {...{ disabled: isLoadMethodLocked }}
                         value={localSettings.compression_method}
                         onChange={(e) =>
-                          setLocalSettings((prev) => ({
-                            ...prev,
-                            compression_method: e.target.value,
-                          }))
+                          patchSettings({ compression_method: e.target.value })
                         }
                       >
                         <option value="none">None</option>
@@ -405,7 +391,7 @@ const TargetSettingsModal = ({
                       </NativeSelect.Field>
                       <NativeSelect.Indicator />
                     </NativeSelect.Root>
-                  </Field.Root>
+                  </LabeledField>
                 </Flex>
               </Dialog.Body>
 

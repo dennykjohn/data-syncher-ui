@@ -58,11 +58,58 @@ const FILTER_TYPE_BY_EDM_TYPE: Record<string, string | null> = {
   "Edm.Binary": null,
 };
 
+const FieldLabel = ({ children }: { children: React.ReactNode }) => (
+  <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={0}>
+    {children}
+  </Text>
+);
+
+const LabeledSelect = ({
+  value,
+  onChange,
+  disabled,
+  children,
+}: {
+  value: string;
+  onChange: (_e: React.ChangeEvent<HTMLSelectElement>) => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) => (
+  <NativeSelect.Root size="xs" disabled={disabled}>
+    <NativeSelect.Field value={value} onChange={onChange}>
+      {children}
+    </NativeSelect.Field>
+    <NativeSelect.Indicator />
+  </NativeSelect.Root>
+);
+
+const SummaryChip = ({ children }: { children: React.ReactNode }) => (
+  <Box
+    bg="gray.100"
+    px={2}
+    py={0.5}
+    borderRadius="md"
+    borderWidth="1px"
+    borderColor="gray.200"
+  >
+    {children}
+  </Box>
+);
+
 const toCamelCase = (str: string): string => {
   if (!str) return "";
   const clean = str.startsWith("Edm.") ? str.slice(4) : str;
   return clean.charAt(0).toLowerCase() + clean.slice(1);
 };
+
+const KEYWORD_TYPE_MAP: [string[], "boolean" | "numeric" | "datetime"][] = [
+  [["boolean"], "boolean"],
+  [
+    ["int", "decimal", "double", "float", "short", "long", "byte", "number"],
+    "numeric",
+  ],
+  [["date", "time", "instant"], "datetime"],
+];
 
 const getFieldType = (
   info: TableFieldInfo | string | null | undefined,
@@ -80,29 +127,13 @@ const getFieldType = (
       | "string";
   }
 
-  // Fallback to old regex matching on data_type if edm_type is missing
+  // Fallback to keyword matching on data_type if edm_type is missing
   const typeStr = typeof info === "string" ? info : info.data_type || "string";
   const norm = typeStr.toLowerCase();
-  if (norm.includes("boolean")) return "boolean";
-  if (
-    norm.includes("int") ||
-    norm.includes("decimal") ||
-    norm.includes("double") ||
-    norm.includes("float") ||
-    norm.includes("short") ||
-    norm.includes("long") ||
-    norm.includes("byte") ||
-    norm.includes("number")
-  ) {
-    return "numeric";
-  }
-  if (
-    norm.includes("date") ||
-    norm.includes("time") ||
-    norm.includes("instant")
-  )
-    return "datetime";
-  return "string";
+  const match = KEYWORD_TYPE_MAP.find(([keywords]) =>
+    keywords.some((k) => norm.includes(k)),
+  );
+  return match ? match[1] : "string";
 };
 
 const getFieldDataType = (
@@ -114,60 +145,53 @@ const getFieldDataType = (
   }
   return typeof info === "string" ? info : info.data_type || "unknown";
 };
+
+const OP_ALIASES: Record<string, string> = {
+  "=": "eq",
+  "!=": "ne",
+  ">": "gt",
+  "<": "lt",
+  ">=": "ge",
+  "<=": "le",
+};
+
 const normalizeOperator = (op: string): string => {
   if (!op) return "eq";
   const norm = op.toLowerCase().trim();
-  if (norm === "=") return "eq";
-  if (norm === "!=") return "ne";
-  if (norm === ">") return "gt";
-  if (norm === "<") return "lt";
-  if (norm === ">=") return "ge";
-  if (norm === "<=") return "le";
-  return norm;
+  return OP_ALIASES[norm] ?? norm;
+};
+
+const COMMON_COMPARISON_OPS = [
+  { label: "Equal to (EQ)", value: "eq" },
+  { label: "Not equal to (NE)", value: "ne" },
+  { label: "In (IN)", value: "in" },
+  { label: "Greater than (GT)", value: "gt" },
+  { label: "Greater than or equal to (GE)", value: "ge" },
+  { label: "Less than (LT)", value: "lt" },
+  { label: "Less than or equal to (LE)", value: "le" },
+];
+
+const OPERATORS_BY_TYPE: Record<string, { label: string; value: string }[]> = {
+  boolean: [
+    { label: "Equal to (EQ)", value: "eq" },
+    { label: "Not equal to (NE)", value: "ne" },
+  ],
+  numeric: COMMON_COMPARISON_OPS,
+  datetime: COMMON_COMPARISON_OPS,
+  time: COMMON_COMPARISON_OPS,
+  string: [
+    { label: "Equal to (EQ)", value: "eq" },
+    { label: "Not equal to (NE)", value: "ne" },
+    { label: "In (IN)", value: "in" },
+    { label: "Substring of (Substringof)", value: "substringof" },
+    { label: "Starts with (Startswith)", value: "startswith" },
+    { label: "Ends with (Endswith)", value: "endswith" },
+  ],
 };
 
 const getOperatorsForType = (
   type: "boolean" | "numeric" | "datetime" | "time" | "string",
-) => {
-  switch (type) {
-    case "boolean":
-      return [
-        { label: "Equal to (EQ)", value: "eq" },
-        { label: "Not equal to (NE)", value: "ne" },
-      ];
-    case "numeric":
-      return [
-        { label: "Equal to (EQ)", value: "eq" },
-        { label: "Not equal to (NE)", value: "ne" },
-        { label: "In (IN)", value: "in" },
-        { label: "Greater than (GT)", value: "gt" },
-        { label: "Greater than or equal to (GE)", value: "ge" },
-        { label: "Less than (LT)", value: "lt" },
-        { label: "Less than or equal to (LE)", value: "le" },
-      ];
-    case "datetime":
-    case "time":
-      return [
-        { label: "Equal to (EQ)", value: "eq" },
-        { label: "Not equal to (NE)", value: "ne" },
-        { label: "In (IN)", value: "in" },
-        { label: "Greater than (GT)", value: "gt" },
-        { label: "Greater than or equal to (GE)", value: "ge" },
-        { label: "Less than (LT)", value: "lt" },
-        { label: "Less than or equal to (LE)", value: "le" },
-      ];
-    case "string":
-    default:
-      return [
-        { label: "Equal to (EQ)", value: "eq" },
-        { label: "Not equal to (NE)", value: "ne" },
-        { label: "In (IN)", value: "in" },
-        { label: "Substring of (Substringof)", value: "substringof" },
-        { label: "Starts with (Startswith)", value: "startswith" },
-        { label: "Ends with (Endswith)", value: "endswith" },
-      ];
-  }
-};
+) => OPERATORS_BY_TYPE[type] ?? OPERATORS_BY_TYPE.string;
 const ColumnSelect = ({
   value,
   onChange,
@@ -507,6 +531,19 @@ const FlexibleDateTimePicker = ({
           ? granularity
           : "text";
 
+    const openPicker = (el: HTMLInputElement) => {
+      if (granularity !== "year") {
+        if (el.type === "text") {
+          el.type = granularity;
+        }
+        try {
+          el.showPicker();
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+
     return (
       <Input
         size="xs"
@@ -519,31 +556,10 @@ const FlexibleDateTimePicker = ({
         onChange={(e) => onValChange(e.target.value)}
         onFocus={(e) => {
           setIsFocused(true);
-          if (granularity !== "year") {
-            if (e.target.type === "text") {
-              e.target.type = granularity;
-            }
-            try {
-              e.target.showPicker();
-            } catch {
-              /* ignore */
-            }
-          }
+          openPicker(e.target);
         }}
         onBlur={() => setIsFocused(false)}
-        onClick={(e) => {
-          if (granularity !== "year") {
-            const el = e.currentTarget as HTMLInputElement;
-            if (el.type === "text") {
-              el.type = granularity;
-            }
-            try {
-              el.showPicker();
-            } catch {
-              /* ignore */
-            }
-          }
-        }}
+        onClick={(e) => openPicker(e.currentTarget)}
         flex="1"
         cursor={granularity !== "year" ? "pointer" : "text"}
       />
@@ -568,40 +584,34 @@ const FlexibleDateTimePicker = ({
     <Flex gap={2} w="100%" align="flex-start" wrap="wrap">
       {/* Precision Dropdown */}
       <Box minW="130px">
-        <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={0}>
-          PRECISION
-        </Text>
-        <NativeSelect.Root size="xs" disabled={disabled}>
-          <NativeSelect.Field
-            value={granularity}
-            onChange={(e) => {
-              onGranularityChange(
-                e.target.value as "year" | "month" | "date" | "datetime-local",
-              );
-            }}
-          >
-            {!dropYearGranularity && <option value="year">Year Only</option>}
-            {!dropYearGranularity && (
-              <option value="month">Year & Month</option>
-            )}
-            <option value="date">Date</option>
-            {!isDateFormatWithZeroPrecision && (
-              <option value="datetime-local">Date & Time</option>
-            )}
-          </NativeSelect.Field>
-          <NativeSelect.Indicator />
-        </NativeSelect.Root>
+        <FieldLabel>PRECISION</FieldLabel>
+        <LabeledSelect
+          disabled={disabled}
+          value={granularity}
+          onChange={(e) => {
+            onGranularityChange(
+              e.target.value as "year" | "month" | "date" | "datetime-local",
+            );
+          }}
+        >
+          {!dropYearGranularity && <option value="year">Year Only</option>}
+          {!dropYearGranularity && <option value="month">Year & Month</option>}
+          <option value="date">Date</option>
+          {!isDateFormatWithZeroPrecision && (
+            <option value="datetime-local">Date & Time</option>
+          )}
+        </LabeledSelect>
       </Box>
 
       {/* Input controls based on Mode */}
       <Box flex="1" minW="200px">
-        <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={0}>
+        <FieldLabel>
           {mode === "range"
             ? "DATE RANGE"
             : mode === "multiple"
               ? "DATE VALUES"
               : "DATE VALUE"}
-        </Text>
+        </FieldLabel>
         {mode === "exact" && (
           <DateInput
             val={value}
@@ -683,6 +693,23 @@ const FilterConditionEditor = ({
   const showModeToggle = columnType === "numeric" && !restriction;
   const isComponentDisabled = disabled || isFieldsLoading;
 
+  const buildResetFields = (
+    mode: "exact" | "range" | "multiple",
+    colType: ReturnType<typeof getFieldType>,
+  ) => ({
+    mode,
+    operator:
+      mode === "exact"
+        ? getOperatorsForType(colType)[0].value
+        : mode === "range"
+          ? "ge_le"
+          : "in",
+    value: "",
+    fromValue: "",
+    toValue: "",
+    multipleValues: [],
+  });
+
   const handleColumnChange = (column: string) => {
     const info = tableFields[column];
     const edm_type =
@@ -694,7 +721,6 @@ const FilterConditionEditor = ({
       typeof info === "object" && info !== null
         ? info.filter_restriction
         : null;
-    const defaultOp = getOperatorsForType(colType)[0].value;
 
     let defaultMode: "exact" | "range" | "multiple" = "exact";
     if (
@@ -708,34 +734,15 @@ const FilterConditionEditor = ({
 
     onChange({
       column,
-      mode: defaultMode,
-      operator:
-        defaultMode === "exact"
-          ? defaultOp
-          : defaultMode === "range"
-            ? "ge_le"
-            : "in",
-      value: "",
-      fromValue: "",
-      toValue: "",
-      multipleValues: [],
       granularity: "date",
       edm_type,
+      ...buildResetFields(defaultMode, colType),
     });
   };
 
   const handleModeChange = (mode: "exact" | "range" | "multiple") => {
     const colType = getFieldType(fieldInfo || "string");
-    const defaultOp = getOperatorsForType(colType)[0].value;
-    onChange({
-      mode,
-      operator:
-        mode === "exact" ? defaultOp : mode === "range" ? "ge_le" : "in",
-      value: "",
-      fromValue: "",
-      toValue: "",
-      multipleValues: [],
-    });
+    onChange(buildResetFields(mode, colType));
   };
 
   return (
@@ -743,9 +750,7 @@ const FilterConditionEditor = ({
       {/* Row 1: Column + Operator */}
       <Flex gap={2} w="100%" wrap="wrap">
         <Box flex="2" minW="200px">
-          <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={0}>
-            COLUMN
-          </Text>
+          <FieldLabel>COLUMN</FieldLabel>
           <ColumnSelect
             value={condition.column}
             onChange={handleColumnChange}
@@ -754,45 +759,41 @@ const FilterConditionEditor = ({
           />
         </Box>
         <Box flex="1" minW="130px">
-          <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={0}>
-            OPERATOR
-          </Text>
+          <FieldLabel>OPERATOR</FieldLabel>
           {restriction !== "single-value" &&
           restriction !== "multi-value" &&
           condition.mode !== "range" ? (
-            <NativeSelect.Root size="xs" disabled={isComponentDisabled}>
-              <NativeSelect.Field
-                value={condition.operator}
-                onChange={(e) => {
-                  const op = e.target.value;
-                  if (op === "in") {
-                    onChange({
-                      operator: "in",
-                      mode: "multiple",
-                      value: "",
-                      multipleValues: [],
-                    });
-                  } else {
-                    onChange({
-                      operator: op,
-                      mode: "exact",
-                      value: "",
-                      multipleValues: [],
-                    });
-                  }
-                }}
-              >
-                {condition.column === "" && (
-                  <option value="">Select operator</option>
-                )}
-                {operators.map((op) => (
-                  <option key={op.value} value={op.value}>
-                    {op.label}
-                  </option>
-                ))}
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
+            <LabeledSelect
+              disabled={isComponentDisabled}
+              value={condition.operator}
+              onChange={(e) => {
+                const op = e.target.value;
+                if (op === "in") {
+                  onChange({
+                    operator: "in",
+                    mode: "multiple",
+                    value: "",
+                    multipleValues: [],
+                  });
+                } else {
+                  onChange({
+                    operator: op,
+                    mode: "exact",
+                    value: "",
+                    multipleValues: [],
+                  });
+                }
+              }}
+            >
+              {condition.column === "" && (
+                <option value="">Select operator</option>
+              )}
+              {operators.map((op) => (
+                <option key={op.value} value={op.value}>
+                  {op.label}
+                </option>
+              ))}
+            </LabeledSelect>
           ) : (
             <Input
               size="xs"
@@ -815,9 +816,7 @@ const FilterConditionEditor = ({
       {/* Mode Selector (only if datetime and restriction not set) */}
       {showModeToggle && (
         <Box>
-          <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={0}>
-            FILTER MODE
-          </Text>
+          <FieldLabel>FILTER MODE</FieldLabel>
           <Flex
             display="inline-flex"
             bg="gray.100"
@@ -826,56 +825,33 @@ const FilterConditionEditor = ({
             borderWidth="1px"
             borderColor="gray.200"
           >
-            <Button
-              disabled={isComponentDisabled}
-              size="2xs"
-              variant={condition.mode === "exact" ? "solid" : "ghost"}
-              onClick={() => handleModeChange("exact")}
-              borderRadius="sm"
-              fontSize="2xs"
-              h="22px"
-              px={2.5}
-              bg={condition.mode === "exact" ? "white" : "transparent"}
-              color={condition.mode === "exact" ? "brand.800" : "gray.600"}
-              boxShadow={condition.mode === "exact" ? "sm" : "none"}
-              _hover={{ bg: condition.mode === "exact" ? "white" : "gray.200" }}
-            >
-              Exact Match
-            </Button>
-            <Button
-              disabled={isComponentDisabled}
-              size="2xs"
-              variant={condition.mode === "range" ? "solid" : "ghost"}
-              onClick={() => handleModeChange("range")}
-              borderRadius="sm"
-              fontSize="2xs"
-              h="22px"
-              px={2.5}
-              bg={condition.mode === "range" ? "white" : "transparent"}
-              color={condition.mode === "range" ? "brand.800" : "gray.600"}
-              boxShadow={condition.mode === "range" ? "sm" : "none"}
-              _hover={{ bg: condition.mode === "range" ? "white" : "gray.200" }}
-            >
-              Range
-            </Button>
-            <Button
-              disabled={isComponentDisabled}
-              size="2xs"
-              variant={condition.mode === "multiple" ? "solid" : "ghost"}
-              onClick={() => handleModeChange("multiple")}
-              borderRadius="sm"
-              fontSize="2xs"
-              h="22px"
-              px={2.5}
-              bg={condition.mode === "multiple" ? "white" : "transparent"}
-              color={condition.mode === "multiple" ? "brand.800" : "gray.600"}
-              boxShadow={condition.mode === "multiple" ? "sm" : "none"}
-              _hover={{
-                bg: condition.mode === "multiple" ? "white" : "gray.200",
-              }}
-            >
-              Multiple Values
-            </Button>
+            {(
+              [
+                { mode: "exact", label: "Exact Match" },
+                { mode: "range", label: "Range" },
+                { mode: "multiple", label: "Multiple Values" },
+              ] as const
+            ).map(({ mode: m, label }) => (
+              <Button
+                key={m}
+                disabled={isComponentDisabled}
+                size="2xs"
+                variant={condition.mode === m ? "solid" : "ghost"}
+                onClick={() => handleModeChange(m)}
+                borderRadius="sm"
+                fontSize="2xs"
+                h="22px"
+                px={2.5}
+                bg={condition.mode === m ? "white" : "transparent"}
+                color={condition.mode === m ? "brand.800" : "gray.600"}
+                boxShadow={condition.mode === m ? "sm" : "none"}
+                _hover={{
+                  bg: condition.mode === m ? "white" : "gray.200",
+                }}
+              >
+                {label}
+              </Button>
+            ))}
           </Flex>
         </Box>
       )}
@@ -886,32 +862,21 @@ const FilterConditionEditor = ({
           <Box w="100%">
             {columnType === "boolean" ? (
               <Box maxW="200px">
-                <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={0}>
-                  BOOLEAN VALUE
-                </Text>
-                <NativeSelect.Root size="xs" disabled={isComponentDisabled}>
-                  <NativeSelect.Field
-                    value={condition.value}
-                    onChange={(e) => onChange({ value: e.target.value })}
-                  >
-                    <option value="">Select boolean value</option>
-                    <option value="true">True</option>
-                    <option value="false">False</option>
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
+                <FieldLabel>BOOLEAN VALUE</FieldLabel>
+                <LabeledSelect
+                  disabled={isComponentDisabled}
+                  value={condition.value}
+                  onChange={(e) => onChange({ value: e.target.value })}
+                >
+                  <option value="">Select boolean value</option>
+                  <option value="true">True</option>
+                  <option value="false">False</option>
+                </LabeledSelect>
               </Box>
             ) : columnType === "numeric" ? (
               condition.mode === "range" ? (
                 <Box>
-                  <Text
-                    fontSize="2xs"
-                    fontWeight="bold"
-                    color="gray.500"
-                    mb={0}
-                  >
-                    NUMERIC RANGE
-                  </Text>
+                  <FieldLabel>NUMERIC RANGE</FieldLabel>
                   <Flex gap={2} w="100%" align="center">
                     <Input
                       flex="1"
@@ -940,14 +905,7 @@ const FilterConditionEditor = ({
                 </Box>
               ) : condition.mode === "multiple" ? (
                 <Box>
-                  <Text
-                    fontSize="2xs"
-                    fontWeight="bold"
-                    color="gray.500"
-                    mb={0}
-                  >
-                    NUMERIC VALUES
-                  </Text>
+                  <FieldLabel>NUMERIC VALUES</FieldLabel>
                   <MultipleValueChips
                     type="number"
                     values={condition.multipleValues}
@@ -957,14 +915,7 @@ const FilterConditionEditor = ({
                 </Box>
               ) : (
                 <Box>
-                  <Text
-                    fontSize="2xs"
-                    fontWeight="bold"
-                    color="gray.500"
-                    mb={0}
-                  >
-                    NUMERIC VALUE
-                  </Text>
+                  <FieldLabel>NUMERIC VALUE</FieldLabel>
                   <Input
                     size="xs"
                     type="number"
@@ -997,14 +948,7 @@ const FilterConditionEditor = ({
             ) : columnType === "time" ? (
               condition.operator === "in" ? (
                 <Box>
-                  <Text
-                    fontSize="2xs"
-                    fontWeight="bold"
-                    color="gray.500"
-                    mb={0}
-                  >
-                    TIME VALUES
-                  </Text>
+                  <FieldLabel>TIME VALUES</FieldLabel>
                   <MultipleValueChips
                     type="time"
                     values={condition.multipleValues}
@@ -1014,14 +958,7 @@ const FilterConditionEditor = ({
                 </Box>
               ) : (
                 <Box>
-                  <Text
-                    fontSize="2xs"
-                    fontWeight="bold"
-                    color="gray.500"
-                    mb={0}
-                  >
-                    TIME VALUE
-                  </Text>
+                  <FieldLabel>TIME VALUE</FieldLabel>
                   <Input
                     size="xs"
                     type="time"
@@ -1034,9 +971,7 @@ const FilterConditionEditor = ({
               )
             ) : condition.mode === "multiple" ? (
               <Box>
-                <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={0}>
-                  STRING VALUES
-                </Text>
+                <FieldLabel>STRING VALUES</FieldLabel>
                 <MultipleValueChips
                   type="text"
                   values={condition.multipleValues}
@@ -1046,9 +981,7 @@ const FilterConditionEditor = ({
               </Box>
             ) : (
               <Box>
-                <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={0}>
-                  STRING VALUE
-                </Text>
+                <FieldLabel>STRING VALUE</FieldLabel>
                 <Input
                   size="xs"
                   type="text"
@@ -1559,14 +1492,7 @@ const RowFilterModal = ({
 
                       {!isExpanded ? (
                         <Flex gap={1.5} mt={1} wrap="wrap" align="center">
-                          <Box
-                            bg="gray.100"
-                            px={2}
-                            py={0.5}
-                            borderRadius="md"
-                            borderWidth="1px"
-                            borderColor="gray.200"
-                          >
+                          <SummaryChip>
                             <Text
                               fontSize="xs"
                               color="gray.700"
@@ -1585,15 +1511,8 @@ const RowFilterModal = ({
                                 )
                               </strong>
                             </Text>
-                          </Box>
-                          <Box
-                            bg="gray.100"
-                            px={2}
-                            py={0.5}
-                            borderRadius="md"
-                            borderWidth="1px"
-                            borderColor="gray.200"
-                          >
+                          </SummaryChip>
+                          <SummaryChip>
                             <Text
                               fontSize="xs"
                               color="gray.700"
@@ -1609,17 +1528,10 @@ const RowFilterModal = ({
                                     condition.operator ||
                                     "none"}
                             </Text>
-                          </Box>
+                          </SummaryChip>
                           {condition.operator !== "isnull" &&
                             condition.operator !== "isnotnull" && (
-                              <Box
-                                bg="gray.100"
-                                px={2}
-                                py={0.5}
-                                borderRadius="md"
-                                borderWidth="1px"
-                                borderColor="gray.200"
-                              >
+                              <SummaryChip>
                                 <Text
                                   fontSize="xs"
                                   color="gray.700"
@@ -1631,7 +1543,7 @@ const RowFilterModal = ({
                                       ? `[${condition.multipleValues.join(", ")}]`
                                       : `"${condition.value}"`}
                                 </Text>
-                              </Box>
+                              </SummaryChip>
                             )}
                         </Flex>
                       ) : (
