@@ -115,6 +115,7 @@ const ServerRoutes = {
       `connection/${id}/update-schema-status/`,
     reloadSingleTable: () => `reload-single-table/`,
     refreshDeltaTable: () => `refresh-delta-table/`,
+    deleteDeltaTable: () => `delete-delta-table/`,
     fetchReverseSchema: (id: number) => `schema/${id}/`,
     fetchConnectionMappings: (id: number) => `connection/${id}/mappings/`,
     saveConnectionMappings: () => "connection/mappings/save/",

@@ -240,12 +240,27 @@ export interface ExcelConditionalFormat {
   style?: ExcelDifferentialStyle;
 }
 
+export interface TableFieldInfo {
+  edm_type?: string;
+  data_type?: string;
+  filter_type?: "boolean" | "numeric" | "datetime" | "time" | "string";
+  filter_restriction?: string | null;
+  filterable?: boolean;
+  display_format?: string;
+  displayFormat?: string;
+  precision?: number | string;
+  nullable?: boolean;
+  max_length?: number;
+  [key: string]: unknown;
+}
+
 export type ConnectorTable = {
   table: string;
   selected: boolean;
   sequence: number | null;
   is_delta: boolean;
-  table_fields: Record<string, string>;
+  service_name?: string | null;
+  table_fields: Record<string, TableFieldInfo | string>;
   selected_fields?: string[] | null;
   output_file_name?: string | null;
   target_folder?: string | null;
@@ -253,6 +268,10 @@ export type ConnectorTable = {
   csv_delimiter?: string | null;
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
+  load_method?: string | null;
+  delete_and_load?: boolean | null;
+  partition_delta_by_date?: boolean | null;
+  compression_method?: string | null;
   notification_email_group_ids?: number[] | null;
   email_custom_fields?: {
     subject?: string;
@@ -299,6 +318,13 @@ export type ConnectorTable = {
   excel_sheet_name?: string | null;
   excel_options?: ExcelOptions | null;
   excel_conditional_formats?: ExcelConditionalFormat[] | null;
+  // SAP OData ETL lifecycle control fields
+  first_sync_timestamp?: string | null; // ISO datetime of first successful run
+  initial_completed_flag?: boolean | null; // True once initial phase has completed
+  load_method_locked?: boolean | null; // True when delta tracking is active and load_method is locked
+  last_delta_run_timestamp?: string | null; // ISO datetime of most recent successful delta run
+  row_filter?: RowFilterConfig | null;
+  row_filter_config?: RowFilterConfig | null;
 };
 
 export type ConnectorTablesResponse = {
@@ -457,3 +483,14 @@ export type ReverseSchemaResponse = {
   destination_tables?: ConnectorTable[];
   tables?: ConnectorTable[];
 };
+
+export interface FilterCondition {
+  column: string;
+  operator: string;
+  value: string | string[] | boolean | number | unknown;
+  edm_type: string;
+}
+
+export interface RowFilterConfig {
+  conditions: FilterCondition[];
+}

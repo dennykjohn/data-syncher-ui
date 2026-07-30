@@ -42,6 +42,7 @@ import { type Connector, type ConnectorTable } from "@/types/connectors";
 
 import { isPrimaryKey } from "../ReverseSchema/utils/validation";
 import Actions from "./Actions";
+import SAPODataSchema from "./SAPODataSchema";
 import SelectedTableList from "./SelectedTable";
 import { useIsMutating } from "@tanstack/react-query";
 
@@ -227,7 +228,7 @@ const TableRow = ({
   );
 };
 
-const Schema = () => {
+const DefaultSchema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
   const { disable_update_schema } = context;
@@ -670,6 +671,18 @@ const Schema = () => {
       </ActionBar.Root>
     </Flex>
   );
+};
+
+const Schema = () => {
+  const context = useOutletContext<Connector>();
+
+  if (
+    context.source_name?.toLowerCase().replace(/[\s\-.]/g, "") === "sapodata"
+  ) {
+    return <SAPODataSchema />;
+  }
+
+  return <DefaultSchema />;
 };
 
 export default Schema;
