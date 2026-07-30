@@ -18,6 +18,7 @@ import {
 import {
   type ExcelConditionalFormat,
   type ExcelOptions,
+  type TableFieldInfo,
 } from "@/types/connectors";
 
 import ExcelSettings from "./ExcelSettings";
@@ -42,7 +43,7 @@ interface TableExportSettingsModalProps {
   onClose: () => void;
   tableName: string;
   settings: TableExportSetting;
-  tableFields: Record<string, string | { data_type: string }>;
+  tableFields: Record<string, TableFieldInfo | string | { data_type?: string }>;
   onSave: (_settings: TableExportSetting) => void;
   isSaving?: boolean;
   supportedFormats?: string[];

@@ -27,16 +27,18 @@ import {
 } from "react-icons/md";
 import { PiKeyFill } from "react-icons/pi";
 
-import { isPrimaryKey } from "../../utils/validation";
-
 // We need a local Checkbox component if the one in @/components/ui/checkbox is not standard
 // But looking at SnowflakeSftpSchema.tsx, it uses Checkbox.Root, etc.
+
+import { type TableFieldInfo } from "@/types/connectors";
+
+import { isPrimaryKey } from "../../utils/validation";
 
 interface FieldSelectionModalProps {
   open: boolean;
   onClose: () => void;
   tableName: string;
-  tableFields: Record<string, string | { data_type: string }>;
+  tableFields: Record<string, TableFieldInfo | string | { data_type?: string }>;
   initialSelectedFields: string[] | null | undefined;
   onSave: (_fields: string[]) => void;
   isSaving: boolean;
