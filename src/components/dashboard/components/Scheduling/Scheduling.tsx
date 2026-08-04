@@ -790,6 +790,11 @@ const PipelineCanvas = ({
         (n) => String(n.id) === connection.target,
       );
       if (targetNode && isStartNode(targetNode)) return false;
+      // Each node may have at most 2 outgoing children (not a per-level width cap).
+      const outgoing = selectedPipeline.edges.filter(
+        (e) => String(e.from_node_id) === String(connection.source),
+      ).length;
+      if (outgoing >= 2) return false;
       return true;
     },
     [selectedPipeline],
@@ -1023,7 +1028,10 @@ const validationResultFromError = (err: unknown): PipelineValidationResult => {
       errors: data.errors,
       warnings: data.warnings ?? [],
       levels: data.levels ?? [],
-      max_nodes_per_level: data.max_nodes_per_level ?? 2,
+      max_nodes_per_level:
+        data.max_nodes_per_level ?? data.max_children_per_node ?? 2,
+      max_children_per_node:
+        data.max_children_per_node ?? data.max_nodes_per_level ?? 2,
       draft_node_ids: data.draft_node_ids,
       has_published_graph: data.has_published_graph,
       published_at: data.published_at,
@@ -1035,7 +1043,10 @@ const validationResultFromError = (err: unknown): PipelineValidationResult => {
     errors: data?.error ? [data.error] : ["Pipeline validation failed."],
     warnings: data?.warnings ?? [],
     levels: data?.levels ?? [],
-    max_nodes_per_level: data?.max_nodes_per_level ?? 2,
+    max_nodes_per_level:
+      data?.max_nodes_per_level ?? data?.max_children_per_node ?? 2,
+    max_children_per_node:
+      data?.max_children_per_node ?? data?.max_nodes_per_level ?? 2,
     draft_node_ids: data?.draft_node_ids,
     has_published_graph: data?.has_published_graph,
     published_at: data?.published_at,
@@ -1723,6 +1734,7 @@ const Scheduling = () => {
             warnings: data.warnings ?? [],
             levels: [],
             max_nodes_per_level: 2,
+            max_children_per_node: 2,
           },
         });
       }
@@ -2371,6 +2383,7 @@ const Scheduling = () => {
                       warnings: [],
                       levels: [],
                       max_nodes_per_level: 2,
+                      max_children_per_node: 2,
                     }
                   }
                   stale={panelStale}

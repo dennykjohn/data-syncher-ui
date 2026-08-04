@@ -203,6 +203,9 @@ export type PipelineValidationResult = {
   errors: string[];
   warnings: string[];
   levels: PipelineValidationLevel[];
+  /** Max direct children (outgoing edges) allowed per node. */
+  max_children_per_node?: number;
+  /** @deprecated Alias of max_children_per_node (not a DAG level width cap). */
   max_nodes_per_level: number;
   draft_node_ids?: number[];
   has_published_graph?: boolean;
