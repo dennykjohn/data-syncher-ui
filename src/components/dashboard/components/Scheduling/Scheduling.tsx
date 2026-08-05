@@ -218,7 +218,8 @@ function runNodeVisual(
     runNode,
   );
   if (!runNode) {
-    return { runStatus };
+    // Node was not part of this run — keep it visible without a status badge.
+    return {};
   }
   const tables = runNode.migration_status?.tables ?? [];
   const tablesTotal =
@@ -281,16 +282,11 @@ function pipelineToFlow(
     publishedNodeIdSet.add(startNode.id);
   }
 
-  // When overlaying a selected run, freeze the canvas to that run's nodes so
-  // batches added after the run do not appear on the historical flow.
-  const runNodeIdSet =
-    overlayRunStatus && pipelineRun?.nodes?.length
-      ? new Set(pipelineRun.nodes.map((n) => n.node_id))
-      : null;
-
+  // Keep the full published/draft topology visible while a run is selected.
+  // Run status is overlaid only on nodes that participated in that run
+  // (see runNodeVisual below) — do not hide the rest of the graph.
   const batchNodes = allBatchNodes.filter((n) => {
     if (isPublishedView && !publishedNodeIdSet.has(n.id)) return false;
-    if (runNodeIdSet && !runNodeIdSet.has(n.id)) return false;
     return true;
   });
 
@@ -299,7 +295,6 @@ function pipelineToFlow(
       return !isPublishedView || publishedNodeIdSet.has(n.id);
     }
     if (isPublishedView && !publishedNodeIdSet.has(n.id)) return false;
-    if (runNodeIdSet && !runNodeIdSet.has(n.id)) return false;
     return true;
   });
 
