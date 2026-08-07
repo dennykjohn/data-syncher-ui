@@ -1,43 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  ActionBar,
   Box,
   Button,
   Checkbox,
   Flex,
   Grid,
   IconButton,
-  Image,
   Input,
   InputGroup,
   Menu,
   Portal,
   Text,
-  VStack,
 } from "@chakra-ui/react";
 
-import { GrRefresh } from "react-icons/gr";
-import {
-  IoMdMail,
-  IoMdOptions,
-  IoMdPlay,
-  IoMdSettings,
-  IoMdTrash,
-} from "react-icons/io";
+import { IoMdMail, IoMdOptions, IoMdPlay, IoMdSettings } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
 import { PiKeyFill } from "react-icons/pi";
 
-import CheckIcon from "@/assets/icons/check-icon.svg";
-import ErrorIcon from "@/assets/icons/error-icon.svg";
-import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
 import Pagination from "@/components/shared/Pagination";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { type ReverseSchemaResponse } from "@/queryOptions/connector/reverseSchema/useFetchReverseSchema";
-import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import { usePagination } from "@/queryOptions/connector/schema/usePagination";
-import useReloadSingleTable from "@/queryOptions/connector/schema/useReloadSingleTable";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import {
   type ExportConfigResponse,
@@ -49,8 +36,11 @@ import {
   type ConnectorTable,
   type ExcelConditionalFormat,
   type ExcelOptions,
+  type UnassignedTable,
 } from "@/types/connectors";
 
+import BatchGroupedPanel from "../../../Schema/Batches/BatchGroupedPanel";
+import { isConnectorTableMarkedSelected } from "../../../Schema/schemaSelection";
 import { isPrimaryKey } from "../../utils/validation";
 import EmailGroupSelectionModal from "./EmailGroupSelectionModalNew";
 import { DEFAULT_EXCEL_OPTIONS, cleanRulePayload } from "./ExcelSettings";
@@ -126,12 +116,10 @@ interface SnowflakeFileExportSchemaProps {
   isDisabled: boolean;
   tableToBatchName?: Map<string, string>;
   onSelectionChange?: (_tables: string[], _isDirty: boolean) => void;
+  pendingUnassignedTables?: UnassignedTable[];
 }
 
 const ITEMS_PER_PAGE = 50;
-const COLLAPSED_ROW_MIN_HEIGHT = "40px";
-const COLLAPSED_ROW_PX = 2;
-const COLLAPSED_ROW_PY = 1;
 
 const DEFAULT_TABLE_SETTINGS: TableExportDefaults = {
   target_folder: "",
@@ -397,20 +385,14 @@ const SnowflakeFileExportSchema = ({
   isDisabled,
   tableToBatchName,
   onSelectionChange,
+  pendingUnassignedTables = [],
 }: SnowflakeFileExportSchemaProps) => {
   const queryClient = useQueryClient();
-  const reloadingTables = connector.reloadingTables ?? [];
-  const setReloadingTables = connector.setReloadingTables ?? (() => {});
 
   const { mutate: updateSelectedTables, isPending: isSavingSelection } =
     useUpdateSelectedTables({
       connectorId: connector.connection_id,
     });
-
-  const { data: tableStatusData } = useFetchTableStatus(
-    connector.connection_id,
-    true,
-  );
 
   const { data: emailGroups = [] } = useFetchEmailGroups();
   const { data: exportConfig } = useFetchExportConfig(
@@ -431,7 +413,6 @@ const SnowflakeFileExportSchema = ({
   >({});
   const [isSelectionDirty, setIsSelectionDirty] = useState(false);
   const [sourceSearch, setSourceSearch] = useState("");
-  const [mappingSearch, setMappingSearch] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [activeTableForSettings, setActiveTableForSettings] = useState<
@@ -475,9 +456,6 @@ const SnowflakeFileExportSchema = ({
       connectorId: connector.connection_id,
     });
 
-  const { mutate: reloadSingleTable, isPending: isReloadingSingleTable } =
-    useReloadSingleTable({ connectionId: connector.connection_id });
-
   const activeTableSettings = useMemo(() => {
     if (!activeTableForSettings) return null;
     return (
@@ -498,7 +476,11 @@ const SnowflakeFileExportSchema = ({
     if (isSelectionDirty || isSavingSelection) return;
 
     const selectedFromSchema = sourceTables
-      .filter((item) => item.selected)
+      .filter(
+        (item) =>
+          isConnectorTableMarkedSelected(item.selected) ||
+          tableToBatchName?.has(item.table.toLowerCase()),
+      )
       .map((item) => item.table);
     const nextSelected = Array.from(new Set([...selectedFromSchema]));
 
@@ -548,47 +530,17 @@ const SnowflakeFileExportSchema = ({
       });
     }
     setIsSelectionDirty(false);
-  }, [sourceTables, isSelectionDirty, isSavingSelection, exportConfig]);
+  }, [
+    sourceTables,
+    isSelectionDirty,
+    isSavingSelection,
+    exportConfig,
+    tableToBatchName,
+  ]);
 
   useEffect(() => {
     onSelectionChange?.(selectedTables, isSelectionDirty);
   }, [selectedTables, isSelectionDirty, onSelectionChange]);
-
-  const isTableReloading = (tableName: string) =>
-    reloadingTables.some(
-      (name) => name.toLowerCase() === tableName.toLowerCase(),
-    );
-
-  const isTableInProgress = (tableName: string) =>
-    tableStatusData?.tables?.some(
-      (t) => t.table === tableName && t.status === "in_progress",
-    ) ?? false;
-
-  const handleReloadTable = (tableName: string) => {
-    if (
-      isDisabled ||
-      isTableReloading(tableName) ||
-      isTableInProgress(tableName)
-    ) {
-      return;
-    }
-    setReloadingTables([...reloadingTables, tableName]);
-    reloadSingleTable(
-      { connection_id: connector.connection_id, table_name: tableName },
-      {
-        onSettled: () => {
-          setReloadingTables(
-            reloadingTables.filter(
-              (name) => name.toLowerCase() !== tableName.toLowerCase(),
-            ),
-          );
-          queryClient.invalidateQueries({
-            queryKey: ["ReverseSchema", connector.connection_id],
-          });
-        },
-      },
-    );
-  };
 
   const filteredSourcePanelTables = useMemo(() => {
     const query = sourceSearch.trim().toLowerCase();
@@ -603,14 +555,6 @@ const SnowflakeFileExportSchema = ({
     const selectedSet = new Set(selectedTables);
     return sourceTables.filter((item) => selectedSet.has(item.table));
   }, [sourceTables, selectedTables]);
-
-  const filteredSelectedTables = useMemo(() => {
-    const query = mappingSearch.trim().toLowerCase();
-    if (!query) return selectedSourceTables;
-    return selectedSourceTables.filter((item) =>
-      item.table.toLowerCase().includes(query),
-    );
-  }, [mappingSearch, selectedSourceTables]);
 
   const {
     currentData: paginatedSourceTables,
@@ -627,11 +571,11 @@ const SnowflakeFileExportSchema = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceSearch]);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const _handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
-  const handleTableDrop = (targetTable: string) => {
+  const _handleTableDrop = (targetTable: string) => {
     if (!draggedTable || draggedTable === targetTable) return;
 
     setSelectedTables((prev) => {
@@ -1010,32 +954,75 @@ const SnowflakeFileExportSchema = ({
 
   return (
     <>
-      <Grid templateColumns={["1fr", "1fr 1fr"]} gap={4} w="100%">
+      <Flex direction="column" gap={1} mr="auto" mt="-64px" w="100%" maxW="md">
+        <InputGroup endElement={<MdSearch size={28} />}>
+          <Input
+            placeholder="Search table name"
+            size="md"
+            value={sourceSearch}
+            onChange={(e) => {
+              setSourceSearch(e.target.value);
+              jumpToPage(1);
+            }}
+            disabled={!!activeTableForCopy}
+          />
+        </InputGroup>
+      </Flex>
+      <Grid templateColumns="1.2fr 1fr" gap={4} w="100%" alignItems="stretch">
         <Flex
           direction="column"
-          gap={2}
           borderWidth={1}
           borderColor="gray.300"
           borderRadius="lg"
           padding={4}
           bgColor="white"
+          minH={0}
+          maxH="72vh"
+          overflow="hidden"
         >
-          <Flex mb={2} justifyContent="space-between" alignItems="center">
-            <Text fontSize="sm" fontWeight="semibold">
-              Source Tables
-            </Text>
-          </Flex>
-
-          <Flex mb={2}>
-            <InputGroup endElement={<MdSearch size={20} />}>
-              <Input
-                placeholder="Search table name"
-                size="sm"
-                value={sourceSearch}
-                onChange={(e) => setSourceSearch(e.target.value)}
-                disabled={!!activeTableForCopy}
-              />
-            </InputGroup>
+          <Flex
+            mb={3}
+            justifyContent="space-between"
+            alignItems="center"
+            flexShrink={0}
+          >
+            <Flex gap={2} alignItems="center">
+              {activeTableForCopy && <Box w="24px" />}
+              <Text fontSize="sm" fontWeight="semibold">
+                Source Tables
+              </Text>
+            </Flex>
+            <Flex gap={6} alignItems="center">
+              {activeTableForCopy && (
+                <Flex justifyContent="center" minW="24px">
+                  <Text fontSize="sm" fontWeight="semibold">
+                    Paste
+                  </Text>
+                </Flex>
+              )}
+              <Flex justifyContent="center" minW="40px">
+                <Text fontSize="sm" fontWeight="semibold">
+                  Fields
+                </Text>
+              </Flex>
+              {isEmailSupportedDestination && (
+                <Flex justifyContent="center" minW="40px">
+                  <Text fontSize="sm" fontWeight="semibold">
+                    Email
+                  </Text>
+                </Flex>
+              )}
+              <Flex justifyContent="center" minW="40px">
+                <Text fontSize="sm" fontWeight="semibold">
+                  Settings
+                </Text>
+              </Flex>
+              <Flex justifyContent="center" minW="40px">
+                <Text fontSize="sm" fontWeight="semibold">
+                  Select
+                </Text>
+              </Flex>
+            </Flex>
           </Flex>
 
           {!filteredSourcePanelTables.length && (
@@ -1054,32 +1041,22 @@ const SnowflakeFileExportSchema = ({
                   const isExpanded = !!expanded[table];
                   const isSelected = selectedTables.includes(table);
                   const batchName = tableToBatchName?.get(table.toLowerCase());
-                  const reloadDisabled =
-                    isDisabled ||
-                    !!activeTableForCopy ||
-                    isTableReloading(table) ||
-                    isTableInProgress(table) ||
-                    isReloadingSingleTable;
 
                   return (
                     <Flex
                       key={table}
-                      justifyContent="space-between"
                       backgroundColor={rowBg}
-                      alignItems="center"
-                      direction={isExpanded ? "column" : "row"}
-                      px={COLLAPSED_ROW_PX}
-                      py={COLLAPSED_ROW_PY}
+                      direction="column"
+                      padding={2}
                       borderRadius={4}
-                      minHeight={COLLAPSED_ROW_MIN_HEIGHT}
                     >
-                      <Flex
+                      <Grid
+                        templateColumns="24px 1fr auto"
                         alignItems="center"
-                        justifyContent="space-between"
-                        gap={2}
                         width="100%"
+                        gap={2}
                       >
-                        <Flex alignItems="center" gap={2} flex="1">
+                        <Box>
                           <Box
                             onClick={(e) => {
                               if (activeTableForCopy) return;
@@ -1092,87 +1069,354 @@ const SnowflakeFileExportSchema = ({
                             cursor={
                               activeTableForCopy ? "not-allowed" : "pointer"
                             }
-                            padding={1}
-                            _hover={
-                              activeTableForCopy
-                                ? undefined
-                                : {
-                                    backgroundColor: "brand.200",
-                                    borderRadius: 4,
-                                  }
-                            }
-                            opacity={activeTableForCopy ? 0.5 : 1}
                           >
                             {isExpanded ? <IoCaretDownSharp /> : <IoMdPlay />}
                           </Box>
-                          <Checkbox.Root
-                            colorPalette="brand"
-                            checked={isSelected}
-                            onCheckedChange={() => toggleTableSelection(table)}
-                            disabled={!!activeTableForCopy}
-                          >
-                            <Checkbox.HiddenInput />
-                            <Checkbox.Control />
-                          </Checkbox.Root>
-                          <Text
-                            fontSize="sm"
-                            fontWeight="medium"
-                            flex="1"
-                            truncate
-                          >
-                            {table}
-                          </Text>
-                          {batchName && (
+                        </Box>
+
+                        <Box flex="1">
+                          <Flex alignItems="center" gap={2}>
                             <Text
-                              as="span"
-                              fontSize="2xs"
-                              fontWeight="semibold"
-                              color="brand.700"
-                              bgColor="brand.100"
-                              px={1.5}
-                              py={0.5}
-                              borderRadius="sm"
-                              maxW="120px"
-                              truncate
-                              title={batchName}
+                              fontSize="sm"
+                              cursor="pointer"
+                              onClick={(e) => {
+                                if (activeTableForCopy) return;
+                                e.stopPropagation();
+                                setExpanded((prev) => ({
+                                  ...prev,
+                                  [table]: !prev[table],
+                                }));
+                              }}
                             >
-                              {batchName}
+                              {table}
                             </Text>
-                          )}
-                        </Flex>
-                        <Tooltip
-                          content={
-                            reloadDisabled
-                              ? "Another migration is currently in progress."
-                              : "Reload table"
-                          }
-                          disabled={!reloadDisabled}
-                        >
-                          <Box
-                            color={reloadDisabled ? "gray.400" : "inherit"}
-                            opacity={reloadDisabled ? 0.5 : 1}
-                            p={1}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!reloadDisabled) handleReloadTable(table);
-                            }}
-                            cursor={reloadDisabled ? "not-allowed" : "pointer"}
-                            _hover={{
-                              color: reloadDisabled ? "gray.400" : "brand.500",
-                            }}
-                          >
-                            {isTableReloading(table) ? (
-                              <Image
-                                src={SandtimeIcon}
-                                boxSize="16px"
-                                objectFit="contain"
-                              />
-                            ) : (
-                              <GrRefresh />
+                            {batchName && (
+                              <Text
+                                as="span"
+                                fontSize="2xs"
+                                fontWeight="semibold"
+                                color="brand.700"
+                                bgColor="brand.100"
+                                px={1.5}
+                                py={0.5}
+                                borderRadius="sm"
+                                maxW="120px"
+                                truncate
+                                title={batchName}
+                              >
+                                {batchName}
+                              </Text>
                             )}
-                          </Box>
-                        </Tooltip>
-                      </Flex>
+                          </Flex>
+                        </Box>
+                        <Flex gap={6} alignItems="center" justifySelf="end">
+                          {activeTableForCopy && (
+                            <Flex justifyContent="center" minW="24px">
+                              {table === activeTableForCopy ? (
+                                <Flex
+                                  w="16px"
+                                  h="16px"
+                                  borderWidth="1px"
+                                  borderColor="gray.300"
+                                  borderRadius="sm"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  bg="gray.100"
+                                >
+                                  <Box
+                                    w="6px"
+                                    h="6px"
+                                    borderRadius="full"
+                                    bg="brand.500"
+                                  />
+                                </Flex>
+                              ) : (
+                                <Checkbox.Root
+                                  colorPalette="brand"
+                                  disabled={
+                                    table === activeTableForCopy || !isSelected
+                                  }
+                                  checked={selectedCopyTargets.includes(table)}
+                                  onCheckedChange={(details) => {
+                                    if (details.checked === true) {
+                                      setSelectedCopyTargets((prev) => [
+                                        ...prev,
+                                        table,
+                                      ]);
+                                    } else {
+                                      setSelectedCopyTargets((prev) =>
+                                        prev.filter((t) => t !== table),
+                                      );
+                                    }
+                                  }}
+                                >
+                                  <Checkbox.HiddenInput />
+                                  <Checkbox.Control />
+                                </Checkbox.Root>
+                              )}
+                            </Flex>
+                          )}
+                          {(() => {
+                            return (
+                              <Flex justifyContent="center" minW="40px">
+                                <Tooltip content="Select Export Fields">
+                                  <IconButton
+                                    size="xs"
+                                    variant="ghost"
+                                    colorPalette="brand"
+                                    disabled={
+                                      !!activeTableForCopy || !isSelected
+                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTableForFields(table);
+                                      setFieldModalOpen(true);
+                                    }}
+                                    borderRadius="full"
+                                    height="22px"
+                                    width="22px"
+                                    minWidth="22px"
+                                    flexShrink={0}
+                                    fontSize="14px"
+                                    boxShadow="none"
+                                    bg="transparent"
+                                    color="gray.500"
+                                    borderColor="transparent"
+                                    _hover={{
+                                      bg: "brand.50",
+                                      color: "brand.600",
+                                    }}
+                                    transition="all 0.2s"
+                                  >
+                                    <IoMdOptions />
+                                  </IconButton>
+                                </Tooltip>
+                              </Flex>
+                            );
+                          })()}
+
+                          {isEmailSupportedDestination &&
+                            (() => {
+                              const isEmailConfigured = !!(
+                                (tableExportSettings?.[table]
+                                  ?.notification_email_group_ids?.length ?? 0) >
+                                  0 ||
+                                (item.notification_email_group_ids?.length ??
+                                  0) > 0 ||
+                                tableExportSettings?.[table]
+                                  ?.email_custom_fields?.subject ||
+                                tableExportSettings?.[table]
+                                  ?.email_custom_fields?.body_content ||
+                                (tableExportSettings?.[table]
+                                  ?.email_custom_fields?.body_fields?.length ??
+                                  0) > 0 ||
+                                item.email_custom_fields?.subject ||
+                                item.email_custom_fields?.body_content ||
+                                (item.email_custom_fields?.body_fields
+                                  ?.length ?? 0) > 0
+                              );
+                              return (
+                                <Flex justifyContent="center" minW="40px">
+                                  <Tooltip content="Email Notifications">
+                                    <Menu.Root
+                                      positioning={{ placement: "bottom-end" }}
+                                    >
+                                      <Menu.Trigger asChild>
+                                        <IconButton
+                                          size="xs"
+                                          variant="ghost"
+                                          colorPalette="brand"
+                                          disabled={
+                                            !!activeTableForCopy || !isSelected
+                                          }
+                                          onClick={(e) => e.stopPropagation()}
+                                          borderRadius="md"
+                                          height="22px"
+                                          px={1.5}
+                                          minWidth="34px"
+                                          flexShrink={0}
+                                          boxShadow="none"
+                                          bg="transparent"
+                                          color="gray.500"
+                                          borderColor="transparent"
+                                          _hover={{
+                                            bg: "brand.50",
+                                            color: "brand.600",
+                                          }}
+                                          transition="all 0.2s"
+                                        >
+                                          <Flex alignItems="center" gap={0.5}>
+                                            <IoMdMail />
+                                            <IoCaretDownSharp
+                                              style={{ fontSize: "8px" }}
+                                            />
+                                          </Flex>
+                                        </IconButton>
+                                      </Menu.Trigger>
+                                      <Portal>
+                                        <Menu.Positioner>
+                                          <Menu.Content>
+                                            <Menu.Item
+                                              value="edit-email"
+                                              cursor="pointer"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActiveTableForEmail(table);
+                                                setEmailModalOpen(true);
+                                              }}
+                                            >
+                                              Edit
+                                            </Menu.Item>
+                                            <Menu.Item
+                                              value="copy-email"
+                                              cursor="pointer"
+                                              disabled={
+                                                selectedTables.length <= 1 ||
+                                                !isSelected ||
+                                                !isEmailConfigured
+                                              }
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActiveTableForCopy(table);
+                                                setCopyType("email");
+                                                setSelectedCopyTargets([]);
+                                              }}
+                                            >
+                                              Copy
+                                            </Menu.Item>
+                                          </Menu.Content>
+                                        </Menu.Positioner>
+                                      </Portal>
+                                    </Menu.Root>
+                                  </Tooltip>
+                                </Flex>
+                              );
+                            })()}
+
+                          {(() => {
+                            const hasError = !!targetFolderErrors[table];
+                            return (
+                              <Flex justifyContent="center" minW="40px">
+                                <Tooltip
+                                  content={
+                                    hasError
+                                      ? targetFolderErrors[table]
+                                      : "Export Settings"
+                                  }
+                                >
+                                  <Menu.Root
+                                    positioning={{ placement: "bottom-end" }}
+                                  >
+                                    <Menu.Trigger asChild>
+                                      <IconButton
+                                        size="xs"
+                                        variant="ghost"
+                                        colorPalette={
+                                          hasError ? "red" : "brand"
+                                        }
+                                        disabled={
+                                          !!activeTableForCopy || !isSelected
+                                        }
+                                        onClick={(e) => e.stopPropagation()}
+                                        borderRadius="md"
+                                        height="22px"
+                                        px={1.5}
+                                        minWidth="34px"
+                                        flexShrink={0}
+                                        boxShadow="none"
+                                        bg="transparent"
+                                        borderColor="transparent"
+                                        color={
+                                          hasError ? "red.500" : "gray.500"
+                                        }
+                                        _hover={{
+                                          bg: hasError ? "red.50" : "brand.50",
+                                          color: hasError
+                                            ? "red.600"
+                                            : "brand.600",
+                                        }}
+                                        transition="all 0.2s"
+                                      >
+                                        <Flex alignItems="center" gap={0.5}>
+                                          <IoMdSettings />
+                                          <IoCaretDownSharp
+                                            style={{ fontSize: "8px" }}
+                                          />
+                                        </Flex>
+                                      </IconButton>
+                                    </Menu.Trigger>
+                                    <Portal>
+                                      <Menu.Positioner>
+                                        <Menu.Content>
+                                          <Menu.Item
+                                            value="edit-settings"
+                                            cursor="pointer"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setActiveTableForSettings(table);
+                                              setSettingsModalOpen(true);
+                                            }}
+                                          >
+                                            Edit
+                                          </Menu.Item>
+                                          <Menu.Item
+                                            value="copy-settings"
+                                            cursor="pointer"
+                                            disabled={
+                                              selectedTables.length <= 1 ||
+                                              !isSelected
+                                            }
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setActiveTableForCopy(table);
+                                              setCopyType("export");
+                                              setSelectedCopyTargets([]);
+                                            }}
+                                          >
+                                            Copy
+                                          </Menu.Item>
+                                        </Menu.Content>
+                                      </Menu.Positioner>
+                                    </Portal>
+                                  </Menu.Root>
+                                </Tooltip>
+                              </Flex>
+                            );
+                          })()}
+
+                          <Flex justifyContent="center" minW="40px">
+                            <Tooltip
+                              content={
+                                batchName
+                                  ? `Assigned to batch "${batchName}" — remove from batch to deselect`
+                                  : undefined
+                              }
+                              disabled={!batchName}
+                            >
+                              <Box>
+                                <Checkbox.Root
+                                  colorPalette="brand"
+                                  variant="solid"
+                                  checked={isSelected || !!batchName}
+                                  onCheckedChange={() =>
+                                    toggleTableSelection(table)
+                                  }
+                                  disabled={!!activeTableForCopy || !!batchName}
+                                >
+                                  <Checkbox.HiddenInput />
+                                  <Checkbox.Control
+                                    cursor={
+                                      !!activeTableForCopy || !!batchName
+                                        ? "not-allowed"
+                                        : "pointer"
+                                    }
+                                  />
+                                </Checkbox.Root>
+                              </Box>
+                            </Tooltip>
+                          </Flex>
+                        </Flex>
+                      </Grid>
 
                       {isExpanded && (
                         <Flex
@@ -1241,633 +1485,96 @@ const SnowflakeFileExportSchema = ({
           )}
         </Flex>
 
-        <Flex
-          direction="column"
-          gap={2}
-          borderWidth={1}
-          borderColor="gray.300"
-          borderRadius="lg"
-          padding={4}
-          bgColor="white"
-        >
-          <Flex mb={2} justifyContent="space-between" alignItems="center">
-            <Text fontSize="sm" fontWeight="semibold">
-              File Mappings
-            </Text>
-          </Flex>
+        <BatchGroupedPanel
+          connectionId={connector.connection_id}
+          pendingUnassignedTables={pendingUnassignedTables}
+        />
+      </Grid>
 
-          <Flex mb={2}>
-            <InputGroup endElement={<MdSearch size={20} />}>
-              <Input
-                placeholder="Search selected table"
-                size="sm"
-                value={mappingSearch}
-                onChange={(e) => setMappingSearch(e.target.value)}
-              />
-            </InputGroup>
-          </Flex>
-
-          {!filteredSelectedTables.length ? (
-            <Flex justifyContent="center" py={8}>
-              <Text fontSize="sm" color="gray.500">
-                {selectedSourceTables.length === 0
-                  ? "Select source tables first."
-                  : "No matching selected source tables found"}
-              </Text>
-            </Flex>
-          ) : (
-            <VStack align="stretch" gap={2}>
-              {filteredSelectedTables.map((item, index) => {
-                const rowBg = index % 2 === 0 ? "gray.100" : "gray.50";
-                const hasError = !!targetFolderErrors[item.table];
-                const batchName = tableToBatchName?.get(
-                  item.table.toLowerCase(),
-                );
-
-                return (
-                  <Flex
-                    key={item.table}
-                    direction="column"
-                    px={COLLAPSED_ROW_PX}
-                    py={COLLAPSED_ROW_PY}
-                    bgColor={rowBg}
-                    borderRadius={4}
-                    gap={1}
-                    minHeight={COLLAPSED_ROW_MIN_HEIGHT}
-                    draggable={!activeTableForCopy}
-                    onDragStart={
-                      activeTableForCopy
-                        ? undefined
-                        : () => setDraggedTable(item.table)
-                    }
-                    onDragOver={activeTableForCopy ? undefined : handleDragOver}
-                    onDrop={
-                      activeTableForCopy
-                        ? undefined
-                        : () => handleTableDrop(item.table)
-                    }
-                    onDragEnd={
-                      activeTableForCopy
-                        ? undefined
-                        : () => setDraggedTable(null)
-                    }
-                  >
-                    <Flex
-                      alignItems="center"
-                      gap={3}
-                      width="100%"
-                      _hover={{ bg: "whiteAlpha.400" }}
-                      transition="background 0.2s"
-                      borderRadius="md"
-                    >
-                      <Box
-                        w="24px"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        flexShrink={0}
-                        pl={1}
-                      >
-                        {activeTableForCopy ? (
-                          item.table === activeTableForCopy ? (
-                            <Box
-                              w="8px"
-                              h="8px"
-                              borderRadius="full"
-                              bg="brand.600"
-                            />
-                          ) : (
-                            <Checkbox.Root
-                              colorPalette="brand"
-                              checked={selectedCopyTargets.includes(item.table)}
-                              onCheckedChange={(details) => {
-                                setSelectedCopyTargets((prev) =>
-                                  details.checked === true
-                                    ? [...prev, item.table]
-                                    : prev.filter((t) => t !== item.table),
-                                );
-                              }}
-                            >
-                              <Checkbox.HiddenInput />
-                              <Checkbox.Control />
-                            </Checkbox.Root>
-                          )
-                        ) : null}
-                      </Box>
-                      <Flex
-                        alignItems="center"
-                        gap={2}
-                        flex={1}
-                        minW={0}
-                        padding={1.5}
-                      >
-                        <Text
-                          fontSize="sm"
-                          fontWeight="semibold"
-                          color="gray.800"
-                          letterSpacing="tight"
-                          truncate
-                        >
-                          {item.table}
-                        </Text>
-                        {batchName && (
-                          <Text
-                            as="span"
-                            fontSize="2xs"
-                            fontWeight="semibold"
-                            color="brand.700"
-                            bgColor="brand.100"
-                            px={1.5}
-                            py={0.5}
-                            borderRadius="sm"
-                            maxW="100px"
-                            truncate
-                            title={batchName}
-                          >
-                            {batchName}
-                          </Text>
-                        )}
-                      </Flex>
-                      <Flex gap={1.5} alignItems="center" pr={1} flexShrink={0}>
-                        {(() => {
-                          const status = tableStatusData?.tables?.find(
-                            (t) => t.table === item.table,
-                          )?.status;
-                          return (
-                            <Box
-                              w="22px"
-                              h="22px"
-                              minW="22px"
-                              flexShrink={0}
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                            >
-                              {status === "in_progress" && (
-                                <Image
-                                  src={SandtimeIcon}
-                                  boxSize="16px"
-                                  objectFit="contain"
-                                />
-                              )}
-                              {status === "completed" && (
-                                <Image
-                                  src={CheckIcon}
-                                  boxSize="16px"
-                                  objectFit="contain"
-                                />
-                              )}
-                              {status === "failed" && (
-                                <Image
-                                  src={ErrorIcon}
-                                  boxSize="16px"
-                                  objectFit="contain"
-                                />
-                              )}
-                            </Box>
-                          );
-                        })()}
-
-                        {(() => {
-                          const hasSelectedFields = !!(
-                            item.selected_fields &&
-                            item.selected_fields.length > 0
-                          );
-                          return (
-                            <Tooltip content="Select Export Fields">
-                              <IconButton
-                                size="xs"
-                                variant={hasSelectedFields ? "subtle" : "ghost"}
-                                colorPalette="brand"
-                                disabled={!!activeTableForCopy}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveTableForFields(item.table);
-                                  setFieldModalOpen(true);
-                                }}
-                                borderRadius="full"
-                                height="22px"
-                                width="22px"
-                                minWidth="22px"
-                                flexShrink={0}
-                                fontSize="14px"
-                                boxShadow="none"
-                                bg={
-                                  hasSelectedFields ? "brand.50" : "transparent"
-                                }
-                                color={
-                                  hasSelectedFields ? "brand.600" : "gray.500"
-                                }
-                                borderColor="transparent"
-                                _hover={{
-                                  bg: "brand.50",
-                                  color: "brand.600",
-                                }}
-                                transition="all 0.2s"
-                              >
-                                <IoMdOptions />
-                              </IconButton>
-                            </Tooltip>
-                          );
-                        })()}
-
-                        {isEmailSupportedDestination &&
-                          (() => {
-                            const isEmailConfigured = !!(
-                              (tableExportSettings?.[item.table]
-                                ?.notification_email_group_ids?.length ?? 0) >
-                                0 ||
-                              (item.notification_email_group_ids?.length ?? 0) >
-                                0 ||
-                              tableExportSettings?.[item.table]
-                                ?.email_custom_fields?.subject ||
-                              tableExportSettings?.[item.table]
-                                ?.email_custom_fields?.body_content ||
-                              (tableExportSettings?.[item.table]
-                                ?.email_custom_fields?.body_fields?.length ??
-                                0) > 0 ||
-                              item.email_custom_fields?.subject ||
-                              item.email_custom_fields?.body_content ||
-                              (item.email_custom_fields?.body_fields?.length ??
-                                0) > 0
-                            );
-                            return (
-                              <Tooltip content="Email Notifications">
-                                <Menu.Root
-                                  positioning={{ placement: "bottom-end" }}
-                                >
-                                  <Menu.Trigger asChild>
-                                    <IconButton
-                                      size="xs"
-                                      variant={
-                                        isEmailConfigured ? "subtle" : "ghost"
-                                      }
-                                      colorPalette="brand"
-                                      disabled={!!activeTableForCopy}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                      }}
-                                      borderRadius="md"
-                                      height="22px"
-                                      px={1.5}
-                                      minWidth="34px"
-                                      flexShrink={0}
-                                      boxShadow="none"
-                                      bg={
-                                        isEmailConfigured
-                                          ? "brand.50"
-                                          : "transparent"
-                                      }
-                                      color={
-                                        isEmailConfigured
-                                          ? "brand.600"
-                                          : "gray.500"
-                                      }
-                                      borderColor="transparent"
-                                      _hover={{
-                                        bg: "brand.50",
-                                        color: "brand.600",
-                                      }}
-                                      transition="all 0.2s"
-                                    >
-                                      <Flex alignItems="center" gap={0.5}>
-                                        <IoMdMail />
-                                        <IoCaretDownSharp
-                                          style={{ fontSize: "8px" }}
-                                        />
-                                      </Flex>
-                                    </IconButton>
-                                  </Menu.Trigger>
-                                  <Portal>
-                                    <Menu.Positioner>
-                                      <Menu.Content>
-                                        <Menu.Item
-                                          value="edit-email"
-                                          cursor="pointer"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setActiveTableForEmail(item.table);
-                                            setEmailModalOpen(true);
-                                          }}
-                                        >
-                                          Edit
-                                        </Menu.Item>
-                                        <Menu.Item
-                                          value="copy-email"
-                                          cursor="pointer"
-                                          disabled={
-                                            selectedTables.length <= 1 ||
-                                            !item.selected ||
-                                            !isEmailConfigured
-                                          }
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setActiveTableForCopy(item.table);
-                                            setCopyType("email");
-                                            setSelectedCopyTargets([]);
-                                          }}
-                                        >
-                                          Copy
-                                        </Menu.Item>
-                                      </Menu.Content>
-                                    </Menu.Positioner>
-                                  </Portal>
-                                </Menu.Root>
-                              </Tooltip>
-                            );
-                          })()}
-
-                        {(() => {
-                          const isSettingsConfigured =
-                            hasApiTableExportSettings(item) ||
-                            !!(
-                              tableExportSettings?.[item.table] &&
-                              (tableExportSettings[item.table].target_folder ||
-                                tableExportSettings[item.table]
-                                  .output_file_name !== item.table ||
-                                tableExportSettings[item.table].file_format !==
-                                  (exportConfig?.destination?.default_format ||
-                                    "csv") ||
-                                tableExportSettings[item.table]
-                                  .excel_sheet_name ||
-                                tableExportSettings[item.table].excel_options ||
-                                (tableExportSettings[item.table]
-                                  .excel_conditional_formats?.length ?? 0) > 0)
-                            );
-                          return (
-                            <Tooltip
-                              content={
-                                hasError
-                                  ? targetFolderErrors[item.table]
-                                  : "Export Settings"
-                              }
-                            >
-                              <Menu.Root
-                                positioning={{ placement: "bottom-end" }}
-                              >
-                                <Menu.Trigger asChild>
-                                  <IconButton
-                                    size="xs"
-                                    variant={
-                                      hasError
-                                        ? "ghost"
-                                        : isSettingsConfigured
-                                          ? "subtle"
-                                          : "ghost"
-                                    }
-                                    colorPalette={hasError ? "red" : "brand"}
-                                    disabled={!!activeTableForCopy}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                    }}
-                                    borderRadius="md"
-                                    height="22px"
-                                    px={1.5}
-                                    minWidth="34px"
-                                    flexShrink={0}
-                                    boxShadow="none"
-                                    bg={
-                                      hasError
-                                        ? "transparent"
-                                        : isSettingsConfigured
-                                          ? "brand.50"
-                                          : "transparent"
-                                    }
-                                    borderColor="transparent"
-                                    color={
-                                      hasError
-                                        ? "red.500"
-                                        : isSettingsConfigured
-                                          ? "brand.600"
-                                          : "gray.500"
-                                    }
-                                    _hover={{
-                                      bg: hasError ? "red.50" : "brand.50",
-                                      color: hasError ? "red.600" : "brand.600",
-                                    }}
-                                    transition="all 0.2s"
-                                  >
-                                    <Flex alignItems="center" gap={0.5}>
-                                      <IoMdSettings />
-                                      <IoCaretDownSharp
-                                        style={{ fontSize: "8px" }}
-                                      />
-                                    </Flex>
-                                  </IconButton>
-                                </Menu.Trigger>
-                                <Portal>
-                                  <Menu.Positioner>
-                                    <Menu.Content>
-                                      <Menu.Item
-                                        value="edit-settings"
-                                        cursor="pointer"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setActiveTableForSettings(item.table);
-                                          setSettingsModalOpen(true);
-                                        }}
-                                      >
-                                        Edit
-                                      </Menu.Item>
-                                      <Menu.Item
-                                        value="copy-settings"
-                                        cursor="pointer"
-                                        disabled={
-                                          selectedTables.length <= 1 ||
-                                          !item.selected
-                                        }
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setActiveTableForCopy(item.table);
-                                          setCopyType("export");
-                                          setSelectedCopyTargets([]);
-                                        }}
-                                      >
-                                        Copy
-                                      </Menu.Item>
-                                    </Menu.Content>
-                                  </Menu.Positioner>
-                                </Portal>
-                              </Menu.Root>
-                            </Tooltip>
-                          );
-                        })()}
-
-                        {(() => {
-                          const hasSelectedFields = !!(
-                            item.selected_fields &&
-                            item.selected_fields.length > 0
-                          );
-                          return (
-                            <Box
-                              w="29px"
-                              h="22px"
-                              minW="29px"
-                              flexShrink={0}
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                            >
-                              {hasSelectedFields && (
-                                <Flex
-                                  gap={1.5}
-                                  w="100%"
-                                  h="100%"
-                                  alignItems="center"
-                                  flexShrink={0}
-                                >
-                                  <Box
-                                    w="1px"
-                                    h="14px"
-                                    bg="gray.300"
-                                    flexShrink={0}
-                                  />
-                                  <Tooltip content="Reset to all fields">
-                                    <IconButton
-                                      size="xs"
-                                      variant="ghost"
-                                      colorPalette="red"
-                                      disabled={!!activeTableForCopy}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        updateSelectedFields(
-                                          {
-                                            tableName: item.table,
-                                            selected_fields: [],
-                                          },
-                                          {
-                                            onSuccess: () => {
-                                              toaster.success({
-                                                title:
-                                                  "Reset fields successfully",
-                                              });
-                                              queryClient.invalidateQueries({
-                                                queryKey: [
-                                                  "ReverseSchema",
-                                                  connector.connection_id,
-                                                ],
-                                              });
-                                            },
-                                          },
-                                        );
-                                      }}
-                                      borderRadius="full"
-                                      height="22px"
-                                      width="22px"
-                                      minWidth="22px"
-                                      flexShrink={0}
-                                      fontSize="14px"
-                                      boxShadow="none"
-                                      bg="transparent"
-                                      borderColor="transparent"
-                                      color="red.500"
-                                      _hover={{
-                                        bg: "red.50",
-                                        color: "red.600",
-                                      }}
-                                      transition="all 0.2s"
-                                    >
-                                      <IoMdTrash />
-                                    </IconButton>
-                                  </Tooltip>
-                                </Flex>
-                              )}
-                            </Box>
-                          );
-                        })()}
-                      </Flex>
-                    </Flex>
-                  </Flex>
-                );
-              })}
-            </VStack>
-          )}
-
-          <Flex
-            justifyContent="space-between"
-            alignItems="center"
-            pt={2}
-            mt="auto"
-          >
-            {activeTableForCopy ? (
-              <Flex gap={3} alignItems="center" w="100%">
-                <Checkbox.Root
-                  colorPalette="brand"
-                  checked={
-                    selectedCopyTargets.length > 0 &&
-                    selectedCopyTargets.length ===
-                      filteredSelectedTables.filter(
-                        (t) => t.table !== activeTableForCopy,
-                      ).length
-                      ? true
-                      : selectedCopyTargets.length > 0 &&
-                          selectedCopyTargets.length <
-                            filteredSelectedTables.filter(
-                              (t) => t.table !== activeTableForCopy,
-                            ).length
-                        ? "indeterminate"
-                        : false
+      {/* Copy mode action bar */}
+      <ActionBar.Root open={!!activeTableForCopy}>
+        <Portal>
+          <ActionBar.Positioner>
+            <ActionBar.Content>
+              <Checkbox.Root
+                colorPalette="brand"
+                checked={
+                  selectedCopyTargets.length > 0 &&
+                  selectedCopyTargets.length ===
+                    selectedSourceTables.filter(
+                      (t) => t.table !== activeTableForCopy,
+                    ).length
+                    ? true
+                    : selectedCopyTargets.length > 0 &&
+                        selectedCopyTargets.length <
+                          selectedSourceTables.filter(
+                            (t) => t.table !== activeTableForCopy,
+                          ).length
+                      ? "indeterminate"
+                      : false
+                }
+                onCheckedChange={(details) => {
+                  if (details.checked === true) {
+                    setSelectedCopyTargets(
+                      selectedSourceTables
+                        .map((t) => t.table)
+                        .filter((t) => t !== activeTableForCopy),
+                    );
+                  } else {
+                    setSelectedCopyTargets([]);
                   }
-                  onCheckedChange={(details) => {
-                    if (details.checked === true) {
-                      setSelectedCopyTargets(
-                        filteredSelectedTables
-                          .map((t) => t.table)
-                          .filter((t) => t !== activeTableForCopy),
-                      );
-                    } else {
-                      setSelectedCopyTargets([]);
-                    }
-                  }}
-                >
-                  <Checkbox.HiddenInput />
-                  <Checkbox.Control />
-                  <Text fontSize="xs" color="gray.600" fontWeight="semibold">
-                    Select All
-                  </Text>
-                </Checkbox.Root>
-                <Flex gap={2} alignItems="center" ml="auto">
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    onClick={() => {
-                      setActiveTableForCopy(null);
-                      setCopyType(null);
-                      setSelectedCopyTargets([]);
-                    }}
-                    disabled={isSavingSelection}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="xs"
-                    colorPalette="brand"
-                    onClick={() => {
-                      handleCopySettings(selectedCopyTargets);
-                    }}
-                    loading={isSavingSelection}
-                    disabled={selectedCopyTargets.length === 0}
-                  >
-                    Paste
-                  </Button>
-                </Flex>
-              </Flex>
-            ) : (
+                }}
+              >
+                <Checkbox.HiddenInput />
+                <Checkbox.Control />
+                <Text fontSize="xs" color="gray.600" fontWeight="semibold">
+                  Select All
+                </Text>
+              </Checkbox.Root>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setActiveTableForCopy(null);
+                  setCopyType(null);
+                  setSelectedCopyTargets([]);
+                }}
+                disabled={isSavingSelection}
+              >
+                Cancel
+              </Button>
               <Button
                 size="sm"
                 colorPalette="brand"
-                onClick={handleSaveSelection}
+                onClick={() => handleCopySettings(selectedCopyTargets)}
                 loading={isSavingSelection}
-                disabled={isDisabled || !isSelectionDirty}
-                ml="auto"
+                disabled={selectedCopyTargets.length === 0}
+              >
+                Paste
+              </Button>
+            </ActionBar.Content>
+          </ActionBar.Positioner>
+        </Portal>
+      </ActionBar.Root>
+
+      {/* Selection save action bar */}
+      <ActionBar.Root open={isSelectionDirty}>
+        <Portal>
+          <ActionBar.Positioner>
+            <ActionBar.Content>
+              <Button
+                variant="solid"
+                colorPalette="brand"
+                size="sm"
+                onClick={() => handleSaveSelection()}
+                loading={isSavingSelection}
               >
                 Save
               </Button>
-            )}
-          </Flex>
-        </Flex>
-      </Grid>
-
+            </ActionBar.Content>
+          </ActionBar.Positioner>
+        </Portal>
+      </ActionBar.Root>
       <FieldSelectionModal
         open={fieldModalOpen}
         onClose={() => setFieldModalOpen(false)}

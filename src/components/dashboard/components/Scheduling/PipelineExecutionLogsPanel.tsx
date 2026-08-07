@@ -40,11 +40,12 @@ const PipelineNodeExecutionTab = ({
 }) => {
   const migrationSessionId = node.migration_session_id ?? null;
 
-  useMigrationStatusWS(migrationSessionId);
+  useMigrationStatusWS(migrationSessionId, node.connection_id);
 
   const { data: migrationStatus, isLoading } = useFetchConnectorActivityDetails(
     {
       migrationId: migrationSessionId ?? undefined,
+      connectionId: node.connection_id,
     },
   );
 

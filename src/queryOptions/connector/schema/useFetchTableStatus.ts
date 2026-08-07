@@ -52,7 +52,23 @@ export default function useFetchTableStatus(
     queryKey: ["TableStatus", id],
     queryFn: () => fetchTableStatus(id),
     enabled: !!id && enabled,
-    refetchInterval: false,
+    refetchOnMount: "always",
+    refetchInterval: (query) => {
+      const status = query.state.data;
+      const hasActiveTable = status?.tables.some((table) => {
+        const value = (table.status || "").trim().toLowerCase();
+        return (
+          value === "i" ||
+          value === "running" ||
+          value.includes("progress") ||
+          value.includes("pending")
+        );
+      });
+
+      return status?.schema_refresh_in_progress || hasActiveTable
+        ? 3000
+        : false;
+    },
   });
 
   return { data };

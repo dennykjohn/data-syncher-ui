@@ -1,14 +1,14 @@
-import Cookies from "js-cookie";
 import { Navigate, Outlet, useLocation } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
 import ClientRoutes from "@/constants/client-routes";
 import useAuth from "@/context/Auth/useAuth";
 import usePermissions from "@/hooks/usePermissions";
+import { getAccessToken } from "@/lib/auth/token-cookies";
 import { Permissions } from "@/types/auth";
 
 const isAuthenticated = (): boolean => {
-  const token = Cookies.get("access_token");
+  const token = getAccessToken();
   return Boolean(token);
 };
 

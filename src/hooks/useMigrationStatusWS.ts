@@ -9,10 +9,13 @@ import { ConnectorActivityDetailResponse } from "@/types/connectors";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface MigrationWSMessage {
+  migration_session_id?: number | string;
+  connection_id?: number | string;
   table_name?: string;
   status?: string;
   status_icon?: string;
   overall_status?: string;
+  overall_status_icon?: string;
   staging_records_count?: number;
   start_time?: string | null;
   end_time?: string | null;
@@ -24,47 +27,84 @@ interface MigrationWSMessage {
   logs?: ConnectorActivityDetailResponse["logs"];
 }
 
+const normalizeMigrationStatus = (status: string | undefined): string => {
+  const normalized = (status || "").trim().toLowerCase();
+
+  if (
+    normalized === "s" ||
+    normalized.includes("success") ||
+    normalized.includes("completed")
+  ) {
+    return "completed";
+  }
+
+  if (
+    normalized === "e" ||
+    normalized === "f" ||
+    normalized.includes("failed") ||
+    normalized.includes("error")
+  ) {
+    return "failed";
+  }
+
+  if (
+    normalized === "i" ||
+    normalized === "running" ||
+    normalized.includes("progress")
+  ) {
+    return "in_progress";
+  }
+
+  return normalized;
+};
+
 export const useMigrationStatusWS = (
   migrationId: number | null,
-  connectionId?: number | null,
+  connectionId: number | null,
 ) => {
   const queryClient = useQueryClient();
 
-  const socketUrl = getWebSocketUrl(
-    migrationId ? `/ws/migration_status/${migrationId}/` : "",
-  );
+  const getSocketUrl = useCallback(() => {
+    const socketUrl = getWebSocketUrl(
+      migrationId ? `/ws/migration_status/${migrationId}/` : "",
+    );
+
+    if (!socketUrl) {
+      throw new Error("WebSocket authentication token is not available.");
+    }
+
+    return socketUrl;
+  }, [migrationId]);
 
   const onMessage = useCallback(
     (event: WebSocketEventMap["message"]) => {
-      if (!migrationId) return;
+      if (!migrationId || !connectionId) return;
 
-      let message: MigrationWSMessage & { connection_id?: number };
+      let message: MigrationWSMessage;
       try {
-        message = JSON.parse(event.data) as MigrationWSMessage & {
-          connection_id?: number;
-        };
+        message = JSON.parse(event.data) as MigrationWSMessage;
       } catch {
         return;
       }
 
-      // Ignore WS payloads for a different connection when session IDs collide.
-      if (
-        connectionId !== null &&
-        connectionId !== undefined &&
-        message.connection_id !== null &&
-        message.connection_id !== undefined &&
-        Number(message.connection_id) !== Number(connectionId)
-      ) {
+      const numericMigrationId = Number(migrationId);
+      const numericConnectionId = Number(connectionId);
+
+      // Session IDs can collide across connections. The backend currently
+      // broadcasts those scoped payloads through one session-only WS group.
+      if (Number(message.connection_id) !== numericConnectionId) {
         return;
       }
 
-      const numericMigrationId = Number(migrationId);
+      if (Number(message.migration_session_id) !== numericMigrationId) {
+        return;
+      }
 
       queryClient.setQueryData(
         [
           "connectorActivityDetails",
           numericMigrationId,
-          connectionId ?? undefined,
+          numericConnectionId,
           undefined,
         ],
         (oldData: ConnectorActivityDetailResponse | undefined) => {
@@ -164,30 +204,18 @@ export const useMigrationStatusWS = (
           }
 
           // Normalize status
-          const rawStatus = (
+          const derivedStatus = normalizeMigrationStatus(
             message.overall_status ||
-            message.status_icon ||
-            message.status ||
-            ""
-          ).toLowerCase();
-
-          let derivedStatus: string | undefined;
+              message.overall_status_icon ||
+              message.status_icon ||
+              message.status,
+          );
 
           if (
-            rawStatus.includes("success") ||
-            rawStatus.includes("completed")
+            derivedStatus === "completed" ||
+            derivedStatus === "failed" ||
+            derivedStatus === "in_progress"
           ) {
-            derivedStatus = "completed";
-          } else if (
-            rawStatus.includes("failed") ||
-            rawStatus.includes("error")
-          ) {
-            derivedStatus = "failed";
-          } else if (rawStatus.includes("progress")) {
-            derivedStatus = "in_progress";
-          }
-
-          if (derivedStatus) {
             const isImplicitUpdate = !message.overall_status;
             const currentIsFailed = oldData?.overall_status === "failed";
 
@@ -233,45 +261,37 @@ export const useMigrationStatusWS = (
         return anyFailed ? "failed" : "completed";
       })();
 
-      const terminalStatus = (
+      const terminalStatus = normalizeMigrationStatus(
         message.overall_status ||
-        message.status ||
-        derivedOverall ||
-        ""
-      ).toLowerCase();
-      if (
-        terminalStatus.includes("success") ||
-        terminalStatus.includes("completed") ||
-        terminalStatus.includes("failed") ||
-        terminalStatus.includes("error")
-      ) {
-        if (connectionId) {
-          patchActivityLogForMigration(
-            queryClient,
-            connectionId,
-            numericMigrationId,
-            {
-              overallStatus: terminalStatus,
-              message: message.job_level_message || message.message,
-            },
-          );
-        }
+          message.overall_status_icon ||
+          message.status_icon ||
+          message.status ||
+          derivedOverall,
+      );
+      if (terminalStatus === "completed" || terminalStatus === "failed") {
+        patchActivityLogForMigration(
+          queryClient,
+          numericConnectionId,
+          numericMigrationId,
+          {
+            overallStatus: terminalStatus,
+            message: message.job_level_message || message.message,
+          },
+        );
 
         setTimeout(() => {
           void queryClient.invalidateQueries({
             queryKey: [
               "connectorActivityDetails",
               numericMigrationId,
-              connectionId ?? undefined,
+              numericConnectionId,
               undefined,
             ],
           });
-          if (connectionId) {
-            void queryClient.invalidateQueries({
-              queryKey: ["connectorActivity", connectionId],
-              refetchType: "active",
-            });
-          }
+          void queryClient.invalidateQueries({
+            queryKey: ["connectorActivity", numericConnectionId],
+            refetchType: "active",
+          });
         }, 2000); // 2 s buffer for the backend to commit the final record
       }
     },
@@ -280,26 +300,26 @@ export const useMigrationStatusWS = (
 
   const onError = useCallback(
     (error: WebSocketEventMap["error"]) => {
-      if (!migrationId) return;
+      if (!migrationId || !connectionId) return;
       console.error(
-        `[WS Migration Status] Error for migration ${migrationId}:`,
+        `[WS Migration Status] Error for connection ${connectionId}, migration ${migrationId}:`,
         error,
       );
     },
-    [migrationId],
+    [connectionId, migrationId],
   );
 
   const onClose = useCallback(
     (event: WebSocketEventMap["close"]) => {
-      if (!migrationId) return;
+      if (!migrationId || !connectionId) return;
       // Only log unexpected closes (not normal 1000/1005 no-op closes)
       if (event.code !== 1000 && event.code !== 1005) {
         console.error(
-          `[WS Migration Status] Unexpected close for migration ${migrationId}: Code ${event.code}`,
+          `[WS Migration Status] Unexpected close for connection ${connectionId}, migration ${migrationId}: Code ${event.code}`,
         );
       }
     },
-    [migrationId],
+    [connectionId, migrationId],
   );
 
   const options = useMemo(
@@ -317,7 +337,7 @@ export const useMigrationStatusWS = (
     [onMessage, onError, onClose],
   );
 
-  useWebSocket(socketUrl, options);
+  useWebSocket(migrationId && connectionId ? getSocketUrl : null, options);
 };
 
 export default useMigrationStatusWS;

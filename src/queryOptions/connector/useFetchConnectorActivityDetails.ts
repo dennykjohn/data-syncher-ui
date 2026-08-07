@@ -6,14 +6,13 @@ import { useQuery } from "@tanstack/react-query";
 
 const fetchConnectorActivityDetails = async (
   migrationId: number,
-  connectionId?: number,
+  connectionId: number,
 ): Promise<ConnectorActivityDetailResponse> => {
-  const qs =
-    connectionId !== null && connectionId !== undefined
-      ? `?connection_id=${connectionId}`
-      : "";
   const { data } = await AxiosInstance.get<ConnectorActivityDetailResponse>(
-    `${ServerRoutes.connector.fetchMigrationStatus(migrationId)}${qs}`,
+    ServerRoutes.connector.fetchMigrationStatus({
+      migrationId,
+      connectionId,
+    }),
   );
   return data;
 };
@@ -40,7 +39,7 @@ const useFetchConnectorActivityDetails = ({
   return useQuery({
     queryKey: ["connectorActivityDetails", migrationId, connectionId, logId],
     queryFn: () => {
-      if (migrationId) {
+      if (migrationId && connectionId) {
         return fetchConnectorActivityDetails(migrationId, connectionId);
       }
       if (connectionId && logId) {
@@ -48,8 +47,26 @@ const useFetchConnectorActivityDetails = ({
       }
       return Promise.reject(new Error("Missing required parameters"));
     },
-    enabled: !!migrationId || (!!connectionId && !!logId),
+    enabled: (!!migrationId && !!connectionId) || (!!connectionId && !!logId),
+    refetchOnMount: "always",
     refetchOnWindowFocus: false,
+    refetchInterval: (query) => {
+      if (!migrationId) return false;
+
+      const status = (query.state.data?.overall_status || "")
+        .trim()
+        .toLowerCase();
+      const isTerminal =
+        status === "s" ||
+        status === "e" ||
+        status === "f" ||
+        status.includes("success") ||
+        status.includes("completed") ||
+        status.includes("failed") ||
+        status.includes("error");
+
+      return isTerminal ? false : 4000;
+    },
   });
 };
 

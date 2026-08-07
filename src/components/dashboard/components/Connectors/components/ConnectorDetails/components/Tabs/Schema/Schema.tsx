@@ -304,20 +304,22 @@ const TableRow = ({
               }
               disabled={!selectionLocked}
             >
-              <Checkbox.Root
-                colorPalette="brand"
-                variant="solid"
-                disabled={selectionLocked}
-                onCheckedChange={({ checked }) =>
-                  onCheckedChange(checked === true)
-                }
-                checked={isSelected || selectionLocked}
-              >
-                <Checkbox.HiddenInput />
-                <Checkbox.Control
-                  cursor={selectionLocked ? "not-allowed" : "pointer"}
-                />
-              </Checkbox.Root>
+              <Box>
+                <Checkbox.Root
+                  colorPalette="brand"
+                  variant="solid"
+                  disabled={selectionLocked}
+                  onCheckedChange={({ checked }) =>
+                    onCheckedChange(checked === true)
+                  }
+                  checked={isSelected || selectionLocked}
+                >
+                  <Checkbox.HiddenInput />
+                  <Checkbox.Control
+                    cursor={selectionLocked ? "not-allowed" : "pointer"}
+                  />
+                </Checkbox.Root>
+              </Box>
             </Tooltip>
           </Flex>
         </Flex>

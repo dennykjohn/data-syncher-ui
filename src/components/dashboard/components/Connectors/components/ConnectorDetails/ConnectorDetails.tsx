@@ -8,6 +8,7 @@ import LoadingSpinner from "@/components/shared/Spinner";
 import useConnectionActivityLogWS from "@/hooks/useConnectionActivityLogWS";
 import useConnectionTableStatusWS from "@/hooks/useConnectionTableStatusWS";
 import useUpdateSchemaStatusWS from "@/hooks/useUpdateSchemaStatusWS";
+import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import { useFetchConnectorById } from "@/queryOptions/connector/useFetchConnectorDetailsById";
 
 import Header from "./components/Header";
@@ -25,6 +26,7 @@ const ConnectorDetails = () => {
   useConnectionTableStatusWS(Number(connectionId));
   useUpdateSchemaStatusWS(Number(connectionId));
   useConnectionActivityLogWS(Number(connectionId));
+  useFetchTableStatus(Number(connectionId) || 0);
 
   const [filterDays, setFilterDays] = useState<number>(2);
 

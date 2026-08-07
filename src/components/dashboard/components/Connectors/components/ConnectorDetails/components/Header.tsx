@@ -13,7 +13,6 @@ import {
 } from "@/components/dashboard/utils/getImage";
 import LoadingSpinner from "@/components/shared/Spinner";
 import { Tooltip } from "@/components/ui/tooltip";
-import { dateTimeFormat } from "@/constants/common";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
 import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
@@ -31,8 +30,6 @@ const Header = ({ connector }: { connector: Connector }) => {
     destination_name = "",
     status = "P",
     connection_id = 0,
-    time_frequency = "None",
-    next_sync_time = "",
   } = connector || {};
 
   const { mutate: toggleConnectionStatus, isPending } =
@@ -82,22 +79,11 @@ const Header = ({ connector }: { connector: Connector }) => {
     hasTableInProgress || // Use get_table_status for reload spinner
     schemaStatus?.is_in_progress === true;
 
-  // Determine the message to show based on the active operation
-  // Use next_sync_time from tableStatusData (updated via WebSocket) if available,
-  // otherwise fallback to initial connector data
+  // Only show operational progress here; scheduling details live in Scheduling.
   const statusMessage = getStatusMessage({
     isUpdateSchemaInProgress,
     isRefreshSchemaInProgress,
     isAnyOperationInProgress,
-    next_sync_time:
-      tableStatusData?.next_sync_time !== undefined
-        ? tableStatusData.next_sync_time
-        : next_sync_time,
-    time_frequency:
-      tableStatusData?.readable_time_frequency !== undefined
-        ? (tableStatusData.readable_time_frequency ?? time_frequency)
-        : time_frequency,
-    dateTimeFmt: dateTimeFormat,
     schemaStatus,
   });
 
