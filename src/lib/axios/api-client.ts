@@ -19,16 +19,7 @@ const envApiOrigin = import.meta.env.VITE_API_ORIGIN as string | undefined;
 function resolveApiBase(): string {
   const trimmed = envApiOrigin?.replace(/\/$/, "").trim();
   if (!trimmed) {
-    if (
-      typeof window !== "undefined" &&
-      window.location.hostname === "localhost"
-    ) {
-      return "https://qa.datasyncher.com";
-    }
-    if (typeof window !== "undefined") {
-      return window.location.origin;
-    }
-    return "";
+    return "https://gcp.datasyncher.com";
   }
 
   if (typeof window === "undefined") {
@@ -56,21 +47,14 @@ function resolveApiBase(): string {
 }
 
 /**
- * In `vite` dev, call `/api/v1/...` on the same origin so Vite proxies to Django (no CORS).
- * In `vite build` / preview, use absolute API origin from env.
+ * Use the configured API origin, falling back to the shared GCP backend.
  */
 function getAxiosBaseURL(): string {
-  if (import.meta.env.DEV) {
-    return "/api/v1/";
-  }
   const apiBase = resolveApiBase();
   return apiBase ? `${apiBase}/api/v1/` : "/api/v1/";
 }
 
 function getRefreshTokenURL(): string {
-  if (import.meta.env.DEV) {
-    return `/api/v1/${ServerRoutes.auth.refresh()}`;
-  }
   const apiBase = resolveApiBase();
   return `${apiBase}/api/v1/${ServerRoutes.auth.refresh()}`;
 }

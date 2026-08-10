@@ -953,7 +953,7 @@ const SnowflakeFileExportSchema = ({
   }, [emailTableData]);
 
   return (
-    <>
+    <Flex direction="column" gap={4} w="100%" minW={0}>
       <Flex direction="column" gap={1} mr="auto" mt="-64px" w="100%" maxW="md">
         <InputGroup endElement={<MdSearch size={28} />}>
           <Input
@@ -1678,7 +1678,7 @@ const SnowflakeFileExportSchema = ({
           }}
         />
       )}
-    </>
+    </Flex>
   );
 };
 

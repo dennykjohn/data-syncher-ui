@@ -279,24 +279,13 @@ const ReverseSchema = () => {
         setShouldShowDisabledState={setShouldShowDisabledState}
       />
       {isSnowflakeToFileExport ? (
-        <Grid
-          templateColumns={["1fr", "1fr minmax(280px, 380px)"]}
-          gap={4}
-          w="100%"
-          alignItems="start"
-        >
-          <FileExportSchema
-            connector={context}
-            reverseSchemaData={reverseSchemaData || null}
-            isDisabled={totalDisabledState}
-            tableToBatchName={tableToBatchName}
-            onSelectionChange={handleFileExportSelectionChange}
-          />
-          <BatchGroupedPanel
-            connectionId={context.connection_id}
-            pendingUnassignedTables={pendingUnassignedTables}
-          />
-        </Grid>
+        <FileExportSchema
+          connector={context}
+          reverseSchemaData={reverseSchemaData || null}
+          isDisabled={totalDisabledState}
+          tableToBatchName={tableToBatchName}
+          onSelectionChange={handleFileExportSelectionChange}
+        />
       ) : (
         <>
           <Grid
