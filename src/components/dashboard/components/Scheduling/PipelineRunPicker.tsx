@@ -95,7 +95,7 @@ const PipelineRunPicker = ({
             minW={0}
             textAlign="left"
           >
-            {selected ? formatRunLabel(selected) : "Select run…"}
+            {selected ? formatRunLabel(selected) : "Draft canvas (edit)"}
           </Text>
           <Box
             as="span"

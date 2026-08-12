@@ -7,6 +7,7 @@ import axios, {
 import { toaster } from "@/components/ui/toaster";
 import ServerRoutes from "@/constants/server-routes";
 import {
+  clearAuthTokens,
   getAccessToken,
   getRefreshToken,
   setAuthTokens,
@@ -105,7 +106,7 @@ export const refreshAccessToken = async () => {
 
   refreshPromise = axios
     .post<RefreshTokenResponse>(getRefreshTokenURL(), {
-      refresh_token: refreshToken,
+      refresh: refreshToken,
     })
     .then(({ data }) => {
       const accessToken = data.access_token ?? data.access;
@@ -134,10 +135,29 @@ AxiosInstance.defaults.headers.common["Pragma"] = "no-cache";
 
 AxiosInstance.interceptors.request.use(
   (config: RetryableRequestConfig): InternalAxiosRequestConfig => {
-    const token = config.headers.customToken ?? getAccessToken();
+    const url = `${config.baseURL ?? ""}${config.url ?? ""}`;
+    const isAuthCredentialRequest =
+      /authentication\/?(\?|$)/.test(url) ||
+      /authentication\/refresh/.test(url) ||
+      /password-reset/.test(url) ||
+      /verify-email/.test(url) ||
+      /resend-otp/.test(url);
 
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+    // Login/register must not send a stale Bearer — and must not overwrite a
+    // token already set on a 401-retry.
+    const headers = config.headers;
+    const existingAuth =
+      headers?.Authorization ??
+      headers?.authorization ??
+      (typeof headers?.get === "function"
+        ? headers.get("Authorization")
+        : undefined);
+
+    if (!isAuthCredentialRequest && !existingAuth) {
+      const token = config.headers.customToken ?? getAccessToken();
+      if (token) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
     }
     if (config.headers.customToken) {
       delete config.headers.customToken;
@@ -172,15 +192,29 @@ AxiosInstance.interceptors.response.use(
       return Promise.reject(errorData);
     }
 
-    if (error.response?.status === 401 && original && !original._retry) {
+    const reqUrl = `${original?.baseURL ?? ""}${original?.url ?? ""}`;
+    const isAuthCredentialRequest =
+      /authentication\/?(\?|$)/.test(reqUrl) ||
+      /authentication\/refresh/.test(reqUrl);
+
+    // Failed login must not trigger refresh+retry (that rotates tokens and
+    // can leave a stale cookie Bearer on subsequent requests).
+    if (
+      error.response?.status === 401 &&
+      original &&
+      !original._retry &&
+      !isAuthCredentialRequest
+    ) {
       original._retry = true;
 
       try {
         const accessToken = await refreshAccessToken();
+        original.headers = original.headers ?? {};
         original.headers["Authorization"] = `Bearer ${accessToken}`;
 
         return AxiosInstance(original);
       } catch (refreshError) {
+        clearAuthTokens();
         return Promise.reject(refreshError);
       }
     }
@@ -200,7 +234,7 @@ AxiosInstance.interceptors.response.use(
           : "The server appears to be down or unreachable. Please try again later.",
       });
     }
-    return Promise.reject(error.response?.data);
+    return Promise.reject(error.response?.data ?? error);
   },
 );
 

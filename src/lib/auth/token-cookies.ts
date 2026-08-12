@@ -15,17 +15,26 @@ const TOKEN_COOKIE_OPTIONS = {
   ...(isGcpDomain ? { domain: AUTH_COOKIE_DOMAIN } : {}),
 };
 
-const TOKEN_COOKIE_REMOVE_OPTIONS = isGcpDomain
-  ? { domain: AUTH_COOKIE_DOMAIN }
-  : {};
+/** Remove both host-only and domain-scoped cookie variants. */
+const removeTokenCookies = () => {
+  Cookies.remove("access_token");
+  Cookies.remove("refresh_token");
+  if (isGcpDomain) {
+    Cookies.remove("access_token", { domain: AUTH_COOKIE_DOMAIN });
+    Cookies.remove("refresh_token", { domain: AUTH_COOKIE_DOMAIN });
+  }
+};
 
-export const getAccessToken = () =>
-  Cookies.get("access_token") ?? localStorage.getItem("access_token");
+export const getAccessToken = (): string | null =>
+  // Prefer localStorage — domain vs host-only cookies can leave a stale value
+  // that Cookies.get returns first and that then overwrites a fresh Bearer header.
+  localStorage.getItem("access_token") ?? Cookies.get("access_token") ?? null;
 
-export const getRefreshToken = () =>
-  Cookies.get("refresh_token") ?? localStorage.getItem("refresh_token");
+export const getRefreshToken = (): string | null =>
+  localStorage.getItem("refresh_token") ?? Cookies.get("refresh_token") ?? null;
 
 export const setAuthTokens = (accessToken: string, refreshToken: string) => {
+  removeTokenCookies();
   Cookies.set("access_token", accessToken, TOKEN_COOKIE_OPTIONS);
   Cookies.set("refresh_token", refreshToken, TOKEN_COOKIE_OPTIONS);
   localStorage.setItem("access_token", accessToken);
@@ -33,8 +42,7 @@ export const setAuthTokens = (accessToken: string, refreshToken: string) => {
 };
 
 export const clearAuthTokens = () => {
-  Cookies.remove("access_token", TOKEN_COOKIE_REMOVE_OPTIONS);
-  Cookies.remove("refresh_token", TOKEN_COOKIE_REMOVE_OPTIONS);
+  removeTokenCookies();
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
 };

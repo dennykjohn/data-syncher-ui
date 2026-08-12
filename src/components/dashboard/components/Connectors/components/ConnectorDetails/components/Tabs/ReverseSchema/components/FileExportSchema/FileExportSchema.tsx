@@ -430,7 +430,6 @@ const SnowflakeFileExportSchema = ({
   const [activeTableForFields, setActiveTableForFields] = useState<
     string | null
   >(null);
-  const [draggedTable, setDraggedTable] = useState<string | null>(null);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [activeTableForEmail, setActiveTableForEmail] = useState<string | null>(
     null,
@@ -570,66 +569,6 @@ const SnowflakeFileExportSchema = ({
     jumpToPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceSearch]);
-
-  const _handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const _handleTableDrop = (targetTable: string) => {
-    if (!draggedTable || draggedTable === targetTable) return;
-
-    setSelectedTables((prev) => {
-      const newList = [...prev];
-      const draggedIndex = newList.indexOf(draggedTable);
-      const targetIndex = newList.indexOf(targetTable);
-
-      if (draggedIndex === -1 || targetIndex === -1) return prev;
-
-      newList.splice(draggedIndex, 1);
-      newList.splice(targetIndex, 0, draggedTable);
-
-      // Auto-save the new order
-      const truncateFlags = newList.reduce<Record<string, boolean>>(
-        (acc, table) => {
-          acc[table] = false;
-          return acc;
-        },
-        {},
-      );
-
-      const tableExportPayload = newList.reduce<
-        Record<string, TableExportSetting>
-      >((acc, table) => {
-        const row = tableExportSettings[table] || normalizeTableSetting(table);
-        acc[table] = sanitizeTableExportSetting(
-          row,
-          isEmailSupportedDestination,
-          table,
-        );
-        return acc;
-      }, {});
-
-      updateSelectedTables(
-        {
-          selected_tables: newList,
-          truncate_flags: truncateFlags,
-          table_export_settings: tableExportPayload,
-        },
-        {
-          onSuccess: () => {
-            toaster.success({ title: "Table order updated" });
-            setIsSelectionDirty(false);
-            queryClient.invalidateQueries({
-              queryKey: ["ReverseSchema", connector.connection_id],
-            });
-          },
-        },
-      );
-
-      return newList;
-    });
-    setDraggedTable(null);
-  };
 
   const toggleTableSelection = (tableName: string) => {
     setSelectedTables((prev) => {
@@ -953,7 +892,7 @@ const SnowflakeFileExportSchema = ({
   }, [emailTableData]);
 
   return (
-    <>
+    <Flex direction="column" gap={4} w="100%" minW={0}>
       <Flex direction="column" gap={1} mr="auto" mt="-64px" w="100%" maxW="md">
         <InputGroup endElement={<MdSearch size={28} />}>
           <Input
@@ -1678,7 +1617,7 @@ const SnowflakeFileExportSchema = ({
           }}
         />
       )}
-    </>
+    </Flex>
   );
 };
 

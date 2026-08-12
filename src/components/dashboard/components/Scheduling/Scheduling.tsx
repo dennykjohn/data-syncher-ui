@@ -18,6 +18,7 @@ import {
   IconButton,
   Input,
   Portal,
+  Spinner,
   Tabs,
   Text,
 } from "@chakra-ui/react";
@@ -28,6 +29,7 @@ import {
   MdChevronLeft,
   MdChevronRight,
   MdDelete,
+  MdEdit,
   MdPause,
   MdPlayArrow,
   MdRestore,
@@ -59,6 +61,8 @@ import {
 import {
   type PipelineConnectionItem,
   type PipelineDetail,
+  type PipelineEdgeDto,
+  type PipelineNodeDto,
   type PipelineRunDetail,
   type PipelineRunMode,
   type PipelineRunNodeDetail,
@@ -71,6 +75,7 @@ import CanvasFlowModeBadge from "./CanvasFlowModeBadge";
 import CanvasGraphViewToggle, {
   type CanvasGraphView,
 } from "./CanvasGraphViewToggle";
+import PipelineBumpEdge from "./PipelineBumpEdge";
 import PipelineExecutionLogsPanel from "./PipelineExecutionLogsPanel";
 import PipelinePicker from "./PipelinePicker";
 import PipelineRunPicker from "./PipelineRunPicker";
@@ -78,7 +83,11 @@ import PipelineRunProgressPanel from "./PipelineRunProgressPanel";
 import PipelineValidationPanel from "./PipelineValidationPanel";
 import StartFlowNode, { type StartFlowNodeData } from "./StartFlowNode";
 import StartOverviewPanel from "./StartOverviewPanel";
-import { type CanvasUndoEntry, pushCanvasUndo } from "./canvasUndo";
+import {
+  type CanvasUndoEntry,
+  pushCanvasUndo,
+  snapshotNodeDeleteForUndo,
+} from "./canvasUndo";
 import {
   batchNodesOnly,
   buildAutoArrangeUpdates,
@@ -159,6 +168,40 @@ function normalizeNodeRunStatus(
   return "pending";
 }
 
+/** Batch (+ Start) IDs reachable from Start through the given edges. */
+function reachableNodeIdsFromStart(
+  startId: number | null | undefined,
+  edges: Array<{ from_node_id: number; to_node_id: number }>,
+): Set<number> {
+  const adj = new Map<number, number[]>();
+  for (const e of edges) {
+    const list = adj.get(e.from_node_id);
+    if (list) list.push(e.to_node_id);
+    else adj.set(e.from_node_id, [e.to_node_id]);
+  }
+  const out = new Set<number>();
+  if (startId === null || startId === undefined) {
+    for (const e of edges) {
+      out.add(e.from_node_id);
+      out.add(e.to_node_id);
+    }
+    return out;
+  }
+  const queue = [startId];
+  const seen = new Set<number>([startId]);
+  out.add(startId);
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const nxt of adj.get(cur) ?? []) {
+      if (seen.has(nxt)) continue;
+      seen.add(nxt);
+      out.add(nxt);
+      queue.push(nxt);
+    }
+  }
+  return out;
+}
+
 function resolveRunVisualStatus(
   nodeId: number,
   pipeline: PipelineDetail,
@@ -168,6 +211,10 @@ function resolveRunVisualStatus(
   const migOverall = (
     runNode?.migration_status?.overall_status || ""
   ).toLowerCase();
+  const nodeStatus = normalizeNodeRunStatus(runNode?.status);
+  if (nodeStatus === "completed") {
+    return "completed";
+  }
   if (migOverall === "failed" || migOverall === "timeout") {
     return "failed";
   }
@@ -250,6 +297,14 @@ function pipelineToFlow(
     graphView?: CanvasGraphView;
     overlayRunStatus?: boolean;
     animateActiveEdges?: boolean;
+    /** True when a historic/selected run is pinned — never fall back to full draft. */
+    runSnapshotActive?: boolean;
+    /** Click-to-highlight connected edges/nodes on the canvas. */
+    connectionHighlight?: {
+      mode: "edge" | "node";
+      edgeIds: ReadonlySet<string>;
+      nodeIds: ReadonlySet<string>;
+    } | null;
   } = {},
 ): {
   nodes: Node<BatchFlowNodeData | StartFlowNodeData>[];
@@ -258,10 +313,19 @@ function pipelineToFlow(
   const graphView = options.graphView ?? "draft";
   const overlayRunStatus = options.overlayRunStatus ?? false;
   const animateActiveEdges = options.animateActiveEdges ?? overlayRunStatus;
+  const connectionHighlight = options.connectionHighlight ?? null;
+  const highlightActive = Boolean(
+    connectionHighlight &&
+      (connectionHighlight.edgeIds.size > 0 ||
+        connectionHighlight.nodeIds.size > 0),
+  );
   const published = pipeline.published_graph;
   const isPublishedView =
     graphView === "published" &&
     Boolean(published?.node_ids?.length || published?.edges?.length);
+  // Selected run view: use snapshot even while detail is still loading so we
+  // never briefly render the full current draft (new batches would leak in).
+  const isRunSnapshotView = Boolean(options.runSnapshotActive || pipelineRun);
 
   const connNameMap = new Map(
     connections.map((c) => [c.connection_id, c.connection_name]),
@@ -269,6 +333,7 @@ function pipelineToFlow(
   const allBatchNodes = batchNodesOnly(pipeline.nodes);
   const startNode = pipeline.nodes.find(isStartNode);
   const { nextSyncLabel } = startNodeScheduleLabels(pipeline);
+  const isCanvasReadOnly = isRunSnapshotView || isPublishedView;
 
   const publishedNodeIdSet = new Set(published?.node_ids ?? []);
   const publishedStartNodeId = published?.start_node_id;
@@ -282,65 +347,210 @@ function pipelineToFlow(
     publishedNodeIdSet.add(startNode.id);
   }
 
-  // Keep the full published/draft topology visible while a run is selected.
-  // Run status is overlaid only on nodes that participated in that run
-  // (see runNodeVisual below) — do not hide the rest of the graph.
-  const batchNodes = allBatchNodes.filter((n) => {
-    if (isPublishedView && !publishedNodeIdSet.has(n.id)) return false;
-    return true;
-  });
-
-  const viewNodes = pipeline.nodes.filter((n) => {
-    if (isStartNode(n)) {
-      return !isPublishedView || publishedNodeIdSet.has(n.id);
+  const runNodeIdSet = new Set<number>();
+  if (isRunSnapshotView && pipelineRun) {
+    for (const runNode of pipelineRun.nodes) {
+      runNodeIdSet.add(runNode.node_id);
     }
-    if (isPublishedView && !publishedNodeIdSet.has(n.id)) return false;
-    return true;
-  });
+    if (startNode) {
+      runNodeIdSet.add(startNode.id);
+    }
+    if (
+      pipelineRun.start_node_id !== null &&
+      pipelineRun.start_node_id !== undefined
+    ) {
+      runNodeIdSet.add(pipelineRun.start_node_id);
+    }
+  }
 
-  const baseEdges = isPublishedView
-    ? (published?.edges ?? [])
-        .filter(
+  const liveNodeById = new Map(pipeline.nodes.map((n) => [n.id, n]));
+
+  // Historic runs: build batches ONLY from this run's nodes (never live extras).
+  let batchNodes: PipelineNodeDto[] = [];
+  if (isRunSnapshotView) {
+    if (!pipelineRun) {
+      // Run selected but detail not loaded yet — keep canvas empty.
+    } else {
+      for (const runNode of pipelineRun.nodes) {
+        const live = liveNodeById.get(runNode.node_id);
+        const liveMatches =
+          live &&
+          !isStartNode(live) &&
+          (runNode.batch_id === null ||
+            runNode.batch_id === undefined ||
+            live.batch_id === null ||
+            live.batch_id === undefined ||
+            live.batch_id === runNode.batch_id);
+        if (liveMatches && live) {
+          batchNodes.push(live);
+          continue;
+        }
+        batchNodes.push({
+          id: runNode.node_id,
+          pipeline_id: pipeline.id,
+          node_kind: "batch",
+          connection_id: runNode.connection_id ?? null,
+          batch_id: runNode.batch_id ?? null,
+          batch_name:
+            runNode.batch_name ||
+            runNode.node_label ||
+            `Node ${runNode.node_id}`,
+          node_label:
+            runNode.node_label ||
+            runNode.batch_name ||
+            `Node ${runNode.node_id}`,
+          x: 0,
+          y: 0,
+          order_index: 0,
+          execution_order:
+            runNode.execution_order === "sequential"
+              ? "sequential"
+              : "parallel",
+          schedule_type: pipeline.schedule_type,
+          time_frequency: pipeline.time_frequency,
+          schedule_config: pipeline.schedule_config,
+          sync_start_date: pipeline.sync_start_date,
+          sync_end_date: pipeline.sync_end_date,
+        });
+      }
+    }
+  } else {
+    for (const n of allBatchNodes) {
+      if (isPublishedView && !publishedNodeIdSet.has(n.id)) continue;
+      batchNodes.push(n);
+    }
+  }
+
+  let viewNodes: PipelineNodeDto[] = [];
+  if (startNode && (!isPublishedView || publishedNodeIdSet.has(startNode.id))) {
+    viewNodes.push(startNode);
+    if (isRunSnapshotView) {
+      runNodeIdSet.add(startNode.id);
+    }
+  }
+  viewNodes.push(...batchNodes);
+  const mapRunEdges = (
+    pairs: Array<{ from_node_id: number; to_node_id: number }>,
+  ): PipelineEdgeDto[] =>
+    pairs
+      .filter(
+        (e) =>
+          runNodeIdSet.has(e.from_node_id) && runNodeIdSet.has(e.to_node_id),
+      )
+      .map((e, idx) => {
+        const live = pipeline.edges.find(
+          (edge) =>
+            edge.from_node_id === e.from_node_id &&
+            edge.to_node_id === e.to_node_id,
+        );
+        return {
+          id: live?.id ?? -(idx + 1),
+          pipeline_id: pipeline.id,
+          from_node_id: e.from_node_id,
+          to_node_id: e.to_node_id,
+        };
+      });
+
+  const baseEdges = isRunSnapshotView
+    ? (() => {
+        if (!pipelineRun) {
+          // Selected run still loading — do not use live draft edges.
+          return [];
+        }
+        const draftEdges = pipeline.edges.filter(
           (e) =>
-            (startNode && e.from_node_id === startNode.id) ||
-            publishedNodeIdSet.has(e.from_node_id) ||
-            publishedNodeIdSet.has(e.to_node_id),
-        )
-        .filter((e) => {
-          const fromOk =
-            (startNode && e.from_node_id === startNode.id) ||
-            allBatchNodes.some((n) => n.id === e.from_node_id);
-          const toOk = allBatchNodes.some((n) => n.id === e.to_node_id);
-          return fromOk && toOk;
-        })
-        .map((e, idx) => {
-          const live = pipeline.edges.find(
-            (edge) =>
-              edge.from_node_id === e.from_node_id &&
-              edge.to_node_id === e.to_node_id,
-          );
-          return {
-            id: live?.id ?? -(idx + 1),
-            pipeline_id: pipeline.id,
-            from_node_id: e.from_node_id,
-            to_node_id: e.to_node_id,
-          };
-        })
-    : pipeline.edges;
+            runNodeIdSet.has(e.from_node_id) && runNodeIdSet.has(e.to_node_id),
+        );
+        const publishedEdges = published?.edges?.length
+          ? mapRunEdges(published.edges)
+          : [];
+        const runEdges = pipelineRun.edges?.length
+          ? mapRunEdges(pipelineRun.edges)
+          : [];
 
-  const viewNodeIdSet = new Set(viewNodes.map((n) => n.id));
-  const viewEdges = baseEdges.filter(
+        // Exact topology frozen at run start, or rebuilt for legacy history.
+        // Never pull in draft-only batches that were not part of this run.
+        if (
+          (pipelineRun.edges_frozen || pipelineRun.edges_backfilled) &&
+          runEdges.length
+        ) {
+          return runEdges;
+        }
+
+        // Legacy: only edges among THIS run's participating nodes (filter already
+        // applied). Prefer API/run edges, then published, then draft subset.
+        if (runEdges.length) {
+          return runEdges;
+        }
+        if (publishedEdges.length) {
+          return publishedEdges;
+        }
+        return draftEdges;
+      })()
+    : isPublishedView
+      ? (published?.edges ?? [])
+          .filter(
+            (e) =>
+              (startNode && e.from_node_id === startNode.id) ||
+              publishedNodeIdSet.has(e.from_node_id) ||
+              publishedNodeIdSet.has(e.to_node_id),
+          )
+          .filter((e) => {
+            const fromOk =
+              (startNode && e.from_node_id === startNode.id) ||
+              allBatchNodes.some((n) => n.id === e.from_node_id);
+            const toOk = allBatchNodes.some((n) => n.id === e.to_node_id);
+            return fromOk && toOk;
+          })
+          .map((e, idx) => {
+            const live = pipeline.edges.find(
+              (edge) =>
+                edge.from_node_id === e.from_node_id &&
+                edge.to_node_id === e.to_node_id,
+            );
+            return {
+              id: live?.id ?? -(idx + 1),
+              pipeline_id: pipeline.id,
+              from_node_id: e.from_node_id,
+              to_node_id: e.to_node_id,
+            };
+          })
+      : pipeline.edges;
+
+  let viewNodeIdSet = new Set(viewNodes.map((n) => n.id));
+  let viewEdges = baseEdges.filter(
     (e) => viewNodeIdSet.has(e.from_node_id) && viewNodeIdSet.has(e.to_node_id),
   );
 
+  // Drop disconnected orphans from historic Flow (e.g. draft-only batches that
+  // were seeded into participating_node_ids but never wired from Start).
+  if (isRunSnapshotView && viewEdges.length > 0) {
+    const startId = pipelineRun?.start_node_id ?? startNode?.id ?? null;
+    const reachable = reachableNodeIdsFromStart(startId, viewEdges);
+    batchNodes = batchNodes.filter((n) => reachable.has(n.id));
+    viewNodes = [];
+    if (
+      startNode &&
+      (!isPublishedView || publishedNodeIdSet.has(startNode.id))
+    ) {
+      viewNodes.push(startNode);
+    }
+    viewNodes.push(...batchNodes);
+    viewNodeIdSet = new Set(viewNodes.map((n) => n.id));
+    viewEdges = viewEdges.filter(
+      (e) =>
+        viewNodeIdSet.has(e.from_node_id) && viewNodeIdSet.has(e.to_node_id),
+    );
+  }
+
   const rootIds = new Set(
-    isPublishedView
+    isPublishedView || isRunSnapshotView
       ? computeRootNodeIds(viewNodes, viewEdges)
       : (pipeline.root_node_ids ??
         computeRootNodeIds(pipeline.nodes, pipeline.edges)),
   );
   const draftNodeIds = new Set(
-    isPublishedView
+    isPublishedView || isRunSnapshotView
       ? []
       : pipeline.draft_node_ids?.length
         ? pipeline.draft_node_ids
@@ -363,40 +573,71 @@ function pipelineToFlow(
 
   const nodes: Node<BatchFlowNodeData | StartFlowNodeData>[] = [];
 
-  if (startNode && (!isPublishedView || publishedNodeIdSet.has(startNode.id))) {
+  if (
+    startNode &&
+    (!isPublishedView || publishedNodeIdSet.has(startNode.id)) &&
+    (!isRunSnapshotView || runNodeIdSet.has(startNode.id))
+  ) {
+    const startId = String(startNode.id);
+    const startDimmed =
+      highlightActive &&
+      connectionHighlight?.mode === "edge" &&
+      !connectionHighlight.nodeIds.has(startId);
     nodes.push({
-      id: String(startNode.id),
+      id: startId,
       type: "startNode" as const,
       position: resolvePipelineNodePosition(
         startNode,
         layoutPositions.get(startNode.id),
+        { preferLayout: isRunSnapshotView },
       ),
       data: {
-        selected: selectedNode?.nodeId === startNode.id,
-        nextSyncLabel,
+        selected:
+          selectedNode?.nodeId === startNode.id ||
+          Boolean(
+            highlightActive &&
+              connectionHighlight?.mode === "edge" &&
+              connectionHighlight.nodeIds.has(startId),
+          ),
+        nextSyncLabel: isCanvasReadOnly ? null : nextSyncLabel,
       } satisfies StartFlowNodeData,
-      draggable: !isPublishedView,
+      draggable: !isCanvasReadOnly,
       selectable: true,
+      style: startDimmed ? { opacity: 0.35 } : undefined,
     });
   }
 
   for (const n of batchNodes) {
-    const meta = findBatchMeta(connections, n.connection_id!, n.batch_id!);
+    const meta = findBatchMeta(
+      connections,
+      n.connection_id ?? 0,
+      n.batch_id ?? 0,
+    );
+    const runDetail = runNodeMap.get(n.id);
     const layoutPos = layoutPositions.get(n.id);
     const runVisual = overlayRunStatus
-      ? runNodeVisual(n.id, pipeline, pipelineRun, runNodeMap.get(n.id))
+      ? runNodeVisual(n.id, pipeline, pipelineRun, runDetail)
       : {};
+    const nodeIdStr = String(n.id);
+    const nodeDimmed =
+      highlightActive &&
+      connectionHighlight?.mode === "edge" &&
+      !connectionHighlight.nodeIds.has(nodeIdStr);
+    const nodeHighlighted =
+      highlightActive && connectionHighlight?.nodeIds.has(nodeIdStr);
     nodes.push({
-      id: String(n.id),
+      id: nodeIdStr,
       type: "batchNode" as const,
-      position: resolvePipelineNodePosition(n, layoutPos),
+      position: resolvePipelineNodePosition(n, layoutPos, {
+        preferLayout: isRunSnapshotView,
+      }),
       data: {
         batchId: n.batch_id!,
         connectionId: n.connection_id!,
         batchName: n.batch_name || n.node_label,
         connectionName:
           connNameMap.get(n.connection_id!) ?? `Connection ${n.connection_id}`,
-        tableCount: meta.tableCount,
+        tableCount: runDetail?.table_count ?? meta.tableCount,
         executionOrder: n.execution_order || meta.executionOrder,
         isRoot: rootIds.has(n.id),
         parentBatchName: rootIds.has(n.id)
@@ -404,10 +645,11 @@ function pipelineToFlow(
           : getParentBatchName(n.id, viewNodes, viewEdges),
         isDraft: draftNodeIds.has(n.id),
         selected:
-          selectedNode !== null &&
-          !selectedNode.isStart &&
-          selectedNode.nodeId === n.id,
-        onDelete: isPublishedView ? undefined : onDeleteNode,
+          (selectedNode !== null &&
+            !selectedNode.isStart &&
+            selectedNode.nodeId === n.id) ||
+          Boolean(nodeHighlighted && connectionHighlight?.mode === "edge"),
+        onDelete: isCanvasReadOnly ? undefined : onDeleteNode,
         ...(overlayRunStatus &&
         pipelineRun?.pipeline_run_id !== null &&
         pipelineRun?.pipeline_run_id !== undefined
@@ -415,24 +657,38 @@ function pipelineToFlow(
           : {}),
         ...runVisual,
       } satisfies BatchFlowNodeData,
-      draggable: !isPublishedView,
+      draggable: !isCanvasReadOnly,
+      style: nodeDimmed ? { opacity: 0.35 } : undefined,
     });
   }
 
-  const edges: Edge[] = viewEdges.map((e) => ({
-    id: String(e.id),
-    source: String(e.from_node_id),
-    target: String(e.to_node_id),
-    sourceHandle: "right",
-    targetHandle: "left",
-    animated: activeNodeIds.has(e.to_node_id),
-    style: {
-      stroke: activeNodeIds.has(e.to_node_id)
-        ? PIPELINE_NODE.edgeActive
-        : PIPELINE_NODE.edge,
-      strokeWidth: activeNodeIds.has(e.to_node_id) ? 2 : 1.5,
-    },
-  }));
+  const edges: Edge[] = viewEdges.map((e) => {
+    const edgeId = String(e.id);
+    const isActiveRun = activeNodeIds.has(e.to_node_id);
+    const isHighlighted =
+      highlightActive && connectionHighlight!.edgeIds.has(edgeId);
+    const isDimmed = highlightActive && !isHighlighted;
+    return {
+      id: edgeId,
+      type: "pipelineBump",
+      source: String(e.from_node_id),
+      target: String(e.to_node_id),
+      sourceHandle: "right",
+      targetHandle: "left",
+      animated: isActiveRun,
+      interactionWidth: 28,
+      zIndex: isHighlighted ? 1000 : isDimmed ? 0 : 1,
+      style: {
+        stroke: isHighlighted
+          ? PIPELINE_NODE.edgeActive
+          : isActiveRun
+            ? PIPELINE_NODE.edgeActive
+            : PIPELINE_NODE.edge,
+        strokeWidth: isHighlighted ? 3 : isActiveRun ? 2 : 1.5,
+        opacity: isDimmed ? 0.28 : 1,
+      },
+    };
+  });
 
   return { nodes, edges };
 }
@@ -443,6 +699,10 @@ type PipelineCanvasProps = {
   selectedPipelineId: number | null;
   selectedNode: SelectedNode;
   pipelineRun: PipelineRunDetail | null | undefined;
+  /** Selected run view — never fall back to full draft while detail loads. */
+  runSnapshotActive?: boolean;
+  /** True while the selected run detail is fetching (switch run / first load). */
+  runDetailLoading?: boolean;
   graphView: CanvasGraphView;
   onGraphViewChange: (_view: CanvasGraphView) => void;
   flowCanvasMode: PipelineRunMode;
@@ -458,6 +718,8 @@ const PipelineCanvas = ({
   selectedPipelineId,
   selectedNode,
   pipelineRun,
+  runSnapshotActive = false,
+  runDetailLoading = false,
   graphView,
   onGraphViewChange,
   flowCanvasMode,
@@ -472,6 +734,11 @@ const PipelineCanvas = ({
     Node<BatchFlowNodeData | StartFlowNodeData>
   >([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [connectionHighlight, setConnectionHighlight] = useState<{
+    mode: "edge" | "node";
+    edgeIds: Set<string>;
+    nodeIds: Set<string>;
+  } | null>(null);
   const prevLayoutKeyRef = useRef("");
   const prevPipelineIdRef = useRef<number | null>(null);
   const deleteNodeRef = useRef<(_nodeId: string) => void>(() => {});
@@ -491,6 +758,11 @@ const PipelineCanvas = ({
         onClearSelection();
       }
       try {
+        // Snapshot wiring BEFORE delete — server bridges only simple remaps.
+        const wiring = snapshotNodeDeleteForUndo(
+          node.id,
+          selectedPipeline.edges,
+        );
         await deleteNode.mutateAsync(Number(nodeId));
         if (node.batch_id !== null && node.connection_id !== null) {
           onPushUndo?.({
@@ -501,11 +773,17 @@ const PipelineCanvas = ({
               x: Math.round(node.x),
               y: Math.round(node.y),
             },
+            incoming: wiring.incoming,
+            outgoing: wiring.outgoing,
+            bridgesCreated: wiring.bridgesCreated,
           });
         }
+        const bridged = wiring.bridgesCreated.length > 0;
         toaster.success({
           title: "Batch removed",
-          description: "Dependencies reconnected automatically.",
+          description: bridged
+            ? "Dependencies reconnected automatically."
+            : "Edges cleared — reconnect as needed (auto-link skipped for this topology).",
         });
       } catch {
         toaster.error({ title: "Failed to remove batch from pipeline" });
@@ -549,12 +827,23 @@ const PipelineCanvas = ({
     hasPublishedGraph &&
     selectedPipeline?.canvas_changed_since_publish === true;
 
+  const highlightKey = connectionHighlight
+    ? `${connectionHighlight.mode}:${[...connectionHighlight.edgeIds].sort().join(",")}:${[...connectionHighlight.nodeIds].sort().join(",")}`
+    : "";
+
   const pipelineNodeKey = selectedPipeline
-    ? `${selectedPipeline.id}:${graphView}:${selectedPipeline.nodes.map((n) => n.id).join(",")}:${selectedPipeline.edges.map((e) => e.id).join(",")}:${selectedPipeline.published_graph?.fingerprint ?? ""}:${selectedPipeline.next_run_at ?? ""}:${selectedPipeline.readable_schedule ?? ""}:${overlayRunStatus}:${animateActiveEdges}:${pipelineRun?.pipeline_run_id ?? ""}:${pipelineRun?.status ?? ""}:${(pipelineRun?.nodes ?? []).map((n) => `${n.node_id}:${n.status}`).join(",")}`
+    ? `${selectedPipeline.id}:${graphView}:${runSnapshotActive}:${runDetailLoading}:${selectedPipeline.nodes.map((n) => n.id).join(",")}:${selectedPipeline.edges.map((e) => e.id).join(",")}:${selectedPipeline.published_graph?.fingerprint ?? ""}:${selectedPipeline.next_run_at ?? ""}:${selectedPipeline.readable_schedule ?? ""}:${overlayRunStatus}:${animateActiveEdges}:${pipelineRun?.pipeline_run_id ?? ""}:${pipelineRun?.status ?? ""}:${(pipelineRun?.nodes ?? []).map((n) => `${n.node_id}:${n.status}`).join(",")}:${highlightKey}`
     : "";
 
   useEffect(() => {
     if (!selectedPipeline) {
+      setNodes([]);
+      setEdges([]);
+      prevLayoutKeyRef.current = "";
+      return;
+    }
+    // Switching runs: clear Start-only flash; overlay shows a spinner instead.
+    if (runSnapshotActive && runDetailLoading) {
       setNodes([]);
       setEdges([]);
       prevLayoutKeyRef.current = "";
@@ -566,7 +855,13 @@ const PipelineCanvas = ({
       stableOnDeleteNode,
       selectedNode,
       pipelineRun,
-      { graphView, overlayRunStatus, animateActiveEdges },
+      {
+        graphView,
+        overlayRunStatus,
+        animateActiveEdges,
+        runSnapshotActive,
+        connectionHighlight,
+      },
     );
     setNodes(nextNodes);
     setEdges(nextEdges);
@@ -576,9 +871,12 @@ const PipelineCanvas = ({
     connections,
     selectedNode,
     pipelineRun,
+    runSnapshotActive,
+    runDetailLoading,
     graphView,
     overlayRunStatus,
     animateActiveEdges,
+    connectionHighlight,
     stableOnDeleteNode,
     setNodes,
     setEdges,
@@ -587,7 +885,14 @@ const PipelineCanvas = ({
   useEffect(() => {
     if (!selectedPipeline || !selectedPipelineId) return;
 
-    const layoutKey = `${selectedPipeline.nodes.length}:${selectedPipeline.edges.length}`;
+    const runKey = pipelineRun
+      ? `${pipelineRun.pipeline_run_id}:${(pipelineRun.nodes ?? [])
+          .map((n) => n.node_id)
+          .join(",")}:${(pipelineRun.edges ?? [])
+          .map((e) => `${e.from_node_id}->${e.to_node_id}`)
+          .join(",")}`
+      : "draft";
+    const layoutKey = `${selectedPipeline.nodes.length}:${selectedPipeline.edges.length}:${graphView}:${runKey}`;
     const savedViewport = loadPipelineViewport(selectedPipelineId);
     const pipelineChanged = prevPipelineIdRef.current !== selectedPipelineId;
     const layoutChanged = layoutKey !== prevLayoutKeyRef.current;
@@ -598,13 +903,21 @@ const PipelineCanvas = ({
     prevLayoutKeyRef.current = layoutKey;
 
     requestAnimationFrame(() => {
-      if (savedViewport) {
+      // Restore saved camera only when opening a pipeline in draft (no run selected).
+      if (pipelineChanged && savedViewport && !pipelineRun) {
         setViewport(savedViewport, { duration: 0 });
       } else {
         fitView({ padding: 0.25, duration: pipelineChanged ? 200 : 150 });
       }
     });
-  }, [selectedPipeline, selectedPipelineId, setViewport, fitView]);
+  }, [
+    selectedPipeline,
+    selectedPipelineId,
+    pipelineRun,
+    graphView,
+    setViewport,
+    fitView,
+  ]);
 
   useEffect(() => {
     if (!fitViewNonce || !selectedPipeline || !selectedPipelineId) return;
@@ -797,6 +1110,21 @@ const PipelineCanvas = ({
 
   const onNodeClick = useCallback(
     (_event: unknown, node: Node<BatchFlowNodeData | StartFlowNodeData>) => {
+      const incidentEdgeIds = new Set<string>();
+      const neighborNodeIds = new Set<string>([node.id]);
+      for (const edge of edges) {
+        if (edge.source === node.id || edge.target === node.id) {
+          incidentEdgeIds.add(edge.id);
+          neighborNodeIds.add(edge.source);
+          neighborNodeIds.add(edge.target);
+        }
+      }
+      setConnectionHighlight({
+        mode: "node",
+        edgeIds: incidentEdgeIds,
+        nodeIds: neighborNodeIds,
+      });
+
       if (node.type === "startNode") {
         onSelectNode({ nodeId: Number(node.id), isStart: true });
         return;
@@ -809,13 +1137,27 @@ const PipelineCanvas = ({
         connectionName: data.connectionName,
       });
     },
-    [onSelectNode],
+    [edges, onSelectNode],
   );
+
+  const onEdgeClick = useCallback((_event: unknown, edge: Edge) => {
+    setConnectionHighlight({
+      mode: "edge",
+      edgeIds: new Set([edge.id]),
+      nodeIds: new Set([edge.source, edge.target]),
+    });
+  }, []);
+
+  const onPaneClick = useCallback(() => {
+    setConnectionHighlight(null);
+    onClearSelection();
+  }, [onClearSelection]);
 
   const nodeTypes = useMemo(
     () => ({ batchNode: BatchFlowNode, startNode: StartFlowNode }),
     [],
   );
+  const edgeTypes = useMemo(() => ({ pipelineBump: PipelineBumpEdge }), []);
 
   if (!selectedPipeline) {
     return (
@@ -845,6 +1187,7 @@ const PipelineCanvas = ({
       overflow="hidden"
       borderWidth={1}
       borderColor="gray.200"
+      position="relative"
     >
       <ReactFlow
         nodes={nodes}
@@ -855,16 +1198,19 @@ const PipelineCanvas = ({
         onNodeDragStop={onNodeDragStop}
         onMoveEnd={onMoveEnd}
         onNodeClick={onNodeClick}
-        onPaneClick={onClearSelection}
+        onEdgeClick={onEdgeClick}
+        onPaneClick={onPaneClick}
         onEdgesDelete={onEdgesDelete}
         onDragOver={isPublishedView ? undefined : onDragOver}
         onDrop={onDrop}
         isValidConnection={isPublishedView ? () => false : isValidConnection}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitViewOptions={{ padding: 0.25 }}
         nodesDraggable={!isPublishedView}
         nodesConnectable={!isPublishedView}
         elementsSelectable
+        edgesFocusable
         deleteKeyCode={isPublishedView ? null : ["Backspace", "Delete"]}
         edgesReconnectable={false}
         proOptions={{ hideAttribution: true }}
@@ -884,6 +1230,25 @@ const PipelineCanvas = ({
           style={{ height: 100, width: 140 }}
         />
       </ReactFlow>
+      {runSnapshotActive && runDetailLoading && (
+        <Flex
+          position="absolute"
+          inset={0}
+          alignItems="center"
+          justifyContent="center"
+          direction="column"
+          gap={3}
+          bg="blackAlpha.100"
+          backdropFilter="blur(1px)"
+          zIndex={5}
+          pointerEvents="none"
+        >
+          <Spinner size="lg" color="purple.500" borderWidth="3px" />
+          <Text fontSize="sm" color="gray.700" fontWeight="medium">
+            Loading execution…
+          </Text>
+        </Flex>
+      )}
     </Box>
   );
 };
@@ -1063,6 +1428,8 @@ const Scheduling = () => {
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(null);
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
   const [pinnedRunId, setPinnedRunId] = useState<number | null>(null);
+  /** When true, canvas shows editable draft instead of pinning a run snapshot. */
+  const [draftCanvasMode, setDraftCanvasMode] = useState(false);
   const [executionLogProcessName, setExecutionLogProcessName] = useState<
     string | null
   >(null);
@@ -1187,6 +1554,8 @@ const Scheduling = () => {
     if (pipelineId !== null) persistLastPipelineId(pipelineId);
     setSelectedNode(null);
     setActiveRunId(null);
+    setPinnedRunId(null);
+    setDraftCanvasMode(false);
     setCenterViewTab("flow");
     setExecutionLogProcessName(null);
     setGraphView("draft");
@@ -1264,10 +1633,47 @@ const Scheduling = () => {
           await deleteNode.mutateAsync(entry.nodeId);
           toaster.success({ title: "Add undone" });
           break;
-        case "readdNode":
-          await addNode.mutateAsync(entry.payload);
+        case "readdNode": {
+          // 1) Remove any bridge shortcuts created by a simple delete remap.
+          const pipelineNow =
+            pipelines.find((p) => p.id === selectedPipelineId) ?? null;
+          const bridges = entry.bridgesCreated ?? [];
+          if (pipelineNow && bridges.length) {
+            await Promise.all(
+              bridges.map(async (pair) => {
+                const edge = pipelineNow.edges.find(
+                  (e) =>
+                    e.from_node_id === pair.from_node_id &&
+                    e.to_node_id === pair.to_node_id,
+                );
+                if (edge) {
+                  await deleteEdge.mutateAsync(edge.id);
+                }
+              }),
+            );
+          }
+
+          // 2) Re-add the batch at its previous position.
+          const restored = await addNode.mutateAsync(entry.payload);
+
+          // 3) Restore original edges through the restored node.
+          const incoming = entry.incoming ?? [];
+          const outgoing = entry.outgoing ?? [];
+          for (const fromId of incoming) {
+            await addEdge.mutateAsync({
+              from_node_id: fromId,
+              to_node_id: restored.id,
+            });
+          }
+          for (const toId of outgoing) {
+            await addEdge.mutateAsync({
+              from_node_id: restored.id,
+              to_node_id: toId,
+            });
+          }
           toaster.success({ title: "Removal undone" });
           break;
+        }
         case "removeEdge":
           await deleteEdge.mutateAsync(entry.edgeId);
           toaster.success({ title: "Dependency undone" });
@@ -1297,6 +1703,7 @@ const Scheduling = () => {
     deleteEdge,
     deleteNode,
     isUndoing,
+    pipelines,
     selectedPipelineId,
     updateNode,
   ]);
@@ -1383,9 +1790,22 @@ const Scheduling = () => {
         validationSnapshot.result.valid) ||
       validationStale);
 
-  const { data: pipelineRun } = usePipelineRun(selectedPipelineId, activeRunId);
+  const {
+    data: pipelineRun,
+    isPending: isPipelineRunPending,
+    isFetching: isPipelineRunFetching,
+  } = usePipelineRun(selectedPipelineId, activeRunId);
   const { data: pipelineRunsData } = usePipelineRuns(selectedPipelineId);
   const pipelineRuns = pipelineRunsData?.runs ?? [];
+  // Show spinner while the selected run's detail is missing / mismatched —
+  // not on background refetches of the same run.
+  const runDetailLoading =
+    !draftCanvasMode &&
+    activeRunId !== null &&
+    (pipelineRun === null ||
+      pipelineRun === undefined ||
+      pipelineRun.pipeline_run_id !== activeRunId) &&
+    (isPipelineRunPending || isPipelineRunFetching);
   const previousRunStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -1407,6 +1827,9 @@ const Scheduling = () => {
     if (!selectedPipelineId) {
       setActiveRunId(null);
       latestRunIdRef.current = null;
+      return;
+    }
+    if (draftCanvasMode) {
       return;
     }
     if (pipelineRuns.length === 0) {
@@ -1440,7 +1863,7 @@ const Scheduling = () => {
       setPinnedRunId(null);
     }
     setActiveRunId(latestId);
-  }, [selectedPipelineId, pipelineRuns, pinnedRunId]);
+  }, [selectedPipelineId, pipelineRuns, pinnedRunId, draftCanvasMode]);
 
   useEffect(() => {
     if (!selectedPipelineId || selectedPipeline?.status !== "active") return;
@@ -1468,8 +1891,23 @@ const Scheduling = () => {
     }
   }, [pipelineRun, queryClient, selectedPipelineId]);
 
+  const handleEditCanvas = useCallback(() => {
+    setDraftCanvasMode(true);
+    setPinnedRunId(null);
+    setActiveRunId(null);
+    setExecutionLogProcessName(null);
+    setCenterViewTab("flow");
+    setGraphView("draft");
+    toaster.info({
+      title: "Editing draft canvas",
+      description:
+        "Pick a run from the dropdown to view execution status again.",
+    });
+  }, []);
+
   const handleRunSelect = useCallback(
     (runId: number) => {
+      setDraftCanvasMode(false);
       const latestId = pipelineRuns[0]?.pipeline_run_id ?? null;
       if (latestId !== null && runId === latestId) {
         setPinnedRunId(null);
@@ -1483,6 +1921,7 @@ const Scheduling = () => {
   );
 
   const handleRunStarted = useCallback((runId: number) => {
+    setDraftCanvasMode(false);
     setPinnedRunId(null);
     setActiveRunId(runId);
   }, []);
@@ -1848,9 +2287,22 @@ const Scheduling = () => {
           gap={3}
           flexWrap={{ base: "wrap", lg: "nowrap" }}
         >
-          <Text fontSize="xl" fontWeight="semibold" flexShrink={0}>
-            Pipeline Flow
-          </Text>
+          <Flex
+            alignItems="baseline"
+            gap={3}
+            flexShrink={0}
+            flexWrap="wrap"
+            minW={0}
+          >
+            <Text fontSize="xl" fontWeight="semibold" flexShrink={0}>
+              Pipeline Flow
+            </Text>
+            {scheduleSummary && batchNodeCount > 0 && (
+              <Text fontSize="xs" color="gray.600" whiteSpace="nowrap">
+                Schedule: {scheduleSummary}
+              </Text>
+            )}
+          </Flex>
           <Flex
             gap={2}
             alignItems="center"
@@ -1875,11 +2327,6 @@ const Scheduling = () => {
             </Button>
           </Flex>
         </Flex>
-        {scheduleSummary && batchNodeCount > 0 && (
-          <Text fontSize="xs" color="gray.600" mt={2} px={1}>
-            Schedule: {scheduleSummary}
-          </Text>
-        )}
       </Box>
 
       <Dialog.Root
@@ -2246,11 +2693,17 @@ const Scheduling = () => {
                     maxW="min(360px, 44vw)"
                     w="100%"
                     justifyContent="center"
+                    alignItems="center"
+                    gap={1}
                   >
                     <PipelineRunPicker
                       runs={pipelineRuns}
                       selectedRunId={
-                        activeRunId ?? pipelineRuns[0]?.pipeline_run_id ?? null
+                        draftCanvasMode
+                          ? null
+                          : (activeRunId ??
+                            pipelineRuns[0]?.pipeline_run_id ??
+                            null)
                       }
                       onSelect={handleRunSelect}
                       width="100%"
@@ -2268,6 +2721,16 @@ const Scheduling = () => {
                   flexWrap="nowrap"
                   overflowX="auto"
                 >
+                  {!draftCanvasMode && activeRunId !== null && (
+                    <PipelineToolbarIcon
+                      label="Edit canvas"
+                      tooltip="Leave run view and edit the draft flow"
+                      onClick={handleEditCanvas}
+                      flexShrink={0}
+                    >
+                      <MdEdit />
+                    </PipelineToolbarIcon>
+                  )}
                   {centerViewTab === "flow" && (
                     <>
                       <PipelineToolbarIcon
@@ -2390,11 +2853,16 @@ const Scheduling = () => {
                 <ReactFlowProvider>
                   <Box h="100%" minH="480px">
                     <PipelineCanvas
+                      key={selectedPipelineId ?? "none"}
                       selectedPipeline={selectedPipeline}
                       connections={connections}
                       selectedPipelineId={selectedPipelineId}
                       selectedNode={selectedNode}
-                      pipelineRun={pipelineRun}
+                      pipelineRun={draftCanvasMode ? null : pipelineRun}
+                      runSnapshotActive={
+                        !draftCanvasMode && activeRunId !== null
+                      }
+                      runDetailLoading={runDetailLoading}
                       graphView={graphView}
                       onGraphViewChange={setGraphView}
                       flowCanvasMode={flowCanvasMode}
@@ -2415,7 +2883,22 @@ const Scheduling = () => {
                 display="flex"
                 flexDirection="column"
               >
-                {pipelineRun ? (
+                {runDetailLoading ? (
+                  <Flex
+                    alignItems="center"
+                    justifyContent="center"
+                    direction="column"
+                    gap={3}
+                    h="100%"
+                    minH="200px"
+                    px={4}
+                  >
+                    <Spinner size="lg" color="purple.500" borderWidth="3px" />
+                    <Text fontSize="sm" color="gray.600">
+                      Loading execution logs…
+                    </Text>
+                  </Flex>
+                ) : pipelineRun ? (
                   <>
                     <Box
                       flexShrink={0}

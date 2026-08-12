@@ -2,8 +2,6 @@ import { useEffect } from "react";
 
 import { Box, Button, Flex, Image, Text } from "@chakra-ui/react";
 
-import { CiPause1 } from "react-icons/ci";
-import { IoMdCheckmark } from "react-icons/io";
 import { MdErrorOutline, MdSync } from "react-icons/md";
 
 import Arrow from "@/assets/images/arrow-cool-down.svg";
@@ -15,7 +13,6 @@ import LoadingSpinner from "@/components/shared/Spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import useUpdateSchemaStatus from "@/queryOptions/connector/schema/useUpdateSchemaStatus";
-import useToggleConnectionStatus from "@/queryOptions/connector/useToggleConnectionStatus";
 import { type Connector } from "@/types/connectors";
 
 import { getStatusMessage } from "../helpers";
@@ -31,11 +28,6 @@ const Header = ({ connector }: { connector: Connector }) => {
     status = "P",
     connection_id = 0,
   } = connector || {};
-
-  const { mutate: toggleConnectionStatus, isPending } =
-    useToggleConnectionStatus({
-      connectorId: connection_id,
-    });
 
   // Check if refresh/update schema mutations are in progress for this connector
   const isRefreshSchemaInProgress = useIsMutating({
@@ -152,7 +144,7 @@ const Header = ({ connector }: { connector: Connector }) => {
           </Box>
         </Flex>
 
-        {/* Status Buttons */}
+        {/* Operational status only (syncing / error). Active↔Paused toggle is unused on batch. */}
         <Flex ml="auto" gap={2}>
           {status === "S" && (
             <Button colorPalette="blue" size="xs" variant="solid" disabled>
@@ -161,39 +153,9 @@ const Header = ({ connector }: { connector: Connector }) => {
             </Button>
           )}
           {status === "E" && (
-            <Button
-              colorPalette="red"
-              size="xs"
-              variant="solid"
-              loading={isPending}
-              onClick={() => toggleConnectionStatus()}
-            >
+            <Button colorPalette="red" size="xs" variant="solid" disabled>
               <MdErrorOutline />
               Error
-            </Button>
-          )}
-          {status === "P" && (
-            <Button
-              colorPalette="yellow"
-              size="xs"
-              variant="solid"
-              loading={isPending}
-              onClick={() => toggleConnectionStatus()}
-            >
-              <CiPause1 />
-              Paused
-            </Button>
-          )}
-          {status === "A" && (
-            <Button
-              colorPalette="green"
-              size="xs"
-              variant="solid"
-              loading={isPending}
-              onClick={() => toggleConnectionStatus()}
-            >
-              <IoMdCheckmark />
-              Active
             </Button>
           )}
         </Flex>
