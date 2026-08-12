@@ -18,6 +18,7 @@ import {
 export const toaster = createToaster({
   placement: "top-end",
   pauseOnPageIdle: true,
+  duration: 9000,
 });
 
 export const Toaster = () => {
@@ -44,7 +45,7 @@ export const Toaster = () => {
     <Portal>
       <ChakraToaster toaster={toaster} insetInline={{ mdDown: "4" }}>
         {(toast) => (
-          <Toast.Root width={{ md: "sm" }}>
+          <Toast.Root width={{ md: "calc(24rem + 5cm)" }}>
             {renderIndicator(String(toast.type || "info"))}
             <Stack gap="1" flex="1" maxWidth="100%">
               {toast.title && <Toast.Title>{toast.title}</Toast.Title>}

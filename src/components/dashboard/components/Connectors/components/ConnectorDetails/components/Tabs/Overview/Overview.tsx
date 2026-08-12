@@ -8,12 +8,20 @@ import LoadingSpinner from "@/components/shared/Spinner";
 import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
-import { type Connector } from "@/types/connectors";
+import { type Connector, type ConnectorActivityLog } from "@/types/connectors";
 
 import Filter from "./Filter";
 import Item from "./Item";
 import MigrationProgressTable from "./components/MigrationProgressTable";
 import TableSelectionDetails from "./components/TableSelectionDetails";
+
+const getActivityLogId = (log: ConnectorActivityLog): number | null => {
+  const id = log.log_id ?? log.migration_id ?? log.session_id;
+  if (id === null || id === undefined) return null;
+
+  const numericId = Number(id);
+  return Number.isFinite(numericId) && numericId > 0 ? numericId : null;
+};
 
 const Overview = () => {
   const context = useOutletContext<
@@ -28,56 +36,64 @@ const Overview = () => {
     statusFilter,
   );
 
-  const [userSelectedLog, setUserSelectedLog] = useState<number | null>(null);
+  const selectionScope = `${context.connection_id}:${context.filterDays}:${statusFilter}`;
+  const [userSelection, setUserSelection] = useState<{
+    scope: string;
+    logId: number;
+  } | null>(null);
+  const userSelectedLog =
+    userSelection?.scope === selectionScope ? userSelection.logId : null;
 
   // Derive the default selected log from data (first clickable log in the list)
   const defaultSelectedLog = useMemo(() => {
-    if (data?.logs?.length) {
-      const firstLog = data.logs[0];
-      if (firstLog.is_clickable !== false) {
-        return Number(
-          firstLog.log_id ?? firstLog.migration_id ?? firstLog.session_id ?? 0,
-        );
-      }
-    }
-    return null;
+    const firstClickableLog = data?.logs?.find(
+      (log) => log.is_clickable !== false && getActivityLogId(log) !== null,
+    );
+    return firstClickableLog ? getActivityLogId(firstClickableLog) : null;
   }, [data]);
 
-  // Effective selected log: user selection wins, otherwise use default
-  const effectiveSelectedLog = userSelectedLog ?? defaultSelectedLog;
+  const selectedLogExists = useMemo(
+    () =>
+      userSelectedLog !== null &&
+      data?.logs?.some((log) => getActivityLogId(log) === userSelectedLog),
+    [data, userSelectedLog],
+  );
+
+  // Fall back to the first clickable row when filters remove the prior selection.
+  const effectiveSelectedLog = selectedLogExists
+    ? userSelectedLog
+    : defaultSelectedLog;
 
   // Find the active log object to check properties
   const activeLog = useMemo(
     () =>
-      data?.logs?.find(
-        (log) =>
-          (log.log_id && log.log_id === effectiveSelectedLog) ||
-          log.migration_id === effectiveSelectedLog ||
-          log.session_id === effectiveSelectedLog,
-      ),
+      data?.logs?.find((log) => getActivityLogId(log) === effectiveSelectedLog),
     [data, effectiveSelectedLog],
   );
 
-  // Only fetch if is_clickable is true
+  // Fetch unless the API explicitly marks the row as non-clickable.
   const migrationIdToFetch =
-    activeLog?.is_clickable && activeLog?.migration_id
+    activeLog?.is_clickable !== false && activeLog?.migration_id
       ? activeLog.migration_id
       : undefined;
 
   const logIdToFetch =
-    activeLog?.is_clickable && !activeLog?.migration_id && activeLog?.log_id
+    activeLog?.is_clickable !== false &&
+    !activeLog?.migration_id &&
+    activeLog?.log_id
       ? activeLog.log_id
       : undefined;
 
   // Keep WS connected for the selected migration so terminal updates are not missed.
   const migrationIdForWS = migrationIdToFetch ?? null;
 
-  useMigrationStatusWS(migrationIdForWS);
+  useMigrationStatusWS(migrationIdForWS, context.connection_id);
 
   const { data: logDetails, isLoading: isLoadingDetails } =
     useFetchConnectorActivityDetails({
       migrationId: migrationIdToFetch,
-      connectionId: logIdToFetch ? context.connection_id : undefined,
+      connectionId:
+        migrationIdToFetch || logIdToFetch ? context.connection_id : undefined,
       logId: logIdToFetch,
     });
 
@@ -155,10 +171,9 @@ const Overview = () => {
                 log={log}
                 onClick={() => {
                   if (log.is_clickable === false) return;
-                  const logId =
-                    log.log_id ?? log.migration_id ?? log.session_id;
-                  if (logId) {
-                    setUserSelectedLog(logId);
+                  const logId = getActivityLogId(log);
+                  if (logId !== null) {
+                    setUserSelection({ scope: selectionScope, logId });
                   }
                 }}
                 pointerEvent={
@@ -209,7 +224,7 @@ const Overview = () => {
                     <Text color="gray.500">Select a log to view details</Text>
                   </Flex>
                 )}
-                {effectiveSelectedLog && (
+                {effectiveSelectedLog && activeLog && (
                   <Box p={0} h="full">
                     {logDetails?.changes ? (
                       <TableSelectionDetails

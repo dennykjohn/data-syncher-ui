@@ -92,8 +92,14 @@ const ServerRoutes = {
       connectionId: number;
       sessionId: number;
     }) => `connection/${connectionId}/session/${sessionId}/`,
-    fetchMigrationStatus: (connectionId: number) =>
-      `connection/migration_status/${connectionId}/`,
+    fetchMigrationStatus: ({
+      migrationId,
+      connectionId,
+    }: {
+      migrationId: number;
+      connectionId: number;
+    }) =>
+      `connection/migration_status/${migrationId}/?connection_id=${connectionId}`,
 
     createConnector: (type: string) => `source-config/${type}/create/`,
     updateConnectionSettings: (id: number) => `connection/${id}/update/`,
@@ -119,8 +125,11 @@ const ServerRoutes = {
     fetchConnectionMappings: (id: number) => `connection/${id}/mappings/`,
     saveConnectionMappings: () => "connection/mappings/save/",
     suggestTableName: () => "s3/suggest-table-name/",
-    previewdata: () => "s3/preview-pattern/",
-    suggestPrimaryKeys: () => "s3/suggest-primary-keys/",
+    previewdata: ({ source }: { source: string }) =>
+      `${source}/preview-pattern/`,
+    suggestPrimaryKeys: ({ source }: { source: string }) =>
+      `${source}/suggest-primary-keys/`,
+    listFiles: ({ source }: { source: string }) => `${source}/list-files/`,
     fetchLogDetails: ({
       connectionId,
       logId,
@@ -143,7 +152,6 @@ const ServerRoutes = {
     },
   },
   s3: {
-    listFiles: () => "s3/list-files/",
     suggestTableName: () => "s3/suggest-table-name/",
   },
   supportTickets: {

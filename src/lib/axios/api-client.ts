@@ -3,10 +3,14 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
-import Cookies from "js-cookie";
 
 import { toaster } from "@/components/ui/toaster";
 import ServerRoutes from "@/constants/server-routes";
+import {
+  getAccessToken,
+  getRefreshToken,
+  setAuthTokens,
+} from "@/lib/auth/token-cookies";
 import { type ErrorResponseType } from "@/types/error";
 
 let baseURL = "";
@@ -15,7 +19,7 @@ if (
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1"
 ) {
-  baseURL = "https://qa.datasyncher.com";
+  baseURL = "https://qa-kubernetes.datasyncher.com";
   // baseURL = "http://127.0.0.1:8000";
 } else {
   baseURL = window.location.origin;
@@ -25,12 +29,6 @@ const AxiosInstance = axios.create({
   baseURL: `${baseURL}/api/v1/`,
   timeout: 30000,
 });
-
-const TOKEN_COOKIE_OPTIONS = {
-  expires: 7,
-  secure: true,
-  sameSite: "Strict" as const,
-};
 
 type RefreshTokenResponse = {
   access?: string;
@@ -46,20 +44,18 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
 
 let refreshPromise: Promise<string> | null = null;
 
-export const refreshAccessToken = async () => {
-  if (refreshPromise) return refreshPromise;
-
-  const refreshToken = Cookies.get("refresh_token");
+const requestNewTokens = async () => {
+  const refreshToken = getRefreshToken();
 
   if (!refreshToken) {
     throw new Error("Refresh token is not available.");
   }
 
-  refreshPromise = axios
+  return axios
     .post<RefreshTokenResponse>(
       `${baseURL}/api/v1/${ServerRoutes.auth.refresh()}`,
       {
-        refresh_token: refreshToken,
+        refresh: refreshToken,
       },
     )
     .then(({ data }) => {
@@ -71,14 +67,47 @@ export const refreshAccessToken = async () => {
         throw new Error("Refresh response did not include an access token.");
       }
 
-      Cookies.set("access_token", accessToken, TOKEN_COOKIE_OPTIONS);
-      Cookies.set("refresh_token", nextRefreshToken, TOKEN_COOKIE_OPTIONS);
+      setAuthTokens(accessToken, nextRefreshToken);
 
       return accessToken;
-    })
-    .finally(() => {
-      refreshPromise = null;
     });
+};
+
+export const refreshAccessToken = async () => {
+  if (refreshPromise) return refreshPromise;
+
+  // Capture the token that produced the 401 before waiting for a cross-tab
+  // lock. If another tab refreshes first, it will update storage and this tab
+  // can reuse that access token without submitting the blacklisted old
+  // refresh token again.
+  const accessTokenBeforeLock = getAccessToken();
+
+  const refreshWithCrossTabLock = async () => {
+    if (!("locks" in navigator)) {
+      return requestNewTokens();
+    }
+
+    return navigator.locks.request(
+      "datasyncher-auth-token-refresh",
+      async () => {
+        const latestAccessToken = getAccessToken();
+
+        if (
+          latestAccessToken &&
+          accessTokenBeforeLock &&
+          latestAccessToken !== accessTokenBeforeLock
+        ) {
+          return latestAccessToken;
+        }
+
+        return requestNewTokens();
+      },
+    );
+  };
+
+  refreshPromise = refreshWithCrossTabLock().finally(() => {
+    refreshPromise = null;
+  });
 
   return refreshPromise;
 };
@@ -90,8 +119,7 @@ AxiosInstance.defaults.headers.common["Pragma"] = "no-cache";
 
 AxiosInstance.interceptors.request.use(
   (config: RetryableRequestConfig): InternalAxiosRequestConfig => {
-    const token =
-      config.headers.customToken ?? Cookies.get("access_token") ?? null;
+    const token = config.headers.customToken ?? getAccessToken();
 
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;

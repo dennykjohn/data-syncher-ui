@@ -22,8 +22,8 @@ import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ErrorBoundary fallback={<SomethingWentWrong />}>
-      <ChakraProvider value={theme}>
+    <ChakraProvider value={theme}>
+      <ErrorBoundary fallback={<SomethingWentWrong />}>
         <Toaster />
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
@@ -39,7 +39,7 @@ createRoot(document.getElementById("root")!).render(
             </Suspense>
           </QueryClientProvider>
         </AuthProvider>
-      </ChakraProvider>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </ChakraProvider>
   </StrictMode>,
 );
