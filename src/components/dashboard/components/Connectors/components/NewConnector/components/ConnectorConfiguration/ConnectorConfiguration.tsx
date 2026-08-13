@@ -332,6 +332,7 @@ const ConnectorConfiguration = (props: {
     .replace(/[\s\-._]/g, "");
   const isS3Connector =
     normalizedSourceName === "amazons3" ||
+    normalizedSourceName === "azuredatalakestorage" ||
     normalizedSourceName === "sftp" ||
     normalizedSourceName === "googledrive";
 

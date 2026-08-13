@@ -129,6 +129,7 @@ const NewConnector = () => {
           .replace(/[\s\-._]/g, "");
         const isS3Connector =
           normalizedSource === "amazons3" ||
+          normalizedSource === "azuredatalakestorage" ||
           normalizedSource === "sftp" ||
           normalizedSource === "googledrive";
 

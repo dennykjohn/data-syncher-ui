@@ -130,8 +130,16 @@ const S3ConnectorConfiguration = ({
     .replace(/[\s\-._]/g, "");
   const isSftp = normalizedSourceName === "sftp";
   const isGoogleDrive = normalizedSourceName === "googledrive";
+  const isAzureDataLakeStorage =
+    normalizedSourceName === "azuredatalakestorage";
   const sourceType = isSftp ? "sftp" : isGoogleDrive ? "googledrive" : "s3";
-  const displayName = isSftp ? "SFTP" : isGoogleDrive ? "Google Drive" : "S3";
+  const displayName = isSftp
+    ? "SFTP"
+    : isGoogleDrive
+      ? "Google Drive"
+      : isAzureDataLakeStorage
+        ? "Azure Data Lake Storage"
+        : "S3";
 
   // Prepare params for suggest primary keys API
   const suggestPrimaryKeysParams = useMemo(() => {
@@ -844,9 +852,15 @@ const S3ConnectorConfiguration = ({
           overflow="hidden"
           bg={{ base: "transparent", xl: "gray.50" }}
         >
-          {isSftp || isGoogleDrive ? (
+          {isSftp || isGoogleDrive || isAzureDataLakeStorage ? (
             <ConnectorDocsHelperPanel
-              connectorKey={isGoogleDrive ? "googledrive" : "sftp"}
+              connectorKey={
+                isGoogleDrive
+                  ? "googledrive"
+                  : isAzureDataLakeStorage
+                    ? "azuredatalakestorage"
+                    : "sftp"
+              }
               kind="connector"
             />
           ) : (
