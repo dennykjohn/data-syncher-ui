@@ -72,6 +72,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
 
   const sourceType = propSourceType || (isSftp ? "sftp" : "s3");
   const isGoogleDrive = sourceType === "googledrive";
+  const isAdls = sourceType === "azuredatalakestorage" || sourceType === "adls";
 
   const hasRequiredCreds = useMemo(() => {
     if (connectionId) return true;
@@ -87,6 +88,16 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
         formValues?.service_account_json
       );
     }
+    if (isAdls) {
+      return !!(
+        formValues?.account_name ||
+        formValues?.storage_account_name ||
+        formValues?.container_name ||
+        formValues?.file_system ||
+        formValues?.connection_string ||
+        formValues?.sas_token
+      );
+    }
     if (isSftp) {
       return (
         !!formValues?.sftp_host &&
@@ -99,7 +110,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       !!formValues?.aws_access_key_id &&
       !!formValues?.aws_secret_access_key
     );
-  }, [formValues, connectionId, isSftp, isGoogleDrive]);
+  }, [formValues, connectionId, isSftp, isGoogleDrive, isAdls]);
 
   const s3Params = useMemo(() => {
     if (!hasRequiredCreds) return null;
@@ -108,6 +119,24 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
         ...formValues,
         base_folder_path: formValues.base_folder_path || undefined,
         root_folder: formValues.root_folder || undefined,
+        file_type: formValues.file_type || undefined,
+        include_subfolders: formValues.include_subfolders || "false",
+        file_mapping_method: formValues.file_mapping_method || undefined,
+        connection_id: connectionId,
+        sourceType,
+      } as unknown as S3ListFilesRequest;
+    }
+    if (isAdls) {
+      return {
+        ...formValues,
+        account_name:
+          formValues.account_name || formValues.storage_account_name,
+        container_name: formValues.container_name || formValues.file_system,
+        folder_name:
+          formValues.folder_name ||
+          formValues.root_folder ||
+          formValues.folder_path ||
+          formValues.base_folder_path,
         file_type: formValues.file_type || undefined,
         include_subfolders: formValues.include_subfolders || "false",
         file_mapping_method: formValues.file_mapping_method || undefined,
@@ -148,6 +177,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     hasRequiredCreds,
     isSftp,
     isGoogleDrive,
+    isAdls,
     formValues,
     connectionId,
     sourceType,

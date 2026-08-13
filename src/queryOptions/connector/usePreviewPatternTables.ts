@@ -1,6 +1,7 @@
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 
+import { fileSourceApiSegmentFromRequest } from "./fileSourceUtils";
 import {
   type MatchedTable,
   type PreviewPatternRequest,
@@ -19,11 +20,7 @@ export type {
 const fetchPreviewPattern = async (
   data: PreviewPatternRequest | SFTPPreviewPatternRequest,
 ) => {
-  const isSftp =
-    !!(data as SFTPPreviewPatternRequest).sftp_host ||
-    !!(data as SFTPPreviewPatternRequest).root_folder ||
-    !!data.isSftp;
-  const source = data.sourceType || (isSftp ? "sftp" : "s3");
+  const source = fileSourceApiSegmentFromRequest(data);
   const endpoint = ServerRoutes.connector.previewdata({ source });
 
   const { data: responseData } = await AxiosInstance.post(endpoint, data);

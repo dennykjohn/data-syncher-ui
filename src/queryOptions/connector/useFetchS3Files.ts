@@ -1,6 +1,7 @@
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 
+import { fileSourceApiSegmentFromRequest } from "./fileSourceUtils";
 import {
   type S3FileItem,
   type S3ListFilesRequest,
@@ -19,19 +20,7 @@ export type {
 const fetchS3Files = async (
   data: S3ListFilesRequest | SFTPListFilesRequest,
 ) => {
-  const sourceType = data.sourceType?.toLowerCase();
-  const sourceRouteMap: Record<string, string> = {
-    s3: "s3",
-    amazons3: "s3",
-    sftp: "sftp",
-    googledrive: "googledrive",
-    "google-drive": "googledrive",
-    adls: "azuredatalakestorage",
-    azuredatalake: "azuredatalakestorage",
-    azuredatalakestorage: "azuredatalakestorage",
-  };
-  const source =
-    (sourceType && sourceRouteMap[sourceType]) || (data.isSftp ? "sftp" : "s3");
+  const source = fileSourceApiSegmentFromRequest(data);
   const endpoint = ServerRoutes.connector.listFiles({ source });
 
   const { data: responseData } = await AxiosInstance.post(endpoint, data);

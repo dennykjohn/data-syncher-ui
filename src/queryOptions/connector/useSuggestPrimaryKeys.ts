@@ -1,6 +1,7 @@
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 
+import { fileSourceApiSegmentFromRequest } from "./fileSourceUtils";
 import {
   type ColumnSuggestion,
   type SuggestPrimaryKeysRequest,
@@ -17,8 +18,7 @@ export type {
 };
 
 const fetchSuggestPrimaryKeys = async (data: SuggestPrimaryKeysRequest) => {
-  const isSftp = !!data.sftp_host || !!data.root_folder || !!data.isSftp;
-  const source = data.sourceType || (isSftp ? "sftp" : "s3");
+  const source = fileSourceApiSegmentFromRequest(data);
   const endpoint = ServerRoutes.connector.suggestPrimaryKeys({ source });
 
   const { data: responseData } = await AxiosInstance.post(endpoint, data);

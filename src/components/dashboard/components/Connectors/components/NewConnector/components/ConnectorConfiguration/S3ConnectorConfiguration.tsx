@@ -132,7 +132,13 @@ const S3ConnectorConfiguration = ({
   const isGoogleDrive = normalizedSourceName === "googledrive";
   const isAzureDataLakeStorage =
     normalizedSourceName === "azuredatalakestorage";
-  const sourceType = isSftp ? "sftp" : isGoogleDrive ? "googledrive" : "s3";
+  const sourceType = isSftp
+    ? "sftp"
+    : isGoogleDrive
+      ? "googledrive"
+      : isAzureDataLakeStorage
+        ? "azuredatalakestorage"
+        : "s3";
   const displayName = isSftp
     ? "SFTP"
     : isGoogleDrive

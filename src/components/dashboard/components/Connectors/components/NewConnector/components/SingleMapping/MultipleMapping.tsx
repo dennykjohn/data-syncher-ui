@@ -72,7 +72,14 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
 
   const sourceType = propSourceType || (isSftp ? "sftp" : "s3");
   const isGoogleDrive = sourceType === "googledrive";
-  const sourceLabel = isSftp ? "SFTP" : isGoogleDrive ? "Google Drive" : "S3";
+  const isAdls = sourceType === "azuredatalakestorage" || sourceType === "adls";
+  const sourceLabel = isSftp
+    ? "SFTP"
+    : isGoogleDrive
+      ? "Google Drive"
+      : isAdls
+        ? "Azure Data Lake Storage"
+        : "S3";
 
   const hasRequiredCreds = useMemo(() => {
     if (connectionId) return true;
@@ -88,6 +95,16 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
         formValues?.service_account_json
       );
     }
+    if (isAdls) {
+      return !!(
+        formValues?.account_name ||
+        formValues?.storage_account_name ||
+        formValues?.container_name ||
+        formValues?.file_system ||
+        formValues?.connection_string ||
+        formValues?.sas_token
+      );
+    }
     if (isSftp) {
       return (
         !!formValues?.sftp_host &&
@@ -100,7 +117,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
       !!formValues?.aws_access_key_id &&
       !!formValues?.aws_secret_access_key
     );
-  }, [formValues, connectionId, isSftp, isGoogleDrive]);
+  }, [formValues, connectionId, isSftp, isGoogleDrive, isAdls]);
 
   const previewParams = useMemo(() => {
     if (!hasRequiredCreds || !prefix.trim() || !shouldFetchPreview) return null;
@@ -109,6 +126,27 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
         ...formValues,
         base_folder_path: formValues?.base_folder_path as string | undefined,
         root_folder: formValues?.root_folder as string | undefined,
+        file_type: formValues?.file_type as string | undefined,
+        multi_files_prefix: prefix.trim(),
+        include_subfolders: String(formValues?.include_subfolders || "false"),
+        file_mapping_method: formValues?.file_mapping_method as
+          | string
+          | undefined,
+        connection_id: connectionId,
+        sourceType,
+      } as unknown as PreviewPatternRequest;
+    }
+    if (isAdls) {
+      return {
+        ...formValues,
+        account_name:
+          formValues?.account_name || formValues?.storage_account_name,
+        container_name: formValues?.container_name || formValues?.file_system,
+        folder_name:
+          formValues?.folder_name ||
+          formValues?.root_folder ||
+          formValues?.folder_path ||
+          formValues?.base_folder_path,
         file_type: formValues?.file_type as string | undefined,
         multi_files_prefix: prefix.trim(),
         include_subfolders: String(formValues?.include_subfolders || "false"),
@@ -160,6 +198,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
     hasRequiredCreds,
     isSftp,
     isGoogleDrive,
+    isAdls,
     formValues,
     prefix,
     shouldFetchPreview,
