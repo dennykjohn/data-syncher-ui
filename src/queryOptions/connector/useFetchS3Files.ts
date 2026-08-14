@@ -24,7 +24,25 @@ const fetchS3Files = async (
   const endpoint = ServerRoutes.connector.listFiles({ source });
 
   const { data: responseData } = await AxiosInstance.post(endpoint, data);
-  return responseData as S3ListFilesResponse;
+
+  if (Array.isArray(responseData)) {
+    return { tables: responseData as S3FileItem[] };
+  }
+
+  const payload = responseData as S3ListFilesResponse;
+
+  if (payload?.result && Array.isArray(payload.result.tables)) {
+    return {
+      ...payload,
+      ...payload.result,
+      tables: payload.result.tables,
+    };
+  }
+
+  return {
+    ...payload,
+    tables: Array.isArray(payload?.tables) ? payload.tables : [],
+  };
 };
 
 export default function useFetchS3Files(

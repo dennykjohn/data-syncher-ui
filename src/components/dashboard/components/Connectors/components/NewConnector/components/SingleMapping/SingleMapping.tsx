@@ -223,7 +223,8 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     setLocalMappings(() => {
       // Build the current list strictly based on what S3 API returned
       const next = s3TableList.map((t) => {
-        const fileName = (t.file_key || t.table) as string;
+        const fileName =
+          t.file_key || t.file_name || t.relative_path || t.basename || t.table;
         const suggestedTableName = t.table || extractTableName(fileName);
 
         // Check if this file was in the initial mappings (saved configuration)
@@ -247,10 +248,17 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
 
     setSelectedFileName((prev) => {
       if (prev) return prev;
-      const firstName = s3TableList.find(
-        (t) => t.file_key || t.table,
-      )?.file_key;
-      return (firstName as string) || null;
+      const firstFile = s3TableList.find(
+        (t) =>
+          t.file_key || t.file_name || t.relative_path || t.basename || t.table,
+      );
+      const firstName =
+        firstFile?.file_key ||
+        firstFile?.file_name ||
+        firstFile?.relative_path ||
+        firstFile?.basename ||
+        firstFile?.table;
+      return firstName || null;
     });
   }, [s3Files, s3TableList, mappings]);
 

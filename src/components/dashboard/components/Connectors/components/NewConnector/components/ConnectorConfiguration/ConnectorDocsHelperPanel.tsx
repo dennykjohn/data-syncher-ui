@@ -369,10 +369,12 @@ const GUIDE_URL_MAP: Record<
     // Use explicit mappings where possible to avoid probing multiple candidate
     // URLs (which results in extra requests that are often aborted/cancelled).
     awss3: {
-      jsonUrl: "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/aws-s3.json",
+      jsonUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/aws-s3.json",
     },
     amazons3: {
-      jsonUrl: "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/aws-s3.json",
+      jsonUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/aws-s3.json",
     },
     microsoftdynamics365fo: {
       jsonUrl:
@@ -393,6 +395,24 @@ const GUIDE_URL_MAP: Record<
     googlereviews: {
       jsonUrl:
         "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/google-reviews.json",
+    },
+    googledrive: {
+      jsonUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/google-drive.json",
+      docsUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/connectors/google-drive",
+    },
+    azuredatalakestorage: {
+      jsonUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/azure-data-lake-storage.json",
+      docsUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/connectors/azure-data-lake-storage",
+    },
+    adls: {
+      jsonUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/azure-data-lake-storage.json",
+      docsUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/connectors/azure-data-lake-storage",
     },
   },
   destination: {
@@ -431,12 +451,14 @@ const GUIDE_URL_MAP: Record<
     azuredatalakestorage: {
       jsonUrl:
         "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/adls-destination.json",
-      docsUrl: "https://qa-kubernetes.datasyncher.com/docs/destinations/adls-destination",
+      docsUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/destinations/adls-destination",
     },
     adls: {
       jsonUrl:
         "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/adls-destination.json",
-      docsUrl: "https://qa-kubernetes.datasyncher.com/docs/destinations/adls-destination",
+      docsUrl:
+        "https://qa-kubernetes.datasyncher.com/docs/destinations/adls-destination",
     },
   },
 };
