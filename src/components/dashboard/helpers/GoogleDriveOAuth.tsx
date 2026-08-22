@@ -6,7 +6,8 @@ import { FcGoogle } from "react-icons/fc";
 
 import axios from "axios";
 
-const FORM_VALUES_SESSION_KEY = "gdrive_form_values";
+const GOOGLE_DRIVE_FORM_VALUES_SESSION_KEY = "gdrive_form_values";
+const GOOGLE_DRIVE_RETURN_PATH_SESSION_KEY = "gdrive_oauth_return_path";
 
 export interface GoogleDriveTokens {
   access_token: string;
@@ -41,6 +42,7 @@ const isLocalhost =
   window.location.hostname === "127.0.0.1";
 const GOOGLE_DRIVE_AUTH_PATH = "/api/v1/source/googledrive/authorize/";
 const GOOGLE_DRIVE_CALLBACK_PATH = "/api/v1/source/googledrive/callback";
+const CONNECTOR_EDIT_PATH = "/dashboard/connectors/edit-configuration/";
 
 const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
@@ -51,6 +53,30 @@ const baseURL = stripTrailingSlash(
     : window.location.origin,
 );
 const REDIRECT_URI = `${baseURL}${GOOGLE_DRIVE_CALLBACK_PATH}`;
+
+const getEditReturnUrl = (callbackParams: URLSearchParams) => {
+  const savedPath = sessionStorage.getItem(
+    GOOGLE_DRIVE_RETURN_PATH_SESSION_KEY,
+  );
+  if (!savedPath) return null;
+
+  try {
+    const returnUrl = new URL(savedPath, window.location.origin);
+    if (
+      returnUrl.origin !== window.location.origin ||
+      !returnUrl.pathname.startsWith(CONNECTOR_EDIT_PATH)
+    ) {
+      return null;
+    }
+
+    callbackParams.forEach((value, key) => {
+      returnUrl.searchParams.set(key, value);
+    });
+    return returnUrl;
+  } catch {
+    return null;
+  }
+};
 
 const isSensitiveOAuthField = (fieldName: string) => {
   const normalized = fieldName.toLowerCase().replace(/[\s\-_.]/g, "");
@@ -97,6 +123,23 @@ const GoogleDriveOAuth: React.FC<GoogleDriveOAuthProps> = ({
     const error = params.get("error") || params.get("oauth_error");
 
     if (accessToken || refreshToken || error) {
+      const editReturnUrl = getEditReturnUrl(params);
+
+      // The backend currently lands on its default create URL. If OAuth was
+      // started from edit mode, resume that exact connector edit URL first.
+      // The component will mount there again and process the same OAuth result.
+      if (
+        editReturnUrl &&
+        editReturnUrl.pathname !== window.location.pathname
+      ) {
+        sessionStorage.removeItem(GOOGLE_DRIVE_RETURN_PATH_SESSION_KEY);
+        window.location.replace(
+          `${editReturnUrl.pathname}${editReturnUrl.search}${editReturnUrl.hash}`,
+        );
+        return;
+      }
+
+      sessionStorage.removeItem(GOOGLE_DRIVE_RETURN_PATH_SESSION_KEY);
       cleanUrl();
     }
 
@@ -136,9 +179,19 @@ const GoogleDriveOAuth: React.FC<GoogleDriveOAuthProps> = ({
         client_id: clientId,
       };
       sessionStorage.setItem(
-        FORM_VALUES_SESSION_KEY,
+        GOOGLE_DRIVE_FORM_VALUES_SESSION_KEY,
         JSON.stringify(dataToSave),
       );
+      // Create mode already returns to the correct flow. Only edit mode needs
+      // a return path because the backend callback defaults to the create page.
+      if (window.location.pathname.startsWith(CONNECTOR_EDIT_PATH)) {
+        sessionStorage.setItem(
+          GOOGLE_DRIVE_RETURN_PATH_SESSION_KEY,
+          `${window.location.pathname}${window.location.search}`,
+        );
+      } else {
+        sessionStorage.removeItem(GOOGLE_DRIVE_RETURN_PATH_SESSION_KEY);
+      }
 
       const response = await axios.get<GoogleDriveAuthResponse>(
         `${baseURL}${GOOGLE_DRIVE_AUTH_PATH}`,
