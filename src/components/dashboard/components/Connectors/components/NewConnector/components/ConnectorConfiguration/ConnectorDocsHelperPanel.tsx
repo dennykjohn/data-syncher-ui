@@ -402,6 +402,10 @@ const GUIDE_PATH_MAP: Record<
       jsonPath: "/docs/guides/connectors/google-drive.json",
       docsPath: "/docs/connectors/google-drive",
     },
+    sftp: {
+      jsonPath: "/docs/guides/connectors/sftp.json",
+      docsPath: "/docs/connectors/sftp",
+    },
     azuredatalakestorage: {
       jsonPath: "/docs/guides/connectors/azure-data-lake-storage.json",
       docsPath: "/docs/connectors/azure-data-lake-storage",
@@ -442,6 +446,34 @@ const GUIDE_PATH_MAP: Record<
   },
 };
 
+const resolveGuideMapKey = (
+  normalized: string,
+  kind: ConnectorGuideKind,
+): string | null => {
+  const map = GUIDE_PATH_MAP[kind];
+  if (!map) return null;
+  if (map[normalized]) return normalized;
+
+  const aliases: Array<[RegExp, string]> = [
+    [/amazons3|awss3/, "amazons3"],
+    [/googledrive|googledriveconnector/, "googledrive"],
+    [/azuredatalake|adlsgen2|adls/, "adls"],
+    [/microsoftdynamics365fo|dynamics365fo|d365fo/, "microsoftdynamics365fo"],
+    [/salesforcesandbox/, "salesforcesandbox"],
+    [/salesforce/, "salesforce"],
+    [/googlereviews|googlereview/, "googlereviews"],
+    [/snowflake/, "snowflake"],
+    [/sharepoint/, "sharepoint"],
+    [/sftp/, "sftp"],
+  ];
+
+  for (const [pattern, key] of aliases) {
+    if (pattern.test(normalized) && map[key]) return key;
+  }
+
+  return null;
+};
+
 const getMappedGuide = ({
   connectorKey,
   kind,
@@ -450,7 +482,8 @@ const getMappedGuide = ({
   kind: ConnectorGuideKind;
 }) => {
   const normalized = normalizeConnectorKey(connectorKey);
-  const mapped = GUIDE_PATH_MAP[kind]?.[normalized];
+  const mapKey = resolveGuideMapKey(normalized, kind);
+  const mapped = mapKey ? GUIDE_PATH_MAP[kind]?.[mapKey] : null;
   if (!mapped) return null;
   return {
     jsonUrl: toAbsoluteDocsUrl(mapped.jsonPath),
@@ -489,15 +522,13 @@ const buildGuideCandidateUrls = ({
   if (/^https?:\/\//i.test(trimmed)) return [trimmed];
 
   const mapped = getMappedGuide({ connectorKey, kind });
-  if (mapped?.jsonUrl) return [mapped.jsonUrl];
-
   const origin = getSiteOrigin();
   const slugs = getSlugCandidates(connectorKey);
   const collections =
     kind === "destination" ? ["destinations", "connectors"] : ["connectors"];
 
-  const urls: string[] = [];
-  const MAX_CANDIDATE_URLS = 18;
+  const urls: string[] = mapped?.jsonUrl ? [mapped.jsonUrl] : [];
+  const MAX_CANDIDATE_URLS = 24;
 
   for (const collection of collections) {
     for (const slug of slugs) {
