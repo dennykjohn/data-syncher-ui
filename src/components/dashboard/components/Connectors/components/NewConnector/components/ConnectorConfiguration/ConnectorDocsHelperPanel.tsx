@@ -15,7 +15,29 @@ import { FiExternalLink, FiFileText, FiHome, FiLink } from "react-icons/fi";
 
 import { toaster } from "@/components/ui/toaster";
 
-const DEFAULT_SITE_ORIGIN = "https://qa-kubernetes.datasyncher.com";
+const QA_FALLBACK_ORIGIN = "https://qa-kubernetes.datasyncher.com";
+
+const getSiteOrigin = () => {
+  const configured =
+    import.meta.env.VITE_DOCS_BASE_URL?.trim() ||
+    import.meta.env.VITE_API_BASE_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+  if (typeof window !== "undefined" && window.location.origin) {
+    return window.location.origin.replace(/\/$/, "");
+  }
+  return QA_FALLBACK_ORIGIN;
+};
+
+const toAbsoluteDocsUrl = (path: string) =>
+  `${getSiteOrigin()}${path.startsWith("/") ? path : `/${path}`}`;
+
+const rewriteDocsHost = (value?: string) => {
+  if (!value) return value;
+  return value.replace(
+    /https:\/\/qa-kubernetes\.datasyncher\.com/gi,
+    getSiteOrigin(),
+  );
+};
 
 type GuideImage =
   | string
@@ -56,8 +78,7 @@ const getAssetUrlCandidates = (src: string, assetsBaseUrl?: string) => {
   if (/^https?:\/\//i.test(src)) return [src];
 
   const candidates: string[] = [];
-  const origin =
-    getOriginFromUrl(assetsBaseUrl) || "https://qa-kubernetes.datasyncher.com";
+  const origin = getOriginFromUrl(assetsBaseUrl) || getSiteOrigin();
   const base =
     assetsBaseUrl && /^https?:\/\//i.test(assetsBaseUrl)
       ? assetsBaseUrl.replace(/\/$/, "")
@@ -361,104 +382,62 @@ const normalizeConnectorKey = (value: string) =>
 const uniqStrings = (values: string[]) =>
   Array.from(new Set(values.filter(Boolean)));
 
-const GUIDE_URL_MAP: Record<
+const GUIDE_PATH_MAP: Record<
   ConnectorGuideKind,
-  Record<string, { jsonUrl: string; docsUrl?: string }>
+  Record<string, { jsonPath: string; docsPath?: string }>
 > = {
   connector: {
-    // Use explicit mappings where possible to avoid probing multiple candidate
-    // URLs (which results in extra requests that are often aborted/cancelled).
-    awss3: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/aws-s3.json",
-    },
-    amazons3: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/aws-s3.json",
-    },
+    awss3: { jsonPath: "/docs/guides/connectors/aws-s3.json" },
+    amazons3: { jsonPath: "/docs/guides/connectors/aws-s3.json" },
     microsoftdynamics365fo: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/dynamics-365-fo.json",
+      jsonPath: "/docs/guides/connectors/dynamics-365-fo.json",
     },
-    snowflake: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/snowflake-source.json",
-    },
-    salesforce: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/salesforce.json",
-    },
+    snowflake: { jsonPath: "/docs/guides/connectors/snowflake-source.json" },
+    salesforce: { jsonPath: "/docs/guides/connectors/salesforce.json" },
     salesforcesandbox: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/salesforce-sandbox.json",
+      jsonPath: "/docs/guides/connectors/salesforce-sandbox.json",
     },
-    googlereviews: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/google-reviews.json",
-    },
+    googlereviews: { jsonPath: "/docs/guides/connectors/google-reviews.json" },
     googledrive: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/google-drive.json",
-      docsUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/connectors/google-drive",
+      jsonPath: "/docs/guides/connectors/google-drive.json",
+      docsPath: "/docs/connectors/google-drive",
     },
     azuredatalakestorage: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/azure-data-lake-storage.json",
-      docsUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/connectors/azure-data-lake-storage",
+      jsonPath: "/docs/guides/connectors/azure-data-lake-storage.json",
+      docsPath: "/docs/connectors/azure-data-lake-storage",
     },
     adls: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/connectors/azure-data-lake-storage.json",
-      docsUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/connectors/azure-data-lake-storage",
+      jsonPath: "/docs/guides/connectors/azure-data-lake-storage.json",
+      docsPath: "/docs/connectors/azure-data-lake-storage",
     },
   },
   destination: {
     amazons3: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/amazon-s3-destination.json",
-      docsUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/destinations/amazon-s3-destination",
+      jsonPath: "/docs/guides/destinations/amazon-s3-destination.json",
+      docsPath: "/docs/destinations/amazon-s3-destination",
     },
-    snowflake: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/snowflake.json",
-    },
+    snowflake: { jsonPath: "/docs/guides/destinations/snowflake.json" },
     salesforce: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/salesforce-destination.json",
+      jsonPath: "/docs/guides/destinations/salesforce-destination.json",
     },
     salesforcesandbox: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/salesforce-sandbox-destination.json",
+      jsonPath: "/docs/guides/destinations/salesforce-sandbox-destination.json",
     },
     sharepoint: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/sharepoint-destination.json",
+      jsonPath: "/docs/guides/destinations/sharepoint-destination.json",
     },
-    sftp: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/sftp-destination.json",
-    },
+    sftp: { jsonPath: "/docs/guides/destinations/sftp-destination.json" },
     googledrive: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/google-drive-destination.json",
-      docsUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/destinations/google-drive-destination",
+      jsonPath: "/docs/guides/destinations/google-drive-destination.json",
+      docsPath: "/docs/destinations/google-drive-destination",
     },
     azuredatalakestorage: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/adls-destination.json",
-      docsUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/destinations/adls-destination",
+      jsonPath: "/docs/guides/destinations/adls-destination.json",
+      docsPath: "/docs/destinations/adls-destination",
     },
     adls: {
-      jsonUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/guides/destinations/adls-destination.json",
-      docsUrl:
-        "https://qa-kubernetes.datasyncher.com/docs/destinations/adls-destination",
+      jsonPath: "/docs/guides/destinations/adls-destination.json",
+      docsPath: "/docs/destinations/adls-destination",
     },
   },
 };
@@ -471,7 +450,12 @@ const getMappedGuide = ({
   kind: ConnectorGuideKind;
 }) => {
   const normalized = normalizeConnectorKey(connectorKey);
-  return GUIDE_URL_MAP[kind]?.[normalized] ?? null;
+  const mapped = GUIDE_PATH_MAP[kind]?.[normalized];
+  if (!mapped) return null;
+  return {
+    jsonUrl: toAbsoluteDocsUrl(mapped.jsonPath),
+    docsUrl: mapped.docsPath ? toAbsoluteDocsUrl(mapped.docsPath) : undefined,
+  };
 };
 
 const getSlugCandidates = (connectorKey: string) => {
@@ -507,7 +491,7 @@ const buildGuideCandidateUrls = ({
   const mapped = getMappedGuide({ connectorKey, kind });
   if (mapped?.jsonUrl) return [mapped.jsonUrl];
 
-  const origin = DEFAULT_SITE_ORIGIN.replace(/\/$/, "");
+  const origin = getSiteOrigin();
   const slugs = getSlugCandidates(connectorKey);
   const collections =
     kind === "destination" ? ["destinations", "connectors"] : ["connectors"];
@@ -554,7 +538,7 @@ const buildDocsPageUrl = ({
   const slug = getSlugCandidates(connectorKey)[0] || "";
   if (!slug) return "";
   const collection = kind === "destination" ? "destinations" : "connectors";
-  return `${DEFAULT_SITE_ORIGIN}/docs/${collection}/${slug}`;
+  return toAbsoluteDocsUrl(`/docs/${collection}/${slug}`);
 };
 
 const guideCache = new Map<string, GuideDoc | null>();
@@ -566,7 +550,7 @@ const resolveAssetUrl = (src: string, assetsBaseUrl?: string) => {
     if (assetsBaseUrl && /^https?:\/\//i.test(assetsBaseUrl)) {
       return `${assetsBaseUrl.replace(/\/$/, "")}${src}`;
     }
-    return `${DEFAULT_SITE_ORIGIN}${src}`;
+    return `${getSiteOrigin()}${src}`;
   }
   if (!assetsBaseUrl) return src;
 
@@ -635,18 +619,21 @@ const normalizeGuide = (raw: unknown): GuideDoc | null => {
     .filter(Boolean) as GuideStep[];
 
   const title = typeof doc.title === "string" ? doc.title : undefined;
-  const docsUrl =
+  const docsUrl = rewriteDocsHost(
     typeof doc.docsUrl === "string"
       ? doc.docsUrl
       : typeof doc.docs_url === "string"
         ? (doc.docs_url as string)
-        : undefined;
+        : undefined,
+  );
   const assetsBaseUrl =
-    typeof doc.assetsBaseUrl === "string"
-      ? doc.assetsBaseUrl
-      : typeof doc.assets_base_url === "string"
-        ? (doc.assets_base_url as string)
-        : undefined;
+    rewriteDocsHost(
+      typeof doc.assetsBaseUrl === "string"
+        ? doc.assetsBaseUrl
+        : typeof doc.assets_base_url === "string"
+          ? (doc.assets_base_url as string)
+          : undefined,
+    ) || toAbsoluteDocsUrl("/docs/");
 
   const relatedLinksRaw =
     (Array.isArray(doc.relatedLinks) && doc.relatedLinks) ||
@@ -657,7 +644,7 @@ const normalizeGuide = (raw: unknown): GuideDoc | null => {
     .map((l) => l as Record<string, unknown>)
     .map((l) => ({
       label: typeof l.label === "string" ? l.label : "",
-      href: typeof l.href === "string" ? l.href : "",
+      href: rewriteDocsHost(typeof l.href === "string" ? l.href : "") || "",
     }))
     .filter((l) => l.label && l.href);
 
