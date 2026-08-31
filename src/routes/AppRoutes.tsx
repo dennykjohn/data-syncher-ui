@@ -64,6 +64,12 @@ const AccountProfile = lazy(
   () =>
     import("@/components/dashboard/components/AccountSettings/Profile/Profile"),
 );
+const AgentDownloads = lazy(
+  () =>
+    import(
+      "@/components/dashboard/components/AccountSettings/AgentDownloads/AgentDownloads"
+    ),
+);
 
 // Pages
 //const HomePage = lazy(() => import("@/pages/website/HomePage"));
@@ -241,6 +247,14 @@ export const router = createBrowserRouter([
             element: (
               <ProtectedRoute permission="can_access_settings">
                 <AccountProfile />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.AGENT_DOWNLOADS}`,
+            element: (
+              <ProtectedRoute permission="can_access_settings">
+                <AgentDownloads />
               </ProtectedRoute>
             ),
           },

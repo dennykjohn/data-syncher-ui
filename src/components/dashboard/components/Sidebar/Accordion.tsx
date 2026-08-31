@@ -1,7 +1,11 @@
+import { useState } from "react";
+
 import { Accordion, Flex, Text } from "@chakra-ui/react";
 
 import { FaUsers } from "react-icons/fa6";
 import { MdOutlineSettings } from "react-icons/md";
+
+import { useLocation } from "react-router";
 
 import ClientRoutes from "@/constants/client-routes";
 import useAuth from "@/context/Auth/useAuth";
@@ -18,6 +22,7 @@ const SidebarAccordion = ({
   isActive: (_path: string) => boolean;
   onMenuItemClick?: () => void;
 }) => {
+  const location = useLocation();
   const { can } = usePermissions();
   const {
     authState: { user },
@@ -69,6 +74,11 @@ const SidebarAccordion = ({
           path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`,
           permission: "can_access_billing",
         },
+        {
+          label: "Agent Downloads",
+          path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.AGENT_DOWNLOADS}`,
+          permission: "can_access_settings",
+        },
       ],
     },
   ];
@@ -82,8 +92,32 @@ const SidebarAccordion = ({
     }))
     .filter((item) => item.links.length > 0);
 
+  const [openValues, setOpenValues] = useState<string[]>(() => {
+    return filteredItems
+      .filter((item) => item.links.some((link) => isActive(link.path)))
+      .map((item) => item.value);
+  });
+
+  const [prevPath, setPrevPath] = useState(location.pathname);
+  if (prevPath !== location.pathname) {
+    setPrevPath(location.pathname);
+    const active = filteredItems
+      .filter((item) => item.links.some((link) => isActive(link.path)))
+      .map((item) => item.value);
+
+    if (active.length > 0) {
+      setOpenValues((prev) => Array.from(new Set([...prev, ...active])));
+    }
+  }
+
   return (
-    <Accordion.Root collapsible paddingInline={3} variant="plain">
+    <Accordion.Root
+      collapsible
+      paddingInline={3}
+      variant="plain"
+      value={openValues}
+      onValueChange={(e) => setOpenValues(e.value)}
+    >
       {filteredItems.map(({ title, links, value, icon }, index) => {
         return (
           <Accordion.Item key={index} value={value} mt={2}>

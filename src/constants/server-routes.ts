@@ -198,6 +198,10 @@ const ServerRoutes = {
     profileUpdate: () => "account/profile/update/",
     countries: () => "account/countries/",
   },
+  proxyAgent: {
+    generate: () => "proxy-agent/generate/",
+    status: () => "proxy-agent/status/",
+  },
 } as const;
 
 export default ServerRoutes;
