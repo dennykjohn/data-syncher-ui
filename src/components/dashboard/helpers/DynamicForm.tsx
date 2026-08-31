@@ -28,6 +28,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { type FieldConfig, type KeyPair } from "@/types/form";
 
 import KeyPairGenerator from "./KeyPairGenerator";
+import ProxyAgentGenerator from "./ProxyAgentGenerator";
 
 const SCHEMA_VALIDATION_MESSAGE =
   "Invalid schema name. Schema name shouldn't be empty, should contain only letters, numbers, or underscores, and cannot begin with a number.";
@@ -209,6 +210,43 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     });
   };
 
+  const validateRequiredFieldsBeforeAgentGen = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    config.fields.forEach((field) => {
+      if (
+        field.name === "proxy_agent" ||
+        field.name === "proxyAgent" ||
+        field.type === "ProxyAgentField" ||
+        field.type === "ProxyAgentWidget"
+      ) {
+        return;
+      }
+      if (!isSchemaVisible(field, values)) return;
+      if (field.required) {
+        if (field.name === "client_certificate_file") {
+          const isUploaded = !!values["client_certificate_uploaded"];
+          if (!isUploaded && !files[field.name]) {
+            newErrors[field.name] = `${field.label} is required`;
+          }
+        } else if (!values[field.name]) {
+          newErrors[field.name] = `${field.label} is required`;
+        }
+      }
+      if (field.name === "destination_schema") {
+        const schemaError = validateSchemaName(values[field.name] || "");
+        if (schemaError) {
+          newErrors[field.name] = schemaError;
+        }
+      }
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = () => {
     const newErrors: Record<string, string> = {};
     config.fields.forEach((field) => {
@@ -302,6 +340,49 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     // Check if field should be read-only in edit mode
     // read_only: true means non-editable in edit mode
     const isReadOnly = mode === "edit" && field.read_only === true;
+
+    if (
+      field.name === "proxy_agent" ||
+      field.name === "proxyAgent" ||
+      field.type === "ProxyAgentField" ||
+      field.type === "ProxyAgentWidget"
+    ) {
+      return (
+        <ProxyAgentGenerator
+          key={field.name}
+          field={field}
+          value={values[field.name] || values["proxy_agent"] || ""}
+          connectorId={
+            values["id"] ||
+            values["connector_id"] ||
+            defaultValues?.["id"] ||
+            defaultValues?.["connector_id"]
+          }
+          connectorName={
+            values["name"] ||
+            values["connector_name"] ||
+            values["connection_name"] ||
+            defaultValues?.["name"] ||
+            defaultValues?.["connection_name"] ||
+            ""
+          }
+          isEditMode={mode === "edit"}
+          agentName="Datasyncher Agent"
+          onValidate={validateRequiredFieldsBeforeAgentGen}
+          onChange={(agentUuid) => {
+            isDirtyRef.current = true;
+            setValues((prev) => ({
+              ...prev,
+              [field.name]: agentUuid,
+              proxy_agent: agentUuid,
+            }));
+            setErrors((prev) => ({ ...prev, [field.name]: "" }));
+          }}
+          disabled={isReadOnly}
+          error={errors[field.name]}
+        />
+      );
+    }
 
     if (field.name === "client_certificate_file") {
       const isUploaded = !!values["client_certificate_uploaded"];

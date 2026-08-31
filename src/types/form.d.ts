@@ -8,7 +8,9 @@ export type FieldConfig = {
     | "PasswordField"
     | "PasswordInput"
     | "DateField"
-    | "DateTimeField";
+    | "DateTimeField"
+    | "ProxyAgentField"
+    | "ProxyAgentWidget";
 
   /**
    * Optional choices for dropdown fields.

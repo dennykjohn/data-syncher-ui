@@ -689,8 +689,6 @@ const FilterConditionEditor = ({
     ? "string"
     : getFieldType(fieldInfo || "string");
   const operators = getOperatorsForType(columnType);
-  // Mode toggle only for numeric range (interval restriction)
-  const showModeToggle = columnType === "numeric" && !restriction;
   const isComponentDisabled = disabled || isFieldsLoading;
 
   const buildResetFields = (
@@ -738,11 +736,6 @@ const FilterConditionEditor = ({
       edm_type,
       ...buildResetFields(defaultMode, colType),
     });
-  };
-
-  const handleModeChange = (mode: "exact" | "range" | "multiple") => {
-    const colType = getFieldType(fieldInfo || "string");
-    onChange(buildResetFields(mode, colType));
   };
 
   return (
@@ -812,49 +805,6 @@ const FilterConditionEditor = ({
           )}
         </Box>
       </Flex>
-
-      {/* Mode Selector (only if datetime and restriction not set) */}
-      {showModeToggle && (
-        <Box>
-          <FieldLabel>FILTER MODE</FieldLabel>
-          <Flex
-            display="inline-flex"
-            bg="gray.100"
-            p={0.5}
-            borderRadius="md"
-            borderWidth="1px"
-            borderColor="gray.200"
-          >
-            {(
-              [
-                { mode: "exact", label: "Exact Match" },
-                { mode: "range", label: "Range" },
-                { mode: "multiple", label: "Multiple Values" },
-              ] as const
-            ).map(({ mode: m, label }) => (
-              <Button
-                key={m}
-                disabled={isComponentDisabled}
-                size="2xs"
-                variant={condition.mode === m ? "solid" : "ghost"}
-                onClick={() => handleModeChange(m)}
-                borderRadius="sm"
-                fontSize="2xs"
-                h="22px"
-                px={2.5}
-                bg={condition.mode === m ? "white" : "transparent"}
-                color={condition.mode === m ? "brand.800" : "gray.600"}
-                boxShadow={condition.mode === m ? "sm" : "none"}
-                _hover={{
-                  bg: condition.mode === m ? "white" : "gray.200",
-                }}
-              >
-                {label}
-              </Button>
-            ))}
-          </Flex>
-        </Box>
-      )}
 
       {/* Row 3: Values Inputs */}
       {condition.operator !== "isnull" &&
