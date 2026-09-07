@@ -39,6 +39,7 @@ export const getUiState = (
     if (["i", "in_progress", "running"].includes(normalizedUiState))
       return "in_progress";
     if (["p", "w", "warning"].includes(normalizedUiState)) return "warning";
+    if (["skipped"].includes(normalizedUiState)) return "skipped";
     return normalizedUiState;
   }
 
@@ -69,6 +70,7 @@ export const getUiState = (
   if (["i", "in_progress", "running"].includes(lowerStatus))
     return "in_progress";
   if (["w", "warning"].includes(lowerStatus)) return "warning";
+  if (["skipped"].includes(lowerStatus)) return "skipped";
 
   if (
     lowerMessage.includes("drop and reload") ||

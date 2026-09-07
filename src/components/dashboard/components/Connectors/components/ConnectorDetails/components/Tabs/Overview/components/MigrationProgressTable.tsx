@@ -33,6 +33,38 @@ const MigrationProgressTable = ({
     );
   }
 
+  const anyInProgress = tables.some((table) => {
+    const statusRaw = (table.status_icon || table.status || "").toLowerCase();
+    const uiState = getUiState(
+      table.status_icon,
+      table.status,
+      table.message || table.error_message || "",
+    );
+    const normalizedState = (uiState || statusRaw).toLowerCase();
+    return (
+      normalizedState === "in_progress" ||
+      normalizedState === "pending" ||
+      normalizedState === "i" ||
+      normalizedState === "running" ||
+      ![
+        "success",
+        "completed",
+        "s",
+        "failed",
+        "error",
+        "f",
+        "e",
+        "warning",
+        "p",
+        "w",
+        "skipped",
+      ].includes(normalizedState)
+    );
+  });
+  const recordsColumnHeader = anyInProgress
+    ? "Records Staging"
+    : "Records Migrated";
+
   return (
     <Box w="100%" overflowX="auto">
       <Table.Root>
@@ -84,10 +116,11 @@ const MigrationProgressTable = ({
               fontWeight="bold"
               color="gray.600"
               textAlign="left"
-              width="100px"
+              whiteSpace="nowrap"
+              minW="140px"
               py={1}
             >
-              Records
+              {recordsColumnHeader}
             </Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
@@ -111,12 +144,13 @@ const MigrationProgressTable = ({
               normalizedState,
             );
             const isWarning = ["warning", "p", "w"].includes(normalizedState);
+            const isSkipped = ["skipped"].includes(normalizedState);
             const isPending =
               normalizedState === "in_progress" ||
               normalizedState === "pending" ||
               normalizedState === "i" ||
               normalizedState === "running" ||
-              (!isSuccess && !isFailed && !isWarning);
+              (!isSuccess && !isFailed && !isWarning && !isSkipped);
 
             // Format times if available
             const startTime = table.start_time
@@ -126,12 +160,37 @@ const MigrationProgressTable = ({
               ? format(new Date(table.end_time), dateTimeFormat)
               : "--";
 
-            // Display staging records count
-            const stagingRecordsDisplay =
-              table.staging_records_count !== undefined &&
-              table.staging_records_count !== null
-                ? table.staging_records_count
-                : "--";
+            // In progress: staging records. Completed/failed-after-transfer: migrated
+            // records (data_transfer / record_count).
+            const isTerminal =
+              isSuccess ||
+              isFailed ||
+              ["completed", "success", "failed", "s", "f", "e"].includes(
+                normalizedState,
+              );
+            const stagingRecordsDisplay = (() => {
+              if (isTerminal) {
+                if (
+                  table.record_count !== undefined &&
+                  table.record_count !== null
+                ) {
+                  return table.record_count;
+                }
+              }
+              if (
+                table.staging_records_count !== undefined &&
+                table.staging_records_count !== null
+              ) {
+                return table.staging_records_count;
+              }
+              if (
+                table.record_count !== undefined &&
+                table.record_count !== null
+              ) {
+                return table.record_count;
+              }
+              return "--";
+            })();
 
             return (
               <Table.Row key={index} bg="white" _hover={{ bg: "gray.50" }}>
@@ -170,7 +229,10 @@ const MigrationProgressTable = ({
                             flex={1}
                             wordBreak="break-word"
                           >
-                            Error: {table.error_message || "Unknown error"}
+                            {isSkipped
+                              ? table.error_message ||
+                                "Skipped — table refresh/reload is in progress"
+                              : `Error: ${table.error_message || "Unknown error"}`}
                           </Text>
                           <Box
                             as="button"
@@ -203,7 +265,7 @@ const MigrationProgressTable = ({
                       }
                       interactive={true}
                       closeOnPointerDown={false}
-                      disabled={!table.error_message}
+                      disabled={!table.error_message && !isSkipped}
                       showArrow
                       contentProps={{
                         bg: "gray.800",
@@ -230,6 +292,14 @@ const MigrationProgressTable = ({
                         )}
                         {isWarning && (
                           <Box color="orange.500">
+                            <MdWarning size={20} />
+                          </Box>
+                        )}
+                        {isSkipped && (
+                          <Box
+                            color="gray.500"
+                            title={table.error_message || "Skipped"}
+                          >
                             <MdWarning size={20} />
                           </Box>
                         )}

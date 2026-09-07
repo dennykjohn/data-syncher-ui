@@ -278,6 +278,7 @@ function runNodeVisual(
       icon === "completed" ||
       icon === "success" ||
       icon === "warning" ||
+      icon === "skipped" ||
       icon === "failed" ||
       icon === "error"
     ) {

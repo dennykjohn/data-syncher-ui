@@ -160,6 +160,7 @@ export type PipelineRunNodeDetail = {
       record_count?: number;
       duration?: string | null;
       error_message?: string | null;
+      skipped_tables?: string[];
     }>;
     total_tables?: number;
   } | null;

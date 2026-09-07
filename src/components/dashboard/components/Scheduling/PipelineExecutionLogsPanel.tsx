@@ -91,6 +91,12 @@ const PipelineNodeExecutionTab = ({
         </Text>
       )}
 
+      {migrationStatus?.overall_warning_message && (
+        <Text fontSize="xs" color="orange.700" flexShrink={0}>
+          {migrationStatus.overall_warning_message}
+        </Text>
+      )}
+
       {isLoading && !(progressTables?.length ?? 0) ? (
         <Skeleton flex="1" minH="120px" />
       ) : progressTables?.length ? (
