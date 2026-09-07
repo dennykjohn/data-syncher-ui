@@ -418,6 +418,8 @@ export interface ConnectorActivityDetailResponse {
   migration_session_id?: number;
   connection_id?: number;
   overall_status?: string;
+  overall_has_warning?: boolean;
+  overall_warning_message?: string | null;
   job_level_message?: string | null;
   tables?: {
     table_name: string;
@@ -427,6 +429,8 @@ export interface ConnectorActivityDetailResponse {
     end_time: string | null;
     mod_rec?: number;
     del_rec?: number;
+    new_rec?: number;
+    record_count?: number;
     duration?: string | null;
     migration_record_id?: number;
     message?: string;
