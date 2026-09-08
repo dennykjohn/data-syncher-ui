@@ -34,6 +34,29 @@ import useUpdateEmailGroup from "@/queryOptions/emailGroups/useUpdateEmailGroup"
 import Table, { type Column } from "@/shared/Table";
 import { type EmailGroup } from "@/types/emailGroups";
 
+const EMAIL_SEPARATOR_HINT = "Enter emails separated by semicolons (;).";
+const EMAIL_SEPARATOR_ERROR =
+  "Emails must be separated by semicolons (;), not commas (,).";
+
+const parseEmailList = (value: string) => {
+  const normalizedValue = value.trim();
+
+  if (normalizedValue.includes(",") && !normalizedValue.includes(";")) {
+    return { error: EMAIL_SEPARATOR_ERROR, emails: [] as string[] };
+  }
+
+  const emails = normalizedValue
+    .split(";")
+    .map((email) => email.trim())
+    .filter((email) => email.length > 0);
+
+  if (emails.some((email) => email.includes(","))) {
+    return { error: EMAIL_SEPARATOR_ERROR, emails: [] as string[] };
+  }
+
+  return { error: null as string | null, emails };
+};
+
 const DataLoadTab = () => {
   const { data, isLoading } = useFetchCommunicationSupportDetails();
   const { mutate: updateCommunicationSupport, isPending: isUpdating } =
@@ -47,7 +70,7 @@ const DataLoadTab = () => {
 
   const checked = localChecked ?? data?.is_active ?? false;
   const emailAddresses =
-    localEmailAddresses ?? data?.email_addresses?.join(", ") ?? "";
+    localEmailAddresses ?? data?.email_addresses?.join("; ") ?? "";
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -55,16 +78,21 @@ const DataLoadTab = () => {
 
   const handleSaveChanges = () => {
     // check if emails are valid (basic validation)
-    const emailsArray = emailAddresses
-      .split(",")
-      .map((email) => email.trim())
-      .filter((email) => email.length > 0);
+    const { error, emails: emailsArray } = parseEmailList(emailAddresses);
+    if (error) {
+      toaster.error({
+        title: "Invalid email separator",
+        description: error,
+      });
+      return;
+    }
+
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     for (const email of emailsArray) {
       if (!emailRegex.test(email)) {
         toaster.error({
           title: `Invalid email address: ${email}`,
-          description: `Please enter valid email addresses.`,
+          description: EMAIL_SEPARATOR_HINT,
         });
         return;
       }
@@ -72,6 +100,7 @@ const DataLoadTab = () => {
     updateCommunicationSupport(
       {
         is_active: checked,
+        // The API expects this field as a comma-delimited string.
         email_addresses_input: emailsArray.join(", "),
       },
       {
@@ -82,7 +111,7 @@ const DataLoadTab = () => {
           });
           // reset local overrides
           setLocalChecked(response.is_active);
-          setLocalEmailAddresses(response.email_addresses?.join(", ") ?? "");
+          setLocalEmailAddresses(response.email_addresses?.join("; ") ?? "");
         },
       },
     );
@@ -95,14 +124,12 @@ const DataLoadTab = () => {
           Email addresses <Field.RequiredIndicator />
         </Field.Label>
         <Textarea
-          placeholder="Enter email addresses"
+          placeholder="email@developer.com; email@designer.com"
           variant="outline"
           value={emailAddresses}
           onChange={(e) => setLocalEmailAddresses(e.target.value)}
         />
-        <Field.HelperText>
-          Enter multiple email addresses separated by commas
-        </Field.HelperText>
+        <Field.HelperText>{EMAIL_SEPARATOR_HINT}</Field.HelperText>
       </Field.Root>
       <Switch.Root
         colorPalette="brand"
@@ -157,7 +184,7 @@ const NotificationsTab = () => {
   const handleOpenEditDialog = (group: EmailGroup) => {
     setEditingGroup(group);
     setGroupName(group.name);
-    setGroupEmails(group.email_addresses.join(", "));
+    setGroupEmails(group.email_addresses.join("; "));
     setIsFormDialogOpen(true);
   };
 
@@ -175,10 +202,14 @@ const NotificationsTab = () => {
       return;
     }
 
-    const emailsArray = groupEmails
-      .split(/[\n,]+/)
-      .map((email) => email.trim())
-      .filter((email) => email.length > 0);
+    const { error, emails: emailsArray } = parseEmailList(groupEmails);
+    if (error) {
+      toaster.error({
+        title: "Invalid email separator",
+        description: error,
+      });
+      return;
+    }
 
     if (emailsArray.length === 0) {
       toaster.error({
@@ -415,13 +446,13 @@ const NotificationsTab = () => {
                   <Field.Root required>
                     <Field.Label>Email Addresses</Field.Label>
                     <Textarea
-                      placeholder="Enter emails separated by commas or new lines"
+                      placeholder="email@developer.com; email@designer.com"
                       value={groupEmails}
                       onChange={(e) => setGroupEmails(e.target.value)}
                       rows={4}
                     />
                     <Field.HelperText>
-                      Enter valid email addresses.
+                      Enter emails separated by Semicolons (;).
                     </Field.HelperText>
                   </Field.Root>
                 </Flex>
