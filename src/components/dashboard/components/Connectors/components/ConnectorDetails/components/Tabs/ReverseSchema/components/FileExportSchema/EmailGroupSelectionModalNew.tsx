@@ -27,8 +27,12 @@ import {
 
 import { useNavigate } from "react-router";
 
+import MetadataTagSelector from "@/components/dashboard/components/AccountSettings/Email/MetadataTagSelector";
+import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import useFetchEmailTemplates from "@/queryOptions/emailTemplates/useFetchEmailTemplates";
 import { type EmailGroup } from "@/types/emailGroups";
+import { type EmailTemplate } from "@/types/emailTemplates";
 
 interface EmailGroupSelectionModalProps {
   open: boolean;
@@ -36,6 +40,7 @@ interface EmailGroupSelectionModalProps {
   tableName: string;
   emailGroups: EmailGroup[];
   initialSelectedGroupIds: number[];
+  initialEmailTemplateId?: number | string | null;
   initialEmailCustomFields?: {
     subject?: string;
     subject_styles?: {
@@ -124,6 +129,7 @@ interface EmailGroupSelectionModalProps {
         font_size?: string;
       } | null;
     },
+    _emailTemplateId?: number | string | null,
   ) => void;
   isSaving?: boolean;
   rootFolder?: string | null;
@@ -141,6 +147,7 @@ const BODY_FIELDS_OPTIONS = [
   { id: "connection", label: "Connection name" },
   { id: "company", label: "Company name" },
   { id: "table", label: "Table name" },
+  { id: "file", label: "File" },
   { id: "rows", label: "Rows Exported" },
   { id: "columns", label: "Columns Exported" },
   { id: "path", label: "Destination Path" },
@@ -194,10 +201,15 @@ const renderTemplateText = (
     /{columns}/g,
     columnsCount !== undefined ? String(columnsCount) : "7",
   );
-  val = val.replace(
-    /{path}/g,
-    resolvedPath || `Snowflake data/${tableName || "CRYSTAL_VAULT"}.xlsx`,
-  );
+  const fullPath =
+    resolvedPath || `Snowflake data/${tableName || "CRYSTAL_VAULT"}.xlsx`;
+  const fileNameOnly =
+    fullPath.split("/").pop() || `${tableName || "CRYSTAL_VAULT"}.xlsx`;
+
+  val = val.replace(/{path}/g, fullPath);
+  val = val.replace(/{file}/g, fileNameOnly);
+  val = val.replace(/{file_name}/g, fileNameOnly);
+  val = val.replace(/{File}/g, fileNameOnly);
   val = val.replace(/{timestamp}/g, "2026-05-29 07:35:47 UTC");
   return val;
 };
@@ -313,6 +325,7 @@ const EmailGroupSelectionModalNew = ({
   tableName,
   emailGroups,
   initialSelectedGroupIds,
+  initialEmailTemplateId,
   initialEmailCustomFields,
   destinationName = "SharePoint",
   pathLabel,
@@ -466,12 +479,158 @@ const EmailGroupSelectionModalNew = ({
   const [tempBody, setTempBody] = useState("");
   const [tempTeam, setTempTeam] = useState("");
 
+  const { data: savedTemplates = [] } = useFetchEmailTemplates();
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [isMetadataDropdownOpen, setIsMetadataDropdownOpen] = useState(false);
+  const [isTemplatesDropdownOpen, setIsTemplatesDropdownOpen] = useState(false);
   const [isToDropdownOpen, setIsToDropdownOpen] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
   const metadataDropdownRef = useRef<HTMLDivElement>(null);
+  const templatesDropdownRef = useRef<HTMLDivElement>(null);
   const toDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Custom Template Styling States
+  const [headerSubtitle, setHeaderSubtitle] = useState("");
+  const [headerBgColor, setHeaderBgColor] = useState("#6e2fd5");
+  const [ctaButtonText, setCtaButtonText] = useState("");
+  const [buttonBgColor, setButtonBgColor] = useState("#ffffff");
+  const [buttonTextColor, setButtonTextColor] = useState("#1e293b");
+  const [buttonAlign, setButtonAlign] = useState<"left" | "center" | "right">(
+    "center",
+  );
+  const [buttonVariant, setButtonVariant] = useState<
+    "solid" | "outline" | "subtle"
+  >("solid");
+
+  // Callout Box State
+  const [showCalloutBox, setShowCalloutBox] = useState(false);
+  const [calloutBoxText, setCalloutBoxText] = useState(
+    "The report contains the records that require your attention.",
+  );
+  const [calloutBoxBgColor, setCalloutBoxBgColor] = useState("#fffbe6");
+  const [calloutBoxBorderColor, setCalloutBoxBorderColor] = useState("#ffe58f");
+  const [calloutBoxTextColor, setCalloutBoxTextColor] = useState("#873800");
+
+  const [selectedTemplateId, setSelectedTemplateId] = useState<
+    number | string | null
+  >(initialEmailTemplateId ?? null);
+
+  const applyCustomTemplate = (t: EmailTemplate) => {
+    setSelectedTemplateId(t.id);
+    if (t.subject) {
+      setSubjectTemplate(t.subject);
+      setTempSubject(t.subject);
+    }
+    if (t.greeting_name) {
+      setGreetingName(t.greeting_name);
+      setTempGreeting(t.greeting_name);
+    }
+    const isCalloutActive =
+      t.show_callout_box !== undefined && t.show_callout_box !== null
+        ? Boolean(t.show_callout_box)
+        : Boolean(
+            (t.callout_content && t.callout_content.trim() !== "") ||
+              (t.callout_box_text && t.callout_box_text.trim() !== ""),
+          );
+    setShowCalloutBox(isCalloutActive);
+    setCalloutBoxText(
+      t.callout_content ||
+        t.callout_box_text ||
+        "The report contains the records that require your attention.",
+    );
+
+    const bodyVal = t.body_content ?? "";
+    setBodyContent(bodyVal);
+    setTempBody(bodyVal);
+
+    if (t.team_name) {
+      setTeamName(t.team_name);
+      setTempTeam(t.team_name);
+    }
+    if (t.header_subtitle) {
+      setHeaderSubtitle(t.header_subtitle);
+    } else {
+      setHeaderSubtitle("");
+    }
+    if (t.header_bg_color || t.primary_color) {
+      setHeaderBgColor(t.header_bg_color || t.primary_color || "#6e2fd5");
+    }
+    if (t.cta_button_text) {
+      setCtaButtonText(t.cta_button_text);
+    } else {
+      setCtaButtonText("View File");
+    }
+    setButtonBgColor(t.button_bg_color || "#ffffff");
+    setButtonTextColor(t.button_text_color || "#1e293b");
+    if (t.button_align) {
+      setButtonAlign(
+        (t.button_align as "left" | "center" | "right") || "center",
+      );
+    }
+    if (t.button_variant) {
+      setButtonVariant(
+        (t.button_variant as "solid" | "outline" | "subtle") || "solid",
+      );
+    }
+    if (t.body_color) {
+      setBodyStyles((prev) => ({ ...prev, color: t.body_color || "#334155" }));
+    }
+    if (t.body_fields && Array.isArray(t.body_fields)) {
+      setSelectedBodyFields(t.body_fields);
+    }
+    const calloutBg =
+      t.callout_styles?.background_color || t.callout_box_bg_color || "#fffbe6";
+    const calloutBorder =
+      t.callout_styles?.border_color || t.callout_box_border_color || "#ffe58f";
+    const calloutTextColor =
+      t.callout_styles?.color || t.callout_box_text_color || "#873800";
+
+    setCalloutBoxBgColor(calloutBg);
+    setCalloutBoxBorderColor(calloutBorder);
+    setCalloutBoxTextColor(calloutTextColor);
+    setIsEditingSubject(false);
+    setIsEditingGreeting(false);
+    setIsEditingBody(false);
+    setIsEditingTeam(false);
+    setIsTemplatesDropdownOpen(false);
+  };
+
+  const resetToDefaultTemplate = () => {
+    setSelectedTemplateId(null);
+    setSubjectTemplate(
+      "The {destination} export for {table} finished successfully.",
+    );
+    setTempSubject(
+      "The {destination} export for {table} finished successfully.",
+    );
+    setGreetingName("");
+    setTempGreeting("");
+    setBodyContent("");
+    setTempBody("");
+    setTeamName("");
+    setTempTeam("");
+    setHeaderSubtitle("");
+    setHeaderBgColor("#6e2fd5");
+    setCtaButtonText("");
+    setButtonBgColor("#ffffff");
+    setButtonTextColor("#1e293b");
+    setButtonAlign("center");
+    setButtonVariant("solid");
+    setSelectedBodyFields([]);
+    setShowCalloutBox(false);
+    setBodyStyles({
+      bold: false,
+      italic: false,
+      color: "#000000",
+      fontFamily: "system-ui",
+      fontSize: "12px",
+    });
+    setIsEditingSubject(false);
+    setIsEditingGreeting(false);
+    setIsEditingBody(false);
+    setIsEditingTeam(false);
+    setIsTemplatesDropdownOpen(false);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -493,14 +652,30 @@ const EmailGroupSelectionModalNew = ({
       ) {
         setIsToDropdownOpen(false);
       }
+      if (
+        templatesDropdownRef.current &&
+        !templatesDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsTemplatesDropdownOpen(false);
+      }
     };
-    if (isColorPickerOpen || isMetadataDropdownOpen || isToDropdownOpen) {
+    if (
+      isColorPickerOpen ||
+      isMetadataDropdownOpen ||
+      isToDropdownOpen ||
+      isTemplatesDropdownOpen
+    ) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isColorPickerOpen, isMetadataDropdownOpen, isToDropdownOpen]);
+  }, [
+    isColorPickerOpen,
+    isMetadataDropdownOpen,
+    isToDropdownOpen,
+    isTemplatesDropdownOpen,
+  ]);
 
   useEffect(() => {
     if (open) {
@@ -514,6 +689,46 @@ const EmailGroupSelectionModalNew = ({
             ? initialEmailCustomFields.body_fields
             : DEFAULT_BODY_FIELDS,
         );
+        setSelectedTemplateId(initialEmailTemplateId ?? null);
+        if (initialEmailTemplateId && savedTemplates.length > 0) {
+          const matched = savedTemplates.find(
+            (t) => String(t.id) === String(initialEmailTemplateId),
+          );
+          if (matched) {
+            applyCustomTemplate(matched);
+
+            if (initialEmailCustomFields?.team_name) {
+              setTeamName(initialEmailCustomFields.team_name);
+              setTempTeam(initialEmailCustomFields.team_name);
+            }
+            if (initialEmailCustomFields?.greeting_name) {
+              setGreetingName(initialEmailCustomFields.greeting_name);
+              setTempGreeting(initialEmailCustomFields.greeting_name);
+            }
+            if (
+              initialEmailCustomFields?.subject !== undefined &&
+              initialEmailCustomFields?.subject !== null
+            ) {
+              setSubjectTemplate(initialEmailCustomFields.subject);
+              setTempSubject(initialEmailCustomFields.subject);
+            }
+            if (
+              initialEmailCustomFields?.body_content !== undefined &&
+              initialEmailCustomFields?.body_content !== null
+            ) {
+              setBodyContent(initialEmailCustomFields.body_content);
+              setTempBody(initialEmailCustomFields.body_content);
+            }
+            if (Array.isArray(initialEmailCustomFields?.body_fields)) {
+              setSelectedBodyFields(initialEmailCustomFields.body_fields);
+            }
+            setIsEditingSubject(false);
+            setIsEditingGreeting(false);
+            setIsEditingBody(false);
+            setIsEditingTeam(false);
+            return;
+          }
+        }
         const subj =
           initialEmailCustomFields?.subject !== undefined &&
           initialEmailCustomFields?.subject !== null
@@ -534,6 +749,21 @@ const EmailGroupSelectionModalNew = ({
           initialEmailCustomFields?.team_name !== null
             ? initialEmailCustomFields.team_name
             : DEFAULT_TEAM_NAME;
+
+        setHeaderSubtitle("");
+        setHeaderBgColor("#6e2fd5");
+        setCtaButtonText("");
+        setButtonBgColor("#ffffff");
+        setButtonTextColor("#1e293b");
+        setButtonAlign("center");
+        setButtonVariant("solid");
+        setShowCalloutBox(false);
+        setCalloutBoxText(
+          "The report contains the records that require your attention.",
+        );
+        setCalloutBoxBgColor("#fffbe6");
+        setCalloutBoxBorderColor("#ffe58f");
+        setCalloutBoxTextColor("#873800");
 
         setSubjectTemplate(subj);
         setGreetingName(greet);
@@ -594,7 +824,14 @@ const EmailGroupSelectionModalNew = ({
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [open, initialSelectedGroupIds, initialEmailCustomFields, emailGroups]);
+  }, [
+    open,
+    initialSelectedGroupIds,
+    initialEmailTemplateId,
+    initialEmailCustomFields,
+    emailGroups,
+    savedTemplates,
+  ]);
 
   const toggleGroup = (id: number) => {
     setSelectedIds((prev) =>
@@ -651,6 +888,15 @@ const EmailGroupSelectionModalNew = ({
   };
 
   const handleSave = () => {
+    if (selectedIds.length === 0) {
+      toaster.error({
+        title: "Email Group Required",
+        description:
+          "Please select at least one email group to receive notifications.",
+      });
+      return;
+    }
+
     const finalSubject = isEditingSubject
       ? tempSubject.trim()
       : subjectTemplate;
@@ -660,48 +906,52 @@ const EmailGroupSelectionModalNew = ({
     const finalBody = isEditingBody ? tempBody.trim() : bodyContent;
     const finalTeam = isEditingTeam ? tempTeam.trim() : teamName;
 
-    onSave(selectedIds, {
-      subject: finalSubject,
-      subject_styles: {
-        bold: subjectStyles.bold,
-        italic: subjectStyles.italic,
-        color: subjectStyles.color,
-        font_family: subjectStyles.fontFamily,
-        font_size: subjectStyles.fontSize,
+    onSave(
+      selectedIds,
+      {
+        subject: finalSubject,
+        subject_styles: {
+          bold: subjectStyles.bold,
+          italic: subjectStyles.italic,
+          color: subjectStyles.color,
+          font_family: subjectStyles.fontFamily,
+          font_size: subjectStyles.fontSize,
+        },
+        body_fields: selectedBodyFields,
+        greeting_name: finalGreeting,
+        greeting_styles: {
+          bold: greetingStyles.bold,
+          italic: greetingStyles.italic,
+          color: greetingStyles.color,
+          font_family: greetingStyles.fontFamily,
+          font_size: greetingStyles.fontSize,
+        },
+        body_content: finalBody,
+        body_styles: {
+          bold: bodyStyles.bold,
+          italic: bodyStyles.italic,
+          color: bodyStyles.color,
+          font_family: bodyStyles.fontFamily,
+          font_size: bodyStyles.fontSize,
+        },
+        team_name: finalTeam,
+        team_styles: {
+          bold: teamStyles.bold,
+          italic: teamStyles.italic,
+          color: teamStyles.color,
+          font_family: teamStyles.fontFamily,
+          font_size: teamStyles.fontSize,
+        },
+        styles: {
+          bold: bodyStyles.bold,
+          italic: bodyStyles.italic,
+          color: bodyStyles.color,
+          font_family: bodyStyles.fontFamily,
+          font_size: bodyStyles.fontSize,
+        },
       },
-      body_fields: selectedBodyFields,
-      greeting_name: finalGreeting,
-      greeting_styles: {
-        bold: greetingStyles.bold,
-        italic: greetingStyles.italic,
-        color: greetingStyles.color,
-        font_family: greetingStyles.fontFamily,
-        font_size: greetingStyles.fontSize,
-      },
-      body_content: finalBody,
-      body_styles: {
-        bold: bodyStyles.bold,
-        italic: bodyStyles.italic,
-        color: bodyStyles.color,
-        font_family: bodyStyles.fontFamily,
-        font_size: bodyStyles.fontSize,
-      },
-      team_name: finalTeam,
-      team_styles: {
-        bold: teamStyles.bold,
-        italic: teamStyles.italic,
-        color: teamStyles.color,
-        font_family: teamStyles.fontFamily,
-        font_size: teamStyles.fontSize,
-      },
-      styles: {
-        bold: bodyStyles.bold,
-        italic: bodyStyles.italic,
-        color: bodyStyles.color,
-        font_family: bodyStyles.fontFamily,
-        font_size: bodyStyles.fontSize,
-      },
-    });
+      selectedTemplateId,
+    );
     onClose();
   };
 
@@ -1323,115 +1573,361 @@ const EmailGroupSelectionModalNew = ({
                       </Box>
                     </Flex>
 
-                    {/* Right: Metadata checklist dropdown popover */}
-                    <Box position="relative" ref={metadataDropdownRef}>
-                      <Flex
-                        as="button"
-                        align="center"
-                        gap={1}
-                        onClick={() =>
-                          setIsMetadataDropdownOpen(!isMetadataDropdownOpen)
-                        }
-                        h="18px"
-                        px={3}
-                        bg="white"
-                        borderWidth="1px"
-                        borderColor="gray.200"
-                        borderRadius="md"
-                        cursor="pointer"
-                        boxShadow="xs"
-                        _hover={{ bg: "gray.50" }}
-                        transition="all 0.15s"
-                      >
-                        <span
-                          style={{
-                            fontSize: "9.5px",
-                            fontWeight: 600,
-                            color: "#475569",
-                          }}
-                        >
-                          Metadata
-                        </span>
-                        <LuChevronDown size={8} color="#64748b" />
-                      </Flex>
-                      {isMetadataDropdownOpen && (
-                        <Box
-                          position="absolute"
-                          top="22px"
-                          right="0"
-                          zIndex={999}
+                    {/* Right: Metadata & Templates dropdown popovers */}
+                    <Flex align="center" gap={1.5}>
+                      <Box position="relative" ref={metadataDropdownRef}>
+                        <Flex
+                          as="button"
+                          align="center"
+                          gap={1}
+                          onClick={() =>
+                            setIsMetadataDropdownOpen(!isMetadataDropdownOpen)
+                          }
+                          h="18px"
+                          px={3}
                           bg="white"
-                          boxShadow="0 4px 20px rgba(0,0,0,0.15)"
-                          p={3}
-                          borderRadius="lg"
                           borderWidth="1px"
                           borderColor="gray.200"
-                          width="210px"
+                          borderRadius="md"
+                          cursor="pointer"
+                          boxShadow="xs"
+                          _hover={{ bg: "gray.50" }}
+                          transition="all 0.15s"
                         >
-                          <Text
-                            fontSize="10px"
-                            fontWeight="bold"
-                            color="gray.600"
-                            mb={2}
+                          <span
+                            style={{
+                              fontSize: "9.5px",
+                              fontWeight: 600,
+                              color: "#475569",
+                            }}
                           >
-                            Select Fields to Include
-                          </Text>
-                          <VStack
-                            align="stretch"
-                            gap={1.5}
-                            maxH="220px"
-                            overflowY="auto"
+                            Metadata
+                          </span>
+                          <LuChevronDown size={8} color="#64748b" />
+                        </Flex>
+                        {isMetadataDropdownOpen && (
+                          <Box
+                            position="absolute"
+                            top="22px"
+                            right="0"
+                            zIndex={999}
+                            bg="white"
+                            boxShadow="0 4px 20px rgba(0,0,0,0.15)"
+                            p={3}
+                            borderRadius="lg"
+                            borderWidth="1px"
+                            borderColor="gray.200"
+                            width="210px"
                           >
-                            {BODY_FIELDS_OPTIONS.map((field) => {
-                              const isFieldChecked =
-                                selectedBodyFields.includes(field.id);
-                              const fieldLabel =
-                                field.id === "path"
-                                  ? getPathLabel(destinationName, pathLabel)
-                                  : field.label;
-                              return (
-                                <Flex
-                                  key={field.id}
-                                  alignItems="center"
-                                  gap={2}
-                                  py={1}
-                                  px={1.5}
-                                  borderRadius="md"
-                                  cursor="pointer"
-                                  onClick={() => toggleBodyField(field.id)}
-                                  _hover={{ bg: "gray.50" }}
+                            <Text
+                              fontSize="10px"
+                              fontWeight="bold"
+                              color="gray.600"
+                              mb={2}
+                            >
+                              Select Fields to Include
+                            </Text>
+                            <VStack
+                              align="stretch"
+                              gap={1.5}
+                              maxH="220px"
+                              overflowY="auto"
+                            >
+                              {BODY_FIELDS_OPTIONS.map((field) => {
+                                const isFieldChecked =
+                                  selectedBodyFields.includes(field.id);
+                                const fieldLabel =
+                                  field.id === "path"
+                                    ? getPathLabel(destinationName, pathLabel)
+                                    : field.label;
+                                return (
+                                  <Flex
+                                    key={field.id}
+                                    alignItems="center"
+                                    gap={2}
+                                    py={1}
+                                    px={1.5}
+                                    borderRadius="md"
+                                    cursor="pointer"
+                                    onClick={() => toggleBodyField(field.id)}
+                                    _hover={{ bg: "gray.50" }}
+                                  >
+                                    <Checkbox.Root
+                                      colorPalette="brand"
+                                      checked={isFieldChecked}
+                                      onCheckedChange={() =>
+                                        toggleBodyField(field.id)
+                                      }
+                                      size="sm"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Checkbox.HiddenInput />
+                                      <Checkbox.Control />
+                                    </Checkbox.Root>
+                                    <Text
+                                      fontSize="11px"
+                                      color="gray.700"
+                                      style={{
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        maxWidth: "100%",
+                                      }}
+                                    >
+                                      {fieldLabel}
+                                    </Text>
+                                  </Flex>
+                                );
+                              })}
+                            </VStack>
+                          </Box>
+                        )}
+                      </Box>
+
+                      {/* Templates Dropdown Popover */}
+                      {(() => {
+                        const selectedTemplate = savedTemplates.find(
+                          (t) => String(t.id) === String(selectedTemplateId),
+                        );
+                        return (
+                          <Flex align="center" gap={1.5}>
+                            <Box position="relative" ref={templatesDropdownRef}>
+                              <Button
+                                size="xs"
+                                colorPalette="purple"
+                                variant="solid"
+                                h="18px"
+                                px={2.5}
+                                fontSize="9.5px"
+                                fontWeight="bold"
+                                onClick={() =>
+                                  setIsTemplatesDropdownOpen(
+                                    !isTemplatesDropdownOpen,
+                                  )
+                                }
+                                display="flex"
+                                alignItems="center"
+                                gap={1}
+                                borderRadius="md"
+                              >
+                                <span>Templates</span>
+                                <LuChevronDown size={8} color="white" />
+                              </Button>
+
+                              {isTemplatesDropdownOpen && (
+                                <Box
+                                  position="absolute"
+                                  top="22px"
+                                  right="0"
+                                  zIndex={1000}
+                                  bg="white"
+                                  boxShadow="0 6px 24px rgba(0,0,0,0.18)"
+                                  p={2}
+                                  borderRadius="lg"
+                                  borderWidth="1px"
+                                  borderColor="gray.200"
+                                  width="230px"
                                 >
-                                  <Checkbox.Root
-                                    colorPalette="brand"
-                                    checked={isFieldChecked}
-                                    onCheckedChange={() =>
-                                      toggleBodyField(field.id)
-                                    }
-                                    size="sm"
-                                    onClick={(e) => e.stopPropagation()}
+                                  <Flex
+                                    justify="space-between"
+                                    align="center"
+                                    mb={1.5}
+                                    px={1}
                                   >
-                                    <Checkbox.HiddenInput />
-                                    <Checkbox.Control />
-                                  </Checkbox.Root>
-                                  <Text
-                                    fontSize="11px"
-                                    color="gray.700"
-                                    style={{
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      maxWidth: "100%",
-                                    }}
+                                    <Text
+                                      fontSize="10px"
+                                      fontWeight="bold"
+                                      color="gray.700"
+                                    >
+                                      Saved Templates
+                                    </Text>
+                                    <Text
+                                      fontSize="8.5px"
+                                      color="purple.600"
+                                      cursor="pointer"
+                                      fontWeight="semibold"
+                                      onClick={() =>
+                                        navigate(
+                                          "/dashboard/account/communication-support?tab=templates",
+                                        )
+                                      }
+                                    >
+                                      Manage &rarr;
+                                    </Text>
+                                  </Flex>
+                                  <VStack
+                                    align="stretch"
+                                    gap={1}
+                                    maxH="220px"
+                                    overflowY="auto"
                                   >
-                                    {fieldLabel}
-                                  </Text>
-                                </Flex>
-                              );
-                            })}
-                          </VStack>
-                        </Box>
-                      )}
-                    </Box>
+                                    {/* Default Template Reset Option */}
+                                    <Box
+                                      as="button"
+                                      onClick={resetToDefaultTemplate}
+                                      p={1.5}
+                                      borderRadius="md"
+                                      borderWidth="1px"
+                                      borderColor="gray.200"
+                                      bg="gray.50"
+                                      textAlign="left"
+                                      cursor="pointer"
+                                      _hover={{
+                                        bg: "purple.50",
+                                        borderColor: "purple.300",
+                                      }}
+                                      transition="all 0.15s"
+                                    >
+                                      <Flex
+                                        align="center"
+                                        justify="space-between"
+                                        mb={0.5}
+                                      >
+                                        <Flex align="center" gap={1.5}>
+                                          <Box
+                                            w="7px"
+                                            h="7px"
+                                            borderRadius="full"
+                                            bg="#6e2fd5"
+                                          />
+                                          <Text
+                                            fontSize="10.5px"
+                                            fontWeight="bold"
+                                            color="gray.800"
+                                          >
+                                            Default Template
+                                          </Text>
+                                        </Flex>
+                                        <Box
+                                          px={1.5}
+                                          py={0.2}
+                                          borderRadius="xs"
+                                          bg="teal.50"
+                                          color="teal.700"
+                                          fontSize="8px"
+                                          fontWeight="bold"
+                                        >
+                                          DEFAULT
+                                        </Box>
+                                      </Flex>
+                                      <Text
+                                        fontSize="8.5px"
+                                        color="gray.500"
+                                        lineClamp={1}
+                                      >
+                                        Standard notification layout & styling
+                                      </Text>
+                                    </Box>
+
+                                    {savedTemplates.length > 0 && (
+                                      <Box h="1px" bg="gray.200" my={0.5} />
+                                    )}
+
+                                    {savedTemplates.map((t) => (
+                                      <Box
+                                        key={t.id}
+                                        as="button"
+                                        onClick={() => applyCustomTemplate(t)}
+                                        p={1.5}
+                                        borderRadius="md"
+                                        borderWidth="1px"
+                                        borderColor="gray.200"
+                                        bg="white"
+                                        textAlign="left"
+                                        cursor="pointer"
+                                        _hover={{
+                                          bg: "purple.50/50",
+                                          borderColor: "purple.300",
+                                        }}
+                                        transition="all 0.15s"
+                                      >
+                                        <Flex align="center" gap={1.5} mb={0.5}>
+                                          <Box
+                                            w="7px"
+                                            h="7px"
+                                            borderRadius="full"
+                                            bg={t.primary_color || "#0d9488"}
+                                          />
+                                          <Text
+                                            fontSize="10.5px"
+                                            fontWeight="bold"
+                                            color="gray.800"
+                                            lineClamp={1}
+                                          >
+                                            {t.name}
+                                          </Text>
+                                        </Flex>
+                                        {t.description && (
+                                          <Text
+                                            fontSize="8.5px"
+                                            color="gray.500"
+                                            lineClamp={1}
+                                          >
+                                            {t.description}
+                                          </Text>
+                                        )}
+                                      </Box>
+                                    ))}
+                                  </VStack>
+                                </Box>
+                              )}
+                            </Box>
+
+                            {selectedTemplate && (
+                              <Flex
+                                align="center"
+                                gap={1}
+                                px={2}
+                                py="1px"
+                                h="18px"
+                                bg="purple.50"
+                                color="purple.700"
+                                borderWidth="1px"
+                                borderColor="purple.200"
+                                borderRadius="md"
+                                fontSize="9.5px"
+                                fontWeight="semibold"
+                              >
+                                <Box
+                                  w="5px"
+                                  h="5px"
+                                  borderRadius="full"
+                                  bg={
+                                    selectedTemplate.primary_color || "#6e2fd5"
+                                  }
+                                />
+                                <Text
+                                  lineClamp={1}
+                                  maxW="110px"
+                                  title={selectedTemplate.name}
+                                  fontSize="9.5px"
+                                >
+                                  {selectedTemplate.name}
+                                </Text>
+                                <IconButton
+                                  aria-label="Clear selected template"
+                                  size="xs"
+                                  variant="ghost"
+                                  h="12px"
+                                  w="12px"
+                                  minW="12px"
+                                  p={0}
+                                  onClick={resetToDefaultTemplate}
+                                  color="purple.600"
+                                  _hover={{
+                                    color: "purple.900",
+                                    bg: "purple.100",
+                                  }}
+                                  title="Reset to default template"
+                                >
+                                  <LuX size={9} />
+                                </IconButton>
+                              </Flex>
+                            )}
+                          </Flex>
+                        );
+                      })()}
+                    </Flex>
                   </Flex>
 
                   {/* Email Subject Row */}
@@ -1526,28 +2022,11 @@ const EmailGroupSelectionModalNew = ({
                           >
                             Insert:
                           </Text>
-                          {["{table}", "{destination}", "{connection}"].map(
-                            (tag) => (
-                              <Box
-                                key={tag}
-                                as="button"
-                                onClick={() =>
-                                  setTempSubject((prev) => prev + tag)
-                                }
-                                fontWeight="semibold"
-                                color="brand.600"
-                                px={1}
-                                py={0.5}
-                                bg="brand.50"
-                                borderRadius="sm"
-                                fontSize="9px"
-                                cursor="pointer"
-                                _hover={{ bg: "brand.100" }}
-                              >
-                                {tag}
-                              </Box>
-                            ),
-                          )}
+                          <MetadataTagSelector
+                            onSelectTag={(tag) =>
+                              setTempSubject((prev) => prev + " " + tag)
+                            }
+                          />
                         </Flex>
                       </Box>
                     ) : (
@@ -1594,12 +2073,12 @@ const EmailGroupSelectionModalNew = ({
                           ) || (
                             <span
                               style={{
-                                color: "#000000",
+                                color: "#64748b",
                                 fontStyle: "italic",
                                 fontWeight: "normal",
                               }}
                             >
-                              [Empty Subject - Click to add]
+                              Enter Subject...
                             </span>
                           )}
                         </Text>
@@ -1637,6 +2116,21 @@ const EmailGroupSelectionModalNew = ({
                     flexDirection="column"
                   >
                     <VStack align="stretch" gap={1.5}>
+                      {/* Header Subtitle & Accent Color Bar */}
+                      {headerSubtitle ? (
+                        <Box mb={2}>
+                          <Text
+                            fontSize="10px"
+                            fontWeight="800"
+                            color="gray.500"
+                            letterSpacing="0.05em"
+                            mb={1}
+                          >
+                            {headerSubtitle}
+                          </Text>
+                          <Box h="3px" bg={headerBgColor} borderRadius="full" />
+                        </Box>
+                      ) : null}
                       {/* Greeting recipient */}
                       <Box
                         p="4px"
@@ -1677,7 +2171,7 @@ const EmailGroupSelectionModalNew = ({
                                 if (e.key === "Enter") saveGreetingInline();
                                 if (e.key === "Escape") cancelGreetingInline();
                               }}
-                              placeholder="Enter greeting (e.g., Hi)..."
+                              placeholder="Enter Greeting..."
                               autoFocus
                               bg="white"
                               color={greetingStyles.color}
@@ -1756,12 +2250,12 @@ const EmailGroupSelectionModalNew = ({
                               {greetingName || (
                                 <span
                                   style={{
-                                    color: "#000000",
+                                    color: "#64748b",
                                     fontStyle: "italic",
                                     fontWeight: "normal",
                                   }}
                                 >
-                                  [Empty Greeting - Click to add]
+                                  Enter Greeting...
                                 </span>
                               )}
                               <LuPencil size={9} />
@@ -1863,6 +2357,7 @@ const EmailGroupSelectionModalNew = ({
                                 "{status}",
                                 "{rows}",
                                 "{columns}",
+                                "{file}",
                                 "{path}",
                                 "{timestamp}",
                               ].map((tag) => (
@@ -1931,12 +2426,12 @@ const EmailGroupSelectionModalNew = ({
                               ) || (
                                 <span
                                   style={{
-                                    color: "#000000",
+                                    color: "#64748b",
                                     fontStyle: "italic",
                                     fontWeight: "normal",
                                   }}
                                 >
-                                  [Empty Message Body - Click to add]
+                                  Enter Message Body...
                                 </span>
                               )}
                             </Text>
@@ -1983,6 +2478,18 @@ const EmailGroupSelectionModalNew = ({
                                 case "table":
                                   label = "Table";
                                   valueElement = tableName || "CRYSTAL_VAULT";
+                                  break;
+                                case "file":
+                                case "file_name":
+                                  label = "File";
+                                  {
+                                    const fullPathStr =
+                                      resolvedPath ||
+                                      `Snowflake data/${tableName || "CRYSTAL_VAULT"}.xlsx`;
+                                    valueElement =
+                                      fullPathStr.split("/").pop() ||
+                                      `${tableName || "CRYSTAL_VAULT"}.xlsx`;
+                                  }
                                   break;
                                 case "rows":
                                   label = "Rows Exported";
@@ -2072,9 +2579,86 @@ const EmailGroupSelectionModalNew = ({
                             color="gray.400"
                             fontStyle="italic"
                           >
-                            [Empty metadata - Select fields from the dropdown
-                            above to display them here]
+                            Select fields from Metadata dropdown to display here
                           </Text>
+                        </Box>
+                      )}
+
+                      {/* Callout / Highlight Box */}
+                      {showCalloutBox && (
+                        <Box
+                          my={2.5}
+                          p={2.5}
+                          borderRadius="md"
+                          bg={calloutBoxBgColor}
+                          border="1px solid"
+                          borderColor={calloutBoxBorderColor}
+                        >
+                          <Text
+                            fontSize="11px"
+                            fontWeight="500"
+                            color={calloutBoxTextColor}
+                            whiteSpace="pre-wrap"
+                          >
+                            {renderTemplateText(
+                              calloutBoxText,
+                              tableName,
+                              destinationName,
+                              resolvedPath,
+                              connectionName,
+                              companyName,
+                              sourceDisplayName,
+                              columnsCount,
+                            )}
+                          </Text>
+                        </Box>
+                      )}
+
+                      {/* Action Button (CTA) */}
+                      {ctaButtonText && (
+                        <Box my={3}>
+                          <Flex
+                            justify={
+                              buttonAlign === "left"
+                                ? "flex-start"
+                                : buttonAlign === "right"
+                                  ? "flex-end"
+                                  : "center"
+                            }
+                          >
+                            <Box
+                              bg={
+                                buttonVariant === "outline"
+                                  ? "transparent"
+                                  : buttonVariant === "subtle"
+                                    ? "brand.50/70"
+                                    : buttonBgColor
+                              }
+                              color={
+                                buttonVariant === "outline" ||
+                                buttonVariant === "subtle"
+                                  ? buttonBgColor
+                                  : buttonTextColor
+                              }
+                              border={
+                                buttonVariant === "outline"
+                                  ? `1.5px solid ${buttonBgColor}`
+                                  : buttonBgColor.toLowerCase() === "#ffffff" ||
+                                      buttonBgColor.toLowerCase() === "#fff" ||
+                                      buttonBgColor === "white"
+                                    ? "1px solid #cbd5e1"
+                                    : "none"
+                              }
+                              borderRadius="md"
+                              px={4}
+                              py={1.5}
+                              fontSize="11.5px"
+                              fontWeight="bold"
+                              boxShadow="xs"
+                            >
+                              {ctaButtonText}
+                            </Box>
+                          </Flex>
                         </Box>
                       )}
 
@@ -2196,12 +2780,12 @@ const EmailGroupSelectionModalNew = ({
                               {teamName || (
                                 <span
                                   style={{
-                                    color: "#000000",
+                                    color: "#64748b",
                                     fontStyle: "italic",
                                     fontWeight: "normal",
                                   }}
                                 >
-                                  [Empty Team Signature - Click to add]
+                                  Enter Sign-off...
                                 </span>
                               )}
                             </Text>

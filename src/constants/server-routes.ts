@@ -211,6 +211,12 @@ const ServerRoutes = {
     update: (id: number | string) => `account/email-groups/${id}/`,
     delete: (id: number | string) => `account/email-groups/${id}/`,
   },
+  emailTemplates: {
+    list: () => "account/email-templates/",
+    create: () => "account/email-templates/",
+    update: (id: number | string) => `account/email-templates/${id}/`,
+    delete: (id: number | string) => `account/email-templates/${id}/`,
+  },
   account: {
     profile: () => "account/profile/",
     profileUpdate: () => "account/profile/update/",

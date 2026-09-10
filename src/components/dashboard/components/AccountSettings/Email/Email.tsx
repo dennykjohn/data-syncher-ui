@@ -34,6 +34,8 @@ import useUpdateEmailGroup from "@/queryOptions/emailGroups/useUpdateEmailGroup"
 import Table, { type Column } from "@/shared/Table";
 import { type EmailGroup } from "@/types/emailGroups";
 
+import { EmailTemplatesTab } from "./EmailTemplatesTab";
+
 const DataLoadTab = () => {
   const { data, isLoading } = useFetchCommunicationSupportDetails();
   const { mutate: updateCommunicationSupport, isPending: isUpdating } =
@@ -505,9 +507,12 @@ const NotificationsTab = () => {
 const Email = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const pageTab =
-    (searchParams.get("tab") as "dataload" | "notifications") || "dataload";
+    (searchParams.get("tab") as "dataload" | "notifications" | "templates") ||
+    "dataload";
 
-  const handleTabChange = (tabId: "dataload" | "notifications") => {
+  const handleTabChange = (
+    tabId: "dataload" | "notifications" | "templates",
+  ) => {
     setSearchParams((prev) => {
       const nextParams = new URLSearchParams(prev);
       if (tabId === "dataload") {
@@ -535,16 +540,19 @@ const Email = () => {
         {[
           { id: "dataload", label: "Data Load" },
           { id: "notifications", label: "Notifications" },
+          { id: "templates", label: "Email Templates" },
         ].map((tab) => (
           <Box
             key={tab.id}
-            as="button"
+            cursor="pointer"
             fontSize="md"
             fontWeight={pageTab === tab.id ? "700" : "500"}
             color={pageTab === tab.id ? "purple.600" : "gray.600"}
             position="relative"
             onClick={() =>
-              handleTabChange(tab.id as "dataload" | "notifications")
+              handleTabChange(
+                tab.id as "dataload" | "notifications" | "templates",
+              )
             }
             pb={2}
             borderBottom="2px solid"
@@ -555,7 +563,13 @@ const Email = () => {
         ))}
       </Flex>
 
-      {pageTab === "notifications" ? <NotificationsTab /> : <DataLoadTab />}
+      {pageTab === "notifications" ? (
+        <NotificationsTab />
+      ) : pageTab === "templates" ? (
+        <EmailTemplatesTab />
+      ) : (
+        <DataLoadTab />
+      )}
     </Flex>
   );
 };
