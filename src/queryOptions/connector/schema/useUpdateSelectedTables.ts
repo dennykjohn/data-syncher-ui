@@ -21,6 +21,7 @@ type UpdateSelectedTablesPayload = {
       csv_quote_char?: string;
       add_utc_timestamp?: boolean;
       notification_email_group_ids?: number[];
+      email_template_id?: number | string | null;
       email_custom_fields?: {
         subject?: string;
         subject_styles?: {
