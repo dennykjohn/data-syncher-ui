@@ -116,7 +116,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setAuthTokens(access_token, refresh_token);
 
       // Fetch latest profile so permissions/role-based redirects are stable.
-      let profile = user;
+      let profile: User | null = "permissions" in user ? user : null;
       try {
         const { data }: { data: User } = await AxiosInstance({
           method: "GET",
@@ -125,7 +125,10 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profile = data;
       } catch (error) {
         console.error("Failed to fetch profile after login:", error);
+        if (!profile) throw error;
       }
+
+      if (!profile) throw new Error("User profile is not available.");
 
       setAuthState({
         isAuthenticated: true,

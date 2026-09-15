@@ -10,9 +10,10 @@ import NotFound from "@/shared/NotFound";
 import RouteError from "@/shared/RouteError";
 
 import {
+  ChangeInitialPassword,
   ForgotPassword,
   LoginPage,
-  RegisterPage,
+  RequestTrialAccessPage,
   ResetPassword,
   VerifyEmailPage,
 } from "./AuthRoutes";
@@ -86,9 +87,13 @@ export const router = createBrowserRouter([
         element: <Navigate to={ClientRoutes.LOGIN} replace />,
       },
       { path: ClientRoutes.LOGIN, element: <LoginPage /> },
-      { path: ClientRoutes.REGISTER, element: <RegisterPage /> },
+      { path: ClientRoutes.REGISTER, element: <RequestTrialAccessPage /> },
       { path: ClientRoutes.FORGOT_PASSWORD, element: <ForgotPassword /> },
       { path: ClientRoutes.RESET_PASSWORD, element: <ResetPassword /> },
+      {
+        path: ClientRoutes.CHANGE_INITIAL_PASSWORD,
+        element: <ChangeInitialPassword />,
+      },
       { path: ClientRoutes.VERIFY_EMAIL, element: <VerifyEmailPage /> },
     ],
   },

@@ -1,8 +1,30 @@
 export type LoginResponse = {
+  message?: string;
   access_token: string;
   refresh_token: string;
-  user: User;
+  redirect_to?: string;
+  password_change_required?: false;
+  user: User | LoginUser;
 };
+
+export type LoginUser = {
+  id: number;
+  role: string;
+  role_id: number;
+  account_id: number;
+};
+
+export type InitialPasswordChangeResponse = {
+  message: string;
+  password_change_required: true;
+  uid: string;
+  token: string;
+  redirect_to: string;
+};
+
+export type AuthenticationResponse =
+  | LoginResponse
+  | InitialPasswordChangeResponse;
 
 export interface AuthContextType {
   login: (_arg0: LoginResponse) => Promise<void>;

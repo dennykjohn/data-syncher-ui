@@ -59,7 +59,7 @@ const Navbar = () => {
           }
           variant="ghost"
         >
-          Sign Up
+          Request Trial Access
         </Button>
       </Flex>
     </Flex>
