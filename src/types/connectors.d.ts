@@ -240,6 +240,8 @@ export interface ExcelConditionalFormat {
   style?: ExcelDifferentialStyle;
 }
 
+export type FilenameDateFormat = "yyyy_mm_dd" | "dd_mm_yyyy" | "mm_dd_yyyy";
+
 export type ConnectorTable = {
   table: string;
   selected: boolean;
@@ -253,6 +255,7 @@ export type ConnectorTable = {
   csv_delimiter?: string | null;
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
+  filename_date_format?: FilenameDateFormat | null;
   notification_email_group_ids?: number[] | null;
   email_custom_fields?: {
     subject?: string;
@@ -317,6 +320,7 @@ export interface ConnectorSelectedTable {
   csv_delimiter?: string | null;
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
+  filename_date_format?: FilenameDateFormat | null;
   notification_email_group_ids?: number[] | null;
   email_custom_fields?: {
     subject?: string;
