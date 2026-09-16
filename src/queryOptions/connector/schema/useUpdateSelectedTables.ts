@@ -3,6 +3,7 @@ import AxiosInstance from "@/lib/axios/api-client";
 import {
   type ExcelConditionalFormat,
   type ExcelOptions,
+  type FilenameDateFormat,
 } from "@/types/connectors";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +21,7 @@ type UpdateSelectedTablesPayload = {
       csv_delimiter?: string;
       csv_quote_char?: string;
       add_utc_timestamp?: boolean;
+      filename_date_format?: FilenameDateFormat | null;
       notification_email_group_ids?: number[];
       email_template_id?: number | string | null;
       email_custom_fields?: {

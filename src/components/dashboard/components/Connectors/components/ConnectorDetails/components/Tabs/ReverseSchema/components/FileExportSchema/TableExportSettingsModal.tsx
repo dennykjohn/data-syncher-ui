@@ -18,6 +18,7 @@ import {
 import {
   type ExcelConditionalFormat,
   type ExcelOptions,
+  type FilenameDateFormat,
 } from "@/types/connectors";
 
 import ExcelSettings from "./ExcelSettings";
@@ -31,6 +32,7 @@ export interface TableExportSetting {
   csv_delimiter?: string;
   csv_quote_char?: string;
   add_utc_timestamp: boolean;
+  filename_date_format: FilenameDateFormat | null;
   notification_email_group_ids?: number[];
   excel_sheet_name?: string;
   excel_options?: ExcelOptions;
@@ -47,6 +49,39 @@ interface TableExportSettingsModalProps {
   isSaving?: boolean;
   supportedFormats?: string[];
 }
+
+const FILENAME_DATE_FORMAT_OPTIONS: Array<{
+  label: string;
+  value: FilenameDateFormat | "current";
+}> = [
+  { label: "UTC Timestamp", value: "current" },
+  { label: "YYYY-MM-DD", value: "yyyy_mm_dd" },
+  { label: "MM-DD-YYYY", value: "mm_dd_yyyy" },
+  { label: "DD-MM-YYYY", value: "dd_mm_yyyy" },
+];
+
+const getCurrentTimestampPreview = (format: FilenameDateFormat | "current") => {
+  const now = new Date();
+  const year = String(now.getUTCFullYear());
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(now.getUTCDate()).padStart(2, "0");
+
+  if (format === "yyyy_mm_dd") return `${year}_${month}_${day}`;
+  if (format === "dd_mm_yyyy") return `${day}_${month}_${year}`;
+  if (format === "mm_dd_yyyy") return `${month}_${day}_${year}`;
+
+  const hours = String(now.getUTCHours()).padStart(2, "0");
+  const minutes = String(now.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(now.getUTCSeconds()).padStart(2, "0");
+  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+};
+
+const FILE_EXTENSIONS: Record<FileFormat, string> = {
+  csv: "csv",
+  json: "json",
+  parquet: "parquet",
+  excel: "xlsx",
+};
 
 const TableExportSettingsModal = ({
   open,
@@ -88,6 +123,19 @@ const TableExportSettingsModal = ({
   const handleSave = () => {
     onSave(localSettings);
   };
+
+  const previewFileName = (() => {
+    const outputFileName = localSettings.output_file_name.trim() || tableName;
+    const extension = FILE_EXTENSIONS[localSettings.file_format];
+    if (!localSettings.add_utc_timestamp) {
+      return `${outputFileName}.${extension}`;
+    }
+
+    const timestamp = getCurrentTimestampPreview(
+      localSettings.filename_date_format ?? "current",
+    );
+    return `${outputFileName}_${timestamp}.${extension}`;
+  })();
 
   // Normalize tableFields for ExcelSettings component if needed.
   // ExcelSettings expects Record<string, string>, but tableFields could be Record<string, string | { data_type: string }>
@@ -161,51 +209,14 @@ const TableExportSettingsModal = ({
 
                   <Box>
                     <Field.Root gap={0}>
-                      <Flex
-                        alignItems="center"
-                        gap={0}
+                      <Field.Label
+                        fontSize="xs"
+                        fontWeight="semibold"
+                        color="gray.600"
                         mb={0.5}
-                        wrap="nowrap"
-                        whiteSpace="nowrap"
                       >
-                        <Text
-                          fontSize="xs"
-                          fontWeight="semibold"
-                          color="gray.600"
-                          flexShrink={0}
-                        >
-                          Target File Name
-                        </Text>
-                        <Text
-                          fontSize="10px"
-                          color="gray.500"
-                          ml={1.5}
-                          flexShrink={0}
-                        >
-                          (Include Timestamp In Filename
-                        </Text>
-                        <Checkbox.Root
-                          size="xs"
-                          colorPalette="brand"
-                          checked={localSettings.add_utc_timestamp}
-                          onCheckedChange={(details) =>
-                            updateLocalSetting({
-                              add_utc_timestamp: !!details.checked,
-                            })
-                          }
-                          display="inline-flex"
-                          alignItems="center"
-                          flexShrink={0}
-                          ml={0.5}
-                          mr={0}
-                        >
-                          <Checkbox.HiddenInput />
-                          <Checkbox.Control />
-                        </Checkbox.Root>
-                        <Text fontSize="10px" color="gray.500" flexShrink={0}>
-                          )
-                        </Text>
-                      </Flex>
+                        Output Filename
+                      </Field.Label>
                       <Input
                         size="xs"
                         value={localSettings.output_file_name}
@@ -217,6 +228,96 @@ const TableExportSettingsModal = ({
                         placeholder="Target file name"
                       />
                     </Field.Root>
+                  </Box>
+                </Grid>
+
+                <Checkbox.Root
+                  size="sm"
+                  colorPalette="brand"
+                  checked={localSettings.add_utc_timestamp}
+                  onCheckedChange={(details) =>
+                    updateLocalSetting({
+                      add_utc_timestamp: !!details.checked,
+                    })
+                  }
+                  width="fit-content"
+                >
+                  <Checkbox.HiddenInput />
+                  <Checkbox.Control />
+                  <Checkbox.Label
+                    fontSize="xs"
+                    fontWeight="semibold"
+                    color="gray.700"
+                  >
+                    Add date to filename
+                  </Checkbox.Label>
+                </Checkbox.Root>
+
+                <Grid
+                  templateColumns={
+                    localSettings.add_utc_timestamp ? "1fr 1fr" : "1fr"
+                  }
+                  gap={2}
+                >
+                  {localSettings.add_utc_timestamp && (
+                    <Field.Root gap={0}>
+                      <Field.Label
+                        fontSize="xs"
+                        fontWeight="semibold"
+                        color="gray.600"
+                        mb={0.5}
+                      >
+                        Filename date format
+                      </Field.Label>
+                      <NativeSelect.Root size="xs">
+                        <NativeSelect.Field
+                          value={
+                            localSettings.filename_date_format ?? "current"
+                          }
+                          onChange={(e) =>
+                            updateLocalSetting({
+                              filename_date_format:
+                                e.target.value === "current"
+                                  ? null
+                                  : (e.target.value as FilenameDateFormat),
+                            })
+                          }
+                        >
+                          {FILENAME_DATE_FORMAT_OPTIONS.map(
+                            ({ label, value }) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ),
+                          )}
+                        </NativeSelect.Field>
+                        <NativeSelect.Indicator />
+                      </NativeSelect.Root>
+                    </Field.Root>
+                  )}
+
+                  <Box>
+                    <Text
+                      fontSize="xs"
+                      fontWeight="semibold"
+                      color="gray.600"
+                      mb={0.5}
+                    >
+                      Preview
+                    </Text>
+                    <Flex
+                      minH="32px"
+                      alignItems="center"
+                      px={2.5}
+                      borderWidth="1px"
+                      borderColor="gray.200"
+                      borderRadius="md"
+                      bg="gray.50"
+                    >
+                      <Text fontSize="xs" color="gray.700" truncate>
+                        {previewFileName}
+                      </Text>
+                    </Flex>
                   </Box>
                 </Grid>
 
