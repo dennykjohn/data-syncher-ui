@@ -37,6 +37,8 @@ import { type ReverseSchemaResponse } from "@/queryOptions/connector/reverseSche
 import useFetchTableStatus from "@/queryOptions/connector/schema/useFetchTableStatus";
 import { usePagination } from "@/queryOptions/connector/schema/usePagination";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
+import { useFetchDestinationById } from "@/queryOptions/destination/useFetchDestinationById";
+import { useFetchDestinationListByPage } from "@/queryOptions/destination/useFetchDestinationListByPage";
 import {
   type ExportConfigResponse,
   useFetchExportConfig,
@@ -47,6 +49,7 @@ import {
   type ConnectorTable,
   type ExcelConditionalFormat,
   type ExcelOptions,
+  type FilenameDateFormat,
 } from "@/types/connectors";
 
 import { isPrimaryKey } from "../../utils/validation";
@@ -68,7 +71,9 @@ type TableExportSetting = {
   csv_delimiter?: string;
   csv_quote_char?: string;
   add_utc_timestamp: boolean;
+  filename_date_format: FilenameDateFormat | null;
   notification_email_group_ids?: number[];
+  email_template_id?: number | string | null;
   email_custom_fields?: {
     subject?: string;
     subject_styles?: {
@@ -135,7 +140,42 @@ const DEFAULT_TABLE_SETTINGS: TableExportDefaults = {
   csv_delimiter: ",",
   csv_quote_char: '"',
   add_utc_timestamp: true,
+  filename_date_format: null,
   notification_email_group_ids: [],
+};
+
+const DESTINATION_FOLDER_FIELD_PRIORITY = [
+  "folder_name",
+  "root_folder",
+  "target_folder",
+  "directory_path",
+  "container_name",
+];
+
+const resolveDestinationFolder = (config?: Record<string, unknown>) => {
+  if (!config) return "";
+
+  for (const field of DESTINATION_FOLDER_FIELD_PRIORITY) {
+    const value = config[field];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  const genericFolderEntry = Object.entries(config).find(([field, value]) => {
+    const normalizedField = field.toLowerCase();
+    return (
+      typeof value === "string" &&
+      value.trim() !== "" &&
+      !normalizedField.endsWith("_id") &&
+      (normalizedField.includes("folder") ||
+        normalizedField.includes("directory"))
+    );
+  });
+
+  return typeof genericFolderEntry?.[1] === "string"
+    ? genericFolderEntry[1].trim()
+    : "";
 };
 
 const isValidFileFormat = (value: unknown): value is FileFormat =>
@@ -143,6 +183,31 @@ const isValidFileFormat = (value: unknown): value is FileFormat =>
   value === "json" ||
   value === "parquet" ||
   value === "excel";
+
+const normalizeFilenameDateFormat = (
+  value: unknown,
+): FilenameDateFormat | null => {
+  switch (value) {
+    case null:
+    case undefined:
+    case "current":
+      return null;
+    case "yyyy_mm_dd":
+    case "yyyy-mm-dd":
+    case "yy-mm-dd":
+      return "yyyy_mm_dd";
+    case "dd_mm_yyyy":
+    case "dd-mm-yyyy":
+    case "dd-mm-yy":
+      return "dd_mm_yyyy";
+    case "mm_dd_yyyy":
+    case "mm-dd-yyyy":
+    case "mm-dd-yy":
+      return "mm_dd_yyyy";
+    default:
+      return DEFAULT_TABLE_SETTINGS.filename_date_format;
+  }
+};
 
 function safeParseJson<T>(val: unknown): T | undefined {
   if (typeof val === "string") {
@@ -174,10 +239,26 @@ const sanitizeExcelOptions = (
   return nextOpts;
 };
 
+const extractEmailTemplateId = (
+  raw?: Partial<ConnectorTable>,
+): number | null => {
+  if (!raw) return null;
+  if (typeof raw.email_template_id === "number") return raw.email_template_id;
+  if (typeof raw.email_template === "number") return raw.email_template;
+  if (
+    raw.email_template &&
+    typeof (raw.email_template as { id?: unknown }).id === "number"
+  ) {
+    return (raw.email_template as { id: number }).id;
+  }
+  return null;
+};
+
 const normalizeTableSetting = (
   tableName: string,
   raw?: Partial<ConnectorTable>,
   exportConfig?: ExportConfigResponse,
+  defaultTargetFolder = "",
 ): TableExportSetting => {
   const defaultFormat = exportConfig?.destination?.default_format || "csv";
   const defaultCsvDelimiter =
@@ -187,7 +268,7 @@ const normalizeTableSetting = (
 
   return {
     output_file_name: raw?.output_file_name || tableName,
-    target_folder: raw?.target_folder || "",
+    target_folder: raw?.target_folder?.trim() || defaultTargetFolder,
     file_format: isValidFileFormat(raw?.file_format)
       ? raw.file_format
       : isValidFileFormat(defaultFormat)
@@ -199,11 +280,15 @@ const normalizeTableSetting = (
       typeof raw?.add_utc_timestamp === "boolean"
         ? raw.add_utc_timestamp
         : DEFAULT_TABLE_SETTINGS.add_utc_timestamp,
+    filename_date_format: normalizeFilenameDateFormat(
+      raw?.filename_date_format,
+    ),
     notification_email_group_ids: Array.isArray(
       raw?.notification_email_group_ids,
     )
       ? raw.notification_email_group_ids
       : [],
+    email_template_id: extractEmailTemplateId(raw),
     email_custom_fields: raw?.email_custom_fields
       ? {
           subject:
@@ -322,10 +407,14 @@ const sanitizeTableExportSetting = (
     target_folder: setting.target_folder.trim(),
     file_format: setting.file_format,
     add_utc_timestamp: setting.add_utc_timestamp,
+    filename_date_format: normalizeFilenameDateFormat(
+      setting.filename_date_format,
+    ),
     ...(isEmailSupported
       ? {
           notification_email_group_ids:
             setting.notification_email_group_ids || [],
+          email_template_id: setting.email_template_id ?? null,
           email_custom_fields: setting.email_custom_fields || undefined,
         }
       : {}),
@@ -381,6 +470,9 @@ const getReusableTableDefaults = (
       typeof raw?.add_utc_timestamp === "boolean"
         ? raw.add_utc_timestamp
         : DEFAULT_TABLE_SETTINGS.add_utc_timestamp,
+    filename_date_format: normalizeFilenameDateFormat(
+      raw?.filename_date_format,
+    ),
     notification_email_group_ids: [],
   };
 };
@@ -407,9 +499,27 @@ const SnowflakeFileExportSchema = ({
   const { data: exportConfig } = useFetchExportConfig(
     connector.destination_name,
   );
+  const { data: destinationList } = useFetchDestinationListByPage({
+    page: 1,
+    size: 10,
+    searchTerm: connector.destination_title,
+  });
+  const connectedDestination = destinationList?.content.find(
+    ({ name }) =>
+      name.trim().toLowerCase() ===
+      connector.destination_title.trim().toLowerCase(),
+  );
+  const { data: destinationDetails } = useFetchDestinationById(
+    connectedDestination?.dst_config_id.toString() || "",
+  );
   const isEmailSupportedDestination = exportConfig?.destination
     ? exportConfig.destination.supports_notification_groups
     : !!connector.supports_notification_groups;
+  const destinationFolderName = resolveDestinationFolder(
+    destinationDetails?.config_data,
+  );
+  const defaultTargetFolder =
+    destinationFolderName || connector.root_folder?.trim() || "";
 
   const sourceTables = useMemo(
     () => reverseSchemaData?.source_tables || [],
@@ -432,7 +542,10 @@ const SnowflakeFileExportSchema = ({
     Record<string, string>
   >({});
   const [lastSavedDefaults, setLastSavedDefaults] =
-    useState<TableExportDefaults>(DEFAULT_TABLE_SETTINGS);
+    useState<TableExportDefaults>(() => ({
+      ...DEFAULT_TABLE_SETTINGS,
+      target_folder: defaultTargetFolder,
+    }));
   const [lastInteractedTable, setLastInteractedTable] = useState<string | null>(
     null,
   );
@@ -470,9 +583,19 @@ const SnowflakeFileExportSchema = ({
     if (!activeTableForSettings) return null;
     return (
       tableExportSettings[activeTableForSettings] ||
-      normalizeTableSetting(activeTableForSettings, undefined, exportConfig)
+      normalizeTableSetting(
+        activeTableForSettings,
+        undefined,
+        exportConfig,
+        defaultTargetFolder,
+      )
     );
-  }, [activeTableForSettings, tableExportSettings, exportConfig]);
+  }, [
+    activeTableForSettings,
+    tableExportSettings,
+    exportConfig,
+    defaultTargetFolder,
+  ]);
 
   const activeTableFields = useMemo(() => {
     if (!activeTableForSettings) return {};
@@ -505,6 +628,7 @@ const SnowflakeFileExportSchema = ({
           tableName,
           schemaRow,
           exportConfig,
+          defaultTargetFolder,
         );
       });
 
@@ -525,7 +649,12 @@ const SnowflakeFileExportSchema = ({
         (item) => item.table === mostRecentSavedTable,
       );
       const nextDefaults = getReusableTableDefaults(
-        normalizeTableSetting(mostRecentSavedTable, schemaRow, exportConfig),
+        normalizeTableSetting(
+          mostRecentSavedTable,
+          schemaRow,
+          exportConfig,
+          defaultTargetFolder,
+        ),
         exportConfig,
       );
       setLastSavedDefaults((current) => {
@@ -536,7 +665,13 @@ const SnowflakeFileExportSchema = ({
       });
     }
     setIsSelectionDirty(false);
-  }, [sourceTables, isSelectionDirty, isSavingSelection, exportConfig]);
+  }, [
+    sourceTables,
+    isSelectionDirty,
+    isSavingSelection,
+    exportConfig,
+    defaultTargetFolder,
+  ]);
 
   const filteredSourcePanelTables = useMemo(() => {
     const query = sourceSearch.trim().toLowerCase();
@@ -604,7 +739,14 @@ const SnowflakeFileExportSchema = ({
       const tableExportPayload = newList.reduce<
         Record<string, TableExportSetting>
       >((acc, table) => {
-        const row = tableExportSettings[table] || normalizeTableSetting(table);
+        const row =
+          tableExportSettings[table] ||
+          normalizeTableSetting(
+            table,
+            undefined,
+            exportConfig,
+            defaultTargetFolder,
+          );
         acc[table] = sanitizeTableExportSetting(
           row,
           isEmailSupportedDestination,
@@ -647,10 +789,16 @@ const SnowflakeFileExportSchema = ({
         [tableName]:
           current[tableName] ||
           (hasApiTableExportSettings(schemaRow)
-            ? normalizeTableSetting(tableName, schemaRow, exportConfig)
+            ? normalizeTableSetting(
+                tableName,
+                schemaRow,
+                exportConfig,
+                defaultTargetFolder,
+              )
             : {
                 output_file_name: tableName,
                 ...lastSavedDefaults,
+                target_folder: defaultTargetFolder,
               }),
       }));
       setTargetFolderErrors((prev) => {
@@ -678,7 +826,12 @@ const SnowflakeFileExportSchema = ({
     >((acc, table) => {
       const settings =
         tableExportSettings[table] ||
-        normalizeTableSetting(table, undefined, exportConfig);
+        normalizeTableSetting(
+          table,
+          undefined,
+          exportConfig,
+          defaultTargetFolder,
+        );
       const error = validateTargetFolder(settings.target_folder, connector);
       if (error) {
         acc[table] = error;
@@ -709,7 +862,12 @@ const SnowflakeFileExportSchema = ({
     >((acc, table) => {
       const row =
         tableExportSettings[table] ||
-        normalizeTableSetting(table, undefined, exportConfig);
+        normalizeTableSetting(
+          table,
+          undefined,
+          exportConfig,
+          defaultTargetFolder,
+        );
       acc[table] = sanitizeTableExportSetting(
         row,
         isEmailSupportedDestination,
@@ -805,17 +963,27 @@ const SnowflakeFileExportSchema = ({
         font_family?: string;
       } | null;
     },
+    emailTemplateId?: number | string | null,
   ) => {
     if (!activeTableForEmail) return;
+    if (selectedGroupIds.length === 0) {
+      toaster.error({
+        title: "Email Group Required",
+        description:
+          "Please select at least one email group to receive notifications.",
+      });
+      return;
+    }
     updateTableEmailGroups(
       {
         tableName: activeTableForEmail,
         notification_email_group_ids: selectedGroupIds,
+        email_template_id: emailTemplateId ?? null,
         email_custom_fields: customFields,
       },
       {
         onSuccess: () => {
-          toaster.success({ title: "Email groups updated" });
+          toaster.success({ title: "Email settings updated" });
           setTableExportSettings((prev) => ({
             ...prev,
             [activeTableForEmail]: {
@@ -824,8 +992,10 @@ const SnowflakeFileExportSchema = ({
                   activeTableForEmail,
                   undefined,
                   exportConfig,
+                  defaultTargetFolder,
                 )),
               notification_email_group_ids: selectedGroupIds,
+              email_template_id: emailTemplateId ?? null,
               email_custom_fields: customFields,
             },
           }));
@@ -843,19 +1013,31 @@ const SnowflakeFileExportSchema = ({
 
     const sourceSettings =
       tableExportSettings[activeTableForCopy] ||
-      normalizeTableSetting(activeTableForCopy, undefined, exportConfig);
+      normalizeTableSetting(
+        activeTableForCopy,
+        undefined,
+        exportConfig,
+        defaultTargetFolder,
+      );
     const updatedSettings = { ...tableExportSettings };
 
     if (copyType === "email") {
       const sourceEmailGroups =
         sourceSettings.notification_email_group_ids || [];
+      const sourceEmailTemplateId = sourceSettings.email_template_id ?? null;
       const sourceEmailCustomFields =
         sourceSettings.email_custom_fields || undefined;
       targetTables.forEach((table) => {
         updatedSettings[table] = {
           ...(updatedSettings[table] ||
-            normalizeTableSetting(table, undefined, exportConfig)),
+            normalizeTableSetting(
+              table,
+              undefined,
+              exportConfig,
+              defaultTargetFolder,
+            )),
           notification_email_group_ids: sourceEmailGroups,
+          email_template_id: sourceEmailTemplateId,
           email_custom_fields: sourceEmailCustomFields,
         };
       });
@@ -863,7 +1045,12 @@ const SnowflakeFileExportSchema = ({
       targetTables.forEach((table) => {
         const currentTargetSettings =
           updatedSettings[table] ||
-          normalizeTableSetting(table, undefined, exportConfig);
+          normalizeTableSetting(
+            table,
+            undefined,
+            exportConfig,
+            defaultTargetFolder,
+          );
 
         const sourceExcelOpts = sourceSettings.excel_options;
         const targetExcelOpts = currentTargetSettings.excel_options;
@@ -885,6 +1072,7 @@ const SnowflakeFileExportSchema = ({
           csv_delimiter: sourceSettings.csv_delimiter,
           csv_quote_char: sourceSettings.csv_quote_char,
           add_utc_timestamp: sourceSettings.add_utc_timestamp,
+          filename_date_format: sourceSettings.filename_date_format,
           excel_sheet_name: currentTargetSettings.excel_sheet_name,
           excel_options: mergedExcelOptions,
           excel_conditional_formats:
@@ -904,7 +1092,14 @@ const SnowflakeFileExportSchema = ({
     const tableExportPayload = selectedTables.reduce<
       Record<string, TableExportSetting>
     >((acc, table) => {
-      const row = updatedSettings[table] || normalizeTableSetting(table);
+      const row =
+        updatedSettings[table] ||
+        normalizeTableSetting(
+          table,
+          undefined,
+          exportConfig,
+          defaultTargetFolder,
+        );
       acc[table] = sanitizeTableExportSetting(
         row,
         isEmailSupportedDestination,
@@ -1761,6 +1956,12 @@ const SnowflakeFileExportSchema = ({
               ?.notification_email_group_ids) ||
           []
         }
+        initialEmailTemplateId={
+          activeTableForEmail
+            ? (tableExportSettings[activeTableForEmail]?.email_template_id ??
+              null)
+            : null
+        }
         initialEmailCustomFields={
           activeTableForEmail
             ? tableExportSettings[activeTableForEmail]?.email_custom_fields
@@ -1770,7 +1971,7 @@ const SnowflakeFileExportSchema = ({
         pathLabel={exportConfig?.destination?.path_label}
         onSave={handleSaveEmailGroups}
         isSaving={isUpdatingEmails}
-        rootFolder={connector.root_folder}
+        rootFolder={defaultTargetFolder}
         targetFolder={
           activeTableForEmail
             ? tableExportSettings[activeTableForEmail]?.target_folder

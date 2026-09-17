@@ -14,18 +14,30 @@ import {
 } from "@chakra-ui/react";
 
 import { AxiosError } from "axios";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import Logo from "@/assets/logo.svg";
 import { PasswordInput } from "@/components/ui/password-input";
+import { toaster } from "@/components/ui/toaster";
 import ClientRoutes from "@/constants/client-routes";
 import ServerRoutes from "@/constants/server-routes";
 import useAuth from "@/context/Auth/useAuth";
 import AxiosInstance from "@/lib/axios/api-client";
-import { type LoginResponse } from "@/types/auth";
+import { type AuthenticationResponse } from "@/types/auth";
+
+const getLoginRedirect = (redirectTo?: string) => {
+  if (!redirectTo) return ClientRoutes.DASHBOARD;
+
+  if (redirectTo === "destination-home" || redirectTo === "/destination-home") {
+    return `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`;
+  }
+
+  return redirectTo.startsWith("/") ? redirectTo : `/${redirectTo}`;
+};
 
 export default function Form() {
   const { login } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
 
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -51,6 +63,17 @@ export default function Form() {
       passwordRef.current.value = "";
     }
   }, []);
+
+  useEffect(() => {
+    const message = (location.state as { message?: string } | null)?.message;
+    if (!message) return;
+
+    toaster.success({
+      title: "Password changed successfully",
+      description: message,
+    });
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -78,13 +101,22 @@ export default function Form() {
       setIsLoading(true);
       setHasError(false);
       setUnverifiedEmail(null);
-      const { data: respData }: { data: LoginResponse } = await AxiosInstance({
-        method: "POST",
-        url: ServerRoutes.auth.login(),
-        data,
-      });
+      const { data: respData }: { data: AuthenticationResponse } =
+        await AxiosInstance({
+          method: "POST",
+          url: ServerRoutes.auth.login(),
+          data,
+        });
+
+      if (respData.password_change_required) {
+        sessionStorage.setItem("passwordResetUid", respData.uid);
+        sessionStorage.setItem("passwordResetToken", respData.token);
+        navigate(respData.redirect_to);
+        return;
+      }
+
       await login(respData);
-      navigate(ClientRoutes.DASHBOARD, { replace: true });
+      navigate(getLoginRedirect(respData.redirect_to), { replace: true });
     } catch (err) {
       const error = err as AxiosError<{ error?: string }>;
       setIsLoading(false);
@@ -153,7 +185,7 @@ export default function Form() {
                   navigate(`${ClientRoutes.AUTH}/${ClientRoutes.REGISTER}`)
                 }
               >
-                Sign up
+                Request for trial access
               </Span>
             </Text>
           </Stack>

@@ -5,6 +5,7 @@ const ServerRoutes = {
   },
   auth: {
     login: () => "/authentication/",
+    registrationRequest: () => "registration-request/",
     refresh: () => "authentication/refresh/",
     profile: () => "user/profile/",
 
@@ -210,6 +211,12 @@ const ServerRoutes = {
     create: () => "account/email-groups/",
     update: (id: number | string) => `account/email-groups/${id}/`,
     delete: (id: number | string) => `account/email-groups/${id}/`,
+  },
+  emailTemplates: {
+    list: () => "account/email-templates/",
+    create: () => "account/email-templates/",
+    update: (id: number | string) => `account/email-templates/${id}/`,
+    delete: (id: number | string) => `account/email-templates/${id}/`,
   },
   account: {
     profile: () => "account/profile/",

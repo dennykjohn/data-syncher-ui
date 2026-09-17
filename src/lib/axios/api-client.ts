@@ -20,10 +20,7 @@ if (
   window.location.hostname === "127.0.0.1"
 ) {
   baseURL = "https://qa-kubernetes.datasyncher.com";
-  // baseURL = "http://127.0.0.1:8000";
-} else {
-  baseURL = window.location.origin;
-}
+} else baseURL = window.location.origin;
 
 const AxiosInstance = axios.create({
   baseURL: `${baseURL}/api/v1/`,

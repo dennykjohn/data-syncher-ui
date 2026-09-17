@@ -23,6 +23,7 @@ import {
   type ExcelDifferentialStyle,
   type ExcelHeaderStyle,
   type ExcelOptions,
+  type ExcelSortColumn,
 } from "@/types/connectors";
 
 import ExcelColorPicker from "./ExcelColorPicker";
@@ -288,6 +289,186 @@ const getIconSetPreview = (style: string) => {
   }
 };
 
+const MultiColumnSelect = ({
+  allColumns,
+  selectedColumns,
+  onChange,
+  placeholder = "-- Select Target Column(s) --",
+}: {
+  allColumns: string[];
+  selectedColumns: string[];
+  onChange: (_selected: string[]) => void;
+  placeholder?: string;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleColumn = (col: string) => {
+    if (selectedColumns.includes(col)) {
+      onChange(selectedColumns.filter((c) => c !== col));
+    } else {
+      onChange([...selectedColumns, col]);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedColumns.length === allColumns.length) {
+      onChange([]);
+    } else {
+      onChange([...allColumns]);
+    }
+  };
+
+  return (
+    <Box position="relative" ref={popoverRef} width="100%">
+      <Button
+        size="xs"
+        variant="outline"
+        bg="white"
+        borderColor="gray.300"
+        width="100%"
+        justifyContent="space-between"
+        fontWeight="normal"
+        px={2}
+        h="26px"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <Flex
+          gap={1}
+          align="center"
+          overflow="hidden"
+          textOverflow="ellipsis"
+          whiteSpace="nowrap"
+        >
+          {selectedColumns.length === 0 ? (
+            <Text color="gray.400" fontSize="xs">
+              {placeholder}
+            </Text>
+          ) : selectedColumns.length <= 2 ? (
+            selectedColumns.map((col) => (
+              <Box
+                key={col}
+                bg="brand.50"
+                color="brand.700"
+                px={1.5}
+                py={0.5}
+                borderRadius="xs"
+                fontSize="10px"
+                fontWeight="semibold"
+                border="1px solid"
+                borderColor="brand.200"
+              >
+                {col}
+              </Box>
+            ))
+          ) : (
+            <Text color="gray.800" fontSize="xs" fontWeight="medium">
+              {selectedColumns.length} columns selected
+            </Text>
+          )}
+        </Flex>
+        <Text fontSize="10px" color="gray.500">
+          ▼
+        </Text>
+      </Button>
+
+      {isOpen && (
+        <Box
+          position="absolute"
+          top="100%"
+          left={0}
+          right={0}
+          zIndex={1000}
+          mt={1}
+          bg="white"
+          border="1px solid"
+          borderColor="gray.200"
+          borderRadius="md"
+          shadow="lg"
+          maxH="180px"
+          overflowY="auto"
+          p={1.5}
+        >
+          <Flex
+            justify="space-between"
+            align="center"
+            pb={1}
+            mb={1}
+            borderBottom="1px solid"
+            borderColor="gray.100"
+          >
+            <Text fontSize="10px" color="gray.500" fontWeight="bold">
+              Target Columns ({selectedColumns.length})
+            </Text>
+            <Button
+              size="xs"
+              variant="ghost"
+              colorPalette="brand"
+              onClick={handleSelectAll}
+              h="18px"
+              px={1}
+              fontSize="10px"
+            >
+              {selectedColumns.length === allColumns.length
+                ? "Clear All"
+                : "Select All"}
+            </Button>
+          </Flex>
+
+          <VStack align="stretch" gap={1}>
+            {allColumns.map((col) => {
+              const isSelected = selectedColumns.includes(col);
+              return (
+                <Flex
+                  key={col}
+                  align="center"
+                  gap={2}
+                  px={1.5}
+                  py={1}
+                  borderRadius="xs"
+                  cursor="pointer"
+                  _hover={{ bg: "gray.50" }}
+                  onClick={() => toggleColumn(col)}
+                >
+                  <Checkbox.Root
+                    size="xs"
+                    colorPalette="brand"
+                    checked={isSelected}
+                    pointerEvents="none"
+                  >
+                    <Checkbox.HiddenInput />
+                    <Checkbox.Control />
+                  </Checkbox.Root>
+                  <Text
+                    fontSize="xs"
+                    color="gray.700"
+                    fontWeight={isSelected ? "semibold" : "normal"}
+                  >
+                    {col}
+                  </Text>
+                </Flex>
+              );
+            })}
+          </VStack>
+        </Box>
+      )}
+    </Box>
+  );
+};
+
 export const cleanRulePayload = (
   rule: ExcelConditionalFormat,
 ): ExcelConditionalFormat => {
@@ -297,10 +478,23 @@ export const cleanRulePayload = (
     type: typeNorm,
   };
 
+  const colVal =
+    rule.target_columns && rule.target_columns.length > 0
+      ? rule.target_columns.join(",")
+      : rule.column_name || "";
+
   if (rule.range !== undefined && rule.range !== null && rule.range !== "") {
     base.range = rule.range;
   } else {
-    base.column_name = rule.column_name || "";
+    base.column_name = colVal;
+  }
+
+  if (rule.target_columns && rule.target_columns.length > 0) {
+    base.target_columns = rule.target_columns;
+  }
+
+  if (rule.condition_column_name) {
+    base.condition_column_name = rule.condition_column_name;
   }
 
   if (rule.stop_if_true !== undefined) {
@@ -1083,6 +1277,111 @@ export default function ExcelSettings({
               </Checkbox.Label>
             </Checkbox.Root>
           </Flex>
+
+          {/* Multi-Column Sorting Section */}
+          <Box
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius="md"
+            p={3}
+            bg="gray.50"
+            mt={2}
+          >
+            <Flex justifyContent="space-between" alignItems="center" mb={2}>
+              <Text fontSize="xs" fontWeight="bold" color="gray.700">
+                Multi-Column Sorting
+              </Text>
+              <Button
+                size="xs"
+                variant="surface"
+                colorPalette="brand"
+                onClick={() => {
+                  const currentSorts = options.sort_columns || [];
+                  const defaultCol = colNames[0] || "";
+                  updateOptions({
+                    sort_columns: [
+                      ...currentSorts,
+                      { column_name: defaultCol, direction: "asc" },
+                    ],
+                  });
+                }}
+              >
+                <IoMdAdd /> Add Sort Column
+              </Button>
+            </Flex>
+
+            {!options.sort_columns || options.sort_columns.length === 0 ? (
+              <Text fontSize="xs" color="gray.500">
+                No sorting rules specified. Order will default to query stream
+                sequence.
+              </Text>
+            ) : (
+              <VStack gap={2} align="stretch">
+                {options.sort_columns.map(
+                  (sortItem: ExcelSortColumn, sIdx: number) => (
+                    <HStack key={sIdx} gap={2}>
+                      <NativeSelect.Root size="xs" flex={2}>
+                        <NativeSelect.Field
+                          bg="white"
+                          value={sortItem.column_name}
+                          onChange={(e) => {
+                            const updated = [...(options.sort_columns || [])];
+                            updated[sIdx] = {
+                              ...updated[sIdx],
+                              column_name: e.target.value,
+                            };
+                            updateOptions({ sort_columns: updated });
+                          }}
+                        >
+                          <option value="">-- Select Column --</option>
+                          {colNames.map((col) => (
+                            <option key={col} value={col}>
+                              {col}
+                            </option>
+                          ))}
+                        </NativeSelect.Field>
+                        <NativeSelect.Indicator />
+                      </NativeSelect.Root>
+
+                      <NativeSelect.Root size="xs" flex={1}>
+                        <NativeSelect.Field
+                          bg="white"
+                          value={sortItem.direction}
+                          onChange={(e) => {
+                            const updated = [...(options.sort_columns || [])];
+                            updated[sIdx] = {
+                              ...updated[sIdx],
+                              direction: e.target.value as "asc" | "desc",
+                            };
+                            updateOptions({ sort_columns: updated });
+                          }}
+                        >
+                          <option value="asc">Ascending (ASC)</option>
+                          <option value="desc">Descending (DESC)</option>
+                        </NativeSelect.Field>
+                        <NativeSelect.Indicator />
+                      </NativeSelect.Root>
+
+                      <IconButton
+                        aria-label="Remove sort rule"
+                        size="xs"
+                        variant="ghost"
+                        colorPalette="red"
+                        onClick={() => {
+                          const updated = (options.sort_columns || []).filter(
+                            (_, i) => i !== sIdx,
+                          );
+                          updateOptions({ sort_columns: updated });
+                        }}
+                      >
+                        <IoMdTrash />
+                      </IconButton>
+                    </HStack>
+                  ),
+                )}
+              </VStack>
+            )}
+          </Box>
         </VStack>
       )}
 
@@ -2218,11 +2517,7 @@ export default function ExcelSettings({
                     >
                       {/* Left: Criteria */}
                       <VStack align="stretch" gap={2}>
-                        <Grid
-                          templateColumns="repeat(2, 1fr)"
-                          gap={2}
-                          alignItems="end"
-                        >
+                        <Grid templateColumns="1fr" gap={2} alignItems="end">
                           <Field.Root gap={0}>
                             <Field.Label
                               fontSize="xs"
@@ -2322,38 +2617,145 @@ export default function ExcelSettings({
                               <NativeSelect.Indicator />
                             </NativeSelect.Root>
                           </Field.Root>
-
-                          <Field.Root gap={0}>
-                            <Field.Label
-                              fontSize="xs"
-                              fontWeight="semibold"
-                              color="gray.600"
-                              mb={0.5}
-                            >
-                              Column Name
-                            </Field.Label>
-                            <NativeSelect.Root size="xs">
-                              <NativeSelect.Field
-                                bg="white"
-                                value={rule.column_name ?? ""}
-                                onChange={(e) =>
-                                  handleUpdateRule(idx, {
-                                    column_name: e.target.value,
-                                    range: undefined,
-                                  })
-                                }
-                              >
-                                <option value="">-- Select Column --</option>
-                                {colNames.map((col) => (
-                                  <option key={col} value={col}>
-                                    {col}
-                                  </option>
-                                ))}
-                              </NativeSelect.Field>
-                              <NativeSelect.Indicator />
-                            </NativeSelect.Root>
-                          </Field.Root>
                         </Grid>
+
+                        <VStack align="stretch" gap={1}>
+                          {(() => {
+                            const selectedCols =
+                              rule.target_columns &&
+                              rule.target_columns.length > 0
+                                ? rule.target_columns
+                                : rule.column_name
+                                  ? rule.column_name
+                                      .split(",")
+                                      .map((s) => s.trim())
+                                      .filter(Boolean)
+                                  : [];
+
+                            return rule.condition_column_name ? (
+                              <Grid
+                                templateColumns="repeat(2, 1fr)"
+                                gap={2}
+                                alignItems="end"
+                              >
+                                <Field.Root gap={0}>
+                                  <Field.Label
+                                    fontSize="xs"
+                                    fontWeight="semibold"
+                                    color="gray.600"
+                                    mb={0.5}
+                                  >
+                                    Condition Column (Evaluate)
+                                  </Field.Label>
+                                  <NativeSelect.Root size="xs">
+                                    <NativeSelect.Field
+                                      bg="white"
+                                      value={rule.condition_column_name ?? ""}
+                                      onChange={(e) =>
+                                        handleUpdateRule(idx, {
+                                          condition_column_name:
+                                            e.target.value || undefined,
+                                        })
+                                      }
+                                    >
+                                      <option value="">
+                                        -- Select Condition Column --
+                                      </option>
+                                      {colNames.map((col) => (
+                                        <option key={col} value={col}>
+                                          {col}
+                                        </option>
+                                      ))}
+                                    </NativeSelect.Field>
+                                    <NativeSelect.Indicator />
+                                  </NativeSelect.Root>
+                                </Field.Root>
+
+                                <Field.Root gap={0}>
+                                  <Field.Label
+                                    fontSize="xs"
+                                    fontWeight="semibold"
+                                    color="gray.600"
+                                    mb={0.5}
+                                  >
+                                    Target Column(s) (Style)
+                                  </Field.Label>
+                                  <MultiColumnSelect
+                                    allColumns={colNames}
+                                    selectedColumns={selectedCols}
+                                    placeholder="Select Target Column(s)"
+                                    onChange={(newCols) =>
+                                      handleUpdateRule(idx, {
+                                        target_columns: newCols,
+                                        column_name: newCols.join(","),
+                                        range: undefined,
+                                      })
+                                    }
+                                  />
+                                </Field.Root>
+                              </Grid>
+                            ) : (
+                              <Field.Root gap={0}>
+                                <Field.Label
+                                  fontSize="xs"
+                                  fontWeight="semibold"
+                                  color="gray.600"
+                                  mb={0.5}
+                                >
+                                  Column Name
+                                </Field.Label>
+                                <NativeSelect.Root size="xs">
+                                  <NativeSelect.Field
+                                    bg="white"
+                                    value={rule.column_name ?? ""}
+                                    onChange={(e) =>
+                                      handleUpdateRule(idx, {
+                                        column_name: e.target.value,
+                                        target_columns: undefined,
+                                        range: undefined,
+                                      })
+                                    }
+                                  >
+                                    <option value="">
+                                      -- Select Column --
+                                    </option>
+                                    {colNames.map((col) => (
+                                      <option key={col} value={col}>
+                                        {col}
+                                      </option>
+                                    ))}
+                                  </NativeSelect.Field>
+                                  <NativeSelect.Indicator />
+                                </NativeSelect.Root>
+                              </Field.Root>
+                            );
+                          })()}
+
+                          <Checkbox.Root
+                            size="xs"
+                            colorPalette="brand"
+                            checked={!!rule.condition_column_name}
+                            onCheckedChange={(details) => {
+                              if (!details.checked) {
+                                handleUpdateRule(idx, {
+                                  condition_column_name: undefined,
+                                });
+                              } else {
+                                handleUpdateRule(idx, {
+                                  condition_column_name:
+                                    rule.column_name || colNames[0] || "",
+                                });
+                              }
+                            }}
+                            mt={0.5}
+                          >
+                            <Checkbox.HiddenInput />
+                            <Checkbox.Control />
+                            <Checkbox.Label fontSize="10px" color="gray.600">
+                              Evaluate condition based on a different column
+                            </Checkbox.Label>
+                          </Checkbox.Root>
+                        </VStack>
 
                         {/* Rule Parameters details */}
                         <Box
@@ -3496,23 +3898,17 @@ export default function ExcelSettings({
                             >
                               Highlight Scope
                             </Field.Label>
-                            <HStack
-                              gap={4}
-                              height="24px"
-                              className="checkbox-row"
-                              align="center"
-                            >
+                            <Flex gap={3} align="center" wrap="wrap">
                               <Flex
                                 align="center"
-                                gap={1.5}
+                                gap={1}
                                 cursor="pointer"
                                 userSelect="none"
-                                onClick={() => {
-                                  console.log("Cell Only clicked");
+                                onClick={() =>
                                   handleUpdateRule(idx, {
                                     highlight_scope: "cell",
-                                  });
-                                }}
+                                  })
+                                }
                               >
                                 <Box
                                   w="14px"
@@ -3520,7 +3916,7 @@ export default function ExcelSettings({
                                   borderRadius="full"
                                   border="1px solid"
                                   borderColor={
-                                    rule.highlight_scope !== "entire_row"
+                                    (rule.highlight_scope ?? "cell") === "cell"
                                       ? "brand.500"
                                       : "gray.300"
                                   }
@@ -3530,7 +3926,8 @@ export default function ExcelSettings({
                                   justifyContent="center"
                                   transition="border-color 0.2s"
                                 >
-                                  {rule.highlight_scope !== "entire_row" && (
+                                  {(rule.highlight_scope ?? "cell") ===
+                                    "cell" && (
                                     <Box
                                       w="6px"
                                       h="6px"
@@ -3543,6 +3940,7 @@ export default function ExcelSettings({
                                   fontSize="xs"
                                   color="gray.700"
                                   fontWeight="medium"
+                                  whiteSpace="nowrap"
                                 >
                                   Cell Only
                                 </Text>
@@ -3550,15 +3948,60 @@ export default function ExcelSettings({
 
                               <Flex
                                 align="center"
-                                gap={1.5}
+                                gap={1}
                                 cursor="pointer"
                                 userSelect="none"
-                                onClick={() => {
-                                  console.log("Entire Row clicked");
+                                onClick={() =>
+                                  handleUpdateRule(idx, {
+                                    highlight_scope: "entire_column",
+                                  })
+                                }
+                              >
+                                <Box
+                                  w="14px"
+                                  h="14px"
+                                  borderRadius="full"
+                                  border="1px solid"
+                                  borderColor={
+                                    rule.highlight_scope === "entire_column"
+                                      ? "brand.500"
+                                      : "gray.300"
+                                  }
+                                  bg="white"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  transition="border-color 0.2s"
+                                >
+                                  {rule.highlight_scope === "entire_column" && (
+                                    <Box
+                                      w="6px"
+                                      h="6px"
+                                      borderRadius="full"
+                                      bg="brand.500"
+                                    />
+                                  )}
+                                </Box>
+                                <Text
+                                  fontSize="xs"
+                                  color="gray.700"
+                                  fontWeight="medium"
+                                  whiteSpace="nowrap"
+                                >
+                                  Entire Column
+                                </Text>
+                              </Flex>
+
+                              <Flex
+                                align="center"
+                                gap={1}
+                                cursor="pointer"
+                                userSelect="none"
+                                onClick={() =>
                                   handleUpdateRule(idx, {
                                     highlight_scope: "entire_row",
-                                  });
-                                }}
+                                  })
+                                }
                               >
                                 <Box
                                   w="14px"
@@ -3589,11 +4032,12 @@ export default function ExcelSettings({
                                   fontSize="xs"
                                   color="gray.700"
                                   fontWeight="medium"
+                                  whiteSpace="nowrap"
                                 >
                                   Entire Row
                                 </Text>
                               </Flex>
-                            </HStack>
+                            </Flex>
                           </Field.Root>
 
                           {/* Live Preview Box */}
