@@ -28,5 +28,6 @@ export default function useFetchTableFields(
     queryKey: ["tableFields", connectionId, tableName],
     queryFn: () => fetchTableFields(connectionId, tableName),
     enabled,
+    retry: 1,
   });
 }

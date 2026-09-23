@@ -25,6 +25,16 @@ export type FieldConfig = {
   dependency_value?: string | null;
   // Some schemas use `dependency` instead of `dependency_value`.
   dependency?: string | null;
+  /** Show field when any rule matches (OR). */
+  visibility_any_of?: Array<{
+    depend_on: string;
+    dependency: string;
+  }>;
+  /** Show field only when every rule matches (AND). */
+  visibility_all_of?: Array<{
+    depend_on: string;
+    dependency: string;
+  }>;
 };
 
 export interface KeyPair {

@@ -53,13 +53,9 @@ const BatchFlowNode = ({ id, data }: NodeProps) => {
           border: "2px solid white",
         }}
       />
-      <PipelineNodeRunningBorder
-        active={isRunning}
-        shape="rect"
-        borderRadius={12}
-      >
+      <PipelineNodeRunningBorder active={isRunning}>
         <Box
-          borderWidth={1}
+          borderWidth={isRunning ? 0 : 1}
           borderRadius="xl"
           p={2}
           minW="148px"

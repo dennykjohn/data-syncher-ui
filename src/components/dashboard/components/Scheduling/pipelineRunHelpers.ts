@@ -1,3 +1,6 @@
+import { format } from "date-fns";
+
+import { dateTimeFormat } from "@/constants/common";
 import {
   type PipelineRunDetail,
   type PipelineRunMode,
@@ -134,4 +137,46 @@ export function pipelineRunRefetchInterval(
   const s = (status || "").toLowerCase();
   if (s === "running" || s === "in_progress") return 4000;
   return false;
+}
+
+export function formatPipelineRunTimestamp(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return null;
+  return format(new Date(parsed), dateTimeFormat);
+}
+
+/** Shorter timestamp for inline header use (center of progress bar row). */
+export function formatPipelineRunTimestampCompact(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return null;
+  return format(new Date(parsed), "MMM d, h:mm a");
+}
+
+export function formatElapsedDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+export function computeRunDurationMs(
+  startedAt: string | null | undefined,
+  finishedAt: string | null | undefined,
+  nowMs: number = Date.now(),
+): number | null {
+  if (!startedAt) return null;
+  const startMs = Date.parse(startedAt);
+  if (Number.isNaN(startMs)) return null;
+  const endMs = finishedAt ? Date.parse(finishedAt) : nowMs;
+  if (Number.isNaN(endMs)) return null;
+  return Math.max(0, endMs - startMs);
 }

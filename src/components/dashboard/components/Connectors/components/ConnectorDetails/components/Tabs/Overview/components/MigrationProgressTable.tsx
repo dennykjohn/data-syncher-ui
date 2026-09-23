@@ -16,8 +16,11 @@ import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 
 const MigrationProgressTable = ({
   tables,
+  progressCountSource = "staging",
 }: {
   tables: ConnectorActivityDetailResponse["tables"];
+  /** base_merged = live cumulative rows merged to destination (Databricks per-chunk). */
+  progressCountSource?: ConnectorActivityDetailResponse["progress_count_source"];
 }) => {
   if (!tables || tables.length === 0) {
     return (
@@ -62,7 +65,9 @@ const MigrationProgressTable = ({
     );
   });
   const recordsColumnHeader = anyInProgress
-    ? "Records Staging"
+    ? progressCountSource === "base_merged"
+      ? "Records Migrated"
+      : "Records Staging"
     : "Records Migrated";
 
   return (
@@ -152,6 +157,11 @@ const MigrationProgressTable = ({
               normalizedState === "running" ||
               (!isSuccess && !isFailed && !isWarning && !isSkipped);
 
+            const displayError =
+              table.error_message ||
+              table.message ||
+              (isFailed ? "Unknown error" : isSkipped ? "" : "");
+
             // Format times if available
             const startTime = table.start_time
               ? format(new Date(table.start_time), dateTimeFormat)
@@ -160,8 +170,8 @@ const MigrationProgressTable = ({
               ? format(new Date(table.end_time), dateTimeFormat)
               : "--";
 
-            // In progress: staging records. Completed/failed-after-transfer: migrated
-            // records (data_transfer / record_count).
+            // In progress: staging_records_count (cumulative merged rows for Databricks,
+            // staging inventory for deferred-merge destinations). Completed: data_transfer total.
             const isTerminal =
               isSuccess ||
               isFailed ||
@@ -230,18 +240,16 @@ const MigrationProgressTable = ({
                             wordBreak="break-word"
                           >
                             {isSkipped
-                              ? table.error_message ||
+                              ? displayError ||
                                 "Skipped — table refresh/reload is in progress"
-                              : `Error: ${table.error_message || "Unknown error"}`}
+                              : `Error: ${displayError || "Unknown error"}`}
                           </Text>
                           <Box
                             as="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (table.error_message) {
-                                navigator.clipboard.writeText(
-                                  table.error_message,
-                                );
+                              if (displayError) {
+                                navigator.clipboard.writeText(displayError);
                                 toaster.success({
                                   title: "Copied to clipboard",
                                   description: "Error message copied",
@@ -265,7 +273,7 @@ const MigrationProgressTable = ({
                       }
                       interactive={true}
                       closeOnPointerDown={false}
-                      disabled={!table.error_message && !isSkipped}
+                      disabled={!displayError}
                       showArrow
                       contentProps={{
                         bg: "gray.800",
@@ -275,7 +283,7 @@ const MigrationProgressTable = ({
                         maxW: "500px",
                       }}
                     >
-                      <Box cursor={table.error_message ? "pointer" : "default"}>
+                      <Box cursor={displayError ? "pointer" : "default"}>
                         {isSuccess && (
                           <Image
                             src={CheckIcon}

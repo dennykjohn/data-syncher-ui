@@ -15,6 +15,7 @@ import { IoCaretDownSharp } from "react-icons/io5";
 import { MdClose } from "react-icons/md";
 
 import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   useDeleteBatch,
   useRemoveTableFromBatch,
@@ -66,9 +67,23 @@ const BatchCard = ({
   };
 
   const handleDelete = () => {
+    if (batch.in_pipeline) {
+      toaster.error({
+        title: "Batch is used in a pipeline",
+        description: batch.pipeline_name
+          ? `Remove "${batch.name}" from pipeline "${batch.pipeline_name}" on Scheduling first.`
+          : "Remove this batch from Scheduling before deleting it.",
+      });
+      return;
+    }
     deleteBatch(batch.id, {
       onSuccess: () => toaster.success({ title: "Batch deleted" }),
-      onError: () => toaster.error({ title: "Could not delete batch" }),
+      onError: (err: unknown) => {
+        const message =
+          (err as { response?: { data?: { error?: string } } })?.response?.data
+            ?.error ?? "Could not delete batch";
+        toaster.error({ title: message });
+      },
     });
   };
 
@@ -151,6 +166,19 @@ const BatchCard = ({
               <Text fontSize="xs" color="gray.500">
                 ({batch.table_count})
               </Text>
+              {batch.in_pipeline && (
+                <Tooltip
+                  content={
+                    batch.pipeline_name
+                      ? `Used in pipeline "${batch.pipeline_name}". Remove from Scheduling before deleting.`
+                      : "Used in a pipeline. Remove from Scheduling before deleting."
+                  }
+                >
+                  <Text fontSize="xs" color="orange.600" whiteSpace="nowrap">
+                    In pipeline
+                  </Text>
+                </Tooltip>
+              )}
             </Flex>
           )}
         </Box>
@@ -171,7 +199,12 @@ const BatchCard = ({
                   value="delete"
                   color="red.600"
                   onClick={handleDelete}
-                  disabled={isDeleting}
+                  disabled={isDeleting || batch.in_pipeline}
+                  title={
+                    batch.in_pipeline
+                      ? `Used in pipeline${batch.pipeline_name ? `: ${batch.pipeline_name}` : ""}. Remove from Scheduling first.`
+                      : undefined
+                  }
                 >
                   <FiTrash2 /> Delete batch
                 </Menu.Item>

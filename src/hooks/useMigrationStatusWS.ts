@@ -167,6 +167,12 @@ export const useMigrationStatusWS = (
               if (message.error_message) {
                 updatedTable.error_message = message.error_message;
               }
+              if (message.message) {
+                updatedTable.message = message.message;
+                if (!updatedTable.error_message) {
+                  updatedTable.error_message = message.message;
+                }
+              }
               // Apply start_time / end_time from WS when explicitly provided
               if (message.start_time !== undefined) {
                 updatedTable.start_time = message.start_time;

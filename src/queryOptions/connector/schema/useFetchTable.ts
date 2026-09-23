@@ -16,7 +16,5 @@ export default function useFetchConnectorTableById(id: number) {
     queryKey: ["ConnectorTable", id],
     queryFn: () => fetchConnectorTableById(id),
     enabled: !!id,
-    staleTime: 60 * 1000,
-    refetchOnMount: true,
   });
 }

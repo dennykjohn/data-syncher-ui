@@ -41,7 +41,10 @@ import { useSearchParams } from "react-router";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
+  pipelineRunsQueryKey,
   pipelinesQueryKey,
+  prefetchPipelineRun,
+  prefetchPipelineRuns,
   useAddPipelineEdge,
   useAddPipelineNode,
   useCreatePipeline,
@@ -211,7 +214,19 @@ function resolveRunVisualStatus(
   const migOverall = (
     runNode?.migration_status?.overall_status || ""
   ).toLowerCase();
+  const runStatus = pipelineRun
+    ? resolvePipelineRunStatus(pipelineRun)
+    : undefined;
   const nodeStatus = normalizeNodeRunStatus(runNode?.status);
+  // Historic runs may leave node metadata as pending after the run finished.
+  if (
+    runNode &&
+    runStatus === "completed" &&
+    nodeStatus === "pending" &&
+    runNode.migration_session_id
+  ) {
+    return "completed";
+  }
   if (nodeStatus === "completed") {
     return "completed";
   }
@@ -324,9 +339,8 @@ function pipelineToFlow(
   const isPublishedView =
     graphView === "published" &&
     Boolean(published?.node_ids?.length || published?.edges?.length);
-  // Selected run view: use snapshot even while detail is still loading so we
-  // never briefly render the full current draft (new batches would leak in).
-  const isRunSnapshotView = Boolean(options.runSnapshotActive || pipelineRun);
+  // Historic run layout only once matching run detail is loaded.
+  const isRunSnapshotView = Boolean(pipelineRun);
 
   const connNameMap = new Map(
     connections.map((c) => [c.connection_id, c.connection_name]),
@@ -819,10 +833,11 @@ const PipelineCanvas = ({
   const draftMatchesPublished =
     hasPublishedGraph &&
     selectedPipeline?.canvas_changed_since_publish !== true;
-  // Only Published view (or draft that matches publish) shows run progress/status.
-  // Draft with unpublished changes never overlays sync status on the canvas.
+  // Overlay run status when viewing a selected run, or on published-equivalent canvas.
   const overlayRunStatus =
-    isPublishedView || draftMatchesPublished ? Boolean(pipelineRun) : false;
+    runSnapshotActive || isPublishedView || draftMatchesPublished
+      ? Boolean(pipelineRun)
+      : false;
   const animateActiveEdges = overlayRunStatus && isRunLive;
   const showGraphViewToggle =
     hasPublishedGraph &&
@@ -838,13 +853,6 @@ const PipelineCanvas = ({
 
   useEffect(() => {
     if (!selectedPipeline) {
-      setNodes([]);
-      setEdges([]);
-      prevLayoutKeyRef.current = "";
-      return;
-    }
-    // Switching runs: clear Start-only flash; overlay shows a spinner instead.
-    if (runSnapshotActive && runDetailLoading) {
       setNodes([]);
       setEdges([]);
       prevLayoutKeyRef.current = "";
@@ -1430,7 +1438,7 @@ const Scheduling = () => {
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
   const [pinnedRunId, setPinnedRunId] = useState<number | null>(null);
   /** When true, canvas shows editable draft instead of pinning a run snapshot. */
-  const [draftCanvasMode, setDraftCanvasMode] = useState(false);
+  const [draftCanvasMode, setDraftCanvasMode] = useState(true);
   const [executionLogProcessName, setExecutionLogProcessName] = useState<
     string | null
   >(null);
@@ -1541,6 +1549,7 @@ const Scheduling = () => {
     }
 
     if (hasRun) {
+      setDraftCanvasMode(false);
       setPinnedRunId(runId);
       setActiveRunId(runId);
     }
@@ -1556,7 +1565,7 @@ const Scheduling = () => {
     setSelectedNode(null);
     setActiveRunId(null);
     setPinnedRunId(null);
-    setDraftCanvasMode(false);
+    setDraftCanvasMode(true);
     setCenterViewTab("flow");
     setExecutionLogProcessName(null);
     setGraphView("draft");
@@ -1807,6 +1816,13 @@ const Scheduling = () => {
       pipelineRun === undefined ||
       pipelineRun.pipeline_run_id !== activeRunId) &&
     (isPipelineRunPending || isPipelineRunFetching);
+  /** Never paint run status from a mismatched/stale query row when switching runs. */
+  const activePipelineRun =
+    !draftCanvasMode &&
+    activeRunId !== null &&
+    pipelineRun?.pipeline_run_id === activeRunId
+      ? pipelineRun
+      : null;
   const previousRunStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -1867,12 +1883,14 @@ const Scheduling = () => {
   }, [selectedPipelineId, pipelineRuns, pinnedRunId, draftCanvasMode]);
 
   useEffect(() => {
-    if (!selectedPipelineId || selectedPipeline?.status !== "active") return;
-    const timer = window.setInterval(() => {
-      void queryClient.invalidateQueries({ queryKey: pipelinesQueryKey });
-    }, 60_000);
-    return () => window.clearInterval(timer);
-  }, [selectedPipelineId, queryClient, selectedPipeline?.status]);
+    if (!selectedPipelineId || !draftCanvasMode) return;
+    if (pipelineRuns.length === 0) return;
+    const latest = pipelineRuns[0];
+    if (resolvePipelineRunStatus(latest) === "running") {
+      setDraftCanvasMode(false);
+      setActiveRunId(latest.pipeline_run_id);
+    }
+  }, [selectedPipelineId, pipelineRuns, draftCanvasMode]);
 
   useEffect(() => {
     if (!selectedPipelineId || !pipelineRun) {
@@ -1906,6 +1924,21 @@ const Scheduling = () => {
     });
   }, []);
 
+  const handlePipelinePrefetch = useCallback(
+    (pipelineId: number) => {
+      void prefetchPipelineRuns(queryClient, pipelineId).then(() => {
+        const cached = queryClient.getQueryData<{
+          runs: { pipeline_run_id: number }[];
+        }>(pipelineRunsQueryKey(pipelineId));
+        const latestRunId = cached?.runs?.[0]?.pipeline_run_id;
+        if (latestRunId) {
+          void prefetchPipelineRun(queryClient, pipelineId, latestRunId);
+        }
+      });
+    },
+    [queryClient],
+  );
+
   const handleRunSelect = useCallback(
     (runId: number) => {
       setDraftCanvasMode(false);
@@ -1932,11 +1965,13 @@ const Scheduling = () => {
   }, []);
 
   const selectedRunNode = useMemo(() => {
-    if (!pipelineRun || !selectedNode || selectedNode.isStart) return null;
+    if (!activePipelineRun || !selectedNode || selectedNode.isStart)
+      return null;
     return (
-      pipelineRun.nodes.find((n) => n.node_id === selectedNode.nodeId) ?? null
+      activePipelineRun.nodes.find((n) => n.node_id === selectedNode.nodeId) ??
+      null
     );
-  }, [pipelineRun, selectedNode]);
+  }, [activePipelineRun, selectedNode]);
 
   const batchNodeCount = selectedPipeline
     ? batchNodesOnly(selectedPipeline.nodes).length
@@ -1948,9 +1983,8 @@ const Scheduling = () => {
   const needsSchedule =
     batchNodeCount > 0 && roots.length > 0 && !selectedPipeline?.schedule_type;
   const hasRunningPipelineRun =
-    (pipelineRun !== null &&
-      pipelineRun !== undefined &&
-      resolvePipelineRunStatus(pipelineRun) === "running") ||
+    (activePipelineRun !== null &&
+      resolvePipelineRunStatus(activePipelineRun) === "running") ||
     pipelineRuns.some(
       (run) => resolvePipelineRunStatus(run as PipelineRunDetail) === "running",
     );
@@ -2316,6 +2350,7 @@ const Scheduling = () => {
               pipelines={pipelines}
               selectedPipelineId={selectedPipelineId}
               onSelect={selectPipeline}
+              onPipelineHover={handlePipelinePrefetch}
             />
             <Button
               size="sm"
@@ -2854,12 +2889,11 @@ const Scheduling = () => {
                 <ReactFlowProvider>
                   <Box h="100%" minH="480px">
                     <PipelineCanvas
-                      key={selectedPipelineId ?? "none"}
                       selectedPipeline={selectedPipeline}
                       connections={connections}
                       selectedPipelineId={selectedPipelineId}
                       selectedNode={selectedNode}
-                      pipelineRun={draftCanvasMode ? null : pipelineRun}
+                      pipelineRun={activePipelineRun}
                       runSnapshotActive={
                         !draftCanvasMode && activeRunId !== null
                       }
@@ -2899,7 +2933,7 @@ const Scheduling = () => {
                       Loading execution logs…
                     </Text>
                   </Flex>
-                ) : pipelineRun ? (
+                ) : activePipelineRun ? (
                   <>
                     <Box
                       flexShrink={0}
@@ -2913,11 +2947,11 @@ const Scheduling = () => {
                       top={0}
                       zIndex={2}
                     >
-                      <PipelineRunProgressPanel run={pipelineRun} />
+                      <PipelineRunProgressPanel run={activePipelineRun} />
                     </Box>
                     <Box flex="1" minH={0} overflow="hidden">
                       <PipelineExecutionLogsPanel
-                        run={pipelineRun}
+                        run={activePipelineRun}
                         initialProcessName={executionLogProcessName}
                       />
                     </Box>

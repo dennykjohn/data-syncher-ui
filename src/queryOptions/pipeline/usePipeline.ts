@@ -43,6 +43,43 @@ async function refreshPipelines(queryClient: QueryClient) {
   await queryClient.invalidateQueries({ queryKey: pipelinesQueryKey });
 }
 
+async function fetchPipelineRuns(pipelineId: number) {
+  const { data } = await AxiosInstance.get<{ runs: PipelineRunSummary[] }>(
+    ServerRoutes.pipeline.runs(pipelineId),
+  );
+  return { runs: data.runs ?? [] };
+}
+
+async function fetchPipelineRun(pipelineId: number, runId: number) {
+  const { data } = await AxiosInstance.get<PipelineRunDetail>(
+    ServerRoutes.pipeline.runDetail(pipelineId, runId),
+  );
+  return data;
+}
+
+export function prefetchPipelineRuns(
+  queryClient: QueryClient,
+  pipelineId: number,
+) {
+  return queryClient.prefetchQuery({
+    queryKey: pipelineRunsQueryKey(pipelineId),
+    queryFn: () => fetchPipelineRuns(pipelineId),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function prefetchPipelineRun(
+  queryClient: QueryClient,
+  pipelineId: number,
+  runId: number,
+) {
+  return queryClient.prefetchQuery({
+    queryKey: pipelineRunQueryKey(pipelineId, runId),
+    queryFn: () => fetchPipelineRun(pipelineId, runId),
+    staleTime: 30 * 1000,
+  });
+}
+
 export function usePipelineConnections() {
   return useQuery<PipelineConnectionItem[]>({
     queryKey: pipelineConnectionsQueryKey,
@@ -81,12 +118,11 @@ export function useCreatePipeline() {
       );
       return data;
     },
-    onSuccess: async (pipeline) => {
+    onSuccess: (pipeline) => {
       queryClient.setQueryData<PipelineDetail[]>(
         pipelinesQueryKey,
         (pipelines) => [...(pipelines ?? []), pipeline],
       );
-      await refreshPipelines(queryClient);
     },
   });
 }
@@ -103,14 +139,13 @@ export function usePatchPipeline(pipelineId: number) {
       );
       return data;
     },
-    onSuccess: async (updated) => {
+    onSuccess: (updated) => {
       updatePipelineInCache(queryClient, pipelineId, (p) => ({
         ...p,
         ...updated,
         nodes: p.nodes,
         edges: p.edges,
       }));
-      await refreshPipelines(queryClient);
     },
   });
 }
@@ -123,12 +158,11 @@ export function useDeletePipeline() {
     mutationFn: async (pipelineId: number) => {
       await AxiosInstance.delete(ServerRoutes.pipeline.detail(pipelineId));
     },
-    onSuccess: async (_data, pipelineId) => {
+    onSuccess: (_data, pipelineId) => {
       queryClient.setQueryData<PipelineDetail[]>(
         pipelinesQueryKey,
         (pipelines) => pipelines?.filter((p) => p.id !== pipelineId) ?? [],
       );
-      await refreshPipelines(queryClient);
     },
   });
 }
@@ -145,13 +179,12 @@ export function useAddPipelineNode(pipelineId: number) {
       );
       return data;
     },
-    onSuccess: async (node) => {
+    onSuccess: (node) => {
       updatePipelineInCache(queryClient, pipelineId, (p) => {
         const exists = p.nodes.some((n) => n.id === node.id);
         if (exists) return p;
         return { ...p, nodes: [...p.nodes, node] };
       });
-      await refreshPipelines(queryClient);
     },
   });
 }
@@ -174,14 +207,13 @@ export function useUpdatePipelineNode(pipelineId: number) {
       );
       return data;
     },
-    onSuccess: async (updated) => {
+    onSuccess: (updated) => {
       updatePipelineInCache(queryClient, pipelineId, (p) => ({
         ...p,
         nodes: p.nodes.map((n) =>
           n.id === updated.id ? { ...n, ...updated } : n,
         ),
       }));
-      await refreshPipelines(queryClient);
     },
   });
 }
@@ -197,7 +229,7 @@ export function useDeletePipelineNode(pipelineId: number) {
       );
       return nodeId;
     },
-    onSuccess: async (nodeId) => {
+    onSuccess: (nodeId) => {
       updatePipelineInCache(queryClient, pipelineId, (p) => ({
         ...p,
         nodes: p.nodes.filter((n) => n.id !== nodeId),
@@ -205,7 +237,6 @@ export function useDeletePipelineNode(pipelineId: number) {
           (e) => e.from_node_id !== nodeId && e.to_node_id !== nodeId,
         ),
       }));
-      await refreshPipelines(queryClient);
     },
   });
 }
@@ -225,13 +256,12 @@ export function useAddPipelineEdge(pipelineId: number) {
       );
       return data;
     },
-    onSuccess: async (edge) => {
+    onSuccess: (edge) => {
       updatePipelineInCache(queryClient, pipelineId, (p) => {
         const exists = p.edges.some((e) => e.id === edge.id);
         if (exists) return p;
         return { ...p, edges: [...p.edges, edge] };
       });
-      await refreshPipelines(queryClient);
     },
   });
 }
@@ -247,12 +277,11 @@ export function useDeletePipelineEdge(pipelineId: number) {
       );
       return edgeId;
     },
-    onSuccess: async (edgeId) => {
+    onSuccess: (edgeId) => {
       updatePipelineInCache(queryClient, pipelineId, (p) => ({
         ...p,
         edges: p.edges.filter((e) => e.id !== edgeId),
       }));
-      await refreshPipelines(queryClient);
     },
   });
 }
@@ -325,12 +354,7 @@ export function pipelineRunsQueryKey(pipelineId: number) {
 export function usePipelineRuns(pipelineId: number | null) {
   return useQuery<{ runs: PipelineRunSummary[] }>({
     queryKey: pipelineRunsQueryKey(pipelineId ?? 0),
-    queryFn: async () => {
-      const { data } = await AxiosInstance.get<{ runs: PipelineRunSummary[] }>(
-        ServerRoutes.pipeline.runs(pipelineId!),
-      );
-      return { runs: data.runs ?? [] };
-    },
+    queryFn: () => fetchPipelineRuns(pipelineId!),
     enabled: !!pipelineId,
     refetchInterval: (query) =>
       query.state.data?.runs.some(
@@ -338,7 +362,7 @@ export function usePipelineRuns(pipelineId: number | null) {
       )
         ? 4000
         : false,
-    staleTime: 15 * 1000,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -355,12 +379,7 @@ export function usePipelineRun(
 ) {
   return useQuery<PipelineRunDetail>({
     queryKey: pipelineRunQueryKey(pipelineId ?? 0, runId),
-    queryFn: async () => {
-      const { data } = await AxiosInstance.get<PipelineRunDetail>(
-        ServerRoutes.pipeline.runDetail(pipelineId!, runId!),
-      );
-      return data;
-    },
+    queryFn: () => fetchPipelineRun(pipelineId!, runId!),
     enabled: !!pipelineId && !!runId,
     refetchInterval: (query) =>
       pipelineRunRefetchInterval(
@@ -368,6 +387,6 @@ export function usePipelineRun(
           ? resolvePipelineRunStatus(query.state.data)
           : undefined,
       ),
-    staleTime: 0,
+    staleTime: 30 * 1000,
   });
 }

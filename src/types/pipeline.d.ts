@@ -153,6 +153,7 @@ export type PipelineRunNodeDetail = {
   table_count: number;
   migration_status?: {
     overall_status?: string;
+    progress_count_source?: "base_merged" | "staging";
     tables?: Array<{
       table_name: string;
       status: string;

@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeNodeProgress,
+  computeRunDurationMs,
   computeTableProgress,
+  formatElapsedDuration,
+  formatPipelineRunTimestamp,
+  formatPipelineRunTimestampCompact,
   pickDefaultNodeTab,
   pipelineRunRefetchInterval,
   pipelineStatusColor,
@@ -178,6 +182,32 @@ describe("pipelineRunHelpers", () => {
       expect(pipelineRunRefetchInterval("completed")).toBe(false);
       expect(pipelineRunRefetchInterval("failed")).toBe(false);
       expect(pipelineRunRefetchInterval(undefined)).toBe(false);
+    });
+  });
+
+  describe("run timing helpers", () => {
+    it("formats timestamps for display", () => {
+      expect(formatPipelineRunTimestamp("2026-06-26T08:18:29.000Z")).toMatch(
+        /Jun 26, 2026/,
+      );
+      expect(
+        formatPipelineRunTimestampCompact("2026-06-26T08:18:29.000Z"),
+      ).toMatch(/Jun 26/);
+      expect(formatPipelineRunTimestamp(null)).toBeNull();
+    });
+
+    it("formats elapsed duration", () => {
+      expect(formatElapsedDuration(90_000)).toBe("1m 30s");
+      expect(formatElapsedDuration(3_661_000)).toBe("1h 1m 1s");
+    });
+
+    it("computes duration between start and end", () => {
+      expect(
+        computeRunDurationMs(
+          "2026-01-01T00:00:00.000Z",
+          "2026-01-01T00:05:10.000Z",
+        ),
+      ).toBe(310_000);
     });
   });
 });

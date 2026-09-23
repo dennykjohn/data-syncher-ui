@@ -1,10 +1,15 @@
+import { useEffect, useMemo, useState } from "react";
+
 import { Badge, Box, Flex, Progress, Text } from "@chakra-ui/react";
 
 import { type PipelineRunDetail } from "@/types/pipeline";
 
 import {
   computeNodeProgress,
+  computeRunDurationMs,
   computeTableProgress,
+  formatElapsedDuration,
+  formatPipelineRunTimestampCompact,
   pipelineStatusColor,
   resolvePipelineRunStatus,
 } from "./pipelineRunHelpers";
@@ -103,6 +108,36 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
       ? runningNodes.map((n) => n.batch_name).join(", ")
       : null;
 
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!isRunning || !run.started_at) return;
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [isRunning, run.started_at]);
+
+  const startedLabel = formatPipelineRunTimestampCompact(run.started_at);
+  const finishedLabel = formatPipelineRunTimestampCompact(run.finished_at);
+  const durationMs = computeRunDurationMs(
+    run.started_at,
+    run.finished_at,
+    nowMs,
+  );
+  const durationLabel =
+    durationMs !== null ? formatElapsedDuration(durationMs) : null;
+
+  const centerParts = useMemo(() => {
+    const parts: string[] = [];
+    if (runningLabel) parts.push(`Running: ${runningLabel}`);
+    if (startedLabel) parts.push(`Started ${startedLabel}`);
+    if (finishedLabel) {
+      parts.push(`Ended ${finishedLabel}`);
+      if (durationLabel) parts.push(durationLabel);
+    } else if (isRunning && durationLabel) {
+      parts.push(`Elapsed ${durationLabel}`);
+    }
+    return parts;
+  }, [runningLabel, startedLabel, finishedLabel, durationLabel, isRunning]);
+
   return (
     <Box
       borderWidth={1}
@@ -112,8 +147,8 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
       py={2.5}
       bg="gray.50"
     >
-      <Flex alignItems="center" justifyContent="space-between" gap={3} mb={2}>
-        <Flex alignItems="center" gap={2} minW={0} flexWrap="wrap">
+      <Flex alignItems="center" gap={3} mb={2}>
+        <Flex alignItems="center" gap={2} flexShrink={0} minW="100px">
           <Text
             fontSize="xs"
             fontWeight="semibold"
@@ -130,22 +165,26 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
           >
             {displayStatus}
           </Badge>
-          {runningLabel && (
-            <Text
-              fontSize="2xs"
-              color="gray.600"
-              truncate
-              maxW="320px"
-              title={runningLabel}
-            >
-              Running: {runningLabel}
-            </Text>
-          )}
         </Flex>
+
+        <Text
+          flex="1"
+          minW={0}
+          fontSize="2xs"
+          color="gray.600"
+          textAlign="center"
+          truncate
+          fontVariantNumeric="tabular-nums"
+          title={centerParts.length ? centerParts.join(" · ") : undefined}
+        >
+          {centerParts.join(" · ")}
+        </Text>
+
         <Text
           fontSize="2xs"
           color="gray.500"
           flexShrink={0}
+          textAlign="right"
           fontVariantNumeric="tabular-nums"
         >
           {overall.nodes_completed}/{overall.nodes_total} nodes ·{" "}
