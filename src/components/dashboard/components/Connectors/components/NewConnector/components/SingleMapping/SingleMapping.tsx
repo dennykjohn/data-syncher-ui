@@ -22,6 +22,7 @@ import {
   useFetchBatches,
   useRemoveTableFromBatch,
 } from "@/queryOptions/connector/schema/useBatches";
+import { type S3FileItem } from "@/queryOptions/connector/types/connector.d";
 import useFetchS3Files, {
   type S3ListFilesRequest,
 } from "@/queryOptions/connector/useFetchS3Files";

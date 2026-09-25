@@ -19,6 +19,7 @@ import {
   type ExcelConditionalFormat,
   type ExcelOptions,
   type FilenameDateFormat,
+  type TableFieldInfo,
 } from "@/types/connectors";
 
 import ExcelSettings from "./ExcelSettings";

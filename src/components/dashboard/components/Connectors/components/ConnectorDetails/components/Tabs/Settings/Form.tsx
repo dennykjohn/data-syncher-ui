@@ -46,7 +46,7 @@ const Form = (props: Connector) => {
   const deleteBlockedByPipeline = has_batches_in_pipeline;
 
   const minChunkCount = Math.max(min_count ?? 0, PLAN_MIN_CHUNK_FLOOR);
-  const maxChunkCount = max_count ?? effective_max_chunk;
+  const maxChunkCount = max_count ?? effective_max_chunk ?? minChunkCount;
   const transferPacketSize = chunk_count ?? minChunkCount;
 
   const initialFormState = {
