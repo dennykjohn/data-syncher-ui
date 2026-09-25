@@ -40,8 +40,10 @@ const Form = (props: Connector) => {
     effective_max_chunk,
     min_count,
     max_count,
-    status,
+    has_batches_in_pipeline = false,
   } = props;
+
+  const deleteBlockedByPipeline = has_batches_in_pipeline;
 
   const minChunkCount = Math.max(min_count ?? 0, PLAN_MIN_CHUNK_FLOOR);
   const maxChunkCount = effective_max_chunk ?? max_count ?? 1_000_000;
@@ -126,8 +128,8 @@ const Form = (props: Connector) => {
         <Flex gap={4}>
           {canDelete && (
             <>
-              {status === "A" ? (
-                <Tooltip content="Cannot delete an active connector">
+              {deleteBlockedByPipeline ? (
+                <Tooltip content="Remove this connection's batches from Scheduling before deleting.">
                   <Button
                     variant="outline"
                     colorPalette="red"

@@ -153,6 +153,7 @@ export type PipelineRunNodeDetail = {
   table_count: number;
   migration_status?: {
     overall_status?: string;
+    progress_count_source?: "base_merged" | "staging";
     tables?: Array<{
       table_name: string;
       status: string;
@@ -160,6 +161,7 @@ export type PipelineRunNodeDetail = {
       record_count?: number;
       duration?: string | null;
       error_message?: string | null;
+      skipped_tables?: string[];
     }>;
     total_tables?: number;
   } | null;
@@ -178,6 +180,13 @@ export type PipelineRunDetail = {
   current_node_ids?: number[];
   overall: PipelineRunOverall;
   nodes: PipelineRunNodeDetail[];
+  /** Frozen DAG edges for this run (prefer over live draft when viewing history). */
+  edges?: Array<{ from_node_id: number; to_node_id: number }>;
+  /** True when edges were captured at run start (authoritative). */
+  edges_frozen?: boolean;
+  /** True when edges were rebuilt for a legacy run missing a full snapshot. */
+  edges_backfilled?: boolean;
+  start_node_id?: number | null;
   error?: string | null;
 };
 

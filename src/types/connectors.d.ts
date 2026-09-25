@@ -90,6 +90,13 @@ export interface Connector {
   supports_notification_groups?: boolean;
   root_folder?: string | null;
   display_name?: string;
+  has_batches_in_pipeline?: boolean;
+  batches_in_pipeline?: Array<{
+    batch_id: number;
+    batch_name: string;
+    pipeline_id: number;
+    pipeline_name: string;
+  }>;
 }
 
 export interface ConnectorTabsProps {
@@ -239,12 +246,27 @@ export interface ExcelConditionalFormat {
   style?: ExcelDifferentialStyle;
 }
 
+export interface TableFieldInfo {
+  edm_type?: string;
+  data_type?: string;
+  filter_type?: "boolean" | "numeric" | "datetime" | "time" | "string";
+  filter_restriction?: string | null;
+  filterable?: boolean;
+  display_format?: string;
+  displayFormat?: string;
+  precision?: number | string;
+  nullable?: boolean;
+  max_length?: number;
+  [key: string]: unknown;
+}
+
 export type ConnectorTable = {
   table: string;
   selected: boolean;
   sequence: number | null;
   is_delta: boolean;
-  table_fields: Record<string, string>;
+  service_name?: string | null;
+  table_fields: Record<string, TableFieldInfo | string>;
   /** Present when listing tables from connection API / SourceTableSelection sync metadata */
   last_synced?: string | null;
   selected_fields?: string[] | null;
@@ -254,6 +276,10 @@ export type ConnectorTable = {
   csv_delimiter?: string | null;
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
+  load_method?: string | null;
+  delete_and_load?: boolean | null;
+  partition_delta_by_date?: boolean | null;
+  compression_method?: string | null;
   notification_email_group_ids?: number[] | null;
   email_custom_fields?: {
     subject?: string;
@@ -300,6 +326,13 @@ export type ConnectorTable = {
   excel_sheet_name?: string | null;
   excel_options?: ExcelOptions | null;
   excel_conditional_formats?: ExcelConditionalFormat[] | null;
+  // SAP OData ETL lifecycle control fields
+  first_sync_timestamp?: string | null;
+  initial_completed_flag?: boolean | null;
+  load_method_locked?: boolean | null;
+  last_delta_run_timestamp?: string | null;
+  row_filter?: RowFilterConfig | null;
+  row_filter_config?: RowFilterConfig | null;
 };
 
 export type ConnectorTablesResponse = {
@@ -418,7 +451,11 @@ export interface ConnectorActivityDetailResponse {
   migration_session_id?: number;
   connection_id?: number;
   overall_status?: string;
+  overall_has_warning?: boolean;
+  overall_warning_message?: string | null;
   job_level_message?: string | null;
+  /** base_merged: in-progress count is cumulative rows in destination (Databricks). */
+  progress_count_source?: "base_merged" | "staging";
   tables?: {
     table_name: string;
     status: string;
@@ -427,6 +464,8 @@ export interface ConnectorActivityDetailResponse {
     end_time: string | null;
     mod_rec?: number;
     del_rec?: number;
+    new_rec?: number;
+    record_count?: number;
     duration?: string | null;
     migration_record_id?: number;
     message?: string;
@@ -509,6 +548,9 @@ export interface MigrationBatch {
   table_count: number;
   readable_time_frequency?: string;
   next_sync_time?: string | null;
+  in_pipeline?: boolean;
+  pipeline_id?: number | null;
+  pipeline_name?: string | null;
 }
 
 export interface UnassignedTable {
@@ -555,4 +597,15 @@ export interface AssignTableConflict {
 export interface AssignTablesErrorResponse {
   conflicts?: AssignTableConflict[];
   detail?: string;
+}
+
+export interface FilterCondition {
+  column: string;
+  operator: string;
+  value: string | string[] | boolean | number | unknown;
+  edm_type: string;
+}
+
+export interface RowFilterConfig {
+  conditions: FilterCondition[];
 }

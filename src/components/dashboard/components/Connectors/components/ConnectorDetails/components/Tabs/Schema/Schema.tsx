@@ -50,6 +50,7 @@ import {
 import { isPrimaryKey } from "../ReverseSchema/utils/validation";
 import Actions from "./Actions";
 import BatchGroupedPanel from "./Batches/BatchGroupedPanel";
+import SAPODataSchema from "./SAPODataSchema";
 import { isConnectorTableMarkedSelected } from "./schemaSelection";
 import { useIsMutating } from "@tanstack/react-query";
 
@@ -328,7 +329,7 @@ const TableRow = ({
   );
 };
 
-const Schema = () => {
+const BatchSchema = () => {
   const context = useOutletContext<Connector>();
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
   const { disable_update_schema } = context;
@@ -985,6 +986,18 @@ const Schema = () => {
       </ActionBar.Root>
     </Flex>
   );
+};
+
+const Schema = () => {
+  const context = useOutletContext<Connector>();
+
+  if (
+    context.source_name?.toLowerCase().replace(/[\s\-.]/g, "") === "sapodata"
+  ) {
+    return <SAPODataSchema />;
+  }
+
+  return <BatchSchema />;
 };
 
 export default Schema;

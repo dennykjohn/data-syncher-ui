@@ -86,22 +86,33 @@ export default function Form() {
       await login(respData);
       navigate(ClientRoutes.DASHBOARD, { replace: true });
     } catch (err) {
-      const error = err as AxiosError<{ error?: string }>;
       setIsLoading(false);
-      if (error.response?.status === 403) {
+      const payload =
+        err && typeof err === "object" && "response" in err
+          ? (err as AxiosError<{ error?: string }>).response
+          : null;
+      const status = payload?.status;
+      const message =
+        payload?.data?.error ||
+        (err && typeof err === "object" && "error" in err
+          ? String((err as { error?: string }).error)
+          : null);
+
+      if (status === 403 || message?.toLowerCase().includes("verify")) {
         setUnverifiedEmail(data.username);
         setErrorMessage(
-          error.response.data?.error ||
-            "Please verify your email before logging in.",
+          message || "Please verify your email before logging in.",
         );
       } else {
         setHasError(true);
-        setErrorMessage("Invalid Username or Password");
+        setErrorMessage(message || "Invalid Username or Password");
         if (passwordRef.current) {
           passwordRef.current.value = "";
           passwordRef.current.focus();
         }
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 

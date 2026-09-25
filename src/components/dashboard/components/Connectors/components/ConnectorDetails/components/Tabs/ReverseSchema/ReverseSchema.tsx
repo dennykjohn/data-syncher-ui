@@ -294,8 +294,12 @@ const ReverseSchema = () => {
             w="100%"
             alignItems="start"
           >
-            <Source reverseSchemaData={reverseSchemaData || null} />
+            <Source
+              connectionId={context.connection_id}
+              reverseSchemaData={reverseSchemaData || null}
+            />
             <Destination
+              connectionId={context.connection_id}
               onDrop={handleDrop}
               reverseSchemaData={reverseSchemaData || null}
             />

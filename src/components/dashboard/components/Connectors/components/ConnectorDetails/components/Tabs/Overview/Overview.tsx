@@ -253,6 +253,50 @@ const Overview = () => {
                 )}
                 {effectiveSelectedLog && activeLog && (
                   <Box p={0} h="full">
+                    {logDetails?.job_level_message &&
+                      !logDetails.job_level_message
+                        .toLowerCase()
+                        .includes("migration in progress") && (
+                        <Box
+                          px={4}
+                          py={2}
+                          borderBottom="1px solid"
+                          borderColor="gray.200"
+                          bg={
+                            (logDetails.overall_status || "")
+                              .toLowerCase()
+                              .includes("failed")
+                              ? "red.50"
+                              : "orange.50"
+                          }
+                        >
+                          <Text
+                            fontSize="xs"
+                            color={
+                              (logDetails.overall_status || "")
+                                .toLowerCase()
+                                .includes("failed")
+                                ? "red.700"
+                                : "orange.800"
+                            }
+                          >
+                            {logDetails.job_level_message}
+                          </Text>
+                        </Box>
+                      )}
+                    {logDetails?.overall_warning_message && (
+                      <Box
+                        px={4}
+                        py={2}
+                        borderBottom="1px solid"
+                        borderColor="gray.200"
+                        bg="orange.50"
+                      >
+                        <Text fontSize="xs" color="orange.800">
+                          {logDetails.overall_warning_message}
+                        </Text>
+                      </Box>
+                    )}
                     {logDetails?.changes ? (
                       <TableSelectionDetails
                         changes={logDetails.changes || []}
@@ -260,6 +304,7 @@ const Overview = () => {
                     ) : (
                       <MigrationProgressTable
                         tables={logDetails?.tables || []}
+                        progressCountSource={logDetails?.progress_count_source}
                       />
                     )}
                   </Box>

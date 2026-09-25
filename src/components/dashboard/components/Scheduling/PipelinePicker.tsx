@@ -8,6 +8,8 @@ type PipelinePickerProps = {
   pipelines: PipelineDetail[];
   selectedPipelineId: number | null;
   onSelect: (_pipelineId: number | null) => void;
+  /** Prefetch runs when hovering a pipeline in the menu. */
+  onPipelineHover?: (_pipelineId: number) => void;
   /** Trigger button width; use a smaller value on compact tab bars. */
   width?: string | number;
 };
@@ -28,6 +30,7 @@ const PipelinePicker = ({
   pipelines,
   selectedPipelineId,
   onSelect,
+  onPipelineHover,
   width = "240px",
 }: PipelinePickerProps) => {
   const selected = pipelines.find((p) => p.id === selectedPipelineId) ?? null;
@@ -122,6 +125,7 @@ const PipelinePicker = ({
                   key={p.id}
                   value={String(p.id)}
                   onClick={() => onSelect(p.id)}
+                  onMouseEnter={() => onPipelineHover?.(p.id)}
                   px={3}
                   py={2}
                   bg={isSelected ? "gray.50" : undefined}

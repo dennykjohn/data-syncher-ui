@@ -91,11 +91,23 @@ const PipelineNodeExecutionTab = ({
         </Text>
       )}
 
+      {migrationStatus?.overall_warning_message && (
+        <Text fontSize="xs" color="orange.700" flexShrink={0}>
+          {migrationStatus.overall_warning_message}
+        </Text>
+      )}
+
       {isLoading && !(progressTables?.length ?? 0) ? (
         <Skeleton flex="1" minH="120px" />
       ) : progressTables?.length ? (
         <Flex flex="1" minH={0} overflowY="auto">
-          <MigrationProgressTable tables={progressTables} />
+          <MigrationProgressTable
+            tables={progressTables}
+            progressCountSource={
+              migrationStatus?.progress_count_source ??
+              node.migration_status?.progress_count_source
+            }
+          />
         </Flex>
       ) : runMode === "published" ? (
         <Flex flex="1" alignItems="center" justifyContent="center" minH="120px">

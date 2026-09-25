@@ -23,6 +23,7 @@ import { type AuditUser, type Connector } from "@/types/connectors";
 import { type ConnectorFormState } from "../../type";
 import ConnectorDocsHelperPanel from "./ConnectorDocsHelperPanel";
 import S3ConnectorConfiguration from "./S3ConnectorConfiguration";
+import { resolveDestinationSchema } from "./resolveDestinationSchema";
 
 const getFirstName = (user?: AuditUser | string | null) => {
   if (!user) return "";
@@ -122,11 +123,16 @@ const GenericConnectorConfiguration = ({
     useCreateConnection(state?.source || "");
 
   const handleFormSubmit = (values: Record<string, string>) => {
+    const destinationSchema = resolveDestinationSchema(
+      values,
+      connectorConfig?.initial_data?.destination_schema,
+    );
+
     if (mode === "create") {
       createConnection(
         {
           connection_name: values.connection_name || "Unnamed Connector",
-          destination_schema: state?.destination || "",
+          destination_schema: destinationSchema,
           form_data: values,
         },
         {
@@ -149,7 +155,7 @@ const GenericConnectorConfiguration = ({
       updateConnectorConfig(
         {
           connection_name: values.connection_name || "Unnamed Connector",
-          destination_schema: connectorConfig?.destination_config.name || "",
+          destination_schema: destinationSchema,
           form_data: values,
         },
         {

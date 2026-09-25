@@ -69,7 +69,9 @@ const ServerRoutes = {
     fetchConnectorSettings: (id: number) => `connection/setup/${id}/`,
     fetchConnectorTable: (id: number) => `connection/${id}/tables/`,
     fetchTableFields: (id: number, tableName: string) =>
-      `connection/${id}/tables/${tableName}/fields/`,
+      `connection/${id}/tables/${encodeURIComponent(tableName)}/fields/`,
+    fetchDestinationTableFields: (id: number, tableName: string) =>
+      `connection/${id}/destination-tables/${encodeURIComponent(tableName)}/fields/`,
     fetchConnectorSelectedTable: (id: number) =>
       `connection/${id}/selected-tables/`,
     getTableStatus: (id: number) => `get_table_status/?connection_id=${id}`,
@@ -121,6 +123,7 @@ const ServerRoutes = {
       `connection/${id}/update-schema-status/`,
     reloadSingleTable: () => `reload-single-table/`,
     refreshDeltaTable: () => `refresh-delta-table/`,
+    deleteDeltaTable: () => `delete-delta-table/`,
     fetchReverseSchema: (id: number) => `schema/${id}/`,
     fetchConnectionMappings: (id: number) => `connection/${id}/mappings/`,
     saveConnectionMappings: () => "connection/mappings/save/",

@@ -46,7 +46,8 @@ export function pipelineNodeChrome(options: {
   if (selected) {
     borderColor = PIPELINE_NODE.borderSelected;
   } else if (runStatus === "running") {
-    borderColor = PIPELINE_NODE.borderRunning;
+    // Animated dashed outline is drawn by PipelineNodeRunningBorder.
+    borderColor = "transparent";
   } else if (runStatus === "completed") {
     borderColor = PIPELINE_NODE.borderCompleted;
   } else if (runStatus === "failed") {
@@ -63,10 +64,14 @@ export function pipelineNodeChrome(options: {
     bg,
     borderColor,
     borderStyle: isDraft || runStatus === "skipped" ? "dashed" : "solid",
-    boxShadow: selected
-      ? "0 0 0 1px var(--chakra-colors-brand-500)"
-      : runStatus === "running"
-        ? "0 0 0 1px var(--chakra-colors-blue-100)"
-        : "sm",
+    boxShadow:
+      selected && runStatus !== "running"
+        ? "0 0 0 1px var(--chakra-colors-brand-500)"
+        : runStatus === "running"
+          ? "none"
+          : "sm",
   };
 }
+
+/** Chakra `borderRadius="xl"` — keep running SVG outline aligned with batch nodes. */
+export const PIPELINE_BATCH_NODE_RADIUS_PX = 12;

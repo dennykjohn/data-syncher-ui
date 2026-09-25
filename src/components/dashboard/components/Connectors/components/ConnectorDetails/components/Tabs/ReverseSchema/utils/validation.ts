@@ -1,5 +1,21 @@
 import { type ConnectorTable } from "@/types/connectors";
 
+/** Mirror backend ``normalize_name`` (Salesforce API → warehouse column names). */
+export const normalizeFieldName = (name: string): string =>
+  name
+    .replace(/__c/gi, "_C")
+    .replace(/__+/g, "_")
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
+    .replace(/([A-Za-z])(\d)/g, "$1_$2")
+    .replace(/(\d)([A-Za-z])/g, "$1_$2")
+    .toUpperCase();
+
+export const fieldsMatchByName = (
+  sourceField: string,
+  destinationField: string,
+): boolean =>
+  normalizeFieldName(sourceField) === normalizeFieldName(destinationField);
+
 export const isPrimaryKey = (
   fieldName: string,
   fieldInfo: string | { data_type?: string; is_primary_key?: boolean },
@@ -30,9 +46,12 @@ export const hasMatchingFields = (
 ): boolean => {
   const sourceFields = Object.keys(sourceTableData.table_fields);
   const destinationFields = Object.keys(destinationTableData.table_fields);
+  const destinationNorm = new Set(
+    destinationFields.map((field) => normalizeFieldName(field)),
+  );
 
   return sourceFields.some((sourceField) =>
-    destinationFields.some((destField) => sourceField === destField),
+    destinationNorm.has(normalizeFieldName(sourceField)),
   );
 };
 
@@ -64,13 +83,12 @@ export const validateTableMapping = (
     };
   }
 
-  // Strict case sensitivity: ID !== Id
-  if (sourcePK !== destinationPK) {
+  if (!fieldsMatchByName(sourcePK, destinationPK)) {
     return {
       isValid: false,
       error: {
         title: "Primary Key Mismatch",
-        description: `Primary keys do not match exactly. Source: "${sourcePK}", Destination: "${destinationPK}".`,
+        description: `Primary keys do not match. Source: "${sourcePK}", Destination: "${destinationPK}".`,
       },
     };
   }
@@ -121,6 +139,18 @@ export const validateTableToTableMapping = (
   sourceTableData: ConnectorTable,
   destinationTableData: ConnectorTable,
 ): ValidationResult => {
+  const sourceFieldCount = Object.keys(
+    sourceTableData.table_fields || {},
+  ).length;
+  const destFieldCount = Object.keys(
+    destinationTableData.table_fields || {},
+  ).length;
+
+  // Fields are loaded on demand for reverse ETL; skip client-side field checks.
+  if (sourceFieldCount === 0 || destFieldCount === 0) {
+    return { isValid: true };
+  }
+
   // Do not require matching primary keys — PKs often differ by system
   // (e.g. Salesforce "Id" vs Snowflake "ACCOUNT_ID"). Allow mapping when
   // the tables share at least one field name (any field, including PK).
@@ -130,7 +160,7 @@ export const validateTableToTableMapping = (
       error: {
         title: "No Matching Fields",
         description:
-          "Source and destination tables must have at least one field with the same name.",
+          "Source and destination tables must have at least one field with the same normalized name (e.g. CREATED_DATE ↔ CreatedDate).",
       },
     };
   }

@@ -44,12 +44,19 @@ const GOOGLE_DRIVE_CALLBACK_PATH = "/api/v1/source/googledrive/callback";
 
 const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
-const configuredDjangoBase = env?.VITE_API_BASE_URL;
-const baseURL = stripTrailingSlash(
-  isLocalhost
-    ? "https://qa.datasyncher.com"
-    : configuredDjangoBase || window.location.origin,
-);
+const resolveApiBase = (): string => {
+  const configuredOrigin = env?.VITE_API_ORIGIN || env?.VITE_API_BASE_URL;
+  const trimmed = configuredOrigin?.replace(/\/$/, "").trim();
+  if (trimmed) {
+    return trimmed;
+  }
+  if (isLocalhost) {
+    return "https://qa.datasyncher.com";
+  }
+  return window.location.origin;
+};
+
+const baseURL = stripTrailingSlash(resolveApiBase());
 const REDIRECT_URI = `${baseURL}${GOOGLE_DRIVE_CALLBACK_PATH}`;
 
 const isSensitiveOAuthField = (fieldName: string) => {

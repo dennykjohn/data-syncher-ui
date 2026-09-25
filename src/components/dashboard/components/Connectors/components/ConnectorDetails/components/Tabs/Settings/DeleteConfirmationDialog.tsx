@@ -58,6 +58,13 @@ const DeleteConfirmationDialog = ({
                         `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
                       );
                     },
+                    onError: (err: unknown) => {
+                      const message =
+                        (err as { response?: { data?: { message?: string } } })
+                          ?.response?.data?.message ??
+                        "Could not delete connection";
+                      toaster.error({ title: message });
+                    },
                   })
                 }
               >

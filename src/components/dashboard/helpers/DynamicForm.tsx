@@ -94,6 +94,23 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       return false;
     }
 
+    const connectorName = (sourceName || destinationName || "").toLowerCase();
+    const isSalesforceConnector = connectorName.includes("salesforce");
+
+    if (isSalesforceConnector) {
+      if (field.name === "CLIENT_SECRET" && selectedAuthType === "jwt_bearer") {
+        return false;
+      }
+      if (
+        (field.name === "integration_username" ||
+          field.name === "private_key" ||
+          field.name === "passphrase") &&
+        (!selectedAuthType || selectedAuthType === "oauth")
+      ) {
+        return false;
+      }
+    }
+
     if (field.name === "destination_schema") {
       const normalizedDstType = (destinationType || "")
         .toLowerCase()
@@ -117,12 +134,49 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       }
     }
 
+    const visibilityAnyOf = field.visibility_any_of;
+    const visibilityAllOf = field.visibility_all_of;
+
+    if (visibilityAnyOf && visibilityAnyOf.length > 0) {
+      const anyMatch = visibilityAnyOf.some((rule) => {
+        const dependentValue = String(current[rule.depend_on] || "").trim();
+        const requiredValue = String(rule.dependency || "").trim();
+        return dependentValue === requiredValue;
+      });
+      if (!anyMatch) {
+        return false;
+      }
+    }
+
+    if (visibilityAllOf && visibilityAllOf.length > 0) {
+      const allMatch = visibilityAllOf.every((rule) => {
+        const dependentValue = String(current[rule.depend_on] || "").trim();
+        const requiredValue = String(rule.dependency || "").trim();
+        return dependentValue === requiredValue;
+      });
+      if (!allMatch) {
+        return false;
+      }
+    }
+
+    if (
+      (visibilityAnyOf && visibilityAnyOf.length > 0) ||
+      (visibilityAllOf && visibilityAllOf.length > 0)
+    ) {
+      return true;
+    }
+
     const dependOn = field.depend_on ?? null;
     const dependencyValue =
       field.dependency_value ?? (field as FieldConfig).dependency ?? null;
 
     const hasDependency =
       !!dependOn && dependencyValue !== null && dependencyValue !== undefined;
+
+    // Permanently hidden fields (no conditional reveal).
+    if (field.is_visible === false && !hasDependency) {
+      return false;
+    }
 
     // Only apply schema-visibility rules when a dependency is explicitly present.
     // This avoids changing behavior for existing connectors that don't use it.
@@ -236,6 +290,17 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
     onSubmit(values, files);
   };
+
+  const hasAuthenticationTypeField = useMemo(
+    () =>
+      config.fields.some(
+        (f) =>
+          f.name === "authentication_type" ||
+          f.name === "authenticationType" ||
+          f.name === "auth_type",
+      ),
+    [config.fields],
+  );
 
   // Filter out passphrase from sorted fields - it will be rendered separately below KeyPairGenerator
   const sortedFields = useMemo(() => {
@@ -367,48 +432,88 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       );
     }
 
-    // If the value of authentication_type field is "password",
-    // hide private_key, public_key & passphrase fields
-    if (
-      (field.name === "private_key" ||
-        field.name === "public_key" ||
-        field.name === "passphrase") &&
-      values["authentication_type"] === "password"
-    ) {
-      return null;
-    }
-    // If the value of authentication_type field is "keypair",
-    // hide password field and passphrase (passphrase will be rendered separately)
-    if (
-      field.name === "password" &&
-      values["authentication_type"] === "key_pair"
-    ) {
-      return null;
-    }
-    // Hide passphrase in normal rendering when key_pair is selected (it's rendered separately)
-    if (
-      field.name === "passphrase" &&
-      values["authentication_type"] === "key_pair"
-    ) {
-      return null;
-    }
-    // If the value of authentication_type field is not selected,
-    // hide private_key, public_key, passphrase & password fields
-    if (
-      (field.name === "private_key" ||
-        field.name === "public_key" ||
-        field.name === "password" ||
-        field.name === "passphrase") &&
-      !values["authentication_type"]
-    ) {
-      return null;
+    // Snowflake/SFTP auth-type toggles only apply when the schema includes authentication_type.
+    if (hasAuthenticationTypeField) {
+      // If the value of authentication_type field is "password",
+      // hide private_key, public_key & passphrase fields
+      if (
+        (field.name === "private_key" ||
+          field.name === "public_key" ||
+          field.name === "passphrase") &&
+        values["authentication_type"] === "password"
+      ) {
+        return null;
+      }
+      // If the value of authentication_type field is "keypair",
+      // hide password field and passphrase (passphrase will be rendered separately)
+      if (
+        field.name === "password" &&
+        values["authentication_type"] === "key_pair"
+      ) {
+        return null;
+      }
+      // Hide passphrase in normal rendering when Snowflake key_pair is selected (rendered separately)
+      if (
+        field.name === "passphrase" &&
+        values["authentication_type"] === "key_pair" &&
+        (sourceName?.toLowerCase() === "snowflake" ||
+          destinationName?.toLowerCase() === "snowflake")
+      ) {
+        return null;
+      }
+      // If the value of authentication_type field is not selected,
+      // hide private_key, public_key, passphrase & password fields
+      if (
+        (field.name === "private_key" ||
+          field.name === "public_key" ||
+          field.name === "password" ||
+          field.name === "passphrase") &&
+        !values["authentication_type"]
+      ) {
+        return null;
+      }
     }
     // Support `ChoiceField` type with `options` on the FieldConfig
 
     if (
+      field.name === "private_key" &&
+      values["authentication_type"] === "jwt_bearer"
+    ) {
+      return (
+        <Field.Root
+          key={field.name}
+          required={field.required}
+          invalid={!!errors[field.name]}
+        >
+          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+          <Textarea
+            id={field.name}
+            name={field.name}
+            value={values[field.name] || ""}
+            onChange={handleChange}
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+            rows={10}
+            fontFamily="monospace"
+            fontSize="xs"
+            resize="none"
+            readOnly={isReadOnly}
+            bg={isReadOnly ? "gray.200 !important" : undefined}
+            color={isReadOnly ? "black !important" : undefined}
+            borderColor={isReadOnly ? "gray.300 !important" : undefined}
+          />
+          {errors[field.name] && (
+            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+          )}
+        </Field.Root>
+      );
+    }
+
+    if (
       (field.name === "private_key" || field.name === "public_key") &&
       (values["authentication_type"] === "key_pair" ||
-        values["authentication_type"]?.toLowerCase().includes("key"))
+        values["authentication_type"]?.toLowerCase().includes("key")) &&
+      (sourceName?.toLowerCase() === "snowflake" ||
+        destinationName?.toLowerCase() === "snowflake")
     ) {
       if (keyMode === "manual") {
         return (

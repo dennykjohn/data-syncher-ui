@@ -9,7 +9,7 @@ import {
   getRefreshToken,
   setAuthTokens,
 } from "@/lib/auth/token-cookies";
-import AxiosInstance from "@/lib/axios/api-client";
+import AxiosInstance, { refreshAccessToken } from "@/lib/axios/api-client";
 import {
   type AuthContextType,
   type AuthState,
@@ -33,8 +33,18 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Check for existing token and fetch profile on mount/reload
   useEffect(() => {
     const checkAuthStatus = async () => {
-      const access_token = getAccessToken();
+      let access_token = getAccessToken();
       const refresh_token = getRefreshToken();
+
+      if (!access_token && refresh_token) {
+        try {
+          access_token = await refreshAccessToken();
+        } catch (error) {
+          console.error("Failed to refresh access token:", error);
+          clearAuthTokens();
+          return;
+        }
+      }
 
       if (access_token) {
         try {
@@ -48,7 +58,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             isAuthenticated: true,
             user,
             access_token,
-            refresh_token: refresh_token || null,
+            refresh_token: getRefreshToken() || refresh_token || null,
           });
 
           // Show trial expiration message if present

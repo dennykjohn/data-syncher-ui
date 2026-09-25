@@ -32,6 +32,7 @@ import {
 import { type ConnectorFormState } from "../../type";
 import ConnectorDocsHelperPanel from "./ConnectorDocsHelperPanel";
 import S3DocsHelperPanel from "./S3DocsHelperPanel";
+import { resolveDestinationSchema } from "./resolveDestinationSchema";
 import { useQueryClient } from "@tanstack/react-query";
 
 const getFirstName = (user?: AuditUser | string | null) => {
@@ -299,11 +300,16 @@ const S3ConnectorConfiguration = ({
         parsedValues["xml_mode"] === "packed"
       );
 
+    const destinationSchema = resolveDestinationSchema(
+      stringifiedValues,
+      connectorConfig?.initial_data?.destination_schema,
+    );
+
     if (mode === "create") {
       if (requiresPrimaryKeySelection) {
         setPendingFormData({
           connection_name: connectionName,
-          destination_schema: state?.destination || "",
+          destination_schema: destinationSchema,
           form_data: stringifiedValues,
         });
         setShowPrimaryKeySelection(true);
@@ -313,7 +319,7 @@ const S3ConnectorConfiguration = ({
       createConnection(
         {
           connection_name: connectionName,
-          destination_schema: state?.destination || "",
+          destination_schema: destinationSchema,
           form_data: stringifiedValues,
         },
         {
@@ -337,7 +343,7 @@ const S3ConnectorConfiguration = ({
     } else {
       const editPayload = {
         connection_name: connectionName,
-        destination_schema: connectorConfig?.destination_config.name || "",
+        destination_schema: destinationSchema,
         form_data: stringifiedValues,
       };
 

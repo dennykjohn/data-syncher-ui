@@ -147,7 +147,20 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
         setGDrivePendingFiles(files || null);
         setGDriveFolderName(err.folder_name);
         setShowGDriveConfirm(true);
+        return true;
       }
+      return false;
+    };
+
+    const handleDestinationError = (err: ErrorResponseType) => {
+      if (handleGDrive409(err)) return;
+      toaster.error({
+        title: "Destination authorization failed",
+        description:
+          err.message ||
+          err.error ||
+          "Could not authorize this destination. Check credentials and try again.",
+      });
     };
 
     if (mode === "edit") {
@@ -165,7 +178,7 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
             });
           }
         },
-        onError: handleGDrive409,
+        onError: handleDestinationError,
       });
       return;
     }
@@ -178,12 +191,14 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
             title: "Destination created successfully",
             description: `Your ${destinationName} destination has been created.`,
           });
+          // Same as other destinations: after destination save, continue into
+          // connection (connector) creation so the user can pick source + configure.
           navigate(
-            `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
+            `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}/${ClientRoutes.CONNECTORS.ADD}`,
           );
         }
       },
-      onError: handleGDrive409,
+      onError: handleDestinationError,
     });
   };
 
@@ -339,6 +354,16 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
                                 title: response.message,
                               });
                             }
+                          },
+                          onError: (err: unknown) => {
+                            const error = err as ErrorResponseType;
+                            toaster.error({
+                              title: "Destination test failed",
+                              description:
+                                error?.message ||
+                                error?.error ||
+                                "Could not test this destination. Check credentials and try again.",
+                            });
                           },
                         },
                       )

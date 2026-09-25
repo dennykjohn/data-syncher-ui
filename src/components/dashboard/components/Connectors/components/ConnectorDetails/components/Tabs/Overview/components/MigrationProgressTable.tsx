@@ -16,8 +16,11 @@ import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 
 const MigrationProgressTable = ({
   tables,
+  progressCountSource = "staging",
 }: {
   tables: ConnectorActivityDetailResponse["tables"];
+  /** base_merged = live cumulative rows merged to destination (Databricks per-chunk). */
+  progressCountSource?: ConnectorActivityDetailResponse["progress_count_source"];
 }) => {
   if (!tables || tables.length === 0) {
     return (
@@ -32,6 +35,40 @@ const MigrationProgressTable = ({
       </Flex>
     );
   }
+
+  const anyInProgress = tables.some((table) => {
+    const statusRaw = (table.status_icon || table.status || "").toLowerCase();
+    const uiState = getUiState(
+      table.status_icon,
+      table.status,
+      table.message || table.error_message || "",
+    );
+    const normalizedState = (uiState || statusRaw).toLowerCase();
+    return (
+      normalizedState === "in_progress" ||
+      normalizedState === "pending" ||
+      normalizedState === "i" ||
+      normalizedState === "running" ||
+      ![
+        "success",
+        "completed",
+        "s",
+        "failed",
+        "error",
+        "f",
+        "e",
+        "warning",
+        "p",
+        "w",
+        "skipped",
+      ].includes(normalizedState)
+    );
+  });
+  const recordsColumnHeader = anyInProgress
+    ? progressCountSource === "base_merged"
+      ? "Records Migrated"
+      : "Records Staging"
+    : "Records Migrated";
 
   return (
     <Box w="100%" overflowX="auto">
@@ -84,10 +121,11 @@ const MigrationProgressTable = ({
               fontWeight="bold"
               color="gray.600"
               textAlign="left"
-              width="100px"
+              whiteSpace="nowrap"
+              minW="140px"
               py={1}
             >
-              Records
+              {recordsColumnHeader}
             </Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
@@ -111,12 +149,18 @@ const MigrationProgressTable = ({
               normalizedState,
             );
             const isWarning = ["warning", "p", "w"].includes(normalizedState);
+            const isSkipped = ["skipped"].includes(normalizedState);
             const isPending =
               normalizedState === "in_progress" ||
               normalizedState === "pending" ||
               normalizedState === "i" ||
               normalizedState === "running" ||
-              (!isSuccess && !isFailed && !isWarning);
+              (!isSuccess && !isFailed && !isWarning && !isSkipped);
+
+            const displayError =
+              table.error_message ||
+              table.message ||
+              (isFailed ? "Unknown error" : isSkipped ? "" : "");
 
             // Format times if available
             const startTime = table.start_time
@@ -126,12 +170,37 @@ const MigrationProgressTable = ({
               ? format(new Date(table.end_time), dateTimeFormat)
               : "--";
 
-            // Display staging records count
-            const stagingRecordsDisplay =
-              table.staging_records_count !== undefined &&
-              table.staging_records_count !== null
-                ? table.staging_records_count
-                : "--";
+            // In progress: staging_records_count (cumulative merged rows for Databricks,
+            // staging inventory for deferred-merge destinations). Completed: data_transfer total.
+            const isTerminal =
+              isSuccess ||
+              isFailed ||
+              ["completed", "success", "failed", "s", "f", "e"].includes(
+                normalizedState,
+              );
+            const stagingRecordsDisplay = (() => {
+              if (isTerminal) {
+                if (
+                  table.record_count !== undefined &&
+                  table.record_count !== null
+                ) {
+                  return table.record_count;
+                }
+              }
+              if (
+                table.staging_records_count !== undefined &&
+                table.staging_records_count !== null
+              ) {
+                return table.staging_records_count;
+              }
+              if (
+                table.record_count !== undefined &&
+                table.record_count !== null
+              ) {
+                return table.record_count;
+              }
+              return "--";
+            })();
 
             return (
               <Table.Row key={index} bg="white" _hover={{ bg: "gray.50" }}>
@@ -170,16 +239,17 @@ const MigrationProgressTable = ({
                             flex={1}
                             wordBreak="break-word"
                           >
-                            Error: {table.error_message || "Unknown error"}
+                            {isSkipped
+                              ? displayError ||
+                                "Skipped — table refresh/reload is in progress"
+                              : `Error: ${displayError || "Unknown error"}`}
                           </Text>
                           <Box
                             as="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (table.error_message) {
-                                navigator.clipboard.writeText(
-                                  table.error_message,
-                                );
+                              if (displayError) {
+                                navigator.clipboard.writeText(displayError);
                                 toaster.success({
                                   title: "Copied to clipboard",
                                   description: "Error message copied",
@@ -203,7 +273,7 @@ const MigrationProgressTable = ({
                       }
                       interactive={true}
                       closeOnPointerDown={false}
-                      disabled={!table.error_message}
+                      disabled={!displayError}
                       showArrow
                       contentProps={{
                         bg: "gray.800",
@@ -213,7 +283,7 @@ const MigrationProgressTable = ({
                         maxW: "500px",
                       }}
                     >
-                      <Box cursor={table.error_message ? "pointer" : "default"}>
+                      <Box cursor={displayError ? "pointer" : "default"}>
                         {isSuccess && (
                           <Image
                             src={CheckIcon}
@@ -230,6 +300,14 @@ const MigrationProgressTable = ({
                         )}
                         {isWarning && (
                           <Box color="orange.500">
+                            <MdWarning size={20} />
+                          </Box>
+                        )}
+                        {isSkipped && (
+                          <Box
+                            color="gray.500"
+                            title={table.error_message || "Skipped"}
+                          >
                             <MdWarning size={20} />
                           </Box>
                         )}
