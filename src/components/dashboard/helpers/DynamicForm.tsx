@@ -24,6 +24,13 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { type FieldConfig, type KeyPair } from "@/types/form";
 
 import KeyPairGenerator from "./KeyPairGenerator";
+import {
+  isJwtBearerAuth,
+  isSalesforceConnector,
+  isSnowflakeConnector,
+  isSnowflakeKeyPairAuth,
+  usesKeyPairGenerator,
+} from "./helpers";
 
 const SCHEMA_VALIDATION_MESSAGE =
   "Invalid schema name. Schema name shouldn't be empty, should contain only letters, numbers, or underscores, and cannot begin with a number.";
@@ -202,6 +209,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [keyMode, setKeyMode] = useState<"generate" | "manual">("generate");
 
+  const connectorName = sourceName || destinationName;
+  const selectedAuthType =
+    values["auth_type"] || values["authentication_type"] || "";
+  const hasPassphraseField = config.fields.some((f) => f.name === "passphrase");
+  const showKeyPairGenerator = usesKeyPairGenerator(
+    connectorName,
+    selectedAuthType,
+    hasPassphraseField,
+  );
+
   const valuesRef = useRef(values);
   const defaultValuesSerializedRef = useRef<string | null>(
     defaultValues ? JSON.stringify(defaultValues) : null,
@@ -336,10 +353,24 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       };
     }
 
+    if (
+      isSalesforceConnector(connectorName) &&
+      isJwtBearerAuth(selectedAuthType) &&
+      privateKey
+    ) {
+      return {
+        publicKey: publicKey || "",
+        privateKey,
+        passphrase: defaultValues.passphrase || values.passphrase || "",
+      };
+    }
+
     return null;
   }, [
     mode,
     defaultValues,
+    connectorName,
+    selectedAuthType,
     values.public_key,
     values.private_key,
     values.publicKey,
@@ -452,12 +483,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       ) {
         return null;
       }
-      // Hide passphrase in normal rendering when Snowflake key_pair is selected (rendered separately)
+      // Hide passphrase in normal rendering when key generator is shown (rendered separately)
       if (
         field.name === "passphrase" &&
-        values["authentication_type"] === "key_pair" &&
-        (sourceName?.toLowerCase() === "snowflake" ||
-          destinationName?.toLowerCase() === "snowflake")
+        showKeyPairGenerator &&
+        values["authentication_type"] === selectedAuthType
       ) {
         return null;
       }
@@ -475,45 +505,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
     // Support `ChoiceField` type with `options` on the FieldConfig
 
-    if (
-      field.name === "private_key" &&
-      values["authentication_type"] === "jwt_bearer"
-    ) {
-      return (
-        <Field.Root
-          key={field.name}
-          required={field.required}
-          invalid={!!errors[field.name]}
-        >
-          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
-          <Textarea
-            id={field.name}
-            name={field.name}
-            value={values[field.name] || ""}
-            onChange={handleChange}
-            placeholder={`Enter ${field.label.toLowerCase()}`}
-            rows={10}
-            fontFamily="monospace"
-            fontSize="xs"
-            resize="none"
-            readOnly={isReadOnly}
-            bg={isReadOnly ? "gray.200 !important" : undefined}
-            color={isReadOnly ? "black !important" : undefined}
-            borderColor={isReadOnly ? "gray.300 !important" : undefined}
-          />
-          {errors[field.name] && (
-            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
-          )}
-        </Field.Root>
-      );
-    }
+    const usesConnectorKeyFields =
+      (isSnowflakeConnector(connectorName) &&
+        isSnowflakeKeyPairAuth(values["authentication_type"])) ||
+      (isSalesforceConnector(connectorName) &&
+        isJwtBearerAuth(values["authentication_type"]));
 
     if (
       (field.name === "private_key" || field.name === "public_key") &&
-      (values["authentication_type"] === "key_pair" ||
-        values["authentication_type"]?.toLowerCase().includes("key")) &&
-      (sourceName?.toLowerCase() === "snowflake" ||
-        destinationName?.toLowerCase() === "snowflake")
+      usesConnectorKeyFields
     ) {
       if (keyMode === "manual") {
         return (
@@ -683,50 +683,47 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               {(field.name === "authentication_type" ||
                 field.name === "authenticationType") && (
                 <>
-                  {passphraseField &&
-                    values.authentication_type === "key_pair" && (
-                      <Box key={passphraseField.name}>
-                        <Field.Root
-                          required={passphraseField.required}
-                          invalid={!!errors[passphraseField.name]}
-                        >
-                          <Field.Label htmlFor={passphraseField.name}>
-                            {passphraseField.label}
-                          </Field.Label>
-                          {passphraseField.type === "PasswordInput" ? (
-                            <PasswordInput
-                              id={passphraseField.name}
-                              name={passphraseField.name}
-                              value={values[passphraseField.name] || ""}
-                              onChange={handleChange}
-                              placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
-                            />
-                          ) : (
-                            <Input
-                              id={passphraseField.name}
-                              name={passphraseField.name}
-                              type="text"
-                              value={values[passphraseField.name] || ""}
-                              onChange={handleChange}
-                              placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
-                            />
-                          )}
-                          {errors[passphraseField.name] && (
-                            <Field.ErrorText>
-                              {errors[passphraseField.name]}
-                            </Field.ErrorText>
-                          )}
-                        </Field.Root>
-                      </Box>
-                    )}
+                  {passphraseField && showKeyPairGenerator && (
+                    <Box key={passphraseField.name}>
+                      <Field.Root
+                        required={passphraseField.required}
+                        invalid={!!errors[passphraseField.name]}
+                      >
+                        <Field.Label htmlFor={passphraseField.name}>
+                          {passphraseField.label}
+                        </Field.Label>
+                        {passphraseField.type === "PasswordInput" ? (
+                          <PasswordInput
+                            id={passphraseField.name}
+                            name={passphraseField.name}
+                            value={values[passphraseField.name] || ""}
+                            onChange={handleChange}
+                            placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
+                          />
+                        ) : (
+                          <Input
+                            id={passphraseField.name}
+                            name={passphraseField.name}
+                            type="text"
+                            value={values[passphraseField.name] || ""}
+                            onChange={handleChange}
+                            placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
+                          />
+                        )}
+                        {errors[passphraseField.name] && (
+                          <Field.ErrorText>
+                            {errors[passphraseField.name]}
+                          </Field.ErrorText>
+                        )}
+                      </Field.Root>
+                    </Box>
+                  )}
                   <KeyPairGenerator
                     formValues={values}
                     mode={mode}
                     destinationName={destinationName}
                     sourceName={sourceName}
-                    hasPassphraseField={config.fields.some(
-                      (f) => f.name === "passphrase",
-                    )}
+                    hasPassphraseField={hasPassphraseField}
                     existingKeys={existingKeys}
                     onKeysGenerated={(keys: KeyPair) =>
                       setValues((prev) => ({

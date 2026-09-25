@@ -41,6 +41,8 @@ export interface KeyPair {
   publicKey: string;
   privateKey: string;
   passphrase?: string;
+  /** Self-signed X.509 certificate PEM (Salesforce Connected App upload). */
+  certificate?: string;
 }
 
 export interface KeyPairResponse {

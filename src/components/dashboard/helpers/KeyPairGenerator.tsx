@@ -8,13 +8,24 @@ import React, {
 
 import { Box, Button, Field, Flex, Text, Textarea } from "@chakra-ui/react";
 
-import { MdContentCopy } from "react-icons/md";
+import { MdContentCopy, MdDownload } from "react-icons/md";
 
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { KeyPair } from "@/types/form";
 
-import { checkKeysForUser, copyToClipboard, generateKeyPair } from "./helpers";
+import {
+  checkKeysForUser,
+  copyToClipboard,
+  deriveCertificateFromPrivateKey,
+  downloadTextFile,
+  generateKeyPair,
+  getKeyPairLookupFields,
+  isJwtBearerAuth,
+  isSalesforceConnector,
+  isSnowflakeKeyPairAuth,
+  usesKeyPairGenerator,
+} from "./helpers";
 
 interface KeyPairGeneratorProps {
   formValues: Record<string, string>;
@@ -39,28 +50,25 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   onModeChange: externalOnModeChange,
   existingKeys,
 }) => {
-  const getFieldValue = (names: string[]): string =>
-    names.map((name) => formValues?.[name]).find(Boolean) || "";
-
+  const connectorName = sourceName || destinationName;
   const passphrase = formValues?.["passphrase"] || "";
   const authenticationType = formValues?.["authentication_type"] || "";
-
-  const username = getFieldValue(["username", "user_name", "user"]) || "";
-  const accountName =
-    getFieldValue([
-      "account_name",
-      "account",
-      "accountName",
-      "account_identifier",
-    ]) || "";
+  const { username, account: accountName } = getKeyPairLookupFields(
+    formValues,
+    connectorName,
+  );
   const entityType = sourceName ? "source" : "destination";
+  const isSalesforce = isSalesforceConnector(connectorName);
 
-  const shouldShow =
-    (destinationName?.toLowerCase() === "snowflake" ||
-      sourceName?.toLowerCase() === "snowflake") &&
-    (authenticationType === "key_pair" ||
-      authenticationType?.toLowerCase().includes("key")) &&
-    hasPassphraseField;
+  const shouldShow = usesKeyPairGenerator(
+    connectorName,
+    authenticationType,
+    hasPassphraseField,
+  );
+
+  const usesGeneratedKeys =
+    isSnowflakeKeyPairAuth(authenticationType) ||
+    isJwtBearerAuth(authenticationType);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedKeys, setGeneratedKeys] = useState<KeyPair | null>(null);
@@ -74,7 +82,24 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   const lastAuthTypeRef = useRef("");
   const lastUsernameRef = useRef("");
   const lastAccountRef = useRef("");
-  const prevIsKeyPairAuthRef = useRef(false);
+  const prevUsesGeneratedKeysRef = useRef(false);
+
+  const enrichKeysWithCertificate = useCallback(
+    (keys: KeyPair): KeyPair => {
+      if (!isSalesforce || keys.certificate) {
+        return keys;
+      }
+
+      const certificate = deriveCertificateFromPrivateKey(
+        keys.privateKey,
+        username?.trim() || "datasyncher-salesforce-jwt",
+        keys.passphrase || passphrase,
+      );
+
+      return certificate ? { ...keys, certificate } : keys;
+    },
+    [isSalesforce, username, passphrase],
+  );
 
   const handleGenerateKeyPair = useCallback(async () => {
     if (keyMode !== "generate") {
@@ -84,14 +109,17 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
 
     setIsGenerating(true);
     try {
-      const keys = await generateKeyPair(passphrase?.trim() || undefined);
+      const keys = await generateKeyPair(passphrase?.trim() || undefined, {
+        includeCertificate: isSalesforce,
+        certificateCommonName: username?.trim() || "datasyncher-salesforce-jwt",
+      });
       if (keys && keyMode === "generate") {
-        setGeneratedKeys(keys);
+        const enrichedKeys = enrichKeysWithCertificate(keys);
+        setGeneratedKeys(enrichedKeys);
         hasGeneratedKeysRef.current = true;
-        setIsNewlyGenerated(true); // Mark as newly generated
-        onKeysGenerated?.(keys);
+        setIsNewlyGenerated(true);
+        onKeysGenerated?.(enrichedKeys);
 
-        // Show success message
         toaster.success({
           title: "Keys generated successfully",
           description:
@@ -105,15 +133,19 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
     } finally {
       setIsGenerating(false);
     }
-  }, [keyMode, passphrase, onKeysGenerated, mode]);
+  }, [
+    keyMode,
+    passphrase,
+    onKeysGenerated,
+    mode,
+    isSalesforce,
+    username,
+    enrichKeysWithCertificate,
+  ]);
 
   useEffect(() => {
-    const isKeyPairAuth =
-      authenticationType === "key_pair" ||
-      authenticationType?.toLowerCase().includes("key");
-
-    if (!isKeyPairAuth || keyMode === "manual") {
-      if (!isKeyPairAuth) {
+    if (!usesGeneratedKeys || keyMode === "manual") {
+      if (!usesGeneratedKeys) {
         lastAuthTypeRef.current = "";
         lastUsernameRef.current = "";
         lastAccountRef.current = "";
@@ -147,12 +179,11 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
             hasGeneratedKeysRef.current = true;
             hasCheckedExistingKeysRef.current = true;
 
-            setGeneratedKeys(keys);
-
-            // Allow generation in create mode even when existing keys are found
+            const enrichedKeys = enrichKeysWithCertificate(keys);
+            setGeneratedKeys(enrichedKeys);
             setCanGenerate(mode === "create");
             setIsNewlyGenerated(false);
-            onKeysGenerated?.(keys);
+            onKeysGenerated?.(enrichedKeys);
           } else {
             setGeneratedKeys(null);
             hasGeneratedKeysRef.current = false;
@@ -175,21 +206,19 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
     onKeysGenerated,
     entityType,
     mode,
+    usesGeneratedKeys,
+    enrichKeysWithCertificate,
   ]);
 
   useEffect(() => {
-    const isKeyPairAuth =
-      authenticationType === "key_pair" ||
-      authenticationType?.toLowerCase().includes("key");
-
-    if (prevIsKeyPairAuthRef.current && !isKeyPairAuth) {
+    if (prevUsesGeneratedKeysRef.current && !usesGeneratedKeys) {
       startTransition(() => {
         setGeneratedKeys(null);
         setCanGenerate(true);
       });
     }
-    prevIsKeyPairAuthRef.current = isKeyPairAuth;
-  }, [authenticationType]);
+    prevUsesGeneratedKeysRef.current = usesGeneratedKeys;
+  }, [usesGeneratedKeys]);
 
   useEffect(() => {
     if (keyMode === "manual") {
@@ -204,15 +233,15 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
       !hasGeneratedKeysRef.current
     ) {
       hasGeneratedKeysRef.current = true;
-      setIsNewlyGenerated(false); // Mark as existing keys, not newly generated
+      setIsNewlyGenerated(false);
       startTransition(() => {
-        // Allow generation in both create and edit modes
         setCanGenerate(true);
-        setGeneratedKeys(existingKeys);
-        onKeysGenerated?.(existingKeys);
+        const enrichedKeys = enrichKeysWithCertificate(existingKeys);
+        setGeneratedKeys(enrichedKeys);
+        onKeysGenerated?.(enrichedKeys);
       });
     }
-  }, [existingKeys, onKeysGenerated, keyMode, mode]);
+  }, [existingKeys, onKeysGenerated, keyMode, mode, enrichKeysWithCertificate]);
 
   const handleModeChange = useCallback(
     (newMode: "generate" | "manual") => {
@@ -222,7 +251,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
         hasCheckedExistingKeysRef.current = false;
         setIsGenerating(false);
         setCanGenerate(true);
-        setIsNewlyGenerated(false); // Reset flag
+        setIsNewlyGenerated(false);
         onClearKeys?.();
       }
       setKeyMode(newMode);
@@ -245,6 +274,13 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
   }, [passphrase, keyMode]);
 
   if (!shouldShow) return null;
+
+  const keyUpdateTarget = isSalesforce
+    ? "Salesforce Connected App"
+    : "Snowflake account";
+  const existingKeysLabel = isSalesforce
+    ? "integration user and consumer key"
+    : "user and account";
 
   return (
     <Box mt={4}>
@@ -283,21 +319,21 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
             </Text>
           )}
 
-          {/* Message for newly generated keys */}
           {isNewlyGenerated && generatedKeys && (
             <Text fontSize="sm" color="orange.500" mb={2}>
-              New keys have been generated. Make sure to update them in your
-              Snowflake account.
+              New keys have been generated. Make sure to update them in your{" "}
+              {keyUpdateTarget}.
+              {isSalesforce &&
+                " Upload the X.509 certificate below to your Connected App under Use digital signatures."}
             </Text>
           )}
 
-          {/* Message for existing keys from API (create mode) */}
           {!isNewlyGenerated &&
             generatedKeys &&
             mode === "create" &&
             hasGeneratedKeysRef.current && (
               <Text fontSize="sm" color="green.500" mb={2}>
-                Existing keys found for this user and account.
+                Existing keys found for this {existingKeysLabel}.
               </Text>
             )}
 
@@ -334,36 +370,98 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
                 </Field.Root>
               </Box>
 
-              <Box flex={1}>
-                <Field.Root>
-                  <Flex
-                    justifyContent="space-between"
-                    alignItems="center"
-                    mb={2}
-                  >
-                    <Field.Label>Public Key (PEM format)</Field.Label>
-                    <Tooltip content="Copy public key">
-                      <Button
-                        size="xs"
-                        variant="ghost"
-                        onClick={() =>
-                          copyToClipboard(generatedKeys.publicKey, "Public")
-                        }
-                      >
-                        <MdContentCopy size={14} />
-                      </Button>
-                    </Tooltip>
-                  </Flex>
-                  <Textarea
-                    value={generatedKeys.publicKey}
-                    readOnly
-                    rows={10}
-                    fontFamily="monospace"
-                    fontSize="xs"
-                    resize="none"
-                  />
-                </Field.Root>
-              </Box>
+              {isSalesforce && !generatedKeys.certificate && (
+                <Text fontSize="sm" color="orange.500">
+                  Could not derive the X.509 certificate. Enter the passphrase
+                  and regenerate keys, or use Enter Keys Manually with an
+                  unencrypted private key.
+                </Text>
+              )}
+
+              {isSalesforce && generatedKeys.certificate ? (
+                <Box flex={1}>
+                  <Field.Root>
+                    <Flex
+                      justifyContent="space-between"
+                      alignItems="center"
+                      mb={2}
+                    >
+                      <Field.Label>
+                        X.509 Certificate (upload to Connected App)
+                      </Field.Label>
+                      <Flex gap={1}>
+                        <Tooltip content="Download certificate (.crt)">
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            onClick={() =>
+                              downloadTextFile(
+                                generatedKeys.certificate || "",
+                                "salesforce-jwt-certificate.crt",
+                              )
+                            }
+                          >
+                            <MdDownload size={14} />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content="Copy certificate">
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            onClick={() =>
+                              copyToClipboard(
+                                generatedKeys.certificate || "",
+                                "Certificate",
+                              )
+                            }
+                          >
+                            <MdContentCopy size={14} />
+                          </Button>
+                        </Tooltip>
+                      </Flex>
+                    </Flex>
+                    <Textarea
+                      value={generatedKeys.certificate}
+                      readOnly
+                      rows={10}
+                      fontFamily="monospace"
+                      fontSize="xs"
+                      resize="none"
+                    />
+                  </Field.Root>
+                </Box>
+              ) : (
+                <Box flex={1}>
+                  <Field.Root>
+                    <Flex
+                      justifyContent="space-between"
+                      alignItems="center"
+                      mb={2}
+                    >
+                      <Field.Label>Public Key (PEM format)</Field.Label>
+                      <Tooltip content="Copy public key">
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() =>
+                            copyToClipboard(generatedKeys.publicKey, "Public")
+                          }
+                        >
+                          <MdContentCopy size={14} />
+                        </Button>
+                      </Tooltip>
+                    </Flex>
+                    <Textarea
+                      value={generatedKeys.publicKey}
+                      readOnly
+                      rows={10}
+                      fontFamily="monospace"
+                      fontSize="xs"
+                      resize="none"
+                    />
+                  </Field.Root>
+                </Box>
+              )}
             </Flex>
           )}
         </>
@@ -371,7 +469,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
 
       {keyMode === "manual" && (
         <Text fontSize="sm" color="orange.500" mt={2}>
-          Enter your keys manually in the form fields above.
+          Enter your keys manually in the form fields below.
         </Text>
       )}
     </Box>

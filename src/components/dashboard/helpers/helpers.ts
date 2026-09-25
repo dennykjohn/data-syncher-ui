@@ -71,6 +71,82 @@ const exportPublicKey = async (key: CryptoKey): Promise<string> => {
   return formatAsPem(window.btoa(arrayBufferToString(exported)), "PUBLIC KEY");
 };
 
+type ForgeRsaPrivateKey = forge.pki.rsa.PrivateKey;
+
+const asRsaPrivateKey = (
+  privateKey: forge.pki.PrivateKey,
+): ForgeRsaPrivateKey | null => {
+  const rsaKey = privateKey as ForgeRsaPrivateKey;
+  if (
+    rsaKey.n === null ||
+    rsaKey.n === undefined ||
+    rsaKey.e === null ||
+    rsaKey.e === undefined
+  ) {
+    return null;
+  }
+  return rsaKey;
+};
+
+const loadForgePrivateKey = (
+  privateKeyPem: string,
+  passphrase?: string,
+): ForgeRsaPrivateKey | null => {
+  try {
+    if (privateKeyPem.includes("ENCRYPTED")) {
+      if (!passphrase?.trim()) return null;
+      return forge.pki.decryptRsaPrivateKey(privateKeyPem, passphrase.trim());
+    }
+    return asRsaPrivateKey(forge.pki.privateKeyFromPem(privateKeyPem));
+  } catch {
+    return null;
+  }
+};
+
+const createSelfSignedCertificate = (
+  privateKey: ForgeRsaPrivateKey,
+  commonName: string,
+  validityDays = 365,
+): string => {
+  const cert = forge.pki.createCertificate();
+  cert.publicKey = forge.pki.rsa.setPublicKey(privateKey.n, privateKey.e);
+  cert.serialNumber = `01${forge.util.bytesToHex(forge.random.getBytesSync(8))}`;
+
+  const notBefore = new Date();
+  const notAfter = new Date(notBefore);
+  notAfter.setDate(notAfter.getDate() + validityDays);
+
+  cert.validity.notBefore = notBefore;
+  cert.validity.notAfter = notAfter;
+
+  const subject = [{ name: "commonName", value: commonName }];
+  cert.setSubject(subject);
+  cert.setIssuer(subject);
+  cert.sign(privateKey, forge.md.sha256.create());
+
+  return forge.pki.certificateToPem(cert);
+};
+
+export const deriveCertificateFromPrivateKey = (
+  privateKeyPem: string,
+  commonName = "datasyncher-salesforce-jwt",
+  passphrase?: string,
+): string | null => {
+  const privateKey = loadForgePrivateKey(privateKeyPem, passphrase);
+  if (!privateKey) return null;
+
+  try {
+    return createSelfSignedCertificate(privateKey, commonName);
+  } catch {
+    return null;
+  }
+};
+
+export type GenerateKeyPairOptions = {
+  includeCertificate?: boolean;
+  certificateCommonName?: string;
+};
+
 export const checkKeyPairInBackend = async (
   username: string,
   accountName: string,
@@ -92,9 +168,9 @@ export const checkKeyPairInBackend = async (
     const publicKey = data.public_key || data.publicKey;
     const privateKey = data.private_key || data.privateKey;
 
-    if ((data.exists || publicKey) && publicKey && privateKey) {
+    if ((data.exists || publicKey || privateKey) && privateKey) {
       return {
-        publicKey,
+        publicKey: publicKey || "",
         privateKey,
         passphrase: data.passphrase,
       };
@@ -108,6 +184,7 @@ export const checkKeyPairInBackend = async (
 
 export const generateKeyPair = async (
   passphrase?: string,
+  options: GenerateKeyPairOptions = {},
 ): Promise<KeyPair | null> => {
   try {
     const keyPair = await window.crypto.subtle.generateKey(
@@ -121,12 +198,40 @@ export const generateKeyPair = async (
       ["encrypt", "decrypt"],
     );
 
+    const exportedPkcs8 = await window.crypto.subtle.exportKey(
+      "pkcs8",
+      keyPair.privateKey,
+    );
+    const forgePrivateKey = asRsaPrivateKey(
+      forge.pki.privateKeyFromAsn1(
+        forge.asn1.fromDer(
+          forge.util.createBuffer(arrayBufferToString(exportedPkcs8)),
+        ),
+      ),
+    );
+    if (!forgePrivateKey) {
+      throw new Error("Generated key is not a valid RSA private key");
+    }
+
+    let certificate: string | undefined;
+    if (options.includeCertificate) {
+      certificate = createSelfSignedCertificate(
+        forgePrivateKey,
+        options.certificateCommonName?.trim() || "datasyncher-salesforce-jwt",
+      );
+    }
+
     const [privateKey, publicKey] = await Promise.all([
       exportPrivateKey(keyPair.privateKey, passphrase),
       exportPublicKey(keyPair.publicKey),
     ]);
 
-    return { publicKey, privateKey, passphrase: passphrase || "" };
+    return {
+      publicKey,
+      privateKey,
+      passphrase: passphrase || "",
+      certificate,
+    };
   } catch {
     toaster.error({
       title: "Key generation failed",
@@ -134,6 +239,63 @@ export const generateKeyPair = async (
     });
     return null;
   }
+};
+
+export const isSnowflakeConnector = (name?: string): boolean =>
+  name?.toLowerCase() === "snowflake";
+
+export const isSalesforceConnector = (name?: string): boolean =>
+  !!name?.toLowerCase().includes("salesforce");
+
+export const isJwtBearerAuth = (authenticationType: string): boolean =>
+  authenticationType === "jwt_bearer";
+
+export const isSnowflakeKeyPairAuth = (authenticationType: string): boolean =>
+  authenticationType === "key_pair" ||
+  authenticationType?.toLowerCase().includes("key");
+
+export const usesKeyPairGenerator = (
+  connectorName: string | undefined,
+  authenticationType: string,
+  hasPassphraseField: boolean,
+): boolean => {
+  if (!hasPassphraseField) return false;
+
+  if (
+    isSnowflakeConnector(connectorName) &&
+    isSnowflakeKeyPairAuth(authenticationType)
+  ) {
+    return true;
+  }
+
+  return (
+    isSalesforceConnector(connectorName) && isJwtBearerAuth(authenticationType)
+  );
+};
+
+export const getKeyPairLookupFields = (
+  formValues: Record<string, string>,
+  connectorName?: string,
+): { username: string; account: string } => {
+  const getFieldValue = (names: string[]): string =>
+    names.map((name) => formValues?.[name]).find(Boolean) || "";
+
+  if (isSalesforceConnector(connectorName)) {
+    return {
+      username: getFieldValue(["integration_username"]),
+      account: getFieldValue(["CLIENT_ID", "client_id"]),
+    };
+  }
+
+  return {
+    username: getFieldValue(["username", "user_name", "user"]),
+    account: getFieldValue([
+      "account_name",
+      "account",
+      "accountName",
+      "account_identifier",
+    ]),
+  };
 };
 
 export const checkKeysForUser = async (
@@ -146,12 +308,11 @@ export const checkKeysForUser = async (
   const trimmedUser = username?.trim();
   const trimmedAccount = accountName?.trim();
 
-  if (
-    !trimmedUser ||
-    !trimmedAccount ||
-    (authenticationType !== "key_pair" &&
-      !authenticationType?.toLowerCase().includes("key"))
-  ) {
+  const supportsLookup =
+    isSnowflakeKeyPairAuth(authenticationType) ||
+    isJwtBearerAuth(authenticationType);
+
+  if (!trimmedUser || !trimmedAccount || !supportsLookup) {
     return null;
   }
 
@@ -272,14 +433,24 @@ export const generateKeyPairFromForm = async (): Promise<KeyPair | null> => {
 
 export const copyToClipboard = (
   text: string,
-  type: "Public" | "Private",
+  type: "Public" | "Private" | "Certificate",
 ): void => {
   navigator.clipboard.writeText(text).then(() => {
     toaster.success({
-      title: `${type} key copied`,
-      description: "Key copied to clipboard",
+      title: `${type} copied`,
+      description: `${type} copied to clipboard`,
     });
   });
+};
+
+export const downloadTextFile = (content: string, filename: string): void => {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 };
 
 export const shouldShowKeyGenerator = (
@@ -289,12 +460,14 @@ export const shouldShowKeyGenerator = (
   authenticationType: string,
   hasPassphraseField: boolean,
 ): boolean => {
+  if (mode !== "create") return false;
+
   return (
-    mode === "create" &&
-    (destinationName?.toLowerCase() === "snowflake" ||
-      sourceName?.toLowerCase() === "snowflake") &&
-    (authenticationType === "key_pair" ||
-      authenticationType?.toLowerCase().includes("key")) &&
-    hasPassphraseField
+    usesKeyPairGenerator(
+      destinationName,
+      authenticationType,
+      hasPassphraseField,
+    ) ||
+    usesKeyPairGenerator(sourceName, authenticationType, hasPassphraseField)
   );
 };
