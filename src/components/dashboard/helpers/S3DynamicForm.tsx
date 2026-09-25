@@ -347,9 +347,32 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
   // Filter visible fields based on dependencies and visibility
   const visibleFields = useMemo(() => {
-    // Dynamically filter 'upsert_custom_key' if json packed format is selected
+    const isAdls =
+      normalizedSourceName === "azuredatalakestorage" ||
+      normalizedSourceName === "adls";
+
+    // Dynamically filter fields and update requirement flags
     const dynamicSchema = schema.map((field) => {
-      if (field.name === "load_method") {
+      let updatedField = field;
+
+      // ADLS folder name / path / root_folder is optional (files may sit in root container)
+      if (isAdls) {
+        const nameLower = field.name.toLowerCase();
+        const labelLower = (field.label || "").toLowerCase();
+        if (
+          nameLower.includes("folder") ||
+          nameLower === "folder_name" ||
+          nameLower === "folder_path" ||
+          nameLower === "base_folder_path" ||
+          nameLower === "root_folder" ||
+          labelLower.includes("folder name") ||
+          labelLower.includes("folder path")
+        ) {
+          updatedField = { ...updatedField, required: false };
+        }
+      }
+
+      if (updatedField.name === "load_method") {
         const isJsonPacked =
           values.file_type === "json" && values.json_mode === "packed";
         const isXmlPacked =
@@ -357,14 +380,14 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
         if (isJsonPacked || isXmlPacked) {
           return {
-            ...field,
-            choices: field.choices?.filter(
+            ...updatedField,
+            choices: updatedField.choices?.filter(
               (choice) => choice.value !== "upsert_custom_key",
             ),
           };
         }
       }
-      return field;
+      return updatedField;
     });
 
     const filtered = dynamicSchema.filter((field) => {
@@ -436,6 +459,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      toaster.error({
+        title: "Validation Error",
+        description: "Please fill in all required fields marked with *",
+      });
       return;
     }
 
@@ -684,23 +711,50 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
   // Called by GoogleDriveOAuth once tokens are exchanged
   const handleGoogleTokens = (tokens: GoogleDriveTokens) => {
-    const saved = JSON.parse(
-      sessionStorage.getItem("gdrive_form_values") || "{}",
-    );
+    if (!tokens.access_token?.trim()) return;
 
-    setValues((prev) => ({
-      ...prev,
-      ...saved, // ← restore ALL saved fields first
-      // then override with fresh tokens
-      access_token: tokens.access_token ?? "",
+    let saved: Record<string, string> = {};
+
+    try {
+      const raw = sessionStorage.getItem("gdrive_form_values");
+      const parsed: unknown = raw ? JSON.parse(raw) : {};
+
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        saved = Object.fromEntries(
+          Object.entries(parsed).filter(
+            ([, value]) => typeof value === "string",
+          ),
+        ) as Record<string, string>;
+      }
+    } catch {
+      // Continue with the current form and fresh tokens.
+    }
+
+    const nextValues: Record<string, string> = {
+      ...valuesRef.current,
+      ...saved,
+      access_token: tokens.access_token,
       refresh_token: tokens.refresh_token ?? "",
       token_expires_at: tokens.token_expires_at ?? "",
-      folder_id: tokens.folder_id ?? saved.folder_id ?? prev.folder_id ?? "",
+      folder_id:
+        tokens.folder_id ??
+        saved.folder_id ??
+        valuesRef.current.folder_id ??
+        "",
       folder_name:
-        tokens.folder_name ?? saved.folder_name ?? prev.folder_name ?? "",
-    }));
-    sessionStorage.removeItem("gdrive_form_values");
+        tokens.folder_name ??
+        saved.folder_name ??
+        valuesRef.current.folder_name ??
+        "",
+    };
+
+    isDirtyRef.current = true;
+    valuesRef.current = nextValues;
+    setValues(nextValues);
     setIsGoogleAuthorized(true);
+
+    sessionStorage.removeItem("gdrive_form_values");
+    sessionStorage.removeItem("gdrive_return_path");
   };
 
   const handleClearMapping = () => {
@@ -1146,7 +1200,14 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
 
   return (
     <>
-      <form autoComplete="off" style={{ display: "contents" }}>
+      <form
+        autoComplete="off"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit();
+        }}
+        style={{ display: "contents" }}
+      >
         <VStack
           gap={3}
           align="stretch"
@@ -1172,6 +1233,7 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
               {!hideSubmitButton &&
                 !(isGoogleDriveCreate && !isGoogleAuthorized) && (
                   <Button
+                    type="button"
                     colorPalette="brand"
                     onClick={handleSubmit}
                     loading={loading}
@@ -1192,10 +1254,10 @@ const S3DynamicForm: React.FC<S3DynamicFormProps> = ({
             <Dialog.Backdrop />
             <Dialog.Positioner>
               <Dialog.Content
-                maxW="1330px"
+                maxW="1100px"
                 w="90vw"
                 maxH="90vh"
-                overflow="auto"
+                overflow="hidden"
               >
                 {isSingleTablePerFile ? (
                   <SingleMapping

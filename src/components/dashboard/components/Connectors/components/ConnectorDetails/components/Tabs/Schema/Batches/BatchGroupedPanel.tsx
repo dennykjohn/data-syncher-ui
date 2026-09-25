@@ -260,7 +260,7 @@ const BatchGroupedPanel = ({
   ) : null;
 
   return (
-    <>
+    <Box minW={0} w="100%">
       <Flex
         direction="column"
         borderWidth={1}
@@ -390,7 +390,7 @@ const BatchGroupedPanel = ({
         tables={pickerTables ?? []}
         batches={batches}
       />
-    </>
+    </Box>
   );
 };
 

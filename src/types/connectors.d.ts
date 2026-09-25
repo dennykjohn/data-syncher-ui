@@ -246,19 +246,7 @@ export interface ExcelConditionalFormat {
   style?: ExcelDifferentialStyle;
 }
 
-export interface TableFieldInfo {
-  edm_type?: string;
-  data_type?: string;
-  filter_type?: "boolean" | "numeric" | "datetime" | "time" | "string";
-  filter_restriction?: string | null;
-  filterable?: boolean;
-  display_format?: string;
-  displayFormat?: string;
-  precision?: number | string;
-  nullable?: boolean;
-  max_length?: number;
-  [key: string]: unknown;
-}
+export type FilenameDateFormat = "yyyy_mm_dd" | "dd_mm_yyyy" | "mm_dd_yyyy";
 
 export type ConnectorTable = {
   table: string;
@@ -276,10 +264,7 @@ export type ConnectorTable = {
   csv_delimiter?: string | null;
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
-  load_method?: string | null;
-  delete_and_load?: boolean | null;
-  partition_delta_by_date?: boolean | null;
-  compression_method?: string | null;
+  filename_date_format?: FilenameDateFormat | null;
   notification_email_group_ids?: number[] | null;
   email_custom_fields?: {
     subject?: string;
@@ -351,6 +336,7 @@ export interface ConnectorSelectedTable {
   csv_delimiter?: string | null;
   csv_quote_char?: string | null;
   add_utc_timestamp?: boolean | null;
+  filename_date_format?: FilenameDateFormat | null;
   notification_email_group_ids?: number[] | null;
   email_custom_fields?: {
     subject?: string;

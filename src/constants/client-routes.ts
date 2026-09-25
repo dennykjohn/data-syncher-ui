@@ -8,6 +8,7 @@ const ClientRoutes = {
   REGISTER: "register",
   FORGOT_PASSWORD: "forgot-password",
   RESET_PASSWORD: "reset-password",
+  CHANGE_INITIAL_PASSWORD: "change-initial-password",
   VERIFY_EMAIL: "verify-email",
 
   // Dashboard

@@ -4,9 +4,12 @@ import {
   Box,
   Button,
   Checkbox,
+  CloseButton,
+  Dialog,
   Flex,
   Input,
   InputGroup,
+  Portal,
   Spinner,
   Text,
   VStack,
@@ -15,6 +18,10 @@ import {
 import { FiInbox, FiSearch } from "react-icons/fi";
 import { MdOutlineSave } from "react-icons/md";
 
+import {
+  useFetchBatches,
+  useRemoveTableFromBatch,
+} from "@/queryOptions/connector/schema/useBatches";
 import useFetchS3Files, {
   type S3ListFilesRequest,
 } from "@/queryOptions/connector/useFetchS3Files";
@@ -206,6 +213,20 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     if (!s3Files) return [];
     if (Array.isArray(s3Files)) return s3Files;
     if (s3Files.tables && Array.isArray(s3Files.tables)) return s3Files.tables;
+    if (s3Files.files && Array.isArray(s3Files.files)) return s3Files.files;
+    const rawRes = s3Files as unknown as Record<string, unknown>;
+    if (rawRes?.result) {
+      const res = rawRes.result as Record<string, unknown>;
+      if (Array.isArray(res)) return res as S3FileItem[];
+      if (Array.isArray(res?.tables)) return res.tables as S3FileItem[];
+      if (Array.isArray(res?.files)) return res.files as S3FileItem[];
+    }
+    if (rawRes?.data) {
+      const dataObj = rawRes.data as Record<string, unknown>;
+      if (Array.isArray(dataObj)) return dataObj as S3FileItem[];
+      if (Array.isArray(dataObj?.tables)) return dataObj.tables as S3FileItem[];
+      if (Array.isArray(dataObj?.files)) return dataObj.files as S3FileItem[];
+    }
     return [];
   }, [s3Files]);
 
@@ -236,21 +257,37 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     setLocalMappings(() => {
       // Build the current list strictly based on what S3 API returned
       const next = s3TableList.map((t) => {
-        const fileName = (t.file_key || t.table) as string;
+        const fileName = (t.file_key ||
+          t.relative_path ||
+          t.file_name ||
+          t.table) as string;
         const suggestedTableName = t.table || extractTableName(fileName);
 
         // Check if this file was in the initial mappings (saved configuration)
-        const savedMapping = mappings.find((m) => m.fileName === fileName);
+        const savedMapping = mappings.find(
+          (m) =>
+            m.fileName === fileName ||
+            (t.file_key && m.fileName === t.file_key) ||
+            (t.table && m.fileName === t.table) ||
+            (t.relative_path && m.fileName === t.relative_path),
+        );
 
         const isLocked = !!t.table_name_locked;
         const savedTableName = savedMapping?.tableName?.trim();
+
+        // Default new unmapped tables to unselected.
+        const isSelected =
+          savedMapping !== undefined
+            ? savedMapping.isSelected !== false
+            : false;
+
         return {
           fileName,
           tableName:
             (isLocked ? t.mapped_table || t.locked_table_name : null) ||
             savedTableName ||
             suggestedTableName,
-          isSelected: !!savedMapping,
+          isSelected,
           alreadyMapped: isLocked,
         };
       });
@@ -261,9 +298,14 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     setSelectedFileName((prev) => {
       if (prev) return prev;
       const firstName = s3TableList.find(
-        (t) => t.file_key || t.table,
-      )?.file_key;
-      return (firstName as string) || null;
+        (t) => t.file_key || t.relative_path || t.file_name || t.table,
+      );
+      return (
+        ((firstName?.file_key ||
+          firstName?.relative_path ||
+          firstName?.file_name ||
+          firstName?.table) as string) || null
+      );
     });
   }, [s3Files, s3TableList, mappings]);
 
@@ -305,11 +347,114 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
     });
   };
 
+  const { data: batchesData } = useFetchBatches(
+    connectionId ?? 0,
+    !!connectionId,
+  );
+  const { mutate: removeTableFromBatch } = useRemoveTableFromBatch(
+    connectionId ?? 0,
+  );
+
+  const initialMappedFilesRef = useRef<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    if (mappings && mappings.length > 0) {
+      const initialFiles = new Set(
+        mappings.filter((m) => m.isSelected !== false).map((m) => m.fileName),
+      );
+      initialMappedFilesRef.current = initialFiles;
+    }
+  }, [mappings]);
+
+  const [showBatchWarningDialog, setShowBatchWarningDialog] = useState(false);
+  const [affectedBatchTables, setAffectedBatchTables] = useState<
+    { batchId: number; batchName: string; tableName: string }[]
+  >([]);
+  const [pendingSaveMappings, setPendingSaveMappings] = useState<
+    Mapping[] | null
+  >(null);
+
   const handleSave = () => {
     const selectedMappings = localMappingsRef.current.filter(
       (m) => m.isSelected,
     );
+
+    // Check if any previously mapped file/table is being removed
+    if (
+      connectionId &&
+      batchesData?.batches &&
+      batchesData.batches.length > 0
+    ) {
+      const removedMappings = localMappingsRef.current.filter((m) => {
+        const wasSelectedInitially =
+          m.alreadyMapped ||
+          initialMappedFilesRef.current.has(m.fileName) ||
+          mappings.some(
+            (initM) =>
+              initM.fileName === m.fileName && initM.isSelected !== false,
+          );
+        return wasSelectedInitially && !m.isSelected;
+      });
+
+      const affectedBatchItems: {
+        batchId: number;
+        batchName: string;
+        tableName: string;
+      }[] = [];
+
+      removedMappings.forEach((removedItem) => {
+        const targetTableNames = [
+          removedItem.tableName?.toLowerCase(),
+          removedItem.fileName?.toLowerCase(),
+        ].filter(Boolean);
+
+        batchesData.batches.forEach((batch) => {
+          batch.tables?.forEach((bt) => {
+            const btName = bt.table_name?.toLowerCase();
+            if (btName && targetTableNames.includes(btName)) {
+              if (
+                !affectedBatchItems.some(
+                  (item) =>
+                    item.batchId === batch.id &&
+                    item.tableName.toLowerCase() === btName,
+                )
+              ) {
+                affectedBatchItems.push({
+                  batchId: batch.id,
+                  batchName: batch.name,
+                  tableName: bt.table_name,
+                });
+              }
+            }
+          });
+        });
+      });
+
+      if (affectedBatchItems.length > 0) {
+        setPendingSaveMappings(selectedMappings);
+        setAffectedBatchTables(affectedBatchItems);
+        setShowBatchWarningDialog(true);
+        return;
+      }
+    }
+
     onSaveMappings(selectedMappings);
+  };
+
+  const handleConfirmSave = () => {
+    if (affectedBatchTables.length > 0 && connectionId) {
+      affectedBatchTables.forEach((item) => {
+        removeTableFromBatch({
+          batchId: item.batchId,
+          tableName: item.tableName,
+        });
+      });
+    }
+    setShowBatchWarningDialog(false);
+    if (pendingSaveMappings) {
+      onSaveMappings(pendingSaveMappings);
+      setPendingSaveMappings(null);
+    }
   };
 
   const isSaveDisabled =
@@ -329,7 +474,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
       {/* Grid Layout */}
       <Flex gap={4} h="450px" maxW="1300px" mx="auto" w="100%" mt={4}>
         {/* LEFT PANEL - Source Files */}
-        <Flex direction="column" flex="1" gap={3}>
+        <Flex direction="column" flex="1" minW={0} gap={3}>
           {/* Search for Source Files */}
           <InputGroup startElement={<FiSearch color="gray.500" />} w="100%">
             <Input
@@ -417,6 +562,9 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                         color="gray.900"
                         truncate
                         flex="1"
+                        minW={0}
+                        mr={2}
+                        title={m.fileName}
                       >
                         {m.fileName}
                       </Text>
@@ -446,7 +594,7 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
         </Flex>
 
         {/* RIGHT PANEL - Table Mapping */}
-        <Flex direction="column" flex="1" gap={3}>
+        <Flex direction="column" flex="1" minW={0} gap={3}>
           {/* Search for Mapped Tables */}
           <InputGroup startElement={<FiSearch color="gray.500" />} w="100%">
             <Input
@@ -525,7 +673,9 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                         fontSize="sm"
                         fontWeight="medium"
                         truncate
-                        w="100%"
+                        flex="1"
+                        minW={0}
+                        mr={3}
                         color={isLocked ? "gray.500" : "gray.900"}
                         title={mapping.fileName}
                       >
@@ -551,7 +701,8 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
                         borderColor={
                           isLocked || readOnly ? "gray.100" : undefined
                         }
-                        w="280px"
+                        w="240px"
+                        flexShrink={0}
                         h="32px"
                         fontSize="sm"
                       />
@@ -581,6 +732,81 @@ const SingleMapping: React.FC<SingleMappingProps> = ({
           </Button>
         )}
       </Flex>
+
+      {/* Batch Removal Confirmation Dialog */}
+      <Dialog.Root
+        lazyMount
+        open={showBatchWarningDialog}
+        role="alertdialog"
+        onOpenChange={(e) => {
+          if (!e.open) setShowBatchWarningDialog(false);
+        }}
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content maxW="500px">
+              <Dialog.Header>
+                <Dialog.Title>Confirm removal</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <VStack align="stretch" gap={3}>
+                  <Text fontSize="sm">
+                    This table is associated with a batch. Removing it will also
+                    remove it from that batch. Do you want to proceed?
+                  </Text>
+                  {affectedBatchTables.length > 0 && (
+                    <Box
+                      bg="red.50"
+                      p={3}
+                      borderRadius="md"
+                      borderWidth={1}
+                      borderColor="red.200"
+                    >
+                      <Text
+                        fontSize="xs"
+                        fontWeight="semibold"
+                        color="red.800"
+                        mb={1}
+                      >
+                        Affected Batch Tables:
+                      </Text>
+                      <VStack align="stretch" gap={1}>
+                        {affectedBatchTables.map((item, idx) => (
+                          <Text key={idx} fontSize="xs" color="red.700">
+                            • <strong>{item.tableName}</strong> in batch{" "}
+                            <strong>{item.batchName}</strong>
+                          </Text>
+                        ))}
+                      </VStack>
+                    </Box>
+                  )}
+                </VStack>
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Dialog.ActionTrigger asChild>
+                  <Button
+                    variant="outline"
+                    autoFocus
+                    onClick={() => setShowBatchWarningDialog(false)}
+                  >
+                    Cancel
+                  </Button>
+                </Dialog.ActionTrigger>
+                <Button colorPalette="brand" onClick={handleConfirmSave}>
+                  Confirm removal
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton
+                  size="sm"
+                  onClick={() => setShowBatchWarningDialog(false)}
+                />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </VStack>
   );
 };

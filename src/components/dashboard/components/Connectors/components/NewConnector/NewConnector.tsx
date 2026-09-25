@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useMemo, useReducer } from "react";
 
 import { Flex } from "@chakra-ui/react";
 
@@ -10,30 +10,62 @@ import DestinationSelection from "./components/DestinationSelection/DestinationS
 import SourceSelection from "./components/SourceSelection/SourceSelection";
 import { connectorFormReducer, initialState } from "./reducer";
 
+const GDRIVE_RETURN_PATH_KEY = "gdrive_return_path";
+const GDRIVE_SOURCE_KEY = "gdrive_source";
+const GDRIVE_DESTINATION_KEY = "gdrive_destination";
+
 const getSavedGoogleDriveDestination = () => {
   try {
-    const saved = sessionStorage.getItem("gdrive_form_values");
-    if (!saved) return null;
-    const parsed = JSON.parse(saved) as { destination_schema?: string };
-    return parsed.destination_schema || null;
+    return sessionStorage.getItem(GDRIVE_DESTINATION_KEY) || null;
+  } catch {
+    return null;
+  }
+};
+
+const getSavedGoogleDriveSource = () => {
+  try {
+    return sessionStorage.getItem(GDRIVE_SOURCE_KEY) || null;
   } catch {
     return null;
   }
 };
 
 const NewConnector = () => {
-  const { destination, source } = useParams();
+  const { "*": connectorPath = "" } = useParams();
+
+  const pathParts = connectorPath.split("/").filter(Boolean);
+  const source =
+    pathParts[0] === "select-destination" ? pathParts[1] || null : null;
   const navigate = useNavigate();
   const location = useLocation();
 
-  const initialDestination = destination
-    ? decodeURIComponent(destination)
-    : getSavedGoogleDriveDestination();
-  const initialSource = source ? decodeURIComponent(source) : null;
+  // Detect if we are returning from a Google OAuth redirect:
+  // Either tokens are in the URL (access_token param), an error occurred, or we saved a return path before leaving
+  const isGoogleOAuthReturn = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      params.has("access_token") ||
+      params.has("oauth_error") ||
+      params.has("error") ||
+      !!sessionStorage.getItem(GDRIVE_RETURN_PATH_KEY)
+    );
+  }, []);
 
-  let initialStep = 1;
-  if (initialDestination && initialSource) initialStep = 3;
-  else if (initialDestination) initialStep = 2;
+  // On OAuth return, restore the destination name from sessionStorage
+  const initialDestination = isGoogleOAuthReturn
+    ? getSavedGoogleDriveDestination()
+    : null;
+
+  // Restore or decode source from path or sessionStorage
+  const initialSource = source
+    ? decodeURIComponent(source)
+    : isGoogleOAuthReturn
+      ? getSavedGoogleDriveSource()
+      : null;
+
+  // Only jump to step 3 when both destination AND source are known
+  const initialStep =
+    initialDestination && initialSource ? 3 : initialDestination ? 2 : 1;
 
   const [state, dispatch] = useReducer(connectorFormReducer, {
     ...initialState,
@@ -43,6 +75,10 @@ const NewConnector = () => {
   });
 
   useEffect(() => {
+    // Do NOT navigate away if we are returning from Google OAuth —
+    // the GoogleDriveOAuth component must render on the current page to read tokens
+    if (isGoogleOAuthReturn) return;
+
     let newPath = "/dashboard/connectors/add";
 
     if (state.currentStep >= 2 && state.destination) {
@@ -56,6 +92,7 @@ const NewConnector = () => {
       navigate(newPath, { replace: true });
     }
   }, [
+    isGoogleOAuthReturn,
     state.currentStep,
     state.destination,
     state.source,
@@ -74,11 +111,15 @@ const NewConnector = () => {
   };
 
   const handleSourceSelect = (sourceParam: string) => {
+    // Save the source type before navigating away (needed for OAuth return)
+    sessionStorage.setItem(GDRIVE_SOURCE_KEY, sourceParam);
     dispatch({ type: "SET_SOURCE", source: sourceParam });
     handleNext();
   };
 
   const handleDestinationSelect = (destinationParam: string) => {
+    // Save the destination before navigating away (needed for OAuth return)
+    sessionStorage.setItem(GDRIVE_DESTINATION_KEY, destinationParam);
     dispatch({ type: "SET_DESTINATION", destination: destinationParam });
     handleNext();
   };
@@ -121,7 +162,9 @@ const NewConnector = () => {
           </>
         );
       case 3: {
-        if (!isStepCompleted(2)) return null;
+        // On OAuth return, isStepCompleted(2) would be false because source was null
+        // before our fix; skip the null check if returning from OAuth
+        if (!isGoogleOAuthReturn && !isStepCompleted(2)) return null;
 
         // Determine if this source should use the file-based connector flow.
         const normalizedSource = state.source

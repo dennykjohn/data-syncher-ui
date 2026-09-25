@@ -237,7 +237,7 @@ const S3ConnectorConfiguration = ({
     type: connectorData?.source_name || "",
   });
   const { mutate: createConnection, isPending: isCreateConnectorPending } =
-    useCreateConnection(state?.source || "");
+    useCreateConnection(sourceName);
 
   // ------------------- Strict-safe form submit -------------------
   const handleFormSubmit = (values: Record<string, unknown>) => {

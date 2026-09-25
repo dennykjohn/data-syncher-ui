@@ -25,7 +25,18 @@ const fetchSuggestPrimaryKeys = async (data: SuggestPrimaryKeysRequest) => {
   const endpoint = ServerRoutes.connector.suggestPrimaryKeys({ source });
 
   const { data: responseData } = await AxiosInstance.post(endpoint, data);
-  return responseData as SuggestPrimaryKeysResponse;
+  const resObj = (responseData?.result ||
+    responseData?.data ||
+    responseData) as Record<string, unknown>;
+  const tables = (resObj?.tables ||
+    responseData?.tables ||
+    []) as TableSuggestion[];
+
+  return {
+    ...responseData,
+    ...resObj,
+    tables,
+  } as SuggestPrimaryKeysResponse;
 };
 
 export default function useSuggestPrimaryKeys(

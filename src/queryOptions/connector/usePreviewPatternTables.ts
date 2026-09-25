@@ -31,20 +31,26 @@ const fetchPreviewPattern = async (
 
   const { data: responseData } = await AxiosInstance.post(endpoint, data);
 
-  if (Array.isArray(responseData)) {
-    return {
-      matched_files: responseData,
-      matched_tables: responseData,
-      matched_files_count: responseData.length,
-    } as PreviewPatternResponse;
-  }
+  const resObj = (responseData?.result ||
+    responseData?.data ||
+    responseData) as Record<string, unknown>;
+
+  const matched =
+    (Array.isArray(resObj) ? resObj : null) ||
+    resObj?.matched_files ||
+    resObj?.matched_tables ||
+    resObj?.tables ||
+    resObj?.results ||
+    resObj?.data ||
+    responseData?.matched_files ||
+    responseData?.matched_tables ||
+    responseData?.tables;
 
   return {
     ...responseData,
-    matched_tables:
-      responseData.matched_files ||
-      responseData.matched_tables ||
-      responseData.tables,
+    ...resObj,
+    matched_tables: matched,
+    matched_files: matched,
   } as PreviewPatternResponse;
 };
 

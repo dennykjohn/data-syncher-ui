@@ -3,9 +3,12 @@ import React, { useMemo, useState } from "react";
 import {
   Box,
   Button,
+  CloseButton,
+  Dialog,
   Field,
   Flex,
   Input,
+  Portal,
   Spinner,
   Text,
   VStack,
@@ -13,6 +16,10 @@ import {
 
 import { MdOutlineSave } from "react-icons/md";
 
+import {
+  useFetchBatches,
+  useRemoveTableFromBatch,
+} from "@/queryOptions/connector/schema/useBatches";
 import usePreviewPatternTables, {
   type PreviewPatternRequest,
 } from "@/queryOptions/connector/usePreviewPatternTables";
@@ -264,12 +271,100 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
     return [];
   }, [previewData, initialSelectedFiles, hasEverPreviewed]);
 
+  const { data: batchesData } = useFetchBatches(
+    connectionId ?? 0,
+    !!connectionId,
+  );
+  const { mutate: removeTableFromBatch } = useRemoveTableFromBatch(
+    connectionId ?? 0,
+  );
+
+  const [showBatchWarningDialog, setShowBatchWarningDialog] = useState(false);
+  const [affectedBatchTables, setAffectedBatchTables] = useState<
+    { batchId: number; batchName: string; tableName: string }[]
+  >([]);
+  const [pendingSaveData, setPendingSaveData] = useState<{
+    tableName: string;
+    prefix: string;
+    selectedFiles: string[];
+  } | null>(null);
+
   const handleSave = () => {
-    onSave({
+    const saveData = {
       tableName,
       prefix,
       selectedFiles: matchedTables,
-    });
+    };
+
+    if (
+      connectionId &&
+      batchesData?.batches &&
+      batchesData.batches.length > 0
+    ) {
+      const removedFiles = initialSelectedFiles.filter(
+        (f) => !matchedTables.includes(f),
+      );
+      const isTableNameChanged =
+        initialTableName && initialTableName !== tableName;
+
+      const affectedBatchItems: {
+        batchId: number;
+        batchName: string;
+        tableName: string;
+      }[] = [];
+
+      batchesData.batches.forEach((batch) => {
+        batch.tables?.forEach((bt) => {
+          const btName = bt.table_name?.toLowerCase();
+          const isMatch =
+            (initialTableName &&
+              btName === initialTableName.toLowerCase() &&
+              isTableNameChanged) ||
+            removedFiles.some((rf) => rf.toLowerCase() === btName);
+
+          if (isMatch) {
+            if (
+              !affectedBatchItems.some(
+                (item) =>
+                  item.batchId === batch.id &&
+                  item.tableName.toLowerCase() === btName,
+              )
+            ) {
+              affectedBatchItems.push({
+                batchId: batch.id,
+                batchName: batch.name,
+                tableName: bt.table_name,
+              });
+            }
+          }
+        });
+      });
+
+      if (affectedBatchItems.length > 0) {
+        setPendingSaveData(saveData);
+        setAffectedBatchTables(affectedBatchItems);
+        setShowBatchWarningDialog(true);
+        return;
+      }
+    }
+
+    onSave(saveData);
+  };
+
+  const handleConfirmSave = () => {
+    if (affectedBatchTables.length > 0 && connectionId) {
+      affectedBatchTables.forEach((item) => {
+        removeTableFromBatch({
+          batchId: item.batchId,
+          tableName: item.tableName,
+        });
+      });
+    }
+    setShowBatchWarningDialog(false);
+    if (pendingSaveData) {
+      onSave(pendingSaveData);
+      setPendingSaveData(null);
+    }
   };
 
   return (
@@ -496,6 +591,81 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
           </Button>
         )}
       </Flex>
+
+      {/* Batch Removal Confirmation Dialog */}
+      <Dialog.Root
+        lazyMount
+        open={showBatchWarningDialog}
+        role="alertdialog"
+        onOpenChange={(e) => {
+          if (!e.open) setShowBatchWarningDialog(false);
+        }}
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content maxW="500px">
+              <Dialog.Header>
+                <Dialog.Title>Confirm removal</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <VStack align="stretch" gap={3}>
+                  <Text fontSize="sm">
+                    This table is associated with a batch. Removing it will also
+                    remove it from that batch. Do you want to proceed?
+                  </Text>
+                  {affectedBatchTables.length > 0 && (
+                    <Box
+                      bg="red.50"
+                      p={3}
+                      borderRadius="md"
+                      borderWidth={1}
+                      borderColor="red.200"
+                    >
+                      <Text
+                        fontSize="xs"
+                        fontWeight="semibold"
+                        color="red.800"
+                        mb={1}
+                      >
+                        Affected Batch Tables:
+                      </Text>
+                      <VStack align="stretch" gap={1}>
+                        {affectedBatchTables.map((item, idx) => (
+                          <Text key={idx} fontSize="xs" color="red.700">
+                            • <strong>{item.tableName}</strong> in batch{" "}
+                            <strong>{item.batchName}</strong>
+                          </Text>
+                        ))}
+                      </VStack>
+                    </Box>
+                  )}
+                </VStack>
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Dialog.ActionTrigger asChild>
+                  <Button
+                    variant="outline"
+                    autoFocus
+                    onClick={() => setShowBatchWarningDialog(false)}
+                  >
+                    Cancel
+                  </Button>
+                </Dialog.ActionTrigger>
+                <Button colorPalette="brand" onClick={handleConfirmSave}>
+                  Confirm removal
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton
+                  size="sm"
+                  onClick={() => setShowBatchWarningDialog(false)}
+                />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </VStack>
   );
 };

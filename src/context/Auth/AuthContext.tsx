@@ -25,6 +25,7 @@ const IDLE_CHECK_INTERVAL_MS = 60 * 1000;
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
+    isCheckingAuth: true,
     user: null,
     access_token: null,
     refresh_token: null,
@@ -32,6 +33,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Check for existing token and fetch profile on mount/reload
   useEffect(() => {
+    let cancelled = false;
+
     const checkAuthStatus = async () => {
       let access_token = getAccessToken();
       const refresh_token = getRefreshToken();
@@ -46,7 +49,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      if (access_token) {
+      if (access_token && refresh_token) {
         try {
           // Fetch User Profile
           const { data: user }: { data: User } = await AxiosInstance({
@@ -54,8 +57,11 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             url: ServerRoutes.auth.profile(),
           });
 
+          if (cancelled) return;
+
           setAuthState({
             isAuthenticated: true,
+            isCheckingAuth: false,
             user,
             access_token,
             refresh_token: getRefreshToken() || refresh_token || null,
@@ -70,14 +76,45 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             });
           }
         } catch (error) {
+          if (cancelled) return;
+
           console.error("Failed to fetch profile:", error);
-          // Clear invalid tokens
+
+          // Do not let a stale mount-time request erase tokens written by a
+          // login that completed while this request was in flight.
+          if (getAccessToken() !== access_token) return;
+
+          clearAuthTokens();
+          setAuthState({
+            isAuthenticated: false,
+            isCheckingAuth: false,
+            user: null,
+            access_token: null,
+            refresh_token: null,
+          });
+        }
+      } else {
+        // A single token is not a usable session. Clear a stale partial pair
+        // so protected requests cannot enter the refresh flow without a
+        // refresh token.
+        if (access_token || refresh_token) {
           clearAuthTokens();
         }
+
+        if (cancelled) return;
+
+        setAuthState((current) => ({
+          ...current,
+          isCheckingAuth: false,
+        }));
       }
     };
 
     checkAuthStatus();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async ({
@@ -89,7 +126,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setAuthTokens(access_token, refresh_token);
 
       // Fetch latest profile so permissions/role-based redirects are stable.
-      let profile = user;
+      let profile: User | null = "permissions" in user ? user : null;
       try {
         const { data }: { data: User } = await AxiosInstance({
           method: "GET",
@@ -98,10 +135,14 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profile = data;
       } catch (error) {
         console.error("Failed to fetch profile after login:", error);
+        if (!profile) throw error;
       }
+
+      if (!profile) throw new Error("User profile is not available.");
 
       setAuthState({
         isAuthenticated: true,
+        isCheckingAuth: false,
         user: profile,
         access_token,
         refresh_token,
@@ -116,6 +157,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = useCallback(() => {
     setAuthState({
       isAuthenticated: false,
+      isCheckingAuth: false,
       user: null,
       access_token: null,
       refresh_token: null,

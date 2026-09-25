@@ -91,6 +91,7 @@ export const refreshAccessToken = async () => {
   refreshPromise = axios
     .post<RefreshTokenResponse>(getRefreshTokenURL(), {
       refresh: refreshToken,
+      refresh_token: refreshToken,
     })
     .then(({ data }) => {
       const accessToken = data.access_token ?? data.access;

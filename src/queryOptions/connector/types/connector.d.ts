@@ -33,6 +33,8 @@ export interface SFTPListFilesRequest {
 export interface S3FileItem {
   table: string;
   file_key?: string;
+  relative_path?: string;
+  file_name?: string;
   size?: number;
   last_modified?: string;
   already_mapped?: boolean;
@@ -43,6 +45,8 @@ export interface S3FileItem {
 
 export interface S3ListFilesResponse {
   tables: S3FileItem[];
+  files?: S3FileItem[];
+  result?: unknown;
   total_count?: number;
 }
 
