@@ -61,15 +61,14 @@ const Header = ({ connector }: { connector: Connector }) => {
   }, [schemaStatus]);
 
   // Check if any operation is in progress
-  // For reload button: use get_table_status API (hasTableInProgress)
-  // For other operations: use existing checks
   const isAnyOperationInProgress =
     isRefreshSchemaInProgress > 0 ||
     isUpdateSchemaInProgress > 0 ||
     isReloadInProgress > 0 ||
     isRefreshDeltaTableInProgress > 0 ||
-    hasTableInProgress || // Use get_table_status for reload spinner
-    schemaStatus?.is_in_progress === true;
+    hasTableInProgress ||
+    schemaStatus?.is_in_progress === true ||
+    tableStatusData?.schema_refresh_in_progress === true;
 
   // Only show operational progress here; scheduling details live in Scheduling.
   const statusMessage = getStatusMessage({

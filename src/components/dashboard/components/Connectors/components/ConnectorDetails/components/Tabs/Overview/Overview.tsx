@@ -256,7 +256,10 @@ const Overview = () => {
                     {logDetails?.job_level_message &&
                       !logDetails.job_level_message
                         .toLowerCase()
-                        .includes("migration in progress") && (
+                        .includes("migration in progress") &&
+                      !logDetails.job_level_message
+                        .toLowerCase()
+                        .includes("update schema in progress") && (
                         <Box
                           px={4}
                           py={2}

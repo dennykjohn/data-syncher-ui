@@ -16,6 +16,7 @@ export const isDetailedMigrationMessage = (
   if (!message) return false;
   const lower = message.toLowerCase();
   if (lower.includes("migration in progress")) return false;
+  if (lower.includes("update schema")) return true;
   return (
     lower.includes(" seconds") ||
     lower.includes("total rows") ||
@@ -53,11 +54,20 @@ export const patchConnectorActivityLogs = (
   });
 };
 
+const isUpdateSchemaMessage = (message?: string | null): boolean =>
+  Boolean(message && message.toLowerCase().includes("update schema"));
+
 const resolveCompletionMessage = (
   currentMessage: string,
   isFailed: boolean,
   candidateMessage?: string,
 ): string => {
+  if (isUpdateSchemaMessage(candidateMessage)) {
+    return candidateMessage as string;
+  }
+  if (isUpdateSchemaMessage(currentMessage)) {
+    return currentMessage;
+  }
   if (isDetailedMigrationMessage(candidateMessage)) {
     return candidateMessage as string;
   }
@@ -66,7 +76,8 @@ const resolveCompletionMessage = (
   }
   if (
     candidateMessage &&
-    !candidateMessage.toLowerCase().includes("migration in progress")
+    !candidateMessage.toLowerCase().includes("migration in progress") &&
+    !candidateMessage.toLowerCase().includes("update schema in progress")
   ) {
     return candidateMessage;
   }
