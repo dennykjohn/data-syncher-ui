@@ -101,9 +101,30 @@ const BatchOverviewPanel = ({
         description: result.message,
       });
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data
-          ?.error ?? "Failed to run pipeline.";
+      const axiosErr = err as {
+        response?: {
+          status?: number;
+          data?: { error?: string; warning?: string; code?: string };
+        };
+      };
+      const data = axiosErr?.response?.data;
+      const isPlanFlowCap =
+        data?.code === "plan_flow_cap" ||
+        (axiosErr?.response?.status === 409 &&
+          Boolean(
+            data?.warning || data?.error?.toLowerCase().includes("concurrent"),
+          ));
+      if (isPlanFlowCap) {
+        toaster.warning({
+          title: "Flow limit reached",
+          description:
+            data?.warning ||
+            data?.error ||
+            "Your plan's concurrent flow limit is in use. Wait for a running flow to finish.",
+        });
+        return;
+      }
+      const message = data?.error ?? "Failed to run pipeline.";
       toaster.error({ title: "Failed to run pipeline", description: message });
     }
   };

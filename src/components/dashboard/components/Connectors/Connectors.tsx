@@ -121,7 +121,7 @@ const columns: Column<ConnectorTableItem>[] = [
           )}
           {migration_status === "E" && (
             <Tooltip
-              content={error_message || "Unknown error"}
+              content={error_message || "Migration failed"}
               disabled={!error_message}
               showArrow
             >

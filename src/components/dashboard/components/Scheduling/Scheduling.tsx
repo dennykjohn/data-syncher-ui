@@ -1565,7 +1565,8 @@ const Scheduling = () => {
     setSelectedNode(null);
     setActiveRunId(null);
     setPinnedRunId(null);
-    setDraftCanvasMode(true);
+    // Prefer latest run overlay on the canvas; "Edit canvas" switches to draft.
+    setDraftCanvasMode(false);
     setCenterViewTab("flow");
     setExecutionLogProcessName(null);
     setGraphView("draft");
@@ -1885,6 +1886,7 @@ const Scheduling = () => {
   useEffect(() => {
     if (!selectedPipelineId || !draftCanvasMode) return;
     if (pipelineRuns.length === 0) return;
+    // If a run is in progress, leave draft edit and show live status on the canvas.
     const latest = pipelineRuns[0];
     if (resolvePipelineRunStatus(latest) === "running") {
       setDraftCanvasMode(false);
@@ -2185,13 +2187,19 @@ const Scheduling = () => {
         description: result.message,
       });
     } catch (err: unknown) {
-      const data = (
-        err as {
-          response?: {
-            data?: { error?: string; errors?: string[]; warnings?: string[] };
+      const axiosErr = err as {
+        response?: {
+          status?: number;
+          data?: {
+            error?: string;
+            warning?: string;
+            code?: string;
+            errors?: string[];
+            warnings?: string[];
           };
-        }
-      )?.response?.data;
+        };
+      };
+      const data = axiosErr?.response?.data;
       if (data?.errors?.length) {
         setValidationPanelDismissed(false);
         setValidationSnapshot({
@@ -2206,6 +2214,22 @@ const Scheduling = () => {
             max_children_per_node: 2,
           },
         });
+      }
+      const isPlanFlowCap =
+        data?.code === "plan_flow_cap" ||
+        (axiosErr?.response?.status === 409 &&
+          Boolean(
+            data?.warning || data?.error?.toLowerCase().includes("concurrent"),
+          ));
+      if (isPlanFlowCap) {
+        toaster.warning({
+          title: "Flow limit reached",
+          description:
+            data?.warning ||
+            data?.error ||
+            "Your plan's concurrent flow limit is in use. Wait for a running flow to finish.",
+        });
+        return;
       }
       const messages = data?.errors?.length
         ? data.errors

@@ -157,10 +157,7 @@ const MigrationProgressTable = ({
               normalizedState === "running" ||
               (!isSuccess && !isFailed && !isWarning && !isSkipped);
 
-            const displayError =
-              table.error_message ||
-              table.message ||
-              (isFailed ? "Unknown error" : isSkipped ? "" : "");
+            const displayError = table.error_message || table.message || "";
 
             // Format times if available
             const startTime = table.start_time
@@ -242,7 +239,9 @@ const MigrationProgressTable = ({
                             {isSkipped
                               ? displayError ||
                                 "Skipped — table refresh/reload is in progress"
-                              : `Error: ${displayError || "Unknown error"}`}
+                              : displayError
+                                ? `Error: ${displayError}`
+                                : "Failed"}
                           </Text>
                           <Box
                             as="button"
