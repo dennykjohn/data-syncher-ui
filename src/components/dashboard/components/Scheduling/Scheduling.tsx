@@ -29,7 +29,6 @@ import {
   MdChevronLeft,
   MdChevronRight,
   MdDelete,
-  MdDriveFileRenameOutline,
   MdEdit,
   MdPause,
   MdPlayArrow,
@@ -2424,25 +2423,19 @@ const Scheduling = () => {
               selectedPipelineId={selectedPipelineId}
               onSelect={selectPipeline}
               onPipelineHover={handlePipelinePrefetch}
-              onRename={openRenamePipelineDialog}
-              renameDisabled={!selectedPipelineId || patchPipeline.isPending}
             />
-            <Tooltip
-              content="Rename the selected pipeline"
-              openDelay={200}
-              showArrow
-            >
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={openRenamePipelineDialog}
-                disabled={!selectedPipelineId || patchPipeline.isPending}
-                flexShrink={0}
-                px={2.5}
-              >
-                <MdDriveFileRenameOutline />
-                Rename
-              </Button>
+            <Tooltip content="Rename pipeline" openDelay={200} showArrow>
+              <Box as="span" display="inline-flex" flexShrink={0}>
+                <IconButton
+                  size="sm"
+                  variant="outline"
+                  aria-label="Rename pipeline"
+                  onClick={openRenamePipelineDialog}
+                  disabled={!selectedPipelineId || patchPipeline.isPending}
+                >
+                  <MdEdit />
+                </IconButton>
+              </Box>
             </Tooltip>
             <Button
               size="sm"

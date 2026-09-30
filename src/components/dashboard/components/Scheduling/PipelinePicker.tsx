@@ -2,7 +2,7 @@ import { Fragment, useMemo } from "react";
 
 import { Box, Button, Flex, Menu, Portal, Text } from "@chakra-ui/react";
 
-import { MdDriveFileRenameOutline, MdExpandMore } from "react-icons/md";
+import { MdExpandMore } from "react-icons/md";
 
 import { Tooltip } from "@/components/ui/tooltip";
 import { type PipelineDetail } from "@/types/pipeline";
@@ -13,8 +13,6 @@ type PipelinePickerProps = {
   onSelect: (_pipelineId: number | null) => void;
   /** Prefetch runs when hovering a pipeline in the menu. */
   onPipelineHover?: (_pipelineId: number) => void;
-  onRename?: () => void;
-  renameDisabled?: boolean;
   /** Trigger button width; grows up to maxWidth for long names. */
   width?: string | number;
   maxWidth?: string | number;
@@ -30,7 +28,8 @@ const SECTION_LABELS: Record<PipelineListGroup, string> = {
 
 const DEFAULT_WIDTH = "min(420px, 48vw)";
 const DEFAULT_MAX_WIDTH = "min(520px, 60vw)";
-const MENU_MIN_WIDTH = "360px";
+const MENU_MIN_WIDTH = "480px";
+const MENU_MAX_WIDTH = "min(720px, 92vw)";
 
 export const isPipelineRunning = (pipeline: PipelineDetail) =>
   pipeline.latest_run_status === "running";
@@ -177,8 +176,6 @@ const PipelinePicker = ({
   selectedPipelineId,
   onSelect,
   onPipelineHover,
-  onRename,
-  renameDisabled = false,
   width = DEFAULT_WIDTH,
   maxWidth = DEFAULT_MAX_WIDTH,
 }: PipelinePickerProps) => {
@@ -262,7 +259,7 @@ const PipelinePicker = ({
   );
 
   return (
-    <Menu.Root positioning={{ sameWidth: true }}>
+    <Menu.Root positioning={{ sameWidth: false, placement: "bottom-end" }}>
       <Menu.Trigger asChild>
         {selected ? (
           <Tooltip
@@ -289,10 +286,12 @@ const PipelinePicker = ({
       <Portal>
         <Menu.Positioner>
           <Menu.Content
+            w="max-content"
             minW={MENU_MIN_WIDTH}
-            maxW={DEFAULT_MAX_WIDTH}
+            maxW={MENU_MAX_WIDTH}
             maxH="360px"
             overflowY="auto"
+            overflowX="hidden"
             py={1}
             bg="white"
             borderWidth={1}
@@ -361,15 +360,9 @@ const PipelinePicker = ({
                       }
                       _highlighted={{ bg: running ? "blue.50" : "gray.50" }}
                     >
-                      <Flex
-                        alignItems="flex-start"
-                        justifyContent="space-between"
-                        gap={3}
-                        w="100%"
-                        minW={0}
-                      >
-                        <Flex alignItems="flex-start" gap={2} minW={0} flex="1">
-                          <Box pt="5px">
+                      <Flex direction="column" gap={1.5} w="100%" minW={0}>
+                        <Flex alignItems="flex-start" gap={2} minW={0}>
+                          <Box pt="5px" flexShrink={0}>
                             <ScheduleStatusDot paused={paused} />
                           </Box>
                           <Text
@@ -379,62 +372,21 @@ const PipelinePicker = ({
                             whiteSpace="normal"
                             wordBreak="break-word"
                             lineHeight="short"
+                            flex="1"
+                            minW={0}
                           >
                             {p.name}
                           </Text>
                         </Flex>
-                        <Box pt="2px" flexShrink={0}>
+                        <Flex justifyContent="flex-end" pr={0.5}>
                           <PipelineRightStatus pipeline={p} />
-                        </Box>
+                        </Flex>
                       </Flex>
                     </Menu.Item>
                   );
                 })}
               </Fragment>
             ))}
-            {onRename && selected && (
-              <>
-                <Box
-                  mx={3}
-                  my={1}
-                  borderTopWidth="1px"
-                  borderColor="gray.100"
-                />
-                <Menu.Item
-                  value="__rename__"
-                  onClick={onRename}
-                  disabled={renameDisabled}
-                  px={3}
-                  py={2.5}
-                  color="gray.700"
-                  _highlighted={{ bg: "gray.50" }}
-                  _disabled={{ opacity: 0.5, cursor: "not-allowed" }}
-                >
-                  <Flex alignItems="center" gap={2} minW={0}>
-                    <Box
-                      as="span"
-                      color="gray.500"
-                      display="inline-flex"
-                      flexShrink={0}
-                    >
-                      <MdDriveFileRenameOutline size={16} />
-                    </Box>
-                    <Text fontSize="sm" fontWeight="medium" flexShrink={0}>
-                      Rename pipeline
-                    </Text>
-                    <Text
-                      fontSize="xs"
-                      color="gray.500"
-                      truncate
-                      minW={0}
-                      title={selected.name}
-                    >
-                      · {selected.name}
-                    </Text>
-                  </Flex>
-                </Menu.Item>
-              </>
-            )}
           </Menu.Content>
         </Menu.Positioner>
       </Portal>
