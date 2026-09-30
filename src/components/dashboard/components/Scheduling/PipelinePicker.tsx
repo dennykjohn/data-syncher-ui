@@ -4,7 +4,6 @@ import { Box, Button, Flex, Menu, Portal, Text } from "@chakra-ui/react";
 
 import { MdExpandMore } from "react-icons/md";
 
-import { Tooltip } from "@/components/ui/tooltip";
 import { type PipelineDetail } from "@/types/pipeline";
 
 type PipelinePickerProps = {
@@ -182,7 +181,6 @@ const PipelinePicker = ({
   const selected = pipelines.find((p) => p.id === selectedPipelineId) ?? null;
   const selectedPaused = selected?.status === "paused";
   const selectedRunning = selected ? isPipelineRunning(selected) : false;
-  const scheduleHint = selectedPaused ? "Schedule paused" : "Schedule active";
 
   const groupedPipelines = useMemo(() => {
     const sorted = sortPipelinesForPicker(pipelines);
@@ -205,99 +203,85 @@ const PipelinePicker = ({
     return sections;
   }, [pipelines]);
 
-  const triggerButton = (
-    <Button
-      size="sm"
-      variant="outline"
-      width={width}
-      maxW={maxWidth}
-      minW="220px"
-      flexShrink={1}
-      justifyContent="space-between"
-      fontWeight="normal"
-      px={2.5}
-      h="32px"
-      bg={selectedRunning ? "blue.50" : "white"}
-      borderColor={selectedRunning ? "blue.300" : "gray.200"}
-      borderRadius="md"
-      color="gray.800"
-      _hover={{
-        bg: selectedRunning ? "blue.100" : "gray.50",
-        borderColor: selectedRunning ? "blue.400" : "gray.300",
-      }}
-      _expanded={{
-        bg: selectedRunning ? "blue.100" : "gray.50",
-        borderColor: selectedRunning ? "blue.400" : "gray.400",
-      }}
-    >
-      <Flex alignItems="center" gap={2} minW={0} flex="1">
-        {selected && <ScheduleStatusDot paused={selectedPaused} />}
-        <Text
-          truncate
-          fontSize="sm"
-          color={selected ? "gray.800" : "gray.500"}
-          flex="1"
-          minW={0}
-          textAlign="left"
-        >
-          {selected?.name ?? "Select pipeline…"}
-        </Text>
-        {selected && (
-          <PipelineRightStatus pipeline={selected} showScheduleLabel={false} />
-        )}
-      </Flex>
-      <Box
-        as="span"
-        color="gray.400"
-        display="inline-flex"
-        flexShrink={0}
-        ml={1}
-      >
-        <MdExpandMore size={18} />
-      </Box>
-    </Button>
-  );
+  const triggerTitle = selected
+    ? `${selected.name}${selectedRunning ? " · Run in progress" : ""}${selectedPaused ? " · Schedule paused" : ""}`
+    : undefined;
 
   return (
-    <Menu.Root positioning={{ sameWidth: false, placement: "bottom-end" }}>
+    <Menu.Root positioning={{ sameWidth: false }}>
       <Menu.Trigger asChild>
-        {selected ? (
-          <Tooltip
-            content={
-              <Box maxW="420px" wordBreak="break-word">
-                <Text fontWeight="medium">{selected.name}</Text>
-                <Text fontSize="xs" color="gray.300" mt={0.5}>
-                  {scheduleHint}
-                  {selectedRunning ? " · Run in progress" : ""}
-                </Text>
-              </Box>
-            }
-            openDelay={400}
-            showArrow
+        <Button
+          size="sm"
+          variant="outline"
+          width={width}
+          maxW={maxWidth}
+          minW="220px"
+          flexShrink={1}
+          justifyContent="space-between"
+          fontWeight="normal"
+          px={2.5}
+          h="32px"
+          bg={selectedRunning ? "blue.50" : "white"}
+          borderColor={selectedRunning ? "blue.300" : "gray.200"}
+          borderRadius="md"
+          color="gray.800"
+          title={triggerTitle}
+          aria-label={
+            selected ? `Selected pipeline: ${selected.name}` : "Select pipeline"
+          }
+          _hover={{
+            bg: selectedRunning ? "blue.100" : "gray.50",
+            borderColor: selectedRunning ? "blue.400" : "gray.300",
+          }}
+          _expanded={{
+            bg: selectedRunning ? "blue.100" : "gray.50",
+            borderColor: selectedRunning ? "blue.400" : "gray.400",
+          }}
+        >
+          <Flex alignItems="center" gap={2} minW={0} flex="1">
+            {selected && <ScheduleStatusDot paused={selectedPaused} />}
+            <Text
+              truncate
+              fontSize="sm"
+              color={selected ? "gray.800" : "gray.500"}
+              flex="1"
+              minW={0}
+              textAlign="left"
+            >
+              {selected?.name ?? "Select pipeline…"}
+            </Text>
+            {selected && (
+              <PipelineRightStatus
+                pipeline={selected}
+                showScheduleLabel={false}
+              />
+            )}
+          </Flex>
+          <Box
+            as="span"
+            color="gray.400"
+            display="inline-flex"
+            flexShrink={0}
+            ml={1}
           >
-            <Box as="span" display="inline-flex" minW={0} maxW={maxWidth}>
-              {triggerButton}
-            </Box>
-          </Tooltip>
-        ) : (
-          triggerButton
-        )}
+            <MdExpandMore size={18} />
+          </Box>
+        </Button>
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
           <Menu.Content
-            w="max-content"
             minW={MENU_MIN_WIDTH}
             maxW={MENU_MAX_WIDTH}
             maxH="360px"
             overflowY="auto"
-            overflowX="hidden"
             py={1}
             bg="white"
             borderWidth={1}
             borderColor="gray.200"
             borderRadius="md"
-            boxShadow="sm"
+            boxShadow="lg"
+            zIndex={1500}
           >
             <Menu.Item
               value="__none__"
