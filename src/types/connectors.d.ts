@@ -509,6 +509,46 @@ export type ReverseSchemaResponse = {
   tables?: ConnectorTable[];
 };
 
+export interface BasicFilterCondition {
+  column?: string;
+  field?: string;
+  operator: string;
+  value: string | number | boolean | (string | number | boolean)[];
+  edm_type?: string;
+}
+
+export interface GroupFilterCondition {
+  logic: "and" | "or";
+  operator?: "and" | "or";
+  conditions: FilterNode[];
+}
+
+export interface NotFilterCondition {
+  not: FilterNode;
+}
+
+export type FilterNode =
+  | BasicFilterCondition
+  | GroupFilterCondition
+  | NotFilterCondition;
+
+export interface FilterCondition {
+  column?: string;
+  field?: string;
+  operator?: string;
+  value?: string | number | boolean | (string | number | boolean)[];
+  edm_type?: string;
+  logic?: "and" | "or";
+  conditions?: FilterNode[];
+  not?: FilterNode;
+}
+
+export interface RowFilterConfig {
+  logic?: "and" | "or";
+  operator?: "and" | "or";
+  conditions: FilterNode[];
+}
+
 // ------------------ Migration Batches ------------------
 
 export type BatchStatus = "active" | "paused";
@@ -601,15 +641,4 @@ export interface AssignTableConflict {
 export interface AssignTablesErrorResponse {
   conflicts?: AssignTableConflict[];
   detail?: string;
-}
-
-export interface FilterCondition {
-  column: string;
-  operator: string;
-  value: string | string[] | boolean | number | unknown;
-  edm_type: string;
-}
-
-export interface RowFilterConfig {
-  conditions: FilterCondition[];
 }

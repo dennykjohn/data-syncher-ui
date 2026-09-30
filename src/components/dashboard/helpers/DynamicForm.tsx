@@ -13,8 +13,12 @@ import {
   Flex,
   Input,
   NativeSelect,
+  Portal,
+  Select,
+  Text,
   Textarea,
   VStack,
+  createListCollection,
 } from "@chakra-ui/react";
 
 import { IoMdArrowBack } from "react-icons/io";
@@ -24,6 +28,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { type FieldConfig, type KeyPair } from "@/types/form";
 
 import KeyPairGenerator from "./KeyPairGenerator";
+import ProxyAgentGenerator from "./ProxyAgentGenerator";
 import {
   isJwtBearerAuth,
   isSalesforceConnector,
@@ -84,7 +89,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     current: Record<string, string>,
   ) => {
     const selectedAuthType =
-      current["auth_type"] || current["authentication_type"];
+      current["auth_type"] ||
+      current["authentication_type"] ||
+      current["authenticationType"];
 
     if (
       field.name === "client_secret" &&
@@ -211,7 +218,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const connectorName = sourceName || destinationName;
   const selectedAuthType =
-    values["auth_type"] || values["authentication_type"] || "";
+    values["auth_type"] ||
+    values["authentication_type"] ||
+    values["authenticationType"] ||
+    "";
   const hasPassphraseField = config.fields.some((f) => f.name === "passphrase");
   const showKeyPairGenerator = usesKeyPairGenerator(
     connectorName,
@@ -266,12 +276,45 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       valuesRef.current = newValues;
       return newValues;
     });
+
     setErrors((prev) => {
       if (name === "destination_schema") {
         return { ...prev, [name]: validateSchemaName(value) };
       }
       return { ...prev, [name]: "" };
     });
+  };
+
+  const validateRequiredFieldsBeforeAgentGen = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    config.fields.forEach((field) => {
+      if (field.name === "proxy_agent") {
+        return;
+      }
+      if (!isSchemaVisible(field, values)) return;
+      if (field.required) {
+        if (field.name === "client_certificate_file") {
+          const isUploaded = !!values["client_certificate_uploaded"];
+          if (!isUploaded && !files[field.name]) {
+            newErrors[field.name] = `${field.label} is required`;
+          }
+        } else if (!values[field.name]) {
+          newErrors[field.name] = `${field.label} is required`;
+        }
+      }
+      if (field.name === "destination_schema") {
+        const schemaError = validateSchemaName(values[field.name] || "");
+        if (schemaError) {
+          newErrors[field.name] = schemaError;
+        }
+      }
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = () => {
@@ -393,6 +436,43 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     // read_only: true means non-editable in edit mode
     const isReadOnly = mode === "edit" && field.read_only === true;
 
+    if (field.name === "proxy_agent") {
+      return (
+        <ProxyAgentGenerator
+          key={field.name}
+          field={field}
+          value={values["proxy_agent"] || ""}
+          connectorId={
+            values["id"] ||
+            values["connector_id"] ||
+            defaultValues?.["id"] ||
+            defaultValues?.["connector_id"]
+          }
+          connectorName={
+            values["name"] ||
+            values["connector_name"] ||
+            values["connection_name"] ||
+            defaultValues?.["name"] ||
+            defaultValues?.["connection_name"] ||
+            ""
+          }
+          isEditMode={mode === "edit"}
+          agentName="Datasyncher Agent"
+          onValidate={validateRequiredFieldsBeforeAgentGen}
+          onChange={(agentUuid) => {
+            isDirtyRef.current = true;
+            setValues((prev) => ({
+              ...prev,
+              proxy_agent: agentUuid,
+            }));
+            setErrors((prev) => ({ ...prev, [field.name]: "" }));
+          }}
+          disabled={isReadOnly}
+          error={errors[field.name]}
+        />
+      );
+    }
+
     if (field.name === "client_certificate_file") {
       const isUploaded = !!values["client_certificate_uploaded"];
       const filename = values["client_certificate_file"];
@@ -456,6 +536,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 Uploaded file: {filename}
               </Field.HelperText>
             )}
+          {field.description && (
+            <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+              {field.description}
+            </Field.HelperText>
+          )}
           {errors[field.name] && (
             <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
           )}
@@ -463,7 +548,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       );
     }
 
-    // Snowflake/SFTP auth-type toggles only apply when the schema includes authentication_type.
+    const authTypeValue =
+      values["auth_type"] ||
+      values["authentication_type"] ||
+      values["authenticationType"];
+
     if (hasAuthenticationTypeField) {
       // If the value of authentication_type field is "password",
       // hide private_key, public_key & passphrase fields
@@ -471,7 +560,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         (field.name === "private_key" ||
           field.name === "public_key" ||
           field.name === "passphrase") &&
-        values["authentication_type"] === "password"
+        (authTypeValue === "password" ||
+          values["authentication_type"] === "password")
       ) {
         return null;
       }
@@ -479,15 +569,17 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       // hide password field and passphrase (passphrase will be rendered separately)
       if (
         field.name === "password" &&
-        values["authentication_type"] === "key_pair"
+        (authTypeValue === "key_pair" ||
+          values["authentication_type"] === "key_pair")
       ) {
         return null;
       }
-      // Hide passphrase in normal rendering when key generator is shown (rendered separately)
+      // Hide passphrase in normal rendering when key generator is shown or key_pair is selected (rendered separately)
       if (
         field.name === "passphrase" &&
-        showKeyPairGenerator &&
-        values["authentication_type"] === selectedAuthType
+        ((showKeyPairGenerator &&
+          values["authentication_type"] === selectedAuthType) ||
+          authTypeValue === "key_pair")
       ) {
         return null;
       }
@@ -498,18 +590,61 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           field.name === "public_key" ||
           field.name === "password" ||
           field.name === "passphrase") &&
-        !values["authentication_type"]
+        !authTypeValue
       ) {
         return null;
       }
     }
-    // Support `ChoiceField` type with `options` on the FieldConfig
+
+    if (
+      field.name === "private_key" &&
+      values["authentication_type"] === "jwt_bearer"
+    ) {
+      return (
+        <Field.Root
+          key={field.name}
+          required={field.required}
+          invalid={!!errors[field.name]}
+        >
+          <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+          <Textarea
+            id={field.name}
+            name={field.name}
+            value={values[field.name] || ""}
+            onChange={handleChange}
+            placeholder={
+              field.placeholder || `Enter ${field.label.toLowerCase()}`
+            }
+            rows={10}
+            fontFamily="monospace"
+            fontSize="xs"
+            resize="none"
+            readOnly={isReadOnly}
+            bg={isReadOnly ? "gray.200 !important" : undefined}
+            color={isReadOnly ? "black !important" : undefined}
+            borderColor={isReadOnly ? "gray.300 !important" : undefined}
+          />
+          {field.description && (
+            <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+              {field.description}
+            </Field.HelperText>
+          )}
+          {errors[field.name] && (
+            <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+          )}
+        </Field.Root>
+      );
+    }
 
     const usesConnectorKeyFields =
       (isSnowflakeConnector(connectorName) &&
-        isSnowflakeKeyPairAuth(values["authentication_type"])) ||
+        isSnowflakeKeyPairAuth(
+          values["authentication_type"] || authTypeValue,
+        )) ||
       (isSalesforceConnector(connectorName) &&
-        isJwtBearerAuth(values["authentication_type"]));
+        isJwtBearerAuth(values["authentication_type"] || authTypeValue)) ||
+      authTypeValue === "key_pair" ||
+      authTypeValue?.toLowerCase().includes("key");
 
     if (
       (field.name === "private_key" || field.name === "public_key") &&
@@ -528,7 +663,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               name={field.name}
               value={values[field.name] || ""}
               onChange={handleChange}
-              placeholder={`Enter ${field.label.toLowerCase()}`}
+              placeholder={
+                field.placeholder || `Enter ${field.label.toLowerCase()}`
+              }
               rows={10}
               fontFamily="monospace"
               fontSize="xs"
@@ -538,6 +675,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               color={isReadOnly ? "black !important" : undefined}
               borderColor={isReadOnly ? "gray.300 !important" : undefined}
             />
+            {field.description && (
+              <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+                {field.description}
+              </Field.HelperText>
+            )}
             {errors[field.name] && (
               <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
             )}
@@ -548,6 +690,108 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
 
     if (field.type === "ChoiceField") {
+      const selectedValue = values[field.name];
+      const hasOptionDescriptions = (field.choices ?? []).some(
+        (opt) => opt.description,
+      );
+
+      if (hasOptionDescriptions) {
+        const choiceItems =
+          field.choices?.map((choice) => ({
+            label: choice.display,
+            value: choice.value,
+            description: choice.description,
+          })) ?? [];
+
+        const collection = createListCollection({ items: choiceItems });
+
+        const handleSelectChange = (e: { value: string[] }) => {
+          const newValue = e.value[0] || "";
+          const syntheticEvent = {
+            target: { name: field.name, value: newValue },
+          } as unknown as React.ChangeEvent<HTMLSelectElement>;
+          handleChange(syntheticEvent);
+        };
+
+        return (
+          <Field.Root
+            key={field.name}
+            required={field.required}
+            invalid={!!errors[field.name]}
+          >
+            <Field.Label htmlFor={field.name}>{field.label}</Field.Label>
+            <Select.Root
+              collection={collection}
+              size="sm"
+              disabled={isReadOnly}
+              value={selectedValue ? [selectedValue] : []}
+              onValueChange={handleSelectChange}
+              bg={isReadOnly ? "gray.200 !important" : "white"}
+            >
+              <Select.HiddenSelect id={field.name} name={field.name} />
+
+              <Select.Control>
+                <Select.Trigger
+                  bg={isReadOnly ? "gray.200 !important" : "white"}
+                  color={isReadOnly ? "black !important" : undefined}
+                  borderColor={isReadOnly ? "gray.300 !important" : undefined}
+                  opacity={isReadOnly ? "1 !important" : undefined}
+                  cursor={isReadOnly ? "not-allowed" : undefined}
+                >
+                  <Select.ValueText
+                    placeholder={
+                      !field.depend_on
+                        ? field.placeholder || "Select option"
+                        : undefined
+                    }
+                  />
+                </Select.Trigger>
+                <Select.IndicatorGroup>
+                  <Select.Indicator />
+                </Select.IndicatorGroup>
+              </Select.Control>
+              <Portal>
+                <Select.Positioner>
+                  <Select.Content>
+                    {collection.items.map((item) => {
+                      const choice = field.choices?.find(
+                        (c) => c.value === item.value,
+                      );
+                      return (
+                        <Select.Item item={item} key={item.value}>
+                          <Flex direction="column" align="flex-start" gap={1}>
+                            <Text fontWeight="medium">{item.label}</Text>
+                            {choice?.description && (
+                              <Text fontSize="xs" color="gray.600">
+                                {choice.description}
+                              </Text>
+                            )}
+                          </Flex>
+                          <Select.ItemIndicator />
+                        </Select.Item>
+                      );
+                    })}
+                  </Select.Content>
+                </Select.Positioner>
+              </Portal>
+            </Select.Root>
+            {field.description && (
+              <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+                {field.description}
+              </Field.HelperText>
+            )}
+            {errors[field.name] && (
+              <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
+            )}
+          </Field.Root>
+        );
+      }
+
+      const selectedOption = (field.choices ?? []).find(
+        (opt) => opt.value === selectedValue,
+      );
+      const optionDescription = selectedOption?.description;
+
       return (
         <Field.Root
           key={field.name}
@@ -559,9 +803,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             <NativeSelect.Field
               id={field.name}
               name={field.name}
-              placeholder="Select option"
+              placeholder={field.placeholder || "Select option"}
               onChange={handleChange}
-              value={values[field.name]}
+              value={selectedValue}
               bg={isReadOnly ? "gray.200 !important" : undefined}
               color={isReadOnly ? "black !important" : undefined}
               borderColor={isReadOnly ? "gray.300 !important" : undefined}
@@ -574,6 +818,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             </NativeSelect.Field>
             <NativeSelect.Indicator />
           </NativeSelect.Root>
+          {optionDescription && (
+            <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+              {optionDescription}
+            </Field.HelperText>
+          )}
+          {field.description && (
+            <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+              {field.description}
+            </Field.HelperText>
+          )}
           {errors[field.name] && (
             <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
           )}
@@ -596,12 +850,19 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             name={field.name}
             value={values[field.name]}
             onChange={handleChange}
-            placeholder={`Enter ${field.label.toLowerCase()}`}
+            placeholder={
+              field.placeholder || `Enter ${field.label.toLowerCase()}`
+            }
             readOnly={isReadOnly}
             bg={isReadOnly ? "gray.200 !important" : undefined}
             color={isReadOnly ? "black !important" : undefined}
             borderColor={isReadOnly ? "gray.300 !important" : undefined}
           />
+          {field.description && (
+            <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+              {field.description}
+            </Field.HelperText>
+          )}
           {errors[field.name] && (
             <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
           )}
@@ -622,7 +883,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             name={field.name}
             value={values[field.name] || ""}
             onChange={handleChange}
-            placeholder={`Enter ${field.label.toLowerCase()}`}
+            placeholder={
+              field.placeholder || `Enter ${field.label.toLowerCase()}`
+            }
             rows={6}
             resize="vertical"
             readOnly={isReadOnly}
@@ -630,6 +893,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             color={isReadOnly ? "black !important" : undefined}
             borderColor={isReadOnly ? "gray.300 !important" : undefined}
           />
+          {field.description && (
+            <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+              {field.description}
+            </Field.HelperText>
+          )}
           {errors[field.name] && (
             <Field.ErrorText>{errors[field.name]}</Field.ErrorText>
           )}
@@ -651,7 +919,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           value={values[field.name]}
           onChange={handleChange}
           autoComplete="off"
-          placeholder={`Enter ${field.label.toLowerCase()}`}
+          placeholder={
+            field.placeholder || `Enter ${field.label.toLowerCase()}`
+          }
           readOnly={isReadOnly}
           bg={isReadOnly ? "gray.200 !important" : undefined}
           color={isReadOnly ? "black !important" : undefined}
@@ -661,6 +931,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
             If a passphrase is provided, the key pair will be generated in
             encrypted form.
+          </Field.HelperText>
+        )}
+        {field.description && (
+          <Field.HelperText fontSize="xs" color="gray.600" mt={1}>
+            {field.description}
           </Field.HelperText>
         )}
         {errors[field.name] && (
@@ -680,44 +955,49 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           return (
             <React.Fragment key={field.name}>
               <Box>{input}</Box>
-              {(field.name === "authentication_type" ||
+              {(field.name === "auth_type" ||
+                field.name === "authentication_type" ||
                 field.name === "authenticationType") && (
                 <>
-                  {passphraseField && showKeyPairGenerator && (
-                    <Box key={passphraseField.name}>
-                      <Field.Root
-                        required={passphraseField.required}
-                        invalid={!!errors[passphraseField.name]}
-                      >
-                        <Field.Label htmlFor={passphraseField.name}>
-                          {passphraseField.label}
-                        </Field.Label>
-                        {passphraseField.type === "PasswordInput" ? (
-                          <PasswordInput
-                            id={passphraseField.name}
-                            name={passphraseField.name}
-                            value={values[passphraseField.name] || ""}
-                            onChange={handleChange}
-                            placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
-                          />
-                        ) : (
-                          <Input
-                            id={passphraseField.name}
-                            name={passphraseField.name}
-                            type="text"
-                            value={values[passphraseField.name] || ""}
-                            onChange={handleChange}
-                            placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
-                          />
-                        )}
-                        {errors[passphraseField.name] && (
-                          <Field.ErrorText>
-                            {errors[passphraseField.name]}
-                          </Field.ErrorText>
-                        )}
-                      </Field.Root>
-                    </Box>
-                  )}
+                  {passphraseField &&
+                    (showKeyPairGenerator ||
+                      values.authentication_type === "key_pair" ||
+                      values.authenticationType === "key_pair" ||
+                      values.auth_type === "key_pair") && (
+                      <Box key={passphraseField.name}>
+                        <Field.Root
+                          required={passphraseField.required}
+                          invalid={!!errors[passphraseField.name]}
+                        >
+                          <Field.Label htmlFor={passphraseField.name}>
+                            {passphraseField.label}
+                          </Field.Label>
+                          {passphraseField.type === "PasswordInput" ? (
+                            <PasswordInput
+                              id={passphraseField.name}
+                              name={passphraseField.name}
+                              value={values[passphraseField.name] || ""}
+                              onChange={handleChange}
+                              placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
+                            />
+                          ) : (
+                            <Input
+                              id={passphraseField.name}
+                              name={passphraseField.name}
+                              type="text"
+                              value={values[passphraseField.name] || ""}
+                              onChange={handleChange}
+                              placeholder={`Enter ${passphraseField.label.toLowerCase()}`}
+                            />
+                          )}
+                          {errors[passphraseField.name] && (
+                            <Field.ErrorText>
+                              {errors[passphraseField.name]}
+                            </Field.ErrorText>
+                          )}
+                        </Field.Root>
+                      </Box>
+                    )}
                   <KeyPairGenerator
                     formValues={values}
                     mode={mode}

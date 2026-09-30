@@ -69,6 +69,11 @@ const SidebarAccordion = ({
           path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.BILLING}`,
           permission: "can_access_billing",
         },
+        {
+          label: "Agent Downloads",
+          path: `${ClientRoutes.ACCOUNT_SETTINGS.ROOT}/${ClientRoutes.ACCOUNT_SETTINGS.AGENT_DOWNLOADS}`,
+          permission: "can_access_settings",
+        },
       ],
     },
   ];
