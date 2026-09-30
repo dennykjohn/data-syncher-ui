@@ -25,10 +25,8 @@ const SECTION_LABELS: Record<PipelineListGroup, string> = {
   paused: "Paused",
 };
 
-const DEFAULT_WIDTH = "min(420px, 48vw)";
-const DEFAULT_MAX_WIDTH = "min(520px, 60vw)";
-const MENU_MIN_WIDTH = "480px";
-const MENU_MAX_WIDTH = "min(720px, 92vw)";
+const DEFAULT_WIDTH = "min(280px, 42vw)";
+const DEFAULT_MAX_WIDTH = "min(320px, 48vw)";
 
 export const isPipelineRunning = (pipeline: PipelineDetail) =>
   pipeline.latest_run_status === "running";
@@ -75,8 +73,8 @@ const PulsingLiveDot = () => (
   <Box
     as="span"
     position="relative"
-    w="7px"
-    h="7px"
+    w="6px"
+    h="6px"
     flexShrink={0}
     display="inline-block"
   >
@@ -101,7 +99,6 @@ const PulsingLiveDot = () => (
       inset="1px"
       borderRadius="full"
       bg="blue.500"
-      boxShadow="0 0 0 1px rgba(59, 130, 246, 0.35)"
     />
   </Box>
 );
@@ -110,22 +107,15 @@ const PulsingLiveDot = () => (
 const RunningLiveBadge = ({ compact = false }: { compact?: boolean }) => (
   <Flex
     alignItems="center"
-    gap={1}
-    px={compact ? 1.25 : 1.5}
-    py={0.5}
+    gap={0.5}
+    px={compact ? 1 : 1.25}
+    py={compact ? 0 : 0.5}
     borderRadius="full"
     bg="blue.50"
     borderWidth="1px"
     borderColor="blue.200"
     flexShrink={0}
     title="Flow execution in progress"
-    css={{
-      animation: "pipelineLiveGlow 2.2s ease-in-out infinite",
-      "@keyframes pipelineLiveGlow": {
-        "0%, 100%": { boxShadow: "0 0 0 0 rgba(59, 130, 246, 0)" },
-        "50%": { boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.12)" },
-      },
-    }}
   >
     <PulsingLiveDot />
     <Text
@@ -133,8 +123,7 @@ const RunningLiveBadge = ({ compact = false }: { compact?: boolean }) => (
       fontSize="2xs"
       fontWeight="semibold"
       color="blue.700"
-      letterSpacing="0.04em"
-      textTransform="uppercase"
+      letterSpacing="0.03em"
     >
       Live
     </Text>
@@ -159,12 +148,14 @@ const ScheduleStatusLabel = ({ paused }: { paused: boolean }) => (
 const PipelineRightStatus = ({
   pipeline,
   showScheduleLabel = true,
+  compact = false,
 }: {
   pipeline: PipelineDetail;
   showScheduleLabel?: boolean;
+  compact?: boolean;
 }) => {
   if (isPipelineRunning(pipeline)) {
-    return <RunningLiveBadge />;
+    return <RunningLiveBadge compact={compact} />;
   }
   if (!showScheduleLabel) return null;
   return <ScheduleStatusLabel paused={pipeline.status === "paused"} />;
@@ -208,14 +199,14 @@ const PipelinePicker = ({
     : undefined;
 
   return (
-    <Menu.Root positioning={{ sameWidth: false }}>
+    <Menu.Root positioning={{ sameWidth: true }}>
       <Menu.Trigger asChild>
         <Button
           size="sm"
           variant="outline"
           width={width}
           maxW={maxWidth}
-          minW="220px"
+          minW="200px"
           flexShrink={1}
           justifyContent="space-between"
           fontWeight="normal"
@@ -254,6 +245,7 @@ const PipelinePicker = ({
               <PipelineRightStatus
                 pipeline={selected}
                 showScheduleLabel={false}
+                compact
               />
             )}
           </Flex>
@@ -271,16 +263,15 @@ const PipelinePicker = ({
       <Portal>
         <Menu.Positioner>
           <Menu.Content
-            minW={MENU_MIN_WIDTH}
-            maxW={MENU_MAX_WIDTH}
-            maxH="360px"
+            minW={width}
+            maxH="280px"
             overflowY="auto"
             py={1}
             bg="white"
             borderWidth={1}
             borderColor="gray.200"
             borderRadius="md"
-            boxShadow="lg"
+            boxShadow="sm"
             zIndex={1500}
           >
             <Menu.Item
@@ -299,18 +290,18 @@ const PipelinePicker = ({
                 {sectionIndex > 0 && (
                   <Box
                     mx={3}
-                    my={1}
+                    my={0.5}
                     borderTopWidth="1px"
                     borderColor="gray.100"
                   />
                 )}
-                <Box px={3} pt={sectionIndex === 0 ? 1 : 2} pb={1}>
+                <Box px={3} pt={sectionIndex === 0 ? 0.5 : 1} pb={0.5}>
                   <Text
                     fontSize="2xs"
                     fontWeight="semibold"
                     color={section.key === "running" ? "blue.600" : "gray.500"}
                     textTransform="uppercase"
-                    letterSpacing="0.08em"
+                    letterSpacing="0.06em"
                   >
                     {section.label}
                   </Text>
@@ -327,6 +318,7 @@ const PipelinePicker = ({
                       onMouseEnter={() => onPipelineHover?.(p.id)}
                       px={3}
                       py={2}
+                      title={p.name}
                       bg={
                         isSelected
                           ? running
@@ -334,37 +326,29 @@ const PipelinePicker = ({
                             : "gray.50"
                           : undefined
                       }
-                      borderLeftWidth="2px"
-                      borderLeftColor={
-                        isSelected
-                          ? "gray.700"
-                          : running
-                            ? "blue.400"
-                            : "transparent"
-                      }
+                      borderLeftWidth={isSelected ? "2px" : "0"}
+                      borderLeftColor={isSelected ? "gray.700" : "transparent"}
                       _highlighted={{ bg: running ? "blue.50" : "gray.50" }}
                     >
-                      <Flex direction="column" gap={1.5} w="100%" minW={0}>
-                        <Flex alignItems="flex-start" gap={2} minW={0}>
-                          <Box pt="5px" flexShrink={0}>
-                            <ScheduleStatusDot paused={paused} />
-                          </Box>
+                      <Flex
+                        alignItems="center"
+                        justifyContent="space-between"
+                        gap={2}
+                        w="100%"
+                        minW={0}
+                      >
+                        <Flex alignItems="center" gap={2} minW={0} flex="1">
+                          <ScheduleStatusDot paused={paused} />
                           <Text
+                            truncate
                             fontSize="sm"
                             fontWeight={isSelected ? "medium" : "normal"}
                             color="gray.800"
-                            whiteSpace="normal"
-                            wordBreak="break-word"
-                            lineHeight="short"
-                            flex="1"
-                            minW={0}
                           >
                             {p.name}
                           </Text>
                         </Flex>
-                        <Flex justifyContent="flex-end" pr={0.5}>
-                          <PipelineRightStatus pipeline={p} />
-                        </Flex>
+                        <PipelineRightStatus pipeline={p} compact />
                       </Flex>
                     </Menu.Item>
                   );
