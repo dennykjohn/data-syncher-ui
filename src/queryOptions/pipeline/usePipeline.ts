@@ -103,6 +103,10 @@ export function usePipelines() {
       return data.pipelines ?? [];
     },
     staleTime: 30 * 1000,
+    refetchInterval: (query) =>
+      query.state.data?.some((p) => p.latest_run_status === "running")
+        ? 4000
+        : false,
   });
 }
 
@@ -305,6 +309,7 @@ export function useRunPipeline() {
       await queryClient.invalidateQueries({
         queryKey: ["pipelineRuns", pipelineId],
       });
+      await queryClient.invalidateQueries({ queryKey: pipelinesQueryKey });
     },
   });
 }

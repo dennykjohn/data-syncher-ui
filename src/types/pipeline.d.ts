@@ -65,6 +65,7 @@ export type PipelineDetail = {
   canvas_changed_since_publish?: boolean;
   has_published_graph?: boolean;
   published_graph?: PipelinePublishedGraph | null;
+  latest_run_status?: PipelineRunStatus | null;
 };
 
 export type PipelinePublishedGraph = {
@@ -125,6 +126,8 @@ export type PipelineNodeRunStatus =
   | "failed"
   | "timeout"
   | "skipped";
+
+export type PipelineRunStatus = "running" | "completed" | "failed" | "deleted";
 
 export type PipelineRunOverall = {
   nodes_total: number;
@@ -188,6 +191,8 @@ export type PipelineRunDetail = {
   edges_backfilled?: boolean;
   start_node_id?: number | null;
   error?: string | null;
+  /** True while Celery waits for a free concurrent-flow slot (plan cap). */
+  waiting_for_flow_slot?: boolean;
 };
 
 export type PipelineRunSummary = {

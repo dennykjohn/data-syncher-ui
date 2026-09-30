@@ -1,4 +1,12 @@
-import { Box, Button, Flex, Menu, Portal, Text } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Flex,
+  Menu,
+  Portal,
+  Spinner,
+  Text,
+} from "@chakra-ui/react";
 
 import { MdExpandMore } from "react-icons/md";
 
@@ -7,12 +15,15 @@ import { type PipelineDetail } from "@/types/pipeline";
 type PipelinePickerProps = {
   pipelines: PipelineDetail[];
   selectedPipelineId: number | null;
-  onSelect: (_pipelineId: number | null) => void;
+  onSelect: (_pipelineId: number) => void;
   /** Prefetch runs when hovering a pipeline in the menu. */
   onPipelineHover?: (_pipelineId: number) => void;
   /** Trigger button width; use a smaller value on compact tab bars. */
   width?: string | number;
 };
+
+const isPipelineRunning = (pipeline: PipelineDetail) =>
+  pipeline.latest_run_status === "running";
 
 const StatusDot = ({ paused }: { paused: boolean }) => (
   <Box
@@ -26,6 +37,43 @@ const StatusDot = ({ paused }: { paused: boolean }) => (
   />
 );
 
+const PipelineStatusLabel = ({ pipeline }: { pipeline: PipelineDetail }) => {
+  const paused = pipeline.status === "paused";
+  const running = isPipelineRunning(pipeline);
+
+  if (running) {
+    return (
+      <Flex
+        alignItems="center"
+        gap={1}
+        flexShrink={0}
+        w="58px"
+        justifyContent="flex-end"
+        title="Run in progress"
+      >
+        <Spinner size="xs" color="blue.500" />
+        <Text as="span" fontSize="2xs" color="blue.700" letterSpacing="0.02em">
+          Running
+        </Text>
+      </Flex>
+    );
+  }
+
+  return (
+    <Text
+      as="span"
+      fontSize="2xs"
+      color={paused ? "orange.700" : "green.700"}
+      flexShrink={0}
+      w="48px"
+      textAlign="left"
+      letterSpacing="0.02em"
+    >
+      {paused ? "Paused" : "Active"}
+    </Text>
+  );
+};
+
 const PipelinePicker = ({
   pipelines,
   selectedPipelineId,
@@ -35,6 +83,7 @@ const PipelinePicker = ({
 }: PipelinePickerProps) => {
   const selected = pipelines.find((p) => p.id === selectedPipelineId) ?? null;
   const selectedPaused = selected?.status === "paused";
+  const selectedRunning = selected ? isPipelineRunning(selected) : false;
 
   return (
     <Menu.Root positioning={{ sameWidth: true }}>
@@ -50,11 +99,17 @@ const PipelinePicker = ({
           px={2.5}
           h="32px"
           bg="white"
-          borderColor="gray.200"
+          borderColor={selectedRunning ? "blue.300" : "gray.200"}
           borderRadius="md"
           color="gray.800"
-          _hover={{ bg: "gray.50", borderColor: "gray.300" }}
-          _expanded={{ bg: "gray.50", borderColor: "gray.400" }}
+          _hover={{
+            bg: "gray.50",
+            borderColor: selectedRunning ? "blue.400" : "gray.300",
+          }}
+          _expanded={{
+            bg: "gray.50",
+            borderColor: selectedRunning ? "blue.400" : "gray.400",
+          }}
         >
           <Flex alignItems="center" gap={2} minW={0} flex="1">
             {selected && <StatusDot paused={selectedPaused} />}
@@ -68,19 +123,7 @@ const PipelinePicker = ({
             >
               {selected?.name ?? "Select pipeline…"}
             </Text>
-            {selected && (
-              <Text
-                as="span"
-                fontSize="2xs"
-                color={selectedPaused ? "orange.700" : "green.700"}
-                flexShrink={0}
-                w="48px"
-                textAlign="left"
-                letterSpacing="0.02em"
-              >
-                {selectedPaused ? "Paused" : "Active"}
-              </Text>
-            )}
+            {selected && <PipelineStatusLabel pipeline={selected} />}
           </Flex>
           <Box
             as="span"
@@ -151,17 +194,7 @@ const PipelinePicker = ({
                         {p.name}
                       </Text>
                     </Flex>
-                    <Text
-                      as="span"
-                      fontSize="2xs"
-                      color={paused ? "orange.700" : "green.700"}
-                      flexShrink={0}
-                      w="48px"
-                      textAlign="left"
-                      letterSpacing="0.02em"
-                    >
-                      {paused ? "Paused" : "Active"}
-                    </Text>
+                    <PipelineStatusLabel pipeline={p} />
                   </Flex>
                 </Menu.Item>
               );

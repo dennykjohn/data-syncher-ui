@@ -29,6 +29,7 @@ import {
   MdChevronLeft,
   MdChevronRight,
   MdDelete,
+  MdDriveFileRenameOutline,
   MdEdit,
   MdPause,
   MdPlayArrow,
@@ -230,7 +231,10 @@ function resolveRunVisualStatus(
   if (nodeStatus === "completed") {
     return "completed";
   }
-  if (migOverall === "failed" || migOverall === "timeout") {
+  if (
+    (migOverall === "failed" || migOverall === "timeout") &&
+    runStatus !== "running"
+  ) {
     return "failed";
   }
   if (runNode?.status) {
@@ -1426,6 +1430,9 @@ const validationResultFromError = (err: unknown): PipelineValidationResult => {
 const Scheduling = () => {
   const [newPipelineDialogOpen, setNewPipelineDialogOpen] = useState(false);
   const [newPipelineName, setNewPipelineName] = useState("");
+  const [renamePipelineDialogOpen, setRenamePipelineDialogOpen] =
+    useState(false);
+  const [renamePipelineName, setRenamePipelineName] = useState("");
   const [selectedPipelineId, setSelectedPipelineId] = useState<number | null>(
     null,
   );
@@ -2065,6 +2072,48 @@ const Scheduling = () => {
     setNewPipelineDialogOpen(true);
   };
 
+  const openRenamePipelineDialog = () => {
+    if (!selectedPipeline) return;
+    setRenamePipelineName(selectedPipeline.name);
+    setRenamePipelineDialogOpen(true);
+  };
+
+  const handleRenamePipeline = async () => {
+    if (!selectedPipelineId || !selectedPipeline) return;
+    const trimmed = renamePipelineName.trim();
+    if (!trimmed) return;
+    if (trimmed === selectedPipeline.name) {
+      setRenamePipelineDialogOpen(false);
+      return;
+    }
+    if (
+      pipelines.some(
+        (p) =>
+          p.id !== selectedPipelineId &&
+          p.name.trim().toLowerCase() === trimmed.toLowerCase(),
+      )
+    ) {
+      toaster.error({
+        title: "Name already in use",
+        description: `A pipeline named "${trimmed}" already exists.`,
+      });
+      return;
+    }
+    try {
+      await patchPipeline.mutateAsync({ name: trimmed });
+      setRenamePipelineDialogOpen(false);
+      toaster.success({ title: "Pipeline renamed" });
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error ?? "Failed to rename pipeline.";
+      toaster.error({
+        title: "Failed to rename pipeline",
+        description: message,
+      });
+    }
+  };
+
   const handleCreatePipeline = async () => {
     const trimmed = newPipelineName.trim();
     let name = trimmed || suggestPipelineName(pipelines);
@@ -2376,6 +2425,19 @@ const Scheduling = () => {
               onSelect={selectPipeline}
               onPipelineHover={handlePipelinePrefetch}
             />
+            <Tooltip content="Rename pipeline" openDelay={200} showArrow>
+              <Box as="span" display="inline-flex" flexShrink={0}>
+                <IconButton
+                  size="sm"
+                  variant="outline"
+                  aria-label="Rename pipeline"
+                  onClick={openRenamePipelineDialog}
+                  disabled={!selectedPipelineId || patchPipeline.isPending}
+                >
+                  <MdDriveFileRenameOutline />
+                </IconButton>
+              </Box>
+            </Tooltip>
             <Button
               size="sm"
               colorPalette="brand"
@@ -2475,6 +2537,60 @@ const Scheduling = () => {
                   disabled={!newPipelineName.trim()}
                 >
                   Create pipeline
+                </Button>
+              </Dialog.Footer>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
+
+      <Dialog.Root
+        lazyMount
+        open={renamePipelineDialogOpen}
+        onOpenChange={(e) => setRenamePipelineDialogOpen(e.open)}
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content maxW="md">
+              <Dialog.Header>
+                <Dialog.Title>Rename pipeline</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <Text fontSize="sm" color="gray.600" mb={2}>
+                  Enter a new name for this pipeline.
+                </Text>
+                <Input
+                  value={renamePipelineName}
+                  size="sm"
+                  autoFocus
+                  placeholder="Pipeline name"
+                  onChange={(e) => setRenamePipelineName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void handleRenamePipeline();
+                    }
+                  }}
+                />
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Button
+                  variant="outline"
+                  onClick={() => setRenamePipelineDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  colorPalette="brand"
+                  onClick={() => void handleRenamePipeline()}
+                  loading={patchPipeline.isPending}
+                  disabled={
+                    !renamePipelineName.trim() ||
+                    renamePipelineName.trim() === selectedPipeline?.name
+                  }
+                >
+                  Save name
                 </Button>
               </Dialog.Footer>
             </Dialog.Content>
