@@ -73,6 +73,7 @@ export function pipelineStatusColor(status: string): string {
   const s = status.toLowerCase();
   if (s === "completed") return "green";
   if (s === "failed" || s === "timeout") return "red";
+  if (s === "queued" || s === "waiting") return "purple";
   if (s === "running" || s === "in_progress") return "blue";
   if (s === "skipped") return "orange";
   return "gray";
@@ -99,18 +100,21 @@ export function pickDefaultNodeTab(
 }
 
 export function resolvePipelineRunStatus(
-  run: Pick<PipelineRunDetail, "status" | "overall">,
+  run: Pick<PipelineRunDetail, "status" | "overall" | "waiting_for_flow_slot">,
 ): string {
   const top = (run.status || "").toLowerCase();
   const rolled = (run.overall?.status || "").toLowerCase();
+
+  // While the backend run is still active, stay "running" until it reaches a
+  // terminal status (retries may temporarily surface table error logs).
+  if (top === "running" || top === "in_progress") {
+    if (run.waiting_for_flow_slot) return "queued";
+    if (rolled === "completed") return "completed";
+    return top;
+  }
+
   if (top === "failed" || top === "timeout") return top;
   if (rolled === "failed" || rolled === "timeout") return rolled;
-  if (
-    (run.overall?.tables_failed ?? 0) > 0 ||
-    (run.overall?.nodes_failed ?? 0) > 0
-  ) {
-    return "failed";
-  }
   if (top === "completed") return "completed";
   if (rolled === "completed") return "completed";
   return top || rolled || "pending";
@@ -135,7 +139,7 @@ export function pipelineRunRefetchInterval(
   status: string | undefined,
 ): number | false {
   const s = (status || "").toLowerCase();
-  if (s === "running" || s === "in_progress") return 4000;
+  if (s === "running" || s === "in_progress" || s === "queued") return 4000;
   return false;
 }
 

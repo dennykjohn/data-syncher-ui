@@ -1301,6 +1301,7 @@ const SAPODataSchema = () => {
           loadMethodLocked={activeTableItem?.load_method_locked ?? false}
           firstSyncTimestamp={activeTableItem?.first_sync_timestamp ?? null}
           destinationName={context.destination_name}
+          isFileBasedDestination={context.is_file_based}
         />
       )}
 

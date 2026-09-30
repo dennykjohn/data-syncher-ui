@@ -18,8 +18,11 @@ import { IoMdTrash } from "react-icons/io";
 
 import { format } from "date-fns";
 
+import { isSnowflakeConnector } from "@/components/dashboard/helpers/helpers";
 import { Tooltip } from "@/components/ui/tooltip";
 import useDeleteDeltaTable from "@/queryOptions/connector/schema/useDeleteDeltaTable";
+
+import { normalizeConnectorName } from "../../../helpers";
 
 interface TargetSettings {
   output_file_name: string;
@@ -107,6 +110,8 @@ interface TargetSettingsModalProps {
   firstSyncTimestamp?: string | null;
   /** Name of the destination to customize target label (e.g. adls -> folder, snowflake -> table). */
   destinationName?: string;
+  /** From connector API — file export fields only apply when true (e.g. ADLS). */
+  isFileBasedDestination?: boolean;
 }
 
 const TargetSettingsModal = ({
@@ -123,6 +128,7 @@ const TargetSettingsModal = ({
   loadMethodLocked = false,
   firstSyncTimestamp = null,
   destinationName,
+  isFileBasedDestination,
 }: TargetSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState<TargetSettings>(() => {
     let loadMethod = settings.load_method || "initial";
@@ -147,6 +153,24 @@ const TargetSettingsModal = ({
       connectionId,
     });
 
+  const normalizedDest = destinationName?.toLowerCase() || "";
+  const isADLS =
+    normalizedDest.includes("adls") ||
+    normalizedDest.includes("lake") ||
+    normalizedDest.includes("azure") ||
+    normalizedDest.includes("storage");
+  const isSnowflake =
+    isSnowflakeConnector(normalizeConnectorName(destinationName)) ||
+    normalizedDest.includes("snowflake");
+  const showFileExportOptions =
+    isFileBasedDestination ??
+    (!isSnowflake &&
+      (isADLS ||
+        normalizedDest.includes("s3") ||
+        normalizedDest.includes("sharepoint") ||
+        normalizedDest.includes("sftp") ||
+        normalizedDest.includes("drive")));
+
   const handleSave = () => {
     const loadMethod = localSettings.load_method || "initial";
     const needsPartition = isDelta && loadMethod !== "initial";
@@ -154,9 +178,19 @@ const TargetSettingsModal = ({
       ...localSettings,
       delete_and_load:
         loadMethod === "initial" ? !!localSettings.delete_and_load : false,
-      partition_delta_by_date: needsPartition
-        ? localSettings.partition_delta_by_date
-        : false,
+      partition_delta_by_date: !showFileExportOptions
+        ? needsPartition
+          ? !!settings.partition_delta_by_date
+          : false
+        : needsPartition
+          ? localSettings.partition_delta_by_date
+          : false,
+      output_file_name: !showFileExportOptions
+        ? settings.output_file_name
+        : localSettings.output_file_name,
+      compression_method: !showFileExportOptions
+        ? settings.compression_method
+        : localSettings.compression_method,
       file_format: "parquet", // Always force parquet
     };
     onSave(finalSettings);
@@ -200,19 +234,7 @@ const TargetSettingsModal = ({
     }
   })();
 
-  const normalizedDest = destinationName?.toLowerCase() || "";
-  const isADLS =
-    normalizedDest.includes("adls") ||
-    normalizedDest.includes("lake") ||
-    normalizedDest.includes("azure") ||
-    normalizedDest.includes("storage");
-  const isSnowflake = normalizedDest.includes("snowflake");
-
-  const targetLabel = isADLS
-    ? "Target Folder name"
-    : isSnowflake
-      ? "Target Table name"
-      : "Target name";
+  const targetLabel = isADLS ? "Target Folder name" : "Target name";
 
   return (
     <>
@@ -311,7 +333,7 @@ const TargetSettingsModal = ({
                     </Flex>
                   </LabeledField>
 
-                  {/* Delete and Load Checkbox (only if load_method is initial) */}
+                  {/* Delete and Load (only if load_method is initial) */}
                   {currentLoadMethod === "initial" && (
                     <LockableCheckbox
                       label="Delete and Load"
@@ -321,77 +343,89 @@ const TargetSettingsModal = ({
                     />
                   )}
 
-                  {/* Partition Delta by Date Checkbox (only if isDelta and load_method is not initial) */}
-                  {showPartitionCheckbox && (
-                    <LockableCheckbox
-                      label="Partition Delta by Date"
-                      checked={!!localSettings.partition_delta_by_date}
-                      locked={isLoadMethodLocked}
-                      dimWhenLocked
-                      onChange={(v) =>
-                        patchSettings({ partition_delta_by_date: v })
-                      }
-                    />
-                  )}
+                  {/* File-export options only apply to file-based destinations (e.g. ADLS). */}
+                  {showFileExportOptions && (
+                    <>
+                      {/* Partition Delta by Date Checkbox (only if isDelta and load_method is not initial) */}
+                      {showPartitionCheckbox && (
+                        <LockableCheckbox
+                          label="Partition Delta by Date"
+                          checked={!!localSettings.partition_delta_by_date}
+                          locked={isLoadMethodLocked}
+                          dimWhenLocked
+                          onChange={(v) =>
+                            patchSettings({ partition_delta_by_date: v })
+                          }
+                        />
+                      )}
 
-                  {/* Target Name */}
-                  <LabeledField
-                    label={targetLabel}
-                    extra={
-                      formattedFirstSync && (
-                        <Text
-                          as="span"
-                          fontSize="xs"
-                          color="black"
-                          fontWeight="normal"
-                        >
-                          {"Initialisation => "}
-                          {formattedFirstSync}
-                        </Text>
-                      )
-                    }
-                  >
-                    <Input
-                      size="sm"
-                      disabled={isLoadMethodLocked}
-                      value={localSettings.output_file_name}
-                      onChange={(e) =>
-                        patchSettings({ output_file_name: e.target.value })
-                      }
-                      placeholder={targetLabel}
-                    />
-                  </LabeledField>
-
-                  {/* File Type */}
-                  <LabeledField label="File type">
-                    <NativeSelect.Root size="sm" disabled>
-                      <NativeSelect.Field
-                        {...{ disabled: true }}
-                        value="parquet"
-                      >
-                        <option value="parquet">Parquet</option>
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                  </LabeledField>
-
-                  {/* Compression Method */}
-                  <LabeledField label="Compression method">
-                    <NativeSelect.Root size="sm" disabled={isLoadMethodLocked}>
-                      <NativeSelect.Field
-                        {...{ disabled: isLoadMethodLocked }}
-                        value={localSettings.compression_method}
-                        onChange={(e) =>
-                          patchSettings({ compression_method: e.target.value })
+                      {/* Target Name */}
+                      <LabeledField
+                        label={targetLabel}
+                        extra={
+                          formattedFirstSync && (
+                            <Text
+                              as="span"
+                              fontSize="xs"
+                              color="black"
+                              fontWeight="normal"
+                            >
+                              {"Initialisation => "}
+                              {formattedFirstSync}
+                            </Text>
+                          )
                         }
                       >
-                        <option value="none">None</option>
-                        <option value="gzip">Gzip</option>
-                        <option value="snappy">Snappy</option>
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                  </LabeledField>
+                        <Input
+                          size="sm"
+                          disabled={isLoadMethodLocked}
+                          value={localSettings.output_file_name}
+                          onChange={(e) =>
+                            patchSettings({
+                              output_file_name: e.target.value,
+                            })
+                          }
+                          placeholder={targetLabel}
+                        />
+                      </LabeledField>
+
+                      {/* File Type */}
+                      <LabeledField label="File type">
+                        <NativeSelect.Root size="sm" disabled>
+                          <NativeSelect.Field
+                            {...{ disabled: true }}
+                            value="parquet"
+                          >
+                            <option value="parquet">Parquet</option>
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                      </LabeledField>
+
+                      {/* Compression Method */}
+                      <LabeledField label="Compression method">
+                        <NativeSelect.Root
+                          size="sm"
+                          disabled={isLoadMethodLocked}
+                        >
+                          <NativeSelect.Field
+                            {...{ disabled: isLoadMethodLocked }}
+                            value={localSettings.compression_method}
+                            onChange={(e) =>
+                              patchSettings({
+                                compression_method: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="none">None</option>
+                            <option value="gzip">Gzip</option>
+                            <option value="snappy">Snappy</option>
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                      </LabeledField>
+                    </>
+                  )}
                 </Flex>
               </Dialog.Body>
 

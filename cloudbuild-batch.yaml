@@ -5,6 +5,8 @@ steps:
       - build
       - --build-arg
       - VITE_BUILD_MODE=batch
+      - --build-arg
+      - CACHEBUST=20260930-sap-snowflake-delete-and-load
       - -t
       - gcr.io/datasyncher-batch/datasyncher-frontend:batch
       - -f

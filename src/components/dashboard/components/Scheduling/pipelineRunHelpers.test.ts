@@ -154,7 +154,7 @@ describe("pipelineRunHelpers", () => {
       ).toBe("failed");
     });
 
-    it("derives failed from overall tables_failed while run is running", () => {
+    it("stays running while backend run is active even if tables_failed > 0", () => {
       expect(
         resolvePipelineRunStatus({
           status: "running",
@@ -166,10 +166,10 @@ describe("pipelineRunHelpers", () => {
             tables_total: 5,
             tables_completed: 1,
             tables_failed: 1,
-            status: "running",
+            status: "failed",
           },
         }),
-      ).toBe("failed");
+      ).toBe("running");
     });
   });
 
