@@ -92,8 +92,10 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
   const nodeProgress = computeNodeProgress(overall);
   const tableProgress = computeTableProgress(overall);
   const statusColor = pipelineStatusColor(displayStatus);
+  const isQueued = displayStatus === "queued";
   const isRunning =
     displayStatus === "running" || displayStatus === "in_progress";
+  const isActive = isRunning || isQueued;
 
   const activeNodeIds = run.current_node_ids?.length
     ? run.current_node_ids
@@ -110,10 +112,10 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
 
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
-    if (!isRunning || !run.started_at) return;
+    if (!isActive || !run.started_at) return;
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [isRunning, run.started_at]);
+  }, [isActive, run.started_at]);
 
   const startedLabel = formatPipelineRunTimestampCompact(run.started_at);
   const finishedLabel = formatPipelineRunTimestampCompact(run.finished_at);
@@ -127,7 +129,11 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
 
   const centerParts = useMemo(() => {
     const parts: string[] = [];
-    if (runningLabel) parts.push(`Running: ${runningLabel}`);
+    if (isQueued) {
+      parts.push("Queued — waiting for a free concurrent flow slot");
+    } else if (runningLabel) {
+      parts.push(`Running: ${runningLabel}`);
+    }
     if (startedLabel) parts.push(`Started ${startedLabel}`);
     if (finishedLabel) {
       parts.push(`Ended ${finishedLabel}`);
@@ -136,7 +142,14 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
       parts.push(`Elapsed ${durationLabel}`);
     }
     return parts;
-  }, [runningLabel, startedLabel, finishedLabel, durationLabel, isRunning]);
+  }, [
+    runningLabel,
+    startedLabel,
+    finishedLabel,
+    durationLabel,
+    isRunning,
+    isQueued,
+  ]);
 
   return (
     <Box
@@ -190,7 +203,7 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
           {overall.nodes_completed}/{overall.nodes_total} nodes ·{" "}
           {overall.tables_completed + (overall.tables_failed ?? 0)}/
           {overall.tables_total} tables
-          {(overall.tables_failed ?? 0) > 0
+          {!isRunning && (overall.tables_failed ?? 0) > 0
             ? ` (${overall.tables_failed} failed)`
             : ""}
         </Text>
@@ -203,7 +216,7 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
           completed={overall.nodes_completed}
           total={overall.nodes_total}
           colorPalette={statusColor}
-          animated={isRunning}
+          animated={isActive}
         />
         {overall.tables_total > 0 && (
           <RunMetricProgress
@@ -212,17 +225,11 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
             completed={overall.tables_completed}
             total={overall.tables_total}
             colorPalette="blue"
-            animated={isRunning}
+            animated={isActive}
             barHeight="5px"
           />
         )}
       </Flex>
-
-      {run.error && (
-        <Text fontSize="2xs" color="red.600" mt={2} truncate title={run.error}>
-          Node error: {run.error} - click Execution logs for details
-        </Text>
-      )}
     </Box>
   );
 };

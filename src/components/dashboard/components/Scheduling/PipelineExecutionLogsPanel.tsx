@@ -85,12 +85,6 @@ const PipelineNodeExecutionTab = ({
         </Text>
       </Flex>
 
-      {node.error && (
-        <Text fontSize="xs" color="red.600" flexShrink={0}>
-          {node.error}
-        </Text>
-      )}
-
       {migrationStatus?.overall_warning_message && (
         <Text fontSize="xs" color="orange.700" flexShrink={0}>
           {migrationStatus.overall_warning_message}

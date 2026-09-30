@@ -158,6 +158,9 @@ const MigrationProgressTable = ({
               (!isSuccess && !isFailed && !isWarning && !isSkipped);
 
             const displayError = table.error_message || table.message || "";
+            const showErrorTooltip =
+              (isFailed || (isSkipped && displayError)) &&
+              Boolean(displayError);
 
             // Format times if available
             const startTime = table.start_time
@@ -208,117 +211,136 @@ const MigrationProgressTable = ({
                   borderColor="gray.200"
                 >
                   <Flex alignItems="center" justifyContent="center">
-                    <Tooltip
-                      content={
-                        <Flex alignItems="flex-start" gap={2}>
-                          <Box
-                            bg="red.500"
-                            borderRadius="full"
-                            p={1}
-                            mt={0.5}
-                            minW="16px"
-                            h="16px"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
-                          >
+                    {isSuccess && (
+                      <Image
+                        src={CheckIcon}
+                        boxSize="20px"
+                        objectFit="contain"
+                      />
+                    )}
+                    {isFailed && (
+                      <Tooltip
+                        content={
+                          <Flex alignItems="flex-start" gap={2}>
+                            <Box
+                              bg="red.500"
+                              borderRadius="full"
+                              p={1}
+                              mt={0.5}
+                              minW="16px"
+                              h="16px"
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              <Text
+                                fontSize="xs"
+                                fontWeight="bold"
+                                lineHeight={1}
+                              >
+                                !
+                              </Text>
+                            </Box>
                             <Text
                               fontSize="xs"
-                              fontWeight="bold"
-                              lineHeight={1}
+                              fontWeight="medium"
+                              flex={1}
+                              wordBreak="break-word"
                             >
-                              !
-                            </Text>
-                          </Box>
-                          <Text
-                            fontSize="xs"
-                            fontWeight="medium"
-                            flex={1}
-                            wordBreak="break-word"
-                          >
-                            {isSkipped
-                              ? displayError ||
-                                "Skipped — table refresh/reload is in progress"
-                              : displayError
+                              {displayError
                                 ? `Error: ${displayError}`
                                 : "Failed"}
-                          </Text>
-                          <Box
-                            as="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (displayError) {
-                                navigator.clipboard.writeText(displayError);
-                                toaster.success({
-                                  title: "Copied to clipboard",
-                                  description: "Error message copied",
-                                });
-                              }
-                            }}
-                            _hover={{
-                              color: "gray.300",
-                              bg: "whiteAlpha.200",
-                            }}
-                            cursor="pointer"
-                            p={1}
-                            borderRadius="md"
-                            transition="all 0.2s"
-                            title="Copy error message"
-                            color="white"
-                          >
-                            <LuCopy size={16} />
-                          </Box>
-                        </Flex>
-                      }
-                      interactive={true}
-                      closeOnPointerDown={false}
-                      disabled={!displayError}
-                      showArrow
-                      contentProps={{
-                        bg: "gray.800",
-                        color: "white",
-                        p: 3,
-                        borderRadius: "md",
-                        maxW: "500px",
-                      }}
-                    >
-                      <Box cursor={displayError ? "pointer" : "default"}>
-                        {isSuccess && (
-                          <Image
-                            src={CheckIcon}
-                            boxSize="20px"
-                            objectFit="contain"
-                          />
-                        )}
-                        {isFailed && (
+                            </Text>
+                            {displayError ? (
+                              <Box
+                                as="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(displayError);
+                                  toaster.success({
+                                    title: "Copied to clipboard",
+                                    description: "Error message copied",
+                                  });
+                                }}
+                                _hover={{
+                                  color: "gray.300",
+                                  bg: "whiteAlpha.200",
+                                }}
+                                cursor="pointer"
+                                p={1}
+                                borderRadius="md"
+                                transition="all 0.2s"
+                                title="Copy error message"
+                                color="white"
+                              >
+                                <LuCopy size={16} />
+                              </Box>
+                            ) : null}
+                          </Flex>
+                        }
+                        interactive={Boolean(displayError)}
+                        closeOnPointerDown={false}
+                        disabled={!displayError}
+                        showArrow
+                        contentProps={{
+                          bg: "gray.800",
+                          color: "white",
+                          p: 3,
+                          borderRadius: "md",
+                          maxW: "500px",
+                        }}
+                      >
+                        <Box cursor={displayError ? "help" : "default"}>
                           <Image
                             src={ErrorIcon}
                             boxSize="20px"
                             objectFit="contain"
                           />
-                        )}
-                        {isWarning && (
-                          <Box color="orange.500">
-                            <MdWarning size={20} />
-                          </Box>
-                        )}
-                        {isSkipped && (
-                          <Box
-                            color="gray.500"
-                            title={table.error_message || "Skipped"}
-                          >
-                            <MdWarning size={20} />
-                          </Box>
-                        )}
-                        {isPending && (
-                          <Image
-                            src={SandtimeIcon}
-                            boxSize="20px"
-                            objectFit="contain"
-                          />
-                        )}
+                        </Box>
+                      </Tooltip>
+                    )}
+                    {isWarning && (
+                      <Box color="orange.500">
+                        <MdWarning size={20} />
                       </Box>
-                    </Tooltip>
+                    )}
+                    {isSkipped &&
+                      (showErrorTooltip ? (
+                        <Tooltip
+                          content={
+                            <Text
+                              fontSize="xs"
+                              fontWeight="medium"
+                              wordBreak="break-word"
+                            >
+                              {displayError}
+                            </Text>
+                          }
+                          showArrow
+                          contentProps={{
+                            bg: "gray.800",
+                            color: "white",
+                            p: 3,
+                            borderRadius: "md",
+                            maxW: "500px",
+                          }}
+                        >
+                          <Box color="gray.500" cursor="help">
+                            <MdWarning size={20} />
+                          </Box>
+                        </Tooltip>
+                      ) : (
+                        <Box color="gray.500" title="Skipped">
+                          <MdWarning size={20} />
+                        </Box>
+                      ))}
+                    {isPending && (
+                      <Image
+                        src={SandtimeIcon}
+                        boxSize="20px"
+                        objectFit="contain"
+                      />
+                    )}
                   </Flex>
                 </Table.Cell>
                 <Table.Cell
