@@ -10,7 +10,7 @@ import { type PipelineDetail } from "@/types/pipeline";
 type PipelinePickerProps = {
   pipelines: PipelineDetail[];
   selectedPipelineId: number | null;
-  onSelect: (_pipelineId: number) => void;
+  onSelect: (_pipelineId: number | null) => void;
   /** Prefetch runs when hovering a pipeline in the menu. */
   onPipelineHover?: (_pipelineId: number) => void;
   onRename?: () => void;
