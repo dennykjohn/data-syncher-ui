@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
+  Box,
   Button,
   Checkbox,
   CloseButton,
@@ -21,8 +22,14 @@ import { format } from "date-fns";
 import { isSnowflakeConnector } from "@/components/dashboard/helpers/helpers";
 import { Tooltip } from "@/components/ui/tooltip";
 import useDeleteDeltaTable from "@/queryOptions/connector/schema/useDeleteDeltaTable";
+import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
+import { type RowFilterConfig } from "@/types/connectors";
 
 import { normalizeConnectorName } from "../../../helpers";
+import {
+  getEffectiveRowFilter,
+  getNonKeyFilterColumns,
+} from "./utils/filterUtils";
 
 interface TargetSettings {
   output_file_name: string;
@@ -31,6 +38,7 @@ interface TargetSettings {
   file_format: string;
   compression_method: string;
   delete_and_load?: boolean;
+  row_filter_config?: RowFilterConfig | null;
 }
 
 const LabeledField = ({
@@ -106,6 +114,8 @@ interface TargetSettingsModalProps {
   isSaving?: boolean;
   /** True when the pipeline has locked the load_method (delta tracking started). */
   loadMethodLocked?: boolean;
+  /** True when initial sync run completed. */
+  initialCompletedFlag?: boolean;
   /** ISO timestamp of the first successful run — shown in the reset confirmation dialog. */
   firstSyncTimestamp?: string | null;
   /** Name of the destination to customize target label (e.g. adls -> folder, snowflake -> table). */
@@ -126,6 +136,7 @@ const TargetSettingsModal = ({
   onSave,
   isSaving = false,
   loadMethodLocked = false,
+  initialCompletedFlag = false,
   firstSyncTimestamp = null,
   destinationName,
   isFileBasedDestination,
@@ -145,13 +156,33 @@ const TargetSettingsModal = ({
   const patchSettings = (patch: Partial<TargetSettings>) =>
     setLocalSettings((prev) => ({ ...prev, ...patch }));
 
-  // State for the delete/reset confirmation dialog
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
 
   const { mutate: deleteDeltaTable, isPending: isDeletingDelta } =
     useDeleteDeltaTable({
       connectionId,
     });
+
+  const { data: fieldsData } = useFetchTableFields(
+    connectionId,
+    tableName,
+    open,
+  );
+
+  const effectiveRowFilterConfig = useMemo(
+    () => getEffectiveRowFilter(fieldsData),
+    [fieldsData],
+  );
+
+  const nonKeyColumns = useMemo(
+    () =>
+      getNonKeyFilterColumns(
+        effectiveRowFilterConfig,
+        fieldsData?.table_fields,
+        fieldsData?.primary_keys,
+      ),
+    [effectiveRowFilterConfig, fieldsData],
+  );
 
   const normalizedDest = destinationName?.toLowerCase() || "";
   const isADLS =
@@ -174,6 +205,10 @@ const TargetSettingsModal = ({
   const handleSave = () => {
     const loadMethod = localSettings.load_method || "initial";
     const needsPartition = isDelta && loadMethod !== "initial";
+    const isDeltaMode =
+      loadMethod === "initial_delta" || loadMethod === "delta";
+    const shouldClearFilter = isDeltaMode && nonKeyColumns.length > 0;
+
     const finalSettings = {
       ...localSettings,
       delete_and_load:
@@ -191,24 +226,21 @@ const TargetSettingsModal = ({
       compression_method: !showFileExportOptions
         ? settings.compression_method
         : localSettings.compression_method,
-      file_format: "parquet", // Always force parquet
+      file_format: "parquet",
+      row_filter_config: shouldClearFilter ? null : undefined,
     };
     onSave(finalSettings);
   };
 
   const currentLoadMethod = localSettings.load_method || "initial";
+  const isDeltaMode =
+    currentLoadMethod === "initial_delta" || currentLoadMethod === "delta";
+  const hasNonKeyFilterWarning = isDeltaMode && nonKeyColumns.length > 0;
   const showPartitionCheckbox = isDelta && currentLoadMethod !== "initial";
 
-  /**
-   * The load method selector is locked when:
-   * - The backend has set load_method_locked=True (delta tracking started), OR
-   * - The legacy status-based lock condition (status=completed + delta/initial_delta)
-   *
-   * loadMethodLocked from the backend is authoritative; the status fallback
-   * is kept for backwards compatibility.
-   */
   const isLoadMethodLocked =
     loadMethodLocked ||
+    initialCompletedFlag ||
     !!firstSyncTimestamp ||
     (status === "completed" &&
       (currentLoadMethod === "initial_delta" || currentLoadMethod === "delta"));
@@ -221,10 +253,6 @@ const TargetSettingsModal = ({
     setIsConfirmResetOpen(false);
   };
 
-  /**
-   * Format firstSyncTimestamp into a human-readable string for the
-   * confirmation dialog.  Falls back gracefully if null / invalid.
-   */
   const formattedFirstSync = (() => {
     if (!firstSyncTimestamp) return null;
     try {
@@ -234,6 +262,9 @@ const TargetSettingsModal = ({
     }
   })();
 
+  const deleteOrTruncateLabel = isSnowflake
+    ? "Truncate and Load"
+    : "Delete and Load";
   const targetLabel = isADLS ? "Target Folder name" : "Target name";
 
   return (
@@ -276,8 +307,44 @@ const TargetSettingsModal = ({
 
               <Dialog.Body p={3} overflowY="auto">
                 <Flex width="100%" direction="column" gap={2}>
-                  {/* Load Method */}
-                  <LabeledField label="Load method">
+                  {hasNonKeyFilterWarning && (
+                    <Box
+                      bg="orange.50"
+                      borderColor="orange.200"
+                      borderWidth="1px"
+                      borderRadius="md"
+                      p={3}
+                    >
+                      <Text
+                        fontSize="xs"
+                        color="orange.800"
+                        fontWeight="medium"
+                      >
+                        <strong>Warning:</strong> This table has row filter
+                        condition(s) set on non-key column(s) (
+                        {nonKeyColumns.join(", ")}). Initial + Delta and Delta
+                        Only syncs support filtering on Key columns only. Saving
+                        these settings will clear the filter.
+                      </Text>
+                    </Box>
+                  )}
+
+                  <LabeledField
+                    label="Load method"
+                    extra={
+                      isSnowflake && formattedFirstSync ? (
+                        <Text
+                          as="span"
+                          fontSize="xs"
+                          color="black"
+                          fontWeight="normal"
+                        >
+                          {"Initialisation => "}
+                          {formattedFirstSync}
+                        </Text>
+                      ) : undefined
+                    }
+                  >
                     <Flex align="center" gap={2} width="100%">
                       <NativeSelect.Root
                         size="sm"
@@ -306,7 +373,6 @@ const TargetSettingsModal = ({
                         <NativeSelect.Indicator />
                       </NativeSelect.Root>
 
-                      {/* Reset (delete) button — only shown when the load method is locked */}
                       {isLoadMethodLocked && (
                         <Tooltip content="Clear table data and unlock settings">
                           <IconButton
@@ -333,20 +399,17 @@ const TargetSettingsModal = ({
                     </Flex>
                   </LabeledField>
 
-                  {/* Delete and Load (only if load_method is initial) */}
                   {currentLoadMethod === "initial" && (
                     <LockableCheckbox
-                      label="Delete and Load"
+                      label={deleteOrTruncateLabel}
                       checked={!!localSettings.delete_and_load}
                       locked={isLoadMethodLocked}
                       onChange={(v) => patchSettings({ delete_and_load: v })}
                     />
                   )}
 
-                  {/* File-export options only apply to file-based destinations (e.g. ADLS). */}
                   {showFileExportOptions && (
                     <>
-                      {/* Partition Delta by Date Checkbox (only if isDelta and load_method is not initial) */}
                       {showPartitionCheckbox && (
                         <LockableCheckbox
                           label="Partition Delta by Date"
@@ -359,7 +422,6 @@ const TargetSettingsModal = ({
                         />
                       )}
 
-                      {/* Target Name */}
                       <LabeledField
                         label={targetLabel}
                         extra={
@@ -389,7 +451,6 @@ const TargetSettingsModal = ({
                         />
                       </LabeledField>
 
-                      {/* File Type */}
                       <LabeledField label="File type">
                         <NativeSelect.Root size="sm" disabled>
                           <NativeSelect.Field
@@ -402,7 +463,6 @@ const TargetSettingsModal = ({
                         </NativeSelect.Root>
                       </LabeledField>
 
-                      {/* Compression Method */}
                       <LabeledField label="Compression method">
                         <NativeSelect.Root
                           size="sm"
@@ -474,7 +534,6 @@ const TargetSettingsModal = ({
         </Portal>
       </Dialog.Root>
 
-      {/* ── Reset Confirmation Dialog ─────────────────────────────────────── */}
       <Dialog.Root
         lazyMount
         open={isConfirmResetOpen}

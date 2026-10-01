@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 interface FetchTableFieldsResponse {
   table_fields: ConnectorTable["table_fields"];
   primary_keys: string[];
+  row_filter_config?: ConnectorTable["row_filter_config"];
+  row_filter?: ConnectorTable["row_filter"];
 }
 
 const fetchTableFields = async (

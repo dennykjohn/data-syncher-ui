@@ -1,6 +1,9 @@
 export type FieldConfig = {
   name: string;
   label: string;
+  description?: string;
+  help_text?: string;
+  placeholder?: string;
   type:
     | "CharField"
     | "ChoiceField"
@@ -14,7 +17,7 @@ export type FieldConfig = {
    * Optional choices for dropdown fields.
    * Each choice should have a string value and a display.
    */
-  choices?: Array<{ value: string; display: string }>;
+  choices?: Array<{ value: string; display: string; description?: string }>;
   required: boolean;
   read_only?: boolean; // If true, field will be read-only in edit mode
   widget?: string | null;
@@ -33,6 +36,7 @@ export type FieldConfig = {
   /** Show field only when every rule matches (AND). */
   visibility_all_of?: Array<{
     depend_on: string;
+    description?: string;
     dependency: string;
   }>;
 };

@@ -7,6 +7,7 @@ import MicrosoftDynamicsIllustration from "@/assets/images/ms-dynamics.svg";
 import PostgreSQLIllustration from "@/assets/images/postgres.svg";
 import SalesforceSandboxIllustration from "@/assets/images/salesforce-sandbox.svg";
 import SalesForceIllustration from "@/assets/images/salesforce.svg";
+import SAPODataIllustration from "@/assets/images/sap_odata.svg";
 import SFTPIllustration from "@/assets/images/sftp.svg";
 import SharepointIllustration from "@/assets/images/sharepoint.svg";
 import SnowFlakeIllustration from "@/assets/images/snowflake.svg";
@@ -22,6 +23,9 @@ const IMAGE_MAP = {
   mysql: MySQLIllustration,
   amazons3: AmazonS3Illustration,
   googlereviews: GoogleReviewIllustration,
+  sapodata: SAPODataIllustration,
+  sap_odata: SAPODataIllustration,
+  sap: SAPODataIllustration,
   // File-based sources (also valid as destinations)
   sftp: SFTPIllustration,
   googledrive: GoogleDriveIllustration,
@@ -70,6 +74,8 @@ export const getSourceImage = (name: string, fallback?: string): string => {
     amazons3: AmazonS3Illustration,
     sftp: SFTPIllustration,
     sharepoint: SharepointIllustration,
+    sapodata: SAPODataIllustration,
+    sap: SAPODataIllustration,
   };
 
   for (const [key, image] of Object.entries(partialMatches)) {

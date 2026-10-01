@@ -19,7 +19,12 @@ import {
 } from "@chakra-ui/react";
 
 import { GoPlus } from "react-icons/go";
-import { IoMdOptions, IoMdPlay, IoMdSettings } from "react-icons/io";
+import {
+  IoMdFunnel,
+  IoMdOptions,
+  IoMdPlay,
+  IoMdSettings,
+} from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
 import { TbDelta } from "react-icons/tb";
@@ -51,6 +56,10 @@ import BatchGroupedPanel from "./Batches/BatchGroupedPanel";
 import RowFilterModal from "./RowFilterModal";
 import TargetSettingsModal from "./TargetSettingsModal";
 import { isConnectorTableMarkedSelected } from "./schemaSelection";
+import {
+  getEffectiveRowFilter,
+  hasRowFilter as hasRowFilterUtil,
+} from "./utils/filterUtils";
 
 interface EntityGroup {
   entityName: string;
@@ -135,6 +144,16 @@ const getErrorMessage = (err: unknown, defaultMsg: string): string => {
   return defaultMsg;
 };
 
+const isFilterableColumn = (info: unknown): boolean => {
+  if (typeof info === "object" && info !== null) {
+    const fieldObj = info as Record<string, unknown>;
+    return Boolean(
+      fieldObj.filterable ?? fieldObj.is_filterable ?? fieldObj.isFilterable,
+    );
+  }
+  return false;
+};
+
 const ColumnList = ({
   tableName,
   connectionId,
@@ -180,6 +199,7 @@ const ColumnList = ({
     <VStack align="stretch" pl={8} gap={1} py={1}>
       {fields.map(([name, info]) => {
         const isPK = isPrimaryKey(name, info);
+        const isFilterable = isFilterableColumn(info);
         const dataType =
           typeof info === "string"
             ? info
@@ -191,6 +211,17 @@ const ColumnList = ({
               <Text fontSize="xs" color="yellow.600">
                 🔑
               </Text>
+            )}
+            {isFilterable && (
+              <Tooltip content="Filterable column">
+                <Box
+                  display="inline-flex"
+                  alignItems="center"
+                  color="brand.600"
+                >
+                  <IoMdFunnel size={14} />
+                </Box>
+              </Tooltip>
             )}
             <Text
               fontSize="sm"
@@ -245,12 +276,7 @@ const EntityAccordion = ({
   const { entityName, tableItem } = entity;
   const isSelected = selectedTables.includes(tableItem.table);
   const isLocked = isSaving || isAssigningTables;
-  const hasRowFilter = !!(
-    (tableItem.row_filter_config?.conditions &&
-      tableItem.row_filter_config.conditions.length > 0) ||
-    (tableItem.row_filter?.conditions &&
-      tableItem.row_filter.conditions.length > 0)
-  );
+  const hasRowFilter = hasRowFilterUtil(tableItem);
   const showEntityActions = isSelected || selectionLocked;
 
   const handleEntityCheckedChange = (checked: boolean) => {
@@ -581,6 +607,7 @@ const SAPODataSchema = () => {
     file_format: string;
     compression_method: string;
     delete_and_load?: boolean;
+    row_filter_config?: RowFilterConfig | null;
   }) => {
     if (!activeTableForSettings) return;
     setIsUpdatingSettings(true);
@@ -596,6 +623,8 @@ const SAPODataSchema = () => {
         title: "Settings saved successfully",
       });
 
+      const isFilterCleared = settings.row_filter_config === null;
+
       // Optimistically update the UI cache
       queryClient.setQueryData(
         ["ConnectorTable", context.connection_id],
@@ -608,6 +637,9 @@ const SAPODataSchema = () => {
                 return {
                   ...t,
                   ...settings,
+                  ...(isFilterCleared
+                    ? { row_filter_config: null, row_filter: null }
+                    : {}),
                 };
               }
               return t;
@@ -616,9 +648,31 @@ const SAPODataSchema = () => {
         },
       );
 
-      // Optionally trigger a background refetch
+      // Optimistically update tableFields cache if filter was cleared
+      if (isFilterCleared) {
+        queryClient.setQueryData(
+          ["tableFields", context.connection_id, activeTableForSettings],
+          (oldData: Record<string, unknown> | undefined) => {
+            if (!oldData) return oldData;
+            return {
+              ...oldData,
+              row_filter_config: null,
+              row_filter: null,
+            };
+          },
+        );
+      }
+
+      // Trigger background refetches
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", context.connection_id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "tableFields",
+          context.connection_id,
+          activeTableForSettings,
+        ],
       });
       setIsSettingsModalOpen(false);
       setActiveTableForSettings(null);
@@ -1299,6 +1353,9 @@ const SAPODataSchema = () => {
           isSaving={isUpdatingSettings}
           onSave={handleSaveTargetSettings}
           loadMethodLocked={activeTableItem?.load_method_locked ?? false}
+          initialCompletedFlag={
+            activeTableItem?.initial_completed_flag ?? false
+          }
           firstSyncTimestamp={activeTableItem?.first_sync_timestamp ?? null}
           destinationName={context.destination_name}
           isFileBasedDestination={context.is_file_based}
@@ -1314,10 +1371,8 @@ const SAPODataSchema = () => {
           }}
           tableName={activeTableForFilter}
           connectionId={context.connection_id}
-          initialRowFilter={
-            activeFilterTableItem?.row_filter_config ||
-            activeFilterTableItem?.row_filter
-          }
+          initialRowFilter={getEffectiveRowFilter(activeFilterTableItem)}
+          loadMethod={activeFilterTableItem?.load_method || "initial"}
           isInitialSyncDone={!!activeFilterTableItem?.first_sync_timestamp}
           onSave={handleSaveRowFilter}
           isSaving={isSavingFilter}

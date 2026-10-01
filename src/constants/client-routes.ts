@@ -45,6 +45,7 @@ const ClientRoutes = {
     BILLING: "billing",
     EMAIL: "communication-support",
     PROFILE: "profile",
+    AGENT_DOWNLOADS: "agent-downloads",
   },
 } as const;
 export default ClientRoutes;

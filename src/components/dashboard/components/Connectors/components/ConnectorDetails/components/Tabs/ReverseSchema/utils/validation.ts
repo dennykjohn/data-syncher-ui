@@ -18,8 +18,12 @@ export const fieldsMatchByName = (
 
 export const isPrimaryKey = (
   fieldName: string,
-  fieldInfo: string | { data_type?: string; is_primary_key?: boolean },
+  fieldInfo: string | { data_type?: string; is_primary_key?: boolean } | null,
+  primaryKeys?: string[],
 ): boolean => {
+  if (primaryKeys && Array.isArray(primaryKeys) && primaryKeys.length > 0) {
+    return primaryKeys.includes(fieldName);
+  }
   if (
     typeof fieldInfo === "object" &&
     typeof fieldInfo?.is_primary_key === "boolean"

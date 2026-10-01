@@ -24,10 +24,14 @@ import { IoMdAdd, IoMdTrash } from "react-icons/io";
 
 import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
 import {
-  type FilterCondition,
+  type BasicFilterCondition,
+  type FilterNode,
   type RowFilterConfig,
   type TableFieldInfo,
 } from "@/types/connectors";
+
+import { isPrimaryKey } from "../ReverseSchema/utils/validation";
+import { getEffectiveRowFilter } from "./utils/filterUtils";
 
 interface RowFilterModalProps {
   open: boolean;
@@ -38,6 +42,7 @@ interface RowFilterModalProps {
   onSave: (_config: RowFilterConfig | null) => Promise<void>;
   isSaving?: boolean;
   isInitialSyncDone?: boolean;
+  loadMethod?: string | null;
 }
 
 const FILTER_TYPE_BY_EDM_TYPE: Record<string, string | null> = {
@@ -55,7 +60,7 @@ const FILTER_TYPE_BY_EDM_TYPE: Record<string, string | null> = {
   "Edm.DateTime": "datetime",
   "Edm.DateTimeOffset": "datetime",
   "Edm.Time": "time",
-  "Edm.Binary": null,
+  "Edm.Binary": "string",
 };
 
 const FieldLabel = ({ children }: { children: React.ReactNode }) => (
@@ -161,6 +166,28 @@ const normalizeOperator = (op: string): string => {
   return OP_ALIASES[norm] ?? norm;
 };
 
+const formatTypedValue = (
+  val: string | number | boolean | unknown,
+  edmType: string,
+): string | number | boolean => {
+  if (val === null || val === undefined) return "";
+  const mappedType = FILTER_TYPE_BY_EDM_TYPE[edmType] || "string";
+
+  if (mappedType === "boolean") {
+    if (typeof val === "boolean") return val;
+    if (String(val).toLowerCase() === "true") return true;
+    if (String(val).toLowerCase() === "false") return false;
+    return String(val);
+  }
+  if (mappedType === "numeric") {
+    if (typeof val === "number") return val;
+    const num = Number(val);
+    if (!isNaN(num) && String(val).trim() !== "") return num;
+    return String(val);
+  }
+  return String(val);
+};
+
 const COMMON_COMPARISON_OPS = [
   { label: "Equal to (EQ)", value: "eq" },
   { label: "Not equal to (NE)", value: "ne" },
@@ -172,10 +199,7 @@ const COMMON_COMPARISON_OPS = [
 ];
 
 const OPERATORS_BY_TYPE: Record<string, { label: string; value: string }[]> = {
-  boolean: [
-    { label: "Equal to (EQ)", value: "eq" },
-    { label: "Not equal to (NE)", value: "ne" },
-  ],
+  boolean: [{ label: "Equal to (EQ)", value: "eq" }],
   numeric: COMMON_COMPARISON_OPS,
   datetime: COMMON_COMPARISON_OPS,
   time: COMMON_COMPARISON_OPS,
@@ -183,9 +207,11 @@ const OPERATORS_BY_TYPE: Record<string, { label: string; value: string }[]> = {
     { label: "Equal to (EQ)", value: "eq" },
     { label: "Not equal to (NE)", value: "ne" },
     { label: "In (IN)", value: "in" },
-    { label: "Substring of (Substringof)", value: "substringof" },
+    { label: "Greater than (GT)", value: "gt" },
+    { label: "Greater than or equal to (GE)", value: "ge" },
+    { label: "Less than (LT)", value: "lt" },
+    { label: "Less than or equal to (LE)", value: "le" },
     { label: "Starts with (Startswith)", value: "startswith" },
-    { label: "Ends with (Endswith)", value: "endswith" },
   ],
 };
 
@@ -654,6 +680,7 @@ const FlexibleDateTimePicker = ({
 
 interface UICondition {
   id: string;
+  isNot?: boolean;
   column: string;
   mode: "exact" | "range" | "multiple";
   operator: string;
@@ -951,104 +978,68 @@ const FilterConditionEditor = ({
     </Flex>
   );
 };
-const parseBackendToUI = (
-  backendConds: FilterCondition[],
+const parseSingleNodeToUI = (
+  node: FilterNode,
   tableFields: Record<string, TableFieldInfo | string>,
+  isNotParent = false,
 ): UICondition[] => {
-  const uiConds: UICondition[] = [];
-  let i = 0;
-  while (i < backendConds.length) {
-    const current = backendConds[i];
-    const col = current.column;
-    const info = (tableFields as Record<string, Record<string, unknown>>)[col];
-    const restriction =
-      typeof info === "object" && info !== null
-        ? (info.filter_restriction as string)
-        : null;
-    const colType = getFieldType(info || "string");
+  if (!node || typeof node !== "object") return [];
 
-    const detectGranularity = (
-      val: string,
-    ): "year" | "month" | "date" | "datetime-local" => {
-      if (!val) return "date";
-      if (val.length === 4) return "year";
-      if (val.length === 7 && val.includes("-")) return "month";
-      if (val.length === 10 && val.includes("-")) return "date";
-      if (val.includes("T")) return "datetime-local";
-      return "date";
-    };
+  if ("not" in node && node.not) {
+    return parseSingleNodeToUI(node.not, tableFields, true);
+  }
 
-    // Check for interval-boundaries (range)
-    if (
-      (restriction === "interval-boundaries" ||
-        restriction === "interval" ||
-        colType === "datetime" ||
-        colType === "numeric") &&
-      i + 1 < backendConds.length &&
-      backendConds[i + 1].column === col &&
-      (current.operator === "ge" || current.operator === "gt") &&
-      (backendConds[i + 1].operator === "le" ||
-        backendConds[i + 1].operator === "lt")
-    ) {
-      const next = backendConds[i + 1];
-      uiConds.push({
-        id: Math.random().toString(36).substring(2, 9),
-        column: col,
-        mode: "range",
-        operator: "ge_le",
-        value: "",
-        fromValue: current.value as string,
-        toValue: next.value as string,
-        multipleValues: [],
-        granularity: detectGranularity(current.value as string),
-        edm_type: current.edm_type || "",
-      });
-      i += 2;
-      continue;
+  if ("conditions" in node && Array.isArray(node.conditions)) {
+    const results: UICondition[] = [];
+    for (const child of node.conditions) {
+      results.push(...parseSingleNodeToUI(child, tableFields, isNotParent));
     }
+    return results;
+  }
 
-    // Check for multi-value grouping
-    if (current.operator === "eq") {
-      const group: string[] = [current.value as string];
-      let j = i + 1;
-      while (
-        j < backendConds.length &&
-        backendConds[j].column === col &&
-        backendConds[j].operator === "eq"
-      ) {
-        group.push(backendConds[j].value as string);
-        j++;
-      }
-      if (restriction === "multi-value" || group.length > 1) {
-        uiConds.push({
-          id: Math.random().toString(36).substring(2, 9),
-          column: col,
-          mode: "multiple",
-          operator: "in",
-          value: "",
-          fromValue: "",
-          toValue: "",
-          multipleValues: group,
-          granularity: detectGranularity(current.value as string),
-          edm_type: current.edm_type || "",
-        });
-        i = j;
-        continue;
-      }
-    }
+  const cond = node as BasicFilterCondition;
+  const col = cond.column || cond.field || "";
+  if (!col) return [];
 
-    // Check for "in" operator
-    if (current.operator === "in") {
-      const valuesList = Array.isArray(current.value)
-        ? current.value.map((s) => String(s).trim()).filter(Boolean)
-        : current.value
-          ? String(current.value)
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : [];
-      uiConds.push({
+  const info = (tableFields as Record<string, Record<string, unknown>>)[col];
+  const restriction =
+    typeof info === "object" && info !== null
+      ? (info.filter_restriction as string)
+      : null;
+
+  const detectGranularity = (
+    val: string | number | boolean | unknown,
+  ): "year" | "month" | "date" | "datetime-local" => {
+    const str = String(val || "");
+    if (!str) return "date";
+    if (str.length === 4) return "year";
+    if (str.length === 7 && str.includes("-")) return "month";
+    if (str.length === 10 && str.includes("-")) return "date";
+    if (str.includes("T")) return "datetime-local";
+    return "date";
+  };
+
+  const normOp = normalizeOperator(cond.operator || "eq");
+  const edm_type =
+    cond.edm_type ||
+    (typeof info === "string"
+      ? "Edm.String"
+      : ((info?.edm_type as string) ?? "Edm.String"));
+
+  if (normOp === "in" || Array.isArray(cond.value)) {
+    const valuesList: string[] = Array.isArray(cond.value)
+      ? cond.value.map((s) => String(s).trim()).filter(Boolean)
+      : cond.value
+        ? String(cond.value)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+
+    return [
+      {
         id: Math.random().toString(36).substring(2, 9),
+        isNot: isNotParent,
         column: col,
         mode: "multiple",
         operator: "in",
@@ -1057,41 +1048,139 @@ const parseBackendToUI = (
         toValue: "",
         multipleValues: valuesList,
         granularity: detectGranularity(valuesList[0] || ""),
-        edm_type: current.edm_type || "",
-      });
-      i++;
-      continue;
-    }
-    // Default to exact single value
-    const isIntervalBoundaries =
-      restriction === "interval-boundaries" || restriction === "interval";
-    const isMultiValue = restriction === "multi-value";
-    uiConds.push({
+        edm_type,
+      },
+    ];
+  }
+
+  const isIntervalBoundaries =
+    restriction === "interval-boundaries" || restriction === "interval";
+  const isMultiValue = restriction === "multi-value";
+
+  return [
+    {
       id: Math.random().toString(36).substring(2, 9),
+      isNot: isNotParent,
       column: col,
       mode: isIntervalBoundaries
         ? "range"
         : isMultiValue
           ? "multiple"
           : "exact",
-      operator: normalizeOperator(current.operator),
-      value: current.value as string,
-      fromValue: isIntervalBoundaries ? (current.value as string) : "",
+      operator: normOp,
+      value: String(cond.value ?? ""),
+      fromValue: isIntervalBoundaries ? String(cond.value ?? "") : "",
       toValue: "",
-      multipleValues: isMultiValue ? [current.value as string] : [],
-      granularity: detectGranularity(current.value as string),
-      edm_type: current.edm_type || "",
-    });
+      multipleValues: isMultiValue ? [String(cond.value ?? "")] : [],
+      granularity: detectGranularity(cond.value),
+      edm_type,
+    },
+  ];
+};
+
+const parseBackendToUI = (
+  backendData: RowFilterConfig | FilterNode[] | null | undefined,
+  tableFields: Record<string, TableFieldInfo | string>,
+): { logic: "and" | "or"; conditions: UICondition[] } => {
+  if (!backendData) return { logic: "and", conditions: [] };
+
+  let topLogic: "and" | "or" = "and";
+  let rawConditions: FilterNode[] = [];
+
+  if (Array.isArray(backendData)) {
+    rawConditions = backendData;
+  } else if (typeof backendData === "object") {
+    topLogic = (
+      backendData.logic ||
+      backendData.operator ||
+      "and"
+    ).toLowerCase() as "and" | "or";
+    rawConditions = backendData.conditions || [];
+  }
+
+  const uiConds: UICondition[] = [];
+  let i = 0;
+  while (i < rawConditions.length) {
+    const current = rawConditions[i];
+
+    if (
+      current &&
+      !("not" in current) &&
+      !("conditions" in current) &&
+      ((current as BasicFilterCondition).column ||
+        (current as BasicFilterCondition).field)
+    ) {
+      const basicCurrent = current as BasicFilterCondition;
+      const col = basicCurrent.column || basicCurrent.field || "";
+      const info = (tableFields as Record<string, Record<string, unknown>>)[
+        col
+      ];
+      const colType = getFieldType(info || "string");
+      const normOp = normalizeOperator(basicCurrent.operator);
+
+      if (
+        (colType === "datetime" || colType === "numeric") &&
+        (normOp === "ge" || normOp === "gt") &&
+        i + 1 < rawConditions.length
+      ) {
+        const next = rawConditions[i + 1];
+        if (
+          next &&
+          !("not" in next) &&
+          !("conditions" in next) &&
+          ((next as BasicFilterCondition).column === col ||
+            (next as BasicFilterCondition).field === col)
+        ) {
+          const nextNormOp = normalizeOperator(
+            (next as BasicFilterCondition).operator,
+          );
+          if (nextNormOp === "le" || nextNormOp === "lt") {
+            const detectGranularity = (val: string) => {
+              if (!val) return "date" as const;
+              if (val.length === 4) return "year" as const;
+              if (val.length === 7 && val.includes("-"))
+                return "month" as const;
+              if (val.length === 10 && val.includes("-"))
+                return "date" as const;
+              if (val.includes("T")) return "datetime-local" as const;
+              return "date" as const;
+            };
+
+            uiConds.push({
+              id: Math.random().toString(36).substring(2, 9),
+              isNot: false,
+              column: col,
+              mode: "range",
+              operator: "ge_le",
+              value: "",
+              fromValue: String(basicCurrent.value ?? ""),
+              toValue: String((next as BasicFilterCondition).value ?? ""),
+              multipleValues: [],
+              granularity: detectGranularity(String(basicCurrent.value ?? "")),
+              edm_type: basicCurrent.edm_type || "",
+            });
+            i += 2;
+            continue;
+          }
+        }
+      }
+    }
+
+    const parsedNodes = parseSingleNodeToUI(current, tableFields);
+    uiConds.push(...parsedNodes);
     i++;
   }
-  return uiConds;
+
+  return { logic: topLogic === "or" ? "or" : "and", conditions: uiConds };
 };
 
 const serializeUIToBackend = (
+  topLogic: "and" | "or",
   uiConds: UICondition[],
   tableFields: Record<string, TableFieldInfo | string>,
-): FilterCondition[] => {
-  const backendConds: FilterCondition[] = [];
+): RowFilterConfig => {
+  const backendConds: FilterNode[] = [];
+
   for (const c of uiConds) {
     if (!c.column) continue;
     const fieldInfo = tableFields[c.column];
@@ -1101,39 +1190,73 @@ const serializeUIToBackend = (
         ? "Edm.String"
         : (fieldInfo?.edm_type ?? "Edm.String"));
 
-    if (c.mode === "exact") {
-      backendConds.push({
-        column: c.column,
-        operator: normalizeOperator(c.operator),
-        value:
-          c.operator === "isnull" || c.operator === "isnotnull"
-            ? ""
-            : String(c.value),
-        edm_type,
-      });
-    } else if (c.mode === "range") {
-      backendConds.push({
+    let nodePayload: FilterNode | FilterNode[];
+
+    if (c.mode === "range") {
+      const geCond: BasicFilterCondition = {
         column: c.column,
         operator: "ge",
-        value: String(c.fromValue),
+        value: formatTypedValue(c.fromValue, edm_type),
         edm_type,
-      });
-      backendConds.push({
+      };
+      const leCond: BasicFilterCondition = {
         column: c.column,
         operator: "le",
-        value: String(c.toValue),
+        value: formatTypedValue(c.toValue, edm_type),
         edm_type,
-      });
-    } else if (c.mode === "multiple") {
-      backendConds.push({
+      };
+      if (c.isNot) {
+        nodePayload = {
+          not: {
+            logic: "and",
+            conditions: [geCond, leCond],
+          },
+        };
+      } else {
+        nodePayload = [geCond, leCond];
+      }
+    } else if (c.mode === "multiple" || c.operator === "in") {
+      const typedValues = (c.multipleValues || [])
+        .map((val) => formatTypedValue(val, edm_type))
+        .filter((v) => v !== "" && v !== undefined && v !== null);
+
+      const inCond: BasicFilterCondition = {
         column: c.column,
         operator: "in",
-        value: c.multipleValues,
+        value: typedValues,
         edm_type,
-      });
+      };
+      if (c.isNot) {
+        nodePayload = { not: inCond };
+      } else {
+        nodePayload = inCond;
+      }
+    } else {
+      const normOp = normalizeOperator(c.operator);
+      const exactCond: BasicFilterCondition = {
+        column: c.column,
+        operator: normOp,
+        value: formatTypedValue(c.value, edm_type),
+        edm_type,
+      };
+      if (c.isNot) {
+        nodePayload = { not: exactCond };
+      } else {
+        nodePayload = exactCond;
+      }
+    }
+
+    if (Array.isArray(nodePayload)) {
+      backendConds.push(...nodePayload);
+    } else {
+      backendConds.push(nodePayload);
     }
   }
-  return backendConds;
+
+  return {
+    logic: topLogic,
+    conditions: backendConds,
+  };
 };
 
 const RowFilterModal = ({
@@ -1145,6 +1268,7 @@ const RowFilterModal = ({
   onSave,
   isSaving = false,
   isInitialSyncDone = false,
+  loadMethod = "initial",
 }: RowFilterModalProps) => {
   const { data: fieldsData, isLoading: isFieldsLoading } = useFetchTableFields(
     connectionId,
@@ -1161,6 +1285,7 @@ const RowFilterModal = ({
 
   const [activeSyncTable, setActiveSyncTable] = useState<string | null>(null);
 
+  const [topLogic, setTopLogic] = useState<"and" | "or">("and");
   const [conditions, setConditions] = useState<UICondition[]>([]);
 
   const [expandedIndices, setExpandedIndices] = useState<
@@ -1170,22 +1295,22 @@ const RowFilterModal = ({
   if (open && !isFieldsLoading && activeSyncTable !== tableName) {
     setActiveSyncTable(tableName);
 
-    const fieldsDataAny = fieldsData as Record<string, unknown> | undefined;
     const activeFilter =
       initialRowFilter !== undefined
         ? initialRowFilter
-        : (fieldsDataAny?.row_filter_config as RowFilterConfig | undefined) ||
-          (fieldsDataAny?.row_filter as RowFilterConfig | undefined);
-    if (activeFilter?.conditions) {
-      const loaded = parseBackendToUI(activeFilter.conditions, tableFields);
-      setConditions(loaded);
+        : getEffectiveRowFilter(fieldsData);
+    if (activeFilter) {
+      const parsed = parseBackendToUI(activeFilter, tableFields);
+      setTopLogic(parsed.logic);
+      setConditions(parsed.conditions);
 
       const initialExpanded: Record<number, boolean> = {};
-      loaded.forEach((_, idx: number) => {
+      parsed.conditions.forEach((_, idx: number) => {
         initialExpanded[idx] = false; // Collapsed by default
       });
       setExpandedIndices(initialExpanded);
     } else {
+      setTopLogic("and");
       setConditions([]);
       setExpandedIndices({});
     }
@@ -1199,6 +1324,7 @@ const RowFilterModal = ({
       ...prev,
       {
         id: Math.random().toString(36).substring(2, 9),
+        isNot: false,
         column: "",
         mode: "exact",
         operator: "",
@@ -1210,7 +1336,7 @@ const RowFilterModal = ({
         edm_type: "",
       },
     ]);
-    setExpandedIndices((prev) => ({ ...prev, [newIdx]: true })); // Expand newly added condition
+    setExpandedIndices((prev) => ({ ...prev, [newIdx]: true }));
   };
 
   const handleRemoveCondition = (index: number) => {
@@ -1218,7 +1344,6 @@ const RowFilterModal = ({
     setExpandedIndices((prev) => {
       const next = { ...prev };
       delete next[index];
-      // Shift indices after the deleted one
       const shifted: Record<number, boolean> = {};
       Object.entries(next).forEach(([key, val]) => {
         const k = Number(key);
@@ -1252,7 +1377,6 @@ const RowFilterModal = ({
   };
 
   const handleSave = () => {
-    // Validate: filter out empty conditions only if column/operator is missing
     const validConditions = conditions.filter((c) => {
       if (!c.column) return false;
       if (c.mode === "exact") {
@@ -1264,16 +1388,19 @@ const RowFilterModal = ({
     if (validConditions.length === 0) {
       onSave(null);
     } else {
-      const serialized = serializeUIToBackend(validConditions, tableFields);
-      onSave({ conditions: serialized });
+      const serialized = serializeUIToBackend(
+        topLogic,
+        validConditions,
+        tableFields,
+      );
+      onSave(serialized);
     }
   };
 
   const isSaveDisabled = conditions.some((c) => {
     if (!c.column) return true;
     if (c.mode === "exact") {
-      if (c.operator === "isnull" || c.operator === "isnotnull") return false;
-      return !c.value;
+      return c.value === "" || c.value === undefined;
     }
     if (c.mode === "range") {
       return !c.fromValue || !c.toValue;
@@ -1283,6 +1410,9 @@ const RowFilterModal = ({
     }
     return false;
   });
+
+  const normalizedLoadMethod = (loadMethod || "initial").toLowerCase();
+  const isOnlyPrimaryKeyAllowed = normalizedLoadMethod !== "initial";
 
   const fieldsList = Object.keys(tableFields)
     .filter((col) => {
@@ -1299,6 +1429,16 @@ const RowFilterModal = ({
       const edmType = typeof info === "string" ? null : (info.edm_type ?? null);
       if (edmType && FILTER_TYPE_BY_EDM_TYPE[edmType] === null) {
         return false;
+      }
+      if (isOnlyPrimaryKeyAllowed) {
+        const isPK = isPrimaryKey(
+          col,
+          typeof info === "string" ? null : info,
+          fieldsData?.primary_keys,
+        );
+        if (!isPK) {
+          return false;
+        }
       }
       return true;
     })
@@ -1344,6 +1484,11 @@ const RowFilterModal = ({
                       Initial sync completed. Filter configuration is locked and
                       cannot be modified.
                     </Text>
+                  ) : isOnlyPrimaryKeyAllowed ? (
+                    <Text fontSize="xs" color="gray.500">
+                      For Initial + Delta and Delta Only load methods, only
+                      primary key columns can be filtered.
+                    </Text>
                   ) : (
                     <Text fontSize="xs" color="gray.500">
                       Define filter expressions to identify which rows are
@@ -1362,6 +1507,44 @@ const RowFilterModal = ({
               flexDirection="column"
               gap={1.5}
             >
+              {conditions.length > 1 && (
+                <Flex
+                  justify="space-between"
+                  align="center"
+                  bg="gray.50"
+                  px={3}
+                  py={1.5}
+                  borderRadius="md"
+                  borderWidth="1px"
+                  borderColor="gray.200"
+                  mb={1}
+                >
+                  <Text fontSize="xs" fontWeight="semibold" color="gray.600">
+                    MATCH CONDITIONS WITH:
+                  </Text>
+                  <Flex gap={1}>
+                    <Button
+                      size="xs"
+                      variant={topLogic === "and" ? "solid" : "outline"}
+                      colorPalette={topLogic === "and" ? "brand" : "gray"}
+                      onClick={() => setTopLogic("and")}
+                      disabled={isInitialSyncDone}
+                    >
+                      AND
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant={topLogic === "or" ? "solid" : "outline"}
+                      colorPalette={topLogic === "or" ? "brand" : "gray"}
+                      onClick={() => setTopLogic("or")}
+                      disabled={isInitialSyncDone}
+                    >
+                      OR
+                    </Button>
+                  </Flex>
+                </Flex>
+              )}
+
               {conditions.map((condition, index) => {
                 const isExpanded = expandedIndices[index] ?? false;
                 const fieldInfo = tableFields[condition.column];
@@ -1377,17 +1560,17 @@ const RowFilterModal = ({
                         <Box
                           px={2}
                           py={0.5}
-                          bg="gray.100"
+                          bg="brand.50"
                           borderRadius="md"
                           borderWidth="1px"
-                          borderColor="gray.200"
+                          borderColor="brand.200"
                         >
                           <Text
-                            fontSize="xs"
+                            fontSize="2xs"
                             fontWeight="bold"
-                            color="gray.600"
+                            color="brand.700"
                           >
-                            AND
+                            {topLogic.toUpperCase()}
                           </Text>
                         </Box>
                       </Flex>
@@ -1395,9 +1578,21 @@ const RowFilterModal = ({
 
                     <Box
                       borderWidth="1px"
-                      borderColor={isExpanded ? "brand.200" : "gray.200"}
+                      borderColor={
+                        condition.isNot
+                          ? "orange.300"
+                          : isExpanded
+                            ? "brand.200"
+                            : "gray.200"
+                      }
                       borderRadius="lg"
-                      bg={isExpanded ? "brand.50/10" : "gray.50/50"}
+                      bg={
+                        condition.isNot
+                          ? "orange.50/30"
+                          : isExpanded
+                            ? "brand.50/10"
+                            : "gray.50/50"
+                      }
                       p={2}
                       transition="all 0.2s"
                     >
@@ -1406,9 +1601,31 @@ const RowFilterModal = ({
                         align="center"
                         mb={isExpanded ? 1.5 : 0}
                       >
-                        <Text fontSize="sm" fontWeight="bold" color="gray.700">
-                          Condition {index + 1}
-                        </Text>
+                        <Flex gap={2} align="center">
+                          <Text
+                            fontSize="sm"
+                            fontWeight="bold"
+                            color="gray.700"
+                          >
+                            Condition {index + 1}
+                          </Text>
+                          <Button
+                            size="xs"
+                            variant={condition.isNot ? "solid" : "outline"}
+                            colorPalette={condition.isNot ? "orange" : "gray"}
+                            onClick={() =>
+                              handleUpdateCondition(index, {
+                                isNot: !condition.isNot,
+                              })
+                            }
+                            disabled={isInitialSyncDone}
+                            px={2}
+                            h="20px"
+                            fontSize="2xs"
+                          >
+                            {condition.isNot ? "NOT (Negated)" : "NOT"}
+                          </Button>
+                        </Flex>
                         <Flex gap={1} align="center">
                           {isExpanded ? (
                             <CloseButton
@@ -1442,6 +1659,17 @@ const RowFilterModal = ({
 
                       {!isExpanded ? (
                         <Flex gap={1.5} mt={1} wrap="wrap" align="center">
+                          {condition.isNot && (
+                            <SummaryChip>
+                              <Text
+                                fontSize="xs"
+                                color="orange.700"
+                                fontWeight="bold"
+                              >
+                                NOT
+                              </Text>
+                            </SummaryChip>
+                          )}
                           <SummaryChip>
                             <Text
                               fontSize="xs"
@@ -1479,22 +1707,19 @@ const RowFilterModal = ({
                                     "none"}
                             </Text>
                           </SummaryChip>
-                          {condition.operator !== "isnull" &&
-                            condition.operator !== "isnotnull" && (
-                              <SummaryChip>
-                                <Text
-                                  fontSize="xs"
-                                  color="gray.700"
-                                  fontWeight="semibold"
-                                >
-                                  {condition.mode === "range"
-                                    ? `"${condition.fromValue || ""}" to "${condition.toValue || ""}"`
-                                    : condition.mode === "multiple"
-                                      ? `[${condition.multipleValues.join(", ")}]`
-                                      : `"${condition.value}"`}
-                                </Text>
-                              </SummaryChip>
-                            )}
+                          <SummaryChip>
+                            <Text
+                              fontSize="xs"
+                              color="gray.700"
+                              fontWeight="semibold"
+                            >
+                              {condition.mode === "range"
+                                ? `"${condition.fromValue || ""}" to "${condition.toValue || ""}"`
+                                : condition.mode === "multiple"
+                                  ? `[${condition.multipleValues.join(", ")}]`
+                                  : `"${condition.value}"`}
+                            </Text>
+                          </SummaryChip>
                         </Flex>
                       ) : (
                         <FilterConditionEditor
