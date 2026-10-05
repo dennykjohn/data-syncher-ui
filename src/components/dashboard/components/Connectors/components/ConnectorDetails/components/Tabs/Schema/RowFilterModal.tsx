@@ -207,10 +207,6 @@ const OPERATORS_BY_TYPE: Record<string, { label: string; value: string }[]> = {
     { label: "Equal to (EQ)", value: "eq" },
     { label: "Not equal to (NE)", value: "ne" },
     { label: "In (IN)", value: "in" },
-    { label: "Greater than (GT)", value: "gt" },
-    { label: "Greater than or equal to (GE)", value: "ge" },
-    { label: "Less than (LT)", value: "lt" },
-    { label: "Less than or equal to (LE)", value: "le" },
     { label: "Starts with (Startswith)", value: "startswith" },
   ],
 };
@@ -218,6 +214,30 @@ const OPERATORS_BY_TYPE: Record<string, { label: string; value: string }[]> = {
 const getOperatorsForType = (
   type: "boolean" | "numeric" | "datetime" | "time" | "string",
 ) => OPERATORS_BY_TYPE[type] ?? OPERATORS_BY_TYPE.string;
+
+const normalizeFilterRestriction = (restriction?: string | null) => {
+  if (restriction === "interval-boundaries") return "interval";
+  return restriction || null;
+};
+
+const getOperatorsForRestriction = (
+  type: "boolean" | "numeric" | "datetime" | "time" | "string",
+  restriction?: string | null,
+) => {
+  switch (normalizeFilterRestriction(restriction)) {
+    case "single-value":
+      return [{ label: "Equal to (EQ)", value: "eq" }];
+    case "multi-value":
+      return [
+        { label: "Equal to (EQ)", value: "eq" },
+        { label: "In (IN)", value: "in" },
+      ];
+    case "interval":
+      return [{ label: "Range (ge & le)", value: "ge_le" }];
+    default:
+      return getOperatorsForType(type);
+  }
+};
 const ColumnSelect = ({
   value,
   onChange,
@@ -710,12 +730,12 @@ const FilterConditionEditor = ({
   const fieldInfo = tableFields[condition.column];
   const restriction =
     typeof fieldInfo === "object" && fieldInfo !== null
-      ? fieldInfo.filter_restriction
+      ? normalizeFilterRestriction(fieldInfo.filter_restriction)
       : null;
   const columnType = isFieldsLoading
     ? "string"
     : getFieldType(fieldInfo || "string");
-  const operators = getOperatorsForType(columnType);
+  const operators = getOperatorsForRestriction(columnType, restriction);
   const isComponentDisabled = disabled || isFieldsLoading;
 
   const buildResetFields = (
@@ -725,7 +745,7 @@ const FilterConditionEditor = ({
     mode,
     operator:
       mode === "exact"
-        ? getOperatorsForType(colType)[0].value
+        ? getOperatorsForRestriction(colType, null)[0].value
         : mode === "range"
           ? "ge_le"
           : "in",
@@ -742,23 +762,22 @@ const FilterConditionEditor = ({
         ? "Edm.String"
         : (info?.edm_type ?? "Edm.String");
     const colType = getFieldType(info || "string");
-    const newRestriction =
+    const newRestriction = normalizeFilterRestriction(
       typeof info === "object" && info !== null
         ? info.filter_restriction
-        : null;
+        : null,
+    );
 
     let defaultMode: "exact" | "range" | "multiple" = "exact";
-    if (
-      newRestriction === "interval-boundaries" ||
-      newRestriction === "interval"
-    ) {
+    if (newRestriction === "interval") {
       defaultMode = "range";
     } else if (newRestriction === "multi-value") {
-      defaultMode = "multiple";
+      defaultMode = "exact";
     }
 
     onChange({
       column,
+      isNot: false,
       granularity: "date",
       edm_type,
       ...buildResetFields(defaultMode, colType),
@@ -780,9 +799,7 @@ const FilterConditionEditor = ({
         </Box>
         <Box flex="1" minW="130px">
           <FieldLabel>OPERATOR</FieldLabel>
-          {restriction !== "single-value" &&
-          restriction !== "multi-value" &&
-          condition.mode !== "range" ? (
+          {restriction !== "interval" && condition.mode !== "range" ? (
             <LabeledSelect
               disabled={isComponentDisabled}
               value={condition.operator}
@@ -800,6 +817,8 @@ const FilterConditionEditor = ({
                     operator: op,
                     mode: "exact",
                     value: "",
+                    fromValue: "",
+                    toValue: "",
                     multipleValues: [],
                   });
                 }
@@ -821,8 +840,7 @@ const FilterConditionEditor = ({
               value={
                 condition.mode === "range"
                   ? "Range (ge & le)"
-                  : condition.mode === "multiple" ||
-                      restriction === "multi-value"
+                  : condition.mode === "multiple"
                     ? "In (in)"
                     : restriction === "single-value"
                       ? "Equal to (eq)"
@@ -837,7 +855,44 @@ const FilterConditionEditor = ({
       {condition.operator !== "isnull" &&
         condition.operator !== "isnotnull" && (
           <Box w="100%">
-            {columnType === "boolean" ? (
+            {condition.mode === "range" && columnType !== "datetime" ? (
+              <Box>
+                <FieldLabel>
+                  {columnType === "numeric" ? "NUMERIC RANGE" : "RANGE"}
+                </FieldLabel>
+                <Flex gap={2} w="100%" align="center">
+                  <Input
+                    flex="1"
+                    size="xs"
+                    type={columnType === "numeric" ? "number" : "text"}
+                    step={columnType === "numeric" ? "any" : undefined}
+                    placeholder="From"
+                    value={condition.fromValue}
+                    onChange={(e) => onChange({ fromValue: e.target.value })}
+                    disabled={isComponentDisabled}
+                  />
+                  <Text fontSize="xs" color="gray.400" flexShrink={0}>
+                    to
+                  </Text>
+                  <Input
+                    flex="1"
+                    size="xs"
+                    type={columnType === "numeric" ? "number" : "text"}
+                    step={columnType === "numeric" ? "any" : undefined}
+                    placeholder="To"
+                    value={condition.toValue}
+                    onChange={(e) => onChange({ toValue: e.target.value })}
+                    disabled={isComponentDisabled}
+                  />
+                </Flex>
+                {columnType === "string" && (
+                  <Text fontSize="2xs" color="orange.600" mt={1}>
+                    String ranges use lexicographic comparison. Use fixed-length
+                    or leading-zero values.
+                  </Text>
+                )}
+              </Box>
+            ) : columnType === "boolean" ? (
               <Box maxW="200px">
                 <FieldLabel>BOOLEAN VALUE</FieldLabel>
                 <LabeledSelect
@@ -851,36 +906,7 @@ const FilterConditionEditor = ({
                 </LabeledSelect>
               </Box>
             ) : columnType === "numeric" ? (
-              condition.mode === "range" ? (
-                <Box>
-                  <FieldLabel>NUMERIC RANGE</FieldLabel>
-                  <Flex gap={2} w="100%" align="center">
-                    <Input
-                      flex="1"
-                      size="xs"
-                      type="number"
-                      step="any"
-                      placeholder="From"
-                      value={condition.fromValue}
-                      onChange={(e) => onChange({ fromValue: e.target.value })}
-                      disabled={isComponentDisabled}
-                    />
-                    <Text fontSize="xs" color="gray.400" flexShrink={0}>
-                      to
-                    </Text>
-                    <Input
-                      flex="1"
-                      size="xs"
-                      type="number"
-                      step="any"
-                      placeholder="To"
-                      value={condition.toValue}
-                      onChange={(e) => onChange({ toValue: e.target.value })}
-                      disabled={isComponentDisabled}
-                    />
-                  </Flex>
-                </Box>
-              ) : condition.mode === "multiple" ? (
+              condition.mode === "multiple" ? (
                 <Box>
                   <FieldLabel>NUMERIC VALUES</FieldLabel>
                   <MultipleValueChips
@@ -1002,10 +1028,11 @@ const parseSingleNodeToUI = (
   if (!col) return [];
 
   const info = (tableFields as Record<string, Record<string, unknown>>)[col];
-  const restriction =
+  const restriction = normalizeFilterRestriction(
     typeof info === "object" && info !== null
       ? (info.filter_restriction as string)
-      : null;
+      : null,
+  );
 
   const detectGranularity = (
     val: string | number | boolean | unknown,
@@ -1064,14 +1091,15 @@ const parseSingleNodeToUI = (
       column: col,
       mode: isIntervalBoundaries
         ? "range"
-        : isMultiValue
+        : isMultiValue && normOp === "in"
           ? "multiple"
           : "exact",
       operator: normOp,
       value: String(cond.value ?? ""),
       fromValue: isIntervalBoundaries ? String(cond.value ?? "") : "",
       toValue: "",
-      multipleValues: isMultiValue ? [String(cond.value ?? "")] : [],
+      multipleValues:
+        isMultiValue && normOp === "in" ? [String(cond.value ?? "")] : [],
       granularity: detectGranularity(cond.value),
       edm_type,
     },
@@ -1116,10 +1144,17 @@ const parseBackendToUI = (
         col
       ];
       const colType = getFieldType(info || "string");
+      const restriction = normalizeFilterRestriction(
+        typeof info === "object" && info !== null
+          ? (info.filter_restriction as string)
+          : null,
+      );
       const normOp = normalizeOperator(basicCurrent.operator);
 
       if (
-        (colType === "datetime" || colType === "numeric") &&
+        (colType === "datetime" ||
+          colType === "numeric" ||
+          restriction === "interval") &&
         (normOp === "ge" || normOp === "gt") &&
         i + 1 < rawConditions.length
       ) {
@@ -1189,6 +1224,13 @@ const serializeUIToBackend = (
       (typeof fieldInfo === "string"
         ? "Edm.String"
         : (fieldInfo?.edm_type ?? "Edm.String"));
+    const isNot =
+      Boolean(c.isNot) &&
+      !normalizeFilterRestriction(
+        typeof fieldInfo === "object" && fieldInfo !== null
+          ? fieldInfo.filter_restriction
+          : null,
+      );
 
     let nodePayload: FilterNode | FilterNode[];
 
@@ -1205,7 +1247,7 @@ const serializeUIToBackend = (
         value: formatTypedValue(c.toValue, edm_type),
         edm_type,
       };
-      if (c.isNot) {
+      if (isNot) {
         nodePayload = {
           not: {
             logic: "and",
@@ -1226,7 +1268,7 @@ const serializeUIToBackend = (
         value: typedValues,
         edm_type,
       };
-      if (c.isNot) {
+      if (isNot) {
         nodePayload = { not: inCond };
       } else {
         nodePayload = inCond;
@@ -1239,7 +1281,7 @@ const serializeUIToBackend = (
         value: formatTypedValue(c.value, edm_type),
         edm_type,
       };
-      if (c.isNot) {
+      if (isNot) {
         nodePayload = { not: exactCond };
       } else {
         nodePayload = exactCond;
@@ -1403,7 +1445,16 @@ const RowFilterModal = ({
       return c.value === "" || c.value === undefined;
     }
     if (c.mode === "range") {
-      return !c.fromValue || !c.toValue;
+      if (!c.fromValue?.trim() || !c.toValue?.trim()) return true;
+
+      const fieldInfo = tableFields[c.column];
+      const columnType = getFieldType(fieldInfo || "string");
+      if (columnType === "numeric") {
+        const from = Number(c.fromValue);
+        const to = Number(c.toValue);
+        return !Number.isFinite(from) || !Number.isFinite(to) || from > to;
+      }
+      return false;
     }
     if (c.mode === "multiple") {
       return c.multipleValues.length === 0;
@@ -1551,7 +1602,17 @@ const RowFilterModal = ({
                 const columnType = isFieldsLoading
                   ? "string"
                   : getFieldType(fieldInfo || "string");
-                const operators = getOperatorsForType(columnType);
+                const operators = getOperatorsForRestriction(
+                  columnType,
+                  typeof fieldInfo === "object" && fieldInfo !== null
+                    ? fieldInfo.filter_restriction
+                    : null,
+                );
+                const restriction = normalizeFilterRestriction(
+                  typeof fieldInfo === "object" && fieldInfo !== null
+                    ? fieldInfo.filter_restriction
+                    : null,
+                );
 
                 return (
                   <Box key={condition.id || index} width="100%">
@@ -1609,22 +1670,24 @@ const RowFilterModal = ({
                           >
                             Condition {index + 1}
                           </Text>
-                          <Button
-                            size="xs"
-                            variant={condition.isNot ? "solid" : "outline"}
-                            colorPalette={condition.isNot ? "orange" : "gray"}
-                            onClick={() =>
-                              handleUpdateCondition(index, {
-                                isNot: !condition.isNot,
-                              })
-                            }
-                            disabled={isInitialSyncDone}
-                            px={2}
-                            h="20px"
-                            fontSize="2xs"
-                          >
-                            {condition.isNot ? "NOT (Negated)" : "NOT"}
-                          </Button>
+                          {!restriction && (
+                            <Button
+                              size="xs"
+                              variant={condition.isNot ? "solid" : "outline"}
+                              colorPalette={condition.isNot ? "orange" : "gray"}
+                              onClick={() =>
+                                handleUpdateCondition(index, {
+                                  isNot: !condition.isNot,
+                                })
+                              }
+                              disabled={isInitialSyncDone}
+                              px={2}
+                              h="20px"
+                              fontSize="2xs"
+                            >
+                              {condition.isNot ? "NOT (Negated)" : "NOT"}
+                            </Button>
+                          )}
                         </Flex>
                         <Flex gap={1} align="center">
                           {isExpanded ? (

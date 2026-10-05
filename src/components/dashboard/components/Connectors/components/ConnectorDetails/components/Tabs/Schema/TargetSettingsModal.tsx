@@ -538,14 +538,13 @@ const TargetSettingsModal = ({
             <Dialog.Content borderRadius="xl" boxShadow="2xl" bg="white" p={2}>
               <Dialog.Header p={4} pb={2}>
                 <Dialog.Title fontWeight="bold" fontSize="md" color="red.700">
-                  Clear Table Data?
+                  Reset Initialisation?
                 </Dialog.Title>
               </Dialog.Header>
               <Dialog.Body px={4} pb={2}>
                 <Flex direction="column" gap={3}>
                   <Text fontSize="sm" color="gray.700">
-                    This will permanently clear all synced data and reset
-                    tracking for{" "}
+                    This will reset the initialisation of{" "}
                     <Text as="span" fontWeight="semibold">
                       {displayName}
                     </Text>
@@ -566,10 +565,9 @@ const TargetSettingsModal = ({
                     p={2}
                     borderRadius="md"
                   >
-                    <strong>Warning:</strong> You must start a new sync for this
-                    table to re-initialise it. The sync tracking state will be
-                    cleared. The next run will be treated as a first run. This
-                    action cannot be undone.
+                    <strong>Warning:</strong> You must start a new sync to
+                    initialise this table again. The next run will be treated as
+                    a first run.
                   </Text>
                 </Flex>
               </Dialog.Body>
@@ -589,7 +587,7 @@ const TargetSettingsModal = ({
                   onClick={handleConfirmReset}
                   loading={isDeletingDelta}
                 >
-                  Yes, Reset Delta
+                  Reset
                 </Button>
               </Dialog.Footer>
             </Dialog.Content>
