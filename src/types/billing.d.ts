@@ -31,12 +31,32 @@ export interface InvoiceItem {
   receipt_url?: string;
 }
 
+export interface ConnectionUsageRecord {
+  connection_id: number;
+  total_rec?: number[];
+  current_month_new_rec?: number;
+  current_month_mod_rec?: number;
+  current_month_del_rec?: number;
+  current_month_total_rec?: number;
+}
+
+export interface CurrentMonthAggregatedRecords {
+  newRecords: number;
+  modifiedRecords: number;
+  deletedRecords: number;
+  totalRecords: number;
+}
+
 export interface BillingDataMap {
   daily_labels?: string[];
   current_month_labels?: string[];
   labels?: string[];
   total_rec?: number[];
   current_month_billing?: number[];
+  current_month_new_rec?: number;
+  current_month_mod_rec?: number;
+  current_month_del_rec?: number;
+  current_month_total_rec?: number;
   data?: number[];
   billing_details?: BillingDetail[];
   invoices?: InvoiceItem[];
@@ -60,9 +80,9 @@ export interface MonthlyUsageResponse extends BillingDataMap {
   google_reviews_rec?: number[];
   years?: number[];
   months?: [number, string][];
-  connection_usage?: { connection_id: number; total_rec: number[] }[];
-  connections_usage?: { connection_id: number; total_rec: number[] }[];
-  connection_usage_data?: { connection_id: number; total_rec: number[] }[];
-  connection_usage_map?: { connection_id: number; total_rec: number[] }[];
-  connection_wise_usage?: { connection_id: number; total_rec: number[] }[];
+  connection_usage?: ConnectionUsageRecord[];
+  connections_usage?: ConnectionUsageRecord[];
+  connection_usage_data?: ConnectionUsageRecord[];
+  connection_usage_map?: ConnectionUsageRecord[];
+  connection_wise_usage?: ConnectionUsageRecord[];
 }

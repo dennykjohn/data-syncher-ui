@@ -627,7 +627,7 @@ const UsageTab = () => {
                     : String(value)
                 }
               >
-                <Label value="Total Tokens" angle={-90} position="insideLeft" />
+                <Label value="Records" angle={-90} position="insideLeft" />
               </YAxis>
               <Tooltip
                 cursor={{ fill: "rgba(0,0,0,0.04)" }}

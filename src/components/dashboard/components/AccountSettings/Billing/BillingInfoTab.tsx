@@ -19,6 +19,7 @@ import ServerRoutes from "@/constants/server-routes";
 import useAuth from "@/context/Auth/useAuth";
 import AxiosInstance from "@/lib/axios/api-client";
 import useFetchBillingUsage from "@/queryOptions/billing/useFetchBillingUsage";
+import useFetchMonthlyUsage from "@/queryOptions/billing/useFetchMonthlyUsage";
 import Table, { type Column } from "@/shared/Table";
 import {
   type BillingDataMap,
@@ -28,6 +29,12 @@ import {
 
 import BillingSelector from "./BillingSelector";
 import { Chart, useChart } from "@chakra-ui/charts";
+
+const toRecordCount = (value: unknown): number => {
+  if (value === null || value === undefined || value === "") return 0;
+  const num = Number(value);
+  return Number.isNaN(num) ? 0 : num;
+};
 
 const BillingInfoTab = () => {
   const {
@@ -40,6 +47,8 @@ const BillingInfoTab = () => {
     "billing_details",
   );
 
+  const isCurrentMonth = selectedRange[0] === "current-month";
+
   const { data: BillingUsageData, isLoading: isLoadingUsage } =
     useFetchBillingUsage({
       companyId: user?.company.cmp_id as number,
@@ -48,22 +57,29 @@ const BillingInfoTab = () => {
       enabled: true,
     });
 
+  const { data: MonthlyUsageData, isLoading: isLoadingMonthlyUsage } =
+    useFetchMonthlyUsage({
+      companyId: user?.company.cmp_id as number,
+      enabled: isCurrentMonth,
+    });
+
   const billingDataMap = BillingUsageData as BillingDataMap;
 
   const monthlyLabels =
+    MonthlyUsageData?.daily_labels ??
     billingDataMap?.daily_labels ??
     billingDataMap?.current_month_labels ??
     billingDataMap?.labels ??
     [];
   const monthlyValues =
+    MonthlyUsageData?.total_rec ??
     billingDataMap?.total_rec ??
-    billingDataMap?.current_month_billing ??
     billingDataMap?.data ??
     [];
   const billingDataMonthly = monthlyLabels.map(
     (label: string, index: number) => ({
       day: label,
-      usage: monthlyValues[index] ?? 0,
+      usage: toRecordCount(monthlyValues[index]),
     }),
   );
   const billingDetails = billingDataMap?.billing_details ?? [];
@@ -238,15 +254,19 @@ const BillingInfoTab = () => {
   ];
 
   const chart = useChart({
-    data:
-      selectedRange[0] === "current-month"
-        ? billingDataMonthly || []
-        : billingDataAnnual || [],
+    data: isCurrentMonth ? billingDataMonthly || [] : billingDataAnnual || [],
     series: [{ name: "usage", color: "purple.300" }],
   });
   const billingXAxisLabel = selectedRange[0] === "last-year" ? "Month" : "Date";
+  const billingYAxisLabel = isCurrentMonth ? "Records" : "Total Payment (USD)";
+  const billingTooltipLabel = isCurrentMonth
+    ? "Total Records"
+    : billingYAxisLabel;
+  const effectiveDetailsTab = isCurrentMonth ? "invoices" : detailsTab;
 
-  if (isLoadingUsage) return <LoadingSpinner />;
+  if (isLoadingUsage || (isCurrentMonth && isLoadingMonthlyUsage)) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <>
@@ -275,9 +295,16 @@ const BillingInfoTab = () => {
               offset: -5,
             }}
           />
-          <YAxis width={60} axisLine={false} tickLine={false}>
+          <YAxis
+            width={isCurrentMonth ? 70 : 60}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(value) =>
+              typeof value === "number" ? value.toLocaleString() : String(value)
+            }
+          >
             <Label
-              value="Total Payment (USD)"
+              value={billingYAxisLabel}
               angle={-90}
               position="insideLeft"
             />
@@ -288,8 +315,8 @@ const BillingInfoTab = () => {
             content={<Chart.Tooltip />}
             labelFormatter={() => ""}
             formatter={(value: number) => [
-              `${Number(value).toLocaleString()}`,
-              "Total Payment (USD)",
+              `${toRecordCount(value).toLocaleString()}`,
+              billingTooltipLabel,
             ]}
           />
           {chart.series.map((item) => (
@@ -320,44 +347,50 @@ const BillingInfoTab = () => {
             as="button"
             fontSize="sm"
             fontWeight="600"
-            color={detailsTab === "invoices" ? "purple.600" : "gray.500"}
+            color={
+              effectiveDetailsTab === "invoices" ? "purple.600" : "gray.500"
+            }
             borderBottom="3px solid"
             borderColor={
-              detailsTab === "invoices" ? "purple.600" : "transparent"
+              effectiveDetailsTab === "invoices" ? "purple.600" : "transparent"
             }
             mb="-1px"
             pb={3}
             px={4}
             position="relative"
-            zIndex={detailsTab === "invoices" ? 1 : 0}
+            zIndex={effectiveDetailsTab === "invoices" ? 1 : 0}
             transition="all 0.2s"
             onClick={() => setDetailsTab("invoices")}
           >
             Invoice
           </Box>
-          <Box
-            as="button"
-            fontSize="sm"
-            fontWeight="600"
-            color={detailsTab === "billing_details" ? "purple.600" : "gray.500"}
-            borderBottom="3px solid"
-            borderColor={
-              detailsTab === "billing_details" ? "purple.600" : "transparent"
-            }
-            mb="-1px"
-            pb={3}
-            px={4}
-            position="relative"
-            zIndex={detailsTab === "billing_details" ? 1 : 0}
-            transition="all 0.2s"
-            onClick={() => setDetailsTab("billing_details")}
-          >
-            Billing details
-          </Box>
+          {!isCurrentMonth && (
+            <Box
+              as="button"
+              fontSize="sm"
+              fontWeight="600"
+              color={
+                detailsTab === "billing_details" ? "purple.600" : "gray.500"
+              }
+              borderBottom="3px solid"
+              borderColor={
+                detailsTab === "billing_details" ? "purple.600" : "transparent"
+              }
+              mb="-1px"
+              pb={3}
+              px={4}
+              position="relative"
+              zIndex={detailsTab === "billing_details" ? 1 : 0}
+              transition="all 0.2s"
+              onClick={() => setDetailsTab("billing_details")}
+            >
+              Billing details
+            </Box>
+          )}
         </Flex>
 
         <Box mt={1}>
-          {detailsTab === "billing_details" ? (
+          {effectiveDetailsTab === "billing_details" ? (
             billingDetails.length === 0 ? (
               <Box
                 borderWidth="1px"
