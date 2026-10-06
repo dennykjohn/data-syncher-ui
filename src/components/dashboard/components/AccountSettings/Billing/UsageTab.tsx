@@ -595,7 +595,7 @@ const UsageTab = () => {
           )}
 
           <Chart.Root maxH="sm" chart={usageChart} w="100%">
-            <BarChart data={usageChart.data} margin={{ left: 20 }}>
+            <BarChart data={usageChart.data} margin={{ left: 16, right: 12 }}>
               <CartesianGrid stroke="#e2e8f0" vertical={false} />
               <XAxis
                 axisLine={false}
@@ -627,7 +627,12 @@ const UsageTab = () => {
                     : String(value)
                 }
               >
-                <Label value="Records" angle={-90} position="insideLeft" />
+                <Label
+                  value="Records"
+                  angle={-90}
+                  position="left"
+                  offset={-6}
+                />
               </YAxis>
               <Tooltip
                 cursor={{ fill: "rgba(0,0,0,0.04)" }}

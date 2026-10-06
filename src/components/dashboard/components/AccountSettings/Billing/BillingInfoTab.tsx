@@ -277,7 +277,10 @@ const BillingInfoTab = () => {
         />
       </Flex>
       <Chart.Root maxH="sm" chart={chart} w="100%">
-        <BarChart data={chart.data} margin={{ left: 20 }}>
+        <BarChart
+          data={chart.data}
+          margin={{ left: isCurrentMonth ? 16 : 20, right: 12 }}
+        >
           <CartesianGrid
             stroke={chart.color("border.muted") || "#e2e8f0"}
             vertical={false}
@@ -296,7 +299,7 @@ const BillingInfoTab = () => {
             }}
           />
           <YAxis
-            width={isCurrentMonth ? 70 : 60}
+            width={isCurrentMonth ? 88 : 72}
             axisLine={false}
             tickLine={false}
             tickFormatter={(value) =>
@@ -306,7 +309,8 @@ const BillingInfoTab = () => {
             <Label
               value={billingYAxisLabel}
               angle={-90}
-              position="insideLeft"
+              position="left"
+              offset={-6}
             />
           </YAxis>
           <Tooltip
