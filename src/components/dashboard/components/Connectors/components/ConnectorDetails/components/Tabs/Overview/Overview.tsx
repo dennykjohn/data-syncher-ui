@@ -5,14 +5,18 @@ import { Box, Flex, Grid, NativeSelect, Text } from "@chakra-ui/react";
 import { useOutletContext } from "react-router";
 
 import LoadingSpinner from "@/components/shared/Spinner";
-import { patchActivityLogForMigration } from "@/helpers/activityLog";
-import useMigrationStatusWS from "@/hooks/useMigrationStatusWS";
+import {
+  isTransientMigrationMessage,
+  patchActivityLogForMigration,
+  resolveJobLevelBannerMessage,
+} from "@/helpers/activityLog";
 import useFetchConnectorActivity from "@/queryOptions/connector/useFetchConnectorActivity";
 import useFetchConnectorActivityDetails from "@/queryOptions/connector/useFetchConnectorActivityDetails";
 import { type Connector } from "@/types/connectors";
 
 import Filter from "./Filter";
 import Item from "./Item";
+import MigrationStatusWSListener from "./MigrationStatusWSListener";
 import MigrationProgressTable from "./components/MigrationProgressTable";
 import TableSelectionDetails from "./components/TableSelectionDetails";
 import { useQueryClient } from "@tanstack/react-query";
@@ -72,10 +76,20 @@ const Overview = () => {
       ? activeLog.log_id
       : undefined;
 
-  // Keep WS connected for the selected migration so terminal updates are not missed.
-  const migrationIdForWS = migrationIdToFetch ?? null;
-
-  useMigrationStatusWS(migrationIdForWS, context.connection_id);
+  const migrationIdsForWS = useMemo(() => {
+    const ids = new Set<number>();
+    for (const log of data?.logs ?? []) {
+      if (log.is_clickable === false || !log.migration_id) continue;
+      const status = (log.status || "").toUpperCase();
+      if (status === "I" || isTransientMigrationMessage(log.message)) {
+        ids.add(Number(log.migration_id));
+      }
+    }
+    if (migrationIdToFetch) {
+      ids.add(Number(migrationIdToFetch));
+    }
+    return [...ids];
+  }, [data?.logs, migrationIdToFetch]);
 
   const { data: logDetails, isLoading: isLoadingDetails } =
     useFetchConnectorActivityDetails({
@@ -106,13 +120,17 @@ const Overview = () => {
     ) {
       return;
     }
+    const jobLevelMessage = logDetails.job_level_message || undefined;
     patchActivityLogForMigration(
       queryClient,
       context.connection_id,
       migrationIdToFetch,
       {
         overallStatus: status,
-        message: logDetails.job_level_message || undefined,
+        message:
+          jobLevelMessage && !isTransientMigrationMessage(jobLevelMessage)
+            ? jobLevelMessage
+            : undefined,
       },
     );
   }, [
@@ -123,10 +141,26 @@ const Overview = () => {
     queryClient,
   ]);
 
+  const displayJobLevelMessage = useMemo(
+    () =>
+      resolveJobLevelBannerMessage(
+        logDetails?.overall_status,
+        logDetails?.job_level_message,
+      ),
+    [logDetails?.job_level_message, logDetails?.overall_status],
+  );
+
   if (isLoading) return <LoadingSpinner />;
 
   return (
     <Flex flexDirection="column" gap={2} w="100%" h="full">
+      {migrationIdsForWS.map((migrationId) => (
+        <MigrationStatusWSListener
+          key={migrationId}
+          migrationId={migrationId}
+          connectionId={context.connection_id}
+        />
+      ))}
       {/* Top Level Filter */}
       <Flex justifyContent="flex-end">
         <Filter
@@ -253,40 +287,46 @@ const Overview = () => {
                 )}
                 {effectiveSelectedLog && activeLog && (
                   <Box p={0} h="full">
-                    {logDetails?.job_level_message &&
-                      !logDetails.job_level_message
-                        .toLowerCase()
-                        .includes("migration in progress") &&
-                      !logDetails.job_level_message
-                        .toLowerCase()
-                        .includes("update schema in progress") && (
-                        <Box
-                          px={4}
-                          py={2}
-                          borderBottom="1px solid"
-                          borderColor="gray.200"
-                          bg={
-                            (logDetails.overall_status || "")
-                              .toLowerCase()
-                              .includes("failed")
-                              ? "red.50"
-                              : "orange.50"
+                    {displayJobLevelMessage && (
+                      <Box
+                        px={4}
+                        py={2}
+                        borderBottom="1px solid"
+                        borderColor="gray.200"
+                        bg={(() => {
+                          const overall = (
+                            logDetails?.overall_status || ""
+                          ).toLowerCase();
+                          if (overall.includes("failed")) return "red.50";
+                          if (
+                            overall.includes("completed") ||
+                            overall.includes("success")
+                          ) {
+                            return "green.50";
                           }
-                        >
-                          <Text
-                            fontSize="xs"
-                            color={
-                              (logDetails.overall_status || "")
-                                .toLowerCase()
-                                .includes("failed")
-                                ? "red.700"
-                                : "orange.800"
+                          return "orange.50";
+                        })()}
+                      >
+                        <Text
+                          fontSize="xs"
+                          color={(() => {
+                            const overall = (
+                              logDetails?.overall_status || ""
+                            ).toLowerCase();
+                            if (overall.includes("failed")) return "red.700";
+                            if (
+                              overall.includes("completed") ||
+                              overall.includes("success")
+                            ) {
+                              return "green.700";
                             }
-                          >
-                            {logDetails.job_level_message}
-                          </Text>
-                        </Box>
-                      )}
+                            return "orange.800";
+                          })()}
+                        >
+                          {displayJobLevelMessage}
+                        </Text>
+                      </Box>
+                    )}
                     {logDetails?.overall_warning_message && (
                       <Box
                         px={4}

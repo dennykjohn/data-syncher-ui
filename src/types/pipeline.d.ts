@@ -43,6 +43,8 @@ export type PipelineDetail = {
   id: number;
   name: string;
   status: "active" | "paused";
+  /** Automatic schedule paused independently of flow status. */
+  schedule_paused?: boolean;
   schedule_type: string;
   time_frequency: string;
   schedule_config: Record<string, unknown>;
@@ -88,6 +90,7 @@ export type CreatePipelinePayload = {
 export type PatchPipelinePayload = {
   name?: string;
   status?: "active" | "paused";
+  schedule_paused?: boolean;
   schedule_type?: string;
   time_frequency?: string;
   schedule_config?: Record<string, unknown>;

@@ -99,6 +99,35 @@ export function pickDefaultNodeTab(
   return active ? String(active.node_id) : "";
 }
 
+/** Node-level error, or run-level orchestrator error when the task never started. */
+export function resolvePipelineNodeError(
+  run: Pick<
+    PipelineRunDetail,
+    "status" | "error" | "overall" | "waiting_for_flow_slot"
+  >,
+  node: Pick<
+    PipelineRunNodeDetail,
+    "status" | "error" | "migration_session_id"
+  >,
+): string | null {
+  const nodeError = node.error?.trim();
+  if (nodeError) return nodeError;
+
+  const runStatus = resolvePipelineRunStatus(run);
+  const nodeStatus = String(node.status || "").toLowerCase();
+  const runError = run.error?.trim();
+  if (
+    runError &&
+    (runStatus === "failed" || runStatus === "timeout") &&
+    (nodeStatus === "pending" || nodeStatus === "waiting") &&
+    (node.migration_session_id === null ||
+      node.migration_session_id === undefined)
+  ) {
+    return runError;
+  }
+  return null;
+}
+
 export function resolvePipelineRunStatus(
   run: Pick<PipelineRunDetail, "status" | "overall" | "waiting_for_flow_slot">,
 ): string {

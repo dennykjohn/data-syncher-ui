@@ -932,8 +932,10 @@ export const pipelineScheduleLabel = (pipeline: {
 export const formatNextSyncLabel = (
   nextRunAt: string | null | undefined,
   status: string,
+  schedulePaused = false,
 ): string | null => {
   if (status === "paused") return "Paused";
+  if (schedulePaused) return "Schedule paused";
   if (!nextRunAt) return null;
   const parsed = new Date(nextRunAt);
   if (Number.isNaN(parsed.getTime())) return null;
@@ -952,13 +954,18 @@ export const startNodeScheduleLabels = (pipeline: {
   schedule_config?: BatchScheduleConfig | null;
   sync_end_date?: string | null;
   status?: string;
+  schedule_paused?: boolean;
   next_run_at?: string | null;
 }): { scheduleLabel: string | null; nextSyncLabel: string | null } => {
   const scheduleLabel = pipelineScheduleLabel(pipeline) || null;
   const nextSyncLabel =
     pipeline.schedule_type === "manual"
       ? "Manual"
-      : formatNextSyncLabel(pipeline.next_run_at, pipeline.status ?? "active");
+      : formatNextSyncLabel(
+          pipeline.next_run_at,
+          pipeline.status ?? "active",
+          Boolean(pipeline.schedule_paused),
+        );
   return { scheduleLabel, nextSyncLabel };
 };
 

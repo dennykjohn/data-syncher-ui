@@ -1,5 +1,6 @@
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
+import { pipelinesQueryKey } from "@/queryOptions/pipeline/usePipeline";
 import {
   type AssignTablesPayload,
   type CreateBatchPayload,
@@ -98,6 +99,9 @@ export function useUpdateBatch(connectionId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: batchesQueryKey(connectionId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: pipelinesQueryKey,
       });
     },
   });

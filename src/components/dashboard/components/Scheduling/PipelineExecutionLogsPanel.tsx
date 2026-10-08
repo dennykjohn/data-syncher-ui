@@ -21,7 +21,9 @@ import {
 import {
   executionLogNodeBadge,
   pickDefaultNodeTab,
+  resolvePipelineNodeError,
   resolvePipelineRunMode,
+  resolvePipelineRunStatus,
 } from "./pipelineRunHelpers";
 
 type PipelineExecutionLogsPanelProps = {
@@ -33,11 +35,15 @@ type PipelineExecutionLogsPanelProps = {
 
 const PipelineNodeExecutionTab = ({
   node,
+  run,
   runMode,
 }: {
   node: PipelineRunNodeDetail;
+  run: PipelineRunDetail;
   runMode: ReturnType<typeof resolvePipelineRunMode>;
 }) => {
+  const nodeError = resolvePipelineNodeError(run, node);
+  const runStatus = resolvePipelineRunStatus(run);
   const migrationSessionId = node.migration_session_id ?? null;
 
   useMigrationStatusWS(migrationSessionId, node.connection_id);
@@ -91,6 +97,12 @@ const PipelineNodeExecutionTab = ({
         </Text>
       )}
 
+      {nodeError && (
+        <Text fontSize="xs" color="red.600" flexShrink={0}>
+          {nodeError}
+        </Text>
+      )}
+
       {isLoading && !(progressTables?.length ?? 0) ? (
         <Skeleton flex="1" minH="120px" />
       ) : progressTables?.length ? (
@@ -105,10 +117,14 @@ const PipelineNodeExecutionTab = ({
         </Flex>
       ) : runMode === "published" ? (
         <Flex flex="1" alignItems="center" justifyContent="center" minH="120px">
-          <Text fontSize="sm" color="gray.500">
-            {node.status === "pending" || node.status === "waiting"
-              ? "Waiting for this task to start…"
-              : "No table progress yet for this task."}
+          <Text fontSize="sm" color={nodeError ? "red.600" : "gray.500"}>
+            {nodeError
+              ? nodeError
+              : node.status === "pending" || node.status === "waiting"
+                ? runStatus === "failed" || runStatus === "timeout"
+                  ? "This task did not start before the flow failed."
+                  : "Waiting for this task to start…"
+                : "No table progress yet for this task."}
           </Text>
         </Flex>
       ) : (
@@ -277,7 +293,11 @@ const PipelineExecutionLogsPanel = ({
 
         <Flex flex="1" minH={0} overflowY="auto" p={3}>
           {activeNode && (
-            <PipelineNodeExecutionTab node={activeNode} runMode={runMode} />
+            <PipelineNodeExecutionTab
+              node={activeNode}
+              run={run}
+              runMode={runMode}
+            />
           )}
         </Flex>
       </Flex>

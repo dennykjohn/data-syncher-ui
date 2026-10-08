@@ -1,4 +1,5 @@
 import ServerRoutes from "@/constants/server-routes";
+import { applyTerminalDetailsPatch } from "@/helpers/activityLog";
 import AxiosInstance from "@/lib/axios/api-client";
 import { type ConnectorActivityDetailResponse } from "@/types/connectors";
 
@@ -50,6 +51,10 @@ const useFetchConnectorActivityDetails = ({
     enabled: (!!migrationId && !!connectionId) || (!!connectionId && !!logId),
     refetchOnMount: "always",
     refetchOnWindowFocus: false,
+    select: (data) => {
+      if (!migrationId || !connectionId) return data;
+      return applyTerminalDetailsPatch(connectionId, migrationId, data) ?? data;
+    },
     refetchInterval: (query) => {
       if (!migrationId) return false;
 

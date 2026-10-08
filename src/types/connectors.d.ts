@@ -336,6 +336,88 @@ export type ConnectorTable = {
   last_delta_run_timestamp?: string | null;
   row_filter?: RowFilterConfig | null;
   row_filter_config?: RowFilterConfig | null;
+  transform_summary?: TransformSummary | null;
+};
+
+export type TransformSummary = {
+  has_mapping: boolean;
+  has_script: boolean;
+  version: number | null;
+  badge: string | null;
+  is_active: boolean;
+  entry_point?: string | null;
+  run_order?: string | null;
+};
+
+export type MappingTableRow = {
+  sap_column: string | null;
+  target_column: string;
+  renamed: boolean;
+  status: string;
+  source_type?: Record<string, unknown> | null;
+  target_type?: Record<string, unknown> | null;
+  constant_value?: unknown;
+  added_by_user?: boolean;
+};
+
+export type EntityTransformDetail = {
+  id: number;
+  version: number;
+  is_active: boolean;
+  service_name: string;
+  entity_name: string;
+  table_name: string;
+  mapping_json: Record<string, unknown> | null;
+  mapping_overrides: Record<string, unknown>;
+  script_text: string | null;
+  script_sha256: string;
+  entry_point: string;
+  run_order: string;
+  row_filter: Record<string, unknown> | null;
+  created_at: string | null;
+  badge: string | null;
+};
+
+export type TransformValidateResponse = {
+  valid: boolean;
+  errors: Array<{ path: string; message: string }>;
+  warnings: Array<{ type: string; message: string }>;
+  checklist: Array<{
+    id: string;
+    label: string;
+    passed: boolean;
+    line?: number;
+    message?: string;
+  }>;
+  entry_points: string[];
+  counts: { mapped: number; not_selected: number; from_script: number };
+  mapping_table: MappingTableRow[];
+  row_filter_config?: RowFilterConfig | null;
+};
+
+export type TransformDryRunResponse = {
+  rows_in: number;
+  rows_out: number;
+  columns_out: string[];
+  expected_columns: string[];
+  warnings: Array<{ type: string; message: string }>;
+  errors: Array<{
+    type: string;
+    message: string;
+    line?: number;
+    traceback?: string;
+  }>;
+  schema_check: { passed: boolean; column_count: number };
+  counts: {
+    mapped: number;
+    not_selected: number;
+    from_script: number;
+    status?: Record<string, number>;
+  };
+  mapping_table: MappingTableRow[];
+  input_preview: Record<string, unknown>[];
+  output_preview: Record<string, unknown>[];
+  row_filter_config?: RowFilterConfig | null;
 };
 
 export type ConnectorTablesResponse = {

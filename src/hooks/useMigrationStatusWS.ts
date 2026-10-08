@@ -2,7 +2,12 @@ import { useCallback, useMemo } from "react";
 
 import useWebSocket from "react-use-websocket";
 
-import { patchActivityLogForMigration } from "@/helpers/activityLog";
+import {
+  isTerminalOverallStatus,
+  isTransientMigrationMessage,
+  patchActivityLogForMigration,
+  resolveCompletionMessage,
+} from "@/helpers/activityLog";
 import { getWebSocketUrl } from "@/helpers/websocket";
 import { ConnectorActivityDetailResponse } from "@/types/connectors";
 
@@ -223,7 +228,9 @@ export const useMigrationStatusWS = (
             derivedStatus === "in_progress"
           ) {
             const isImplicitUpdate = !message.overall_status;
-            const currentIsFailed = oldData?.overall_status === "failed";
+            const currentOverall = oldData?.overall_status || "";
+            const currentIsFailed = currentOverall === "failed";
+            const currentIsTerminal = isTerminalOverallStatus(currentOverall);
 
             if (
               isImplicitUpdate &&
@@ -231,8 +238,51 @@ export const useMigrationStatusWS = (
               derivedStatus === "in_progress"
             ) {
               updated.overall_status = "failed";
+            } else if (
+              isImplicitUpdate &&
+              currentIsTerminal &&
+              derivedStatus === "in_progress"
+            ) {
+              // Late table-level WS payloads must not downgrade a finished run.
+              updated.overall_status = currentOverall;
             } else {
               updated.overall_status = derivedStatus;
+            }
+          }
+
+          const resolvedOverall = (updated.overall_status || "").toLowerCase();
+          const isTerminalOverall =
+            resolvedOverall.includes("completed") ||
+            resolvedOverall.includes("success") ||
+            resolvedOverall.includes("failed") ||
+            resolvedOverall.includes("error");
+
+          if (isTerminalOverall) {
+            const candidateMessage =
+              message.job_level_message || message.message || undefined;
+            const safeCandidate =
+              candidateMessage && !isTransientMigrationMessage(candidateMessage)
+                ? candidateMessage
+                : undefined;
+            const existingMessage = oldData?.job_level_message || "";
+            const existingIsDetailed =
+              existingMessage && !isTransientMigrationMessage(existingMessage);
+
+            if (
+              existingIsDetailed &&
+              isTransientMigrationMessage(candidateMessage)
+            ) {
+              updated.job_level_message = existingMessage;
+            } else if (
+              !updated.job_level_message ||
+              isTransientMigrationMessage(updated.job_level_message)
+            ) {
+              updated.job_level_message = resolveCompletionMessage(
+                existingMessage,
+                resolvedOverall.includes("failed") ||
+                  resolvedOverall.includes("error"),
+                safeCandidate,
+              );
             }
           }
 
@@ -275,16 +325,25 @@ export const useMigrationStatusWS = (
           derivedOverall,
       );
       if (terminalStatus === "completed" || terminalStatus === "failed") {
+        const completionMessage =
+          message.job_level_message || message.message || undefined;
+        const safeCompletionMessage =
+          completionMessage && !isTransientMigrationMessage(completionMessage)
+            ? completionMessage
+            : undefined;
+
         patchActivityLogForMigration(
           queryClient,
           numericConnectionId,
           numericMigrationId,
           {
             overallStatus: terminalStatus,
-            message: message.job_level_message || message.message,
+            message: safeCompletionMessage,
           },
         );
 
+        // Refresh details only. The activity list is patched optimistically and
+        // protected from stale refetches via terminal patch storage.
         setTimeout(() => {
           void queryClient.invalidateQueries({
             queryKey: [
@@ -294,11 +353,7 @@ export const useMigrationStatusWS = (
               undefined,
             ],
           });
-          void queryClient.invalidateQueries({
-            queryKey: ["connectorActivity", numericConnectionId],
-            refetchType: "active",
-          });
-        }, 2000); // 2 s buffer for the backend to commit the final record
+        }, 2000);
       }
     },
     [connectionId, migrationId, queryClient],

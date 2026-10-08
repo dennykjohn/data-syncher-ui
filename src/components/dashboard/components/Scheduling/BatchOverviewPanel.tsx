@@ -21,10 +21,12 @@ import { useFetchBatchDetail } from "@/queryOptions/connector/schema/useBatches"
 import { useRunPipeline } from "@/queryOptions/pipeline/usePipeline";
 import {
   type PipelineDetail,
+  type PipelineRunDetail,
   type PipelineRunNodeDetail,
 } from "@/types/pipeline";
 
 import { computeRootNodeIds, getParentBatchName } from "./pipelineLayout";
+import { resolvePipelineNodeError } from "./pipelineRunHelpers";
 
 type BatchOverviewPanelProps = {
   pipeline: PipelineDetail;
@@ -33,6 +35,7 @@ type BatchOverviewPanelProps = {
   batchId: number;
   connectionName: string;
   runNode?: PipelineRunNodeDetail | null;
+  pipelineRun?: PipelineRunDetail | null;
   onRunStarted?: (_runId: number) => void;
   onClose: () => void;
 };
@@ -52,9 +55,14 @@ const BatchOverviewPanel = ({
   batchId,
   connectionName,
   runNode,
+  pipelineRun,
   onRunStarted,
   onClose,
 }: BatchOverviewPanelProps) => {
+  const nodeError =
+    runNode && pipelineRun
+      ? resolvePipelineNodeError(pipelineRun, runNode)
+      : runNode?.error?.trim() || null;
   const { data: batch, isLoading } = useFetchBatchDetail(connectionId, batchId);
   const runPipeline = useRunPipeline();
   const [activeTab, setActiveTab] = useState("overview");
@@ -274,9 +282,9 @@ const BatchOverviewPanel = ({
                 </Text>
               </Box>
 
-              {runNode?.error && (
+              {nodeError && (
                 <Text fontSize="xs" color="red.600">
-                  {runNode.error}
+                  {nodeError}
                 </Text>
               )}
 
@@ -354,9 +362,9 @@ const BatchOverviewPanel = ({
                 </Badge>
               )}
 
-              {runNode?.error && (
+              {nodeError && (
                 <Text fontSize="xs" color="red.600">
-                  {runNode.error}
+                  {nodeError}
                 </Text>
               )}
 

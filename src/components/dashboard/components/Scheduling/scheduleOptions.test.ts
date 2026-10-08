@@ -350,6 +350,7 @@ describe("scheduleOptions", () => {
         /^Next: /,
       );
       expect(formatNextSyncLabel(null, "paused")).toBe("Paused");
+      expect(formatNextSyncLabel(null, "active", true)).toBe("Schedule paused");
       expect(formatNextSyncLabel(null, "active")).toBeNull();
     });
 

@@ -67,6 +67,7 @@ function mergeUnassigned(
 interface BatchGroupedPanelProps {
   connectionId: number;
   pendingUnassignedTables?: UnassignedTable[];
+  transformBadges?: Map<string, string>;
   /**
    * selection = regular ETL / file export (checkbox save).
    * mapping = reverse table-to-table (map first → Unassigned → batches).
@@ -81,6 +82,7 @@ interface BatchGroupedPanelProps {
 const BatchGroupedPanel = ({
   connectionId,
   pendingUnassignedTables = [],
+  transformBadges,
   flowHint = "selection",
   onUnmapSource,
   sourceToDestination,
@@ -342,6 +344,7 @@ const BatchGroupedPanel = ({
                 key={b.id}
                 batch={b}
                 connectionId={connectionId}
+                transformBadges={transformBadges}
                 sourceToDestination={
                   isMappingFlow ? sourceToDestination : undefined
                 }

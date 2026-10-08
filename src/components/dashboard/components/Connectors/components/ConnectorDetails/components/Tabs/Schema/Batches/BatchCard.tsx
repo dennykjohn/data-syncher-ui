@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
+  Badge,
   Box,
   Flex,
   IconButton,
@@ -26,6 +27,7 @@ import { type MigrationBatch } from "@/types/connectors";
 interface BatchCardProps {
   batch: MigrationBatch;
   connectionId: number;
+  transformBadges?: Map<string, string>;
   /** Reverse ETL: source table (lower) → destination table name. */
   sourceToDestination?: Map<string, string>;
 }
@@ -33,18 +35,28 @@ interface BatchCardProps {
 const BatchCard = ({
   batch,
   connectionId,
+  transformBadges,
   sourceToDestination,
 }: BatchCardProps) => {
   const [expanded, setExpanded] = useState(true);
   const [isRenaming, setIsRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState(batch.name);
+  const skipBlurCommitRef = useRef(false);
 
   const { mutate: updateBatch } = useUpdateBatch(connectionId);
+
+  useEffect(() => {
+    if (!isRenaming) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- keep draft in sync when batch renames externally
+      setNameDraft(batch.name);
+    }
+  }, [batch.name, isRenaming]);
   const { mutate: deleteBatch, isPending: isDeleting } =
     useDeleteBatch(connectionId);
   const { mutate: removeTable } = useRemoveTableFromBatch(connectionId);
 
   const commitRename = () => {
+    if (skipBlurCommitRef.current) return;
     const next = nameDraft.trim();
     setIsRenaming(false);
     if (!next || next === batch.name) {
@@ -100,7 +112,11 @@ const BatchCard = ({
 
   const startRename = () => {
     setNameDraft(batch.name);
+    skipBlurCommitRef.current = true;
     setIsRenaming(true);
+    window.setTimeout(() => {
+      skipBlurCommitRef.current = false;
+    }, 200);
   };
 
   return (
@@ -192,7 +208,12 @@ const BatchCard = ({
           <Portal>
             <Menu.Positioner>
               <Menu.Content>
-                <Menu.Item value="rename" onClick={startRename}>
+                <Menu.Item
+                  value="rename"
+                  onSelect={() => {
+                    startRename();
+                  }}
+                >
                   <FiEdit2 /> Rename
                 </Menu.Item>
                 <Menu.Item
@@ -236,6 +257,9 @@ const BatchCard = ({
                   const mappedDestination = sourceToDestination?.get(
                     t.table_name.toLowerCase(),
                   );
+                  const transformBadge = transformBadges?.get(
+                    t.table_name.toLowerCase(),
+                  );
                   return (
                     <Flex
                       key={t.table_name}
@@ -267,6 +291,15 @@ const BatchCard = ({
                           <Text fontSize="xs" color="gray.500" truncate>
                             → {mappedDestination}
                           </Text>
+                        )}
+                        {transformBadge && (
+                          <Badge
+                            size="sm"
+                            colorPalette="brand"
+                            variant="subtle"
+                          >
+                            {transformBadge}
+                          </Badge>
                         )}
                       </Flex>
                       <IconButton

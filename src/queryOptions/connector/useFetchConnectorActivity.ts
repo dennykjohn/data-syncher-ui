@@ -1,4 +1,5 @@
 import ServerRoutes from "@/constants/server-routes";
+import { applyTerminalMigrationPatches } from "@/helpers/activityLog";
 import AxiosInstance from "@/lib/axios/api-client";
 import { type ConnectorActivityResponse } from "@/types/connectors";
 
@@ -24,6 +25,10 @@ const useFetchConnectorActivity = (
     queryKey: ["connectorActivity", id, filterDays, status],
     queryFn: () => fetchConnectorActivity(id, filterDays, status),
     enabled: !!id && filterDays > 0,
+    select: (data) => ({
+      ...data,
+      logs: applyTerminalMigrationPatches(id, data.logs ?? []),
+    }),
   });
 };
 

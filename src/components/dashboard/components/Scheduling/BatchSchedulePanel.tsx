@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Box, Button, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Switch, Text } from "@chakra-ui/react";
 
 import { toaster } from "@/components/ui/toaster";
 import { usePatchPipeline } from "@/queryOptions/pipeline/usePipeline";
@@ -27,12 +27,15 @@ const BatchSchedulePanel = ({
   embedded = false,
 }: BatchSchedulePanelProps) => {
   const patchPipeline = usePatchPipeline(pipeline.id);
+  const [isTogglingSchedulePause, setIsTogglingSchedulePause] = useState(false);
 
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleValue>(() =>
     fromPipelineSchedule(pipeline),
   );
 
   const scheduleSummary = pipelineScheduleLabel(pipeline);
+  const schedulePaused = Boolean(pipeline.schedule_paused);
+  const scheduleActive = !schedulePaused;
 
   useEffect(() => {
     setScheduleDraft(fromPipelineSchedule(pipeline));
@@ -59,8 +62,86 @@ const BatchSchedulePanel = ({
     }
   };
 
+  const handleScheduleActiveChange = async (active: boolean) => {
+    const nextPaused = !active;
+    if (nextPaused === schedulePaused) return;
+
+    setIsTogglingSchedulePause(true);
+    try {
+      await patchPipeline.mutateAsync({ schedule_paused: nextPaused });
+      toaster.success({
+        title: nextPaused ? "Schedule paused" : "Schedule resumed",
+      });
+    } catch {
+      toaster.error({ title: "Failed to update schedule status" });
+    } finally {
+      setIsTogglingSchedulePause(false);
+    }
+  };
+
   return (
     <Box>
+      <Box
+        borderWidth={1}
+        borderColor={schedulePaused ? "orange.200" : "gray.200"}
+        borderRadius="md"
+        p={3}
+        mb={embedded ? 3 : 4}
+        bg={schedulePaused ? "orange.50" : "gray.50"}
+      >
+        <Flex align="center" justify="space-between" gap={3}>
+          <Box flex="1" minW={0}>
+            <Text fontSize="xs" fontWeight="semibold" color="gray.800">
+              Automatic schedule
+            </Text>
+            <Text
+              fontSize="2xs"
+              color={schedulePaused ? "orange.700" : "gray.500"}
+              mt={0.5}
+            >
+              {schedulePaused
+                ? "Paused — scheduled runs are stopped"
+                : "Active — runs on the configured cadence"}
+            </Text>
+            {scheduleSummary && (
+              <Text
+                fontSize="2xs"
+                color="brand.700"
+                fontWeight="medium"
+                mt={1.5}
+                truncate
+                title={scheduleSummary}
+              >
+                {scheduleSummary}
+              </Text>
+            )}
+          </Box>
+          <Flex align="center" gap={2} flexShrink={0}>
+            <Text
+              fontSize="2xs"
+              fontWeight="medium"
+              color={scheduleActive ? "brand.600" : "orange.600"}
+              minW="42px"
+              textAlign="right"
+            >
+              {scheduleActive ? "Active" : "Paused"}
+            </Text>
+            <Switch.Root
+              checked={scheduleActive}
+              onCheckedChange={({ checked }) =>
+                void handleScheduleActiveChange(!!checked)
+              }
+              disabled={isTogglingSchedulePause}
+              colorPalette="brand"
+              aria-label="Toggle automatic schedule"
+            >
+              <Switch.HiddenInput />
+              <Switch.Control />
+            </Switch.Root>
+          </Flex>
+        </Flex>
+      </Box>
+
       {!embedded && (
         <>
           <Text
@@ -69,18 +150,14 @@ const BatchSchedulePanel = ({
             textTransform="uppercase"
             mb={1}
           >
-            Current schedule
+            Configure schedule
           </Text>
-          <Text fontSize="sm" fontWeight="medium" color="gray.800" mb={3}>
-            {scheduleSummary || "Not configured"}
+          <Text fontSize="xs" color="gray.600" mb={3}>
+            Set when this pipeline should run automatically.
           </Text>
         </>
       )}
-      {embedded && scheduleSummary && (
-        <Text fontSize="xs" color="brand.700" fontWeight="medium" mb={2}>
-          Active: {scheduleSummary}
-        </Text>
-      )}
+
       <ScheduleEditor
         value={scheduleDraft}
         onChange={setScheduleDraft}
@@ -93,7 +170,7 @@ const BatchSchedulePanel = ({
         mt={embedded ? 3 : 4}
         w="full"
         onClick={handleSaveSchedule}
-        loading={patchPipeline.isPending}
+        loading={patchPipeline.isPending && !isTogglingSchedulePause}
         disabled={disabled}
       >
         Save schedule

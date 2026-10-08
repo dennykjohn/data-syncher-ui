@@ -230,6 +230,13 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
           />
         )}
       </Flex>
+
+      {(displayStatus === "failed" || displayStatus === "timeout") &&
+        run.error?.trim() && (
+          <Text fontSize="xs" color="red.600" mt={2}>
+            {run.error.trim()}
+          </Text>
+        )}
     </Box>
   );
 };

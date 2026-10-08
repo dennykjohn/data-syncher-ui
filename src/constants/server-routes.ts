@@ -71,6 +71,14 @@ const ServerRoutes = {
     fetchConnectorTable: (id: number) => `connection/${id}/tables/`,
     fetchTableFields: (id: number, tableName: string) =>
       `connection/${id}/tables/${encodeURIComponent(tableName)}/fields/`,
+    entityTransform: (id: number, tableName: string) =>
+      `connection/${id}/tables/${encodeURIComponent(tableName)}/transform/`,
+    entityTransformValidate: (id: number, tableName: string) =>
+      `connection/${id}/tables/${encodeURIComponent(tableName)}/transform/validate/`,
+    entityTransformDryRun: (id: number, tableName: string) =>
+      `connection/${id}/tables/${encodeURIComponent(tableName)}/transform/dry-run/`,
+    entityTransformActivate: (id: number, tableName: string, version: number) =>
+      `connection/${id}/tables/${encodeURIComponent(tableName)}/transform/${version}/activate/`,
     fetchDestinationTableFields: (id: number, tableName: string) =>
       `connection/${id}/destination-tables/${encodeURIComponent(tableName)}/fields/`,
     fetchConnectorSelectedTable: (id: number) =>

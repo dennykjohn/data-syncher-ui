@@ -231,6 +231,15 @@ function resolveRunVisualStatus(
     return "completed";
   }
   if (
+    runStatus === "failed" &&
+    (nodeStatus === "failed" ||
+      migOverall === "in_progress" ||
+      ((nodeStatus === "pending" || nodeStatus === "waiting") &&
+        !runNode?.migration_session_id))
+  ) {
+    return "failed";
+  }
+  if (
     (migOverall === "failed" || migOverall === "timeout") &&
     runStatus !== "running"
   ) {
@@ -3133,6 +3142,7 @@ const Scheduling = () => {
               batchId={selectedNode.batchId}
               connectionName={selectedNode.connectionName}
               runNode={selectedRunNode}
+              pipelineRun={activePipelineRun}
               onRunStarted={handleRunStarted}
               onClose={() => setSelectedNode(null)}
             />

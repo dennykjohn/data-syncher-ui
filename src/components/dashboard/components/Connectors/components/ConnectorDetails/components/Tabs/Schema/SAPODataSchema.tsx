@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   ActionBar,
+  Badge,
   Box,
   Button,
   Checkbox,
@@ -27,7 +28,7 @@ import {
 } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
-import { TbDelta } from "react-icons/tb";
+import { TbDelta, TbTransform } from "react-icons/tb";
 
 import { useOutletContext } from "react-router";
 
@@ -55,6 +56,7 @@ import Actions from "./Actions";
 import BatchGroupedPanel from "./Batches/BatchGroupedPanel";
 import RowFilterModal from "./RowFilterModal";
 import TargetSettingsModal from "./TargetSettingsModal";
+import TransformModal from "./TransformModal/TransformModal";
 import { isConnectorTableMarkedSelected } from "./schemaSelection";
 import {
   getEffectiveRowFilter,
@@ -255,6 +257,7 @@ const EntityAccordion = ({
   isAssigningTables,
   onOpenSettings,
   onOpenRowFilter,
+  onOpenTransform,
 }: {
   entity: EntityGroup;
   connectionId: number;
@@ -271,12 +274,18 @@ const EntityAccordion = ({
   isAssigningTables: boolean;
   onOpenSettings: (_table: string) => void;
   onOpenRowFilter: (_table: string) => void;
+  onOpenTransform: (_table: string) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { entityName, tableItem } = entity;
   const isSelected = selectedTables.includes(tableItem.table);
   const isLocked = isSaving || isAssigningTables;
   const hasRowFilter = hasRowFilterUtil(tableItem);
+  const transformBadge = tableItem.transform_summary?.badge;
+  const hasTransform = Boolean(
+    tableItem.transform_summary?.has_mapping ||
+      tableItem.transform_summary?.has_script,
+  );
   const showEntityActions = isSelected || selectionLocked;
 
   const handleEntityCheckedChange = (checked: boolean) => {
@@ -316,11 +325,32 @@ const EntityAccordion = ({
           >
             {entityName}
           </Text>
+          {transformBadge && (
+            <Badge size="sm" colorPalette="brand" variant="subtle">
+              {transformBadge}
+            </Badge>
+          )}
         </Flex>
 
         <Flex gap={2} alignItems="center" mr={2}>
           {showEntityActions && (
             <>
+              <Tooltip content="Mapping and transform">
+                <IconButton
+                  size="xs"
+                  variant={hasTransform ? "subtle" : "ghost"}
+                  colorPalette="brand"
+                  color={hasTransform ? undefined : "gray.400"}
+                  disabled={isLocked}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenTransform(tableItem.table);
+                  }}
+                  aria-label="Mapping and transform"
+                >
+                  <TbTransform />
+                </IconButton>
+              </Tooltip>
               <IconButton
                 size="xs"
                 variant={hasRowFilter ? "subtle" : "ghost"}
@@ -410,6 +440,7 @@ const ServiceAccordion = ({
   isAssigningTables,
   onOpenSettings,
   onOpenRowFilter,
+  onOpenTransform,
 }: {
   serviceGroup: ServiceGroup;
   connectionId: number;
@@ -425,6 +456,7 @@ const ServiceAccordion = ({
   isAssigningTables: boolean;
   onOpenSettings: (_table: string) => void;
   onOpenRowFilter: (_table: string) => void;
+  onOpenTransform: (_table: string) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
   const { serviceName, entities } = serviceGroup;
@@ -475,6 +507,7 @@ const ServiceAccordion = ({
                 isAssigningTables={isAssigningTables}
                 onOpenSettings={onOpenSettings}
                 onOpenRowFilter={onOpenRowFilter}
+                onOpenTransform={onOpenTransform}
               />
             );
           })}
@@ -551,6 +584,11 @@ const SAPODataSchema = () => {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isSavingFilter, setIsSavingFilter] = useState(false);
 
+  const [activeTableForTransform, setActiveTableForTransform] = useState<
+    string | null
+  >(null);
+  const [isTransformModalOpen, setIsTransformModalOpen] = useState(false);
+
   const activeFilterTableItem = useMemo(() => {
     return AllTableList?.find((t) => t.table === activeTableForFilter);
   }, [AllTableList, activeTableForFilter]);
@@ -558,6 +596,19 @@ const SAPODataSchema = () => {
   const activeTableItem = useMemo(() => {
     return AllTableList?.find((t) => t.table === activeTableForSettings);
   }, [AllTableList, activeTableForSettings]);
+
+  const activeTransformTableItem = useMemo(() => {
+    return AllTableList?.find((t) => t.table === activeTableForTransform);
+  }, [AllTableList, activeTableForTransform]);
+
+  const transformBadges = useMemo(() => {
+    const map = new Map<string, string>();
+    AllTableList?.forEach((t) => {
+      const badge = t.transform_summary?.badge;
+      if (badge) map.set(t.table.toLowerCase(), badge);
+    });
+    return map;
+  }, [AllTableList]);
 
   const activeTableSettings = useMemo(() => {
     if (!activeTableItem) return null;
@@ -599,6 +650,18 @@ const SAPODataSchema = () => {
         activeTableItem.table.split("/")[0];
     return `${serviceName}_${entityName}`;
   }, [activeTableItem]);
+
+  const activeTransformDisplayName = useMemo(() => {
+    if (!activeTransformTableItem) return "";
+    const serviceName =
+      activeTransformTableItem.service_name ||
+      activeTransformTableItem.table.split("/")[0];
+    const entityName = activeTransformTableItem.service_name
+      ? activeTransformTableItem.table
+      : activeTransformTableItem.table.split("/")[1] ||
+        activeTransformTableItem.table.split("/")[0];
+    return `${serviceName}_${entityName}`;
+  }, [activeTransformTableItem]);
 
   const handleSaveTargetSettings = async (settings: {
     output_file_name: string;
@@ -1068,6 +1131,10 @@ const SAPODataSchema = () => {
                 setActiveTableForFilter(table);
                 setIsFilterModalOpen(true);
               }}
+              onOpenTransform={(table) => {
+                setActiveTableForTransform(table);
+                setIsTransformModalOpen(true);
+              }}
             />
           ))}
         </Flex>
@@ -1075,6 +1142,7 @@ const SAPODataSchema = () => {
         <BatchGroupedPanel
           connectionId={context.connection_id}
           pendingUnassignedTables={pendingUnassignedTables}
+          transformBadges={transformBadges}
         />
       </Grid>
 
@@ -1376,6 +1444,22 @@ const SAPODataSchema = () => {
           isInitialSyncDone={!!activeFilterTableItem?.first_sync_timestamp}
           onSave={handleSaveRowFilter}
           isSaving={isSavingFilter}
+        />
+      )}
+
+      {isTransformModalOpen && activeTransformTableItem && (
+        <TransformModal
+          open={isTransformModalOpen}
+          onClose={() => {
+            setIsTransformModalOpen(false);
+            setActiveTableForTransform(null);
+          }}
+          connectionId={context.connection_id}
+          tableItem={activeTransformTableItem}
+          modalTitle={activeTransformDisplayName}
+          onApplyRowFilter={(config) => {
+            handleSaveRowFilter(config);
+          }}
         />
       )}
     </Flex>

@@ -59,11 +59,22 @@ const DeleteConfirmationDialog = ({
                       );
                     },
                     onError: (err: unknown) => {
+                      const data = (
+                        err as {
+                          response?: {
+                            data?: {
+                              message?: string;
+                              detail?: string;
+                            };
+                          };
+                        }
+                      )?.response?.data;
                       const message =
-                        (err as { response?: { data?: { message?: string } } })
-                          ?.response?.data?.message ??
-                        "Could not delete connection";
-                      toaster.error({ title: message });
+                        data?.message ?? "Could not delete connection";
+                      toaster.error({
+                        title: message,
+                        description: data?.detail,
+                      });
                     },
                   })
                 }
