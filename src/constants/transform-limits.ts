@@ -17,3 +17,8 @@ export const DEFAULT_DRY_RUN_ROWS = Number(
 
 export const MAX_MAPPING_JSON_BYTES = MAX_MAPPING_JSON_MB * 1024 * 1024;
 export const MAX_SCRIPT_BYTES = MAX_SCRIPT_KB * 1024;
+
+/** Match Django/FastAPI dry-run proxy timeout (300s) with a small buffer. */
+export const TRANSFORM_DRY_RUN_TIMEOUT_MS = 330_000;
+/** Validate can run AST checks on large scripts; allow more than the default API timeout. */
+export const TRANSFORM_VALIDATE_TIMEOUT_MS = 120_000;

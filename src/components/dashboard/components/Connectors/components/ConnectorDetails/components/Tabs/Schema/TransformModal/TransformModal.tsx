@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect -- modal resets local draft state when opened */
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -40,6 +39,7 @@ import {
 } from "@/types/connectors";
 
 import ExpandableCodeEditor from "./ExpandableCodeEditor";
+import ExpandablePreviewTable from "./ExpandablePreviewTable";
 import VirtualMappingTable from "./VirtualMappingTable";
 
 type FilterChip = "all" | "unmapped_source" | "unmapped_target" | "warnings";
@@ -154,28 +154,80 @@ const TransformModal = ({
   }, []);
 
   const runValidate = useCallback(async () => {
-    const result = await validateMut.mutateAsync({
-      mapping_json: mappingJson,
-      script_text: scriptText,
-      entry_point: entryPoint,
-    });
-    setValidateResult(result);
-    if (result.entry_points?.length && !entryPoint) {
-      setEntryPoint(result.entry_points[0]);
+    try {
+      const result = await validateMut.mutateAsync({
+        mapping_json: mappingJson,
+        script_text: scriptText,
+        entry_point: entryPoint,
+      });
+      setValidateResult(result);
+      if (result.entry_points?.length && !entryPoint) {
+        setEntryPoint(result.entry_points[0]);
+      }
+      return result;
+    } catch {
+      setValidateResult(null);
+      toaster.error({
+        title: "Mapping preview unavailable",
+        description:
+          "Validate failed. Check that FastAPI is deployed with entity-transform routes.",
+      });
+      throw new Error("validate failed");
     }
-    return result;
   }, [validateMut, mappingJson, scriptText, entryPoint]);
 
+  useEffect(() => {
+    if (!open || !mappingJson) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await validateMut.mutateAsync({
+          mapping_json: mappingJson,
+          script_text: scriptText,
+          entry_point: entryPoint,
+        });
+        if (cancelled) return;
+        setValidateResult(result);
+        if (result.entry_points?.length && !entryPoint) {
+          setEntryPoint(result.entry_points[0]);
+        }
+      } catch {
+        if (!cancelled) setValidateResult(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Auto-refresh column mapping preview when JSON is loaded or replaced.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- script/entry re-validated on Next
+  }, [open, mappingJson]);
+
   const runDryRun = useCallback(async () => {
-    const result = await dryRunMut.mutateAsync({
-      mapping_json: mappingJson,
-      script_text: scriptText,
-      entry_point: entryPoint,
-      run_order: runOrder,
-      sample_size: Math.min(sampleSize, MAX_DRY_RUN_ROWS),
-    });
-    setDryRunResult(result);
-    return result;
+    try {
+      const result = await dryRunMut.mutateAsync({
+        mapping_json: mappingJson,
+        script_text: scriptText,
+        entry_point: entryPoint,
+        run_order: runOrder,
+        sample_size: Math.min(sampleSize, MAX_DRY_RUN_ROWS),
+      });
+      setDryRunResult(result);
+      return result;
+    } catch (err) {
+      setDryRunResult(null);
+      const message =
+        typeof err === "object" &&
+        err !== null &&
+        "message" in err &&
+        typeof (err as { message?: string }).message === "string"
+          ? (err as { message: string }).message
+          : "Dry run failed. Try a smaller sample size or check SAP connectivity.";
+      toaster.error({
+        title: "Dry run failed",
+        description: message,
+      });
+      throw err;
+    }
   }, [dryRunMut, mappingJson, scriptText, entryPoint, runOrder, sampleSize]);
 
   const handleSave = async () => {
@@ -310,6 +362,20 @@ const TransformModal = ({
                       </Button>
                     ))}
                   </Flex>
+
+                  {validateMut.isPending && mappingTable.length === 0 && (
+                    <Text fontSize="sm" color="gray.500">
+                      Loading mapping preview…
+                    </Text>
+                  )}
+
+                  {!validateMut.isPending &&
+                    mappingJson &&
+                    mappingTable.length === 0 && (
+                      <Text fontSize="sm" color="gray.500">
+                        No mapping rows to preview yet.
+                      </Text>
+                    )}
 
                   {mappingTable.length > 0 && (
                     <VirtualMappingTable
@@ -452,6 +518,18 @@ const TransformModal = ({
                           {e.line ? ` (line ${e.line})` : ""}
                         </Text>
                       ))}
+                      {dryRunResult.input_preview?.length > 0 && (
+                        <ExpandablePreviewTable
+                          title="Input preview"
+                          rows={dryRunResult.input_preview}
+                        />
+                      )}
+                      {dryRunResult.output_preview?.length > 0 && (
+                        <ExpandablePreviewTable
+                          title="Output preview"
+                          rows={dryRunResult.output_preview}
+                        />
+                      )}
                       <Checkbox.Root
                         checked={saveWithoutTest}
                         onCheckedChange={(d) =>
@@ -496,8 +574,12 @@ const TransformModal = ({
                     colorPalette="brand"
                     loading={validateMut.isPending}
                     onClick={async () => {
-                      await runValidate();
-                      setStep(step + 1);
+                      try {
+                        await runValidate();
+                        setStep(step + 1);
+                      } catch {
+                        /* toast shown in runValidate */
+                      }
                     }}
                   >
                     Next

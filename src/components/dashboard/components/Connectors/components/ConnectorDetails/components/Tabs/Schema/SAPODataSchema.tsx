@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 
 import {
   ActionBar,
@@ -56,12 +56,13 @@ import Actions from "./Actions";
 import BatchGroupedPanel from "./Batches/BatchGroupedPanel";
 import RowFilterModal from "./RowFilterModal";
 import TargetSettingsModal from "./TargetSettingsModal";
-import TransformModal from "./TransformModal/TransformModal";
 import { isConnectorTableMarkedSelected } from "./schemaSelection";
 import {
   getEffectiveRowFilter,
   hasRowFilter as hasRowFilterUtil,
 } from "./utils/filterUtils";
+
+const TransformModal = lazy(() => import("./TransformModal/TransformModal"));
 
 interface EntityGroup {
   entityName: string;
@@ -524,8 +525,12 @@ const SAPODataSchema = () => {
   const [hasChanged, setHasChanged] = useState(false);
   const [shouldShowDisabledState, setShouldShowDisabledState] = useState(false);
 
-  const { data: allTableData, isLoading: isAllTableListLoading } =
-    useFetchConnectorTableById(context.connection_id);
+  const {
+    data: allTableData,
+    isLoading: isAllTableListLoading,
+    isError: isAllTableListError,
+    error: allTableListError,
+  } = useFetchConnectorTableById(context.connection_id);
 
   const AllTableList = allTableData?.tables;
 
@@ -1106,7 +1111,14 @@ const SAPODataSchema = () => {
 
           {!groupedServices.length && !isAllTableListLoading && (
             <Flex direction="column" alignItems="center" py={8}>
-              <Text color="gray.500">No Services available</Text>
+              <Text color={isAllTableListError ? "red.500" : "gray.500"}>
+                {isAllTableListError
+                  ? getErrorMessage(
+                      allTableListError,
+                      "Could not load schema. Try refresh.",
+                    )
+                  : "No Services available"}
+              </Text>
             </Flex>
           )}
 
@@ -1448,19 +1460,21 @@ const SAPODataSchema = () => {
       )}
 
       {isTransformModalOpen && activeTransformTableItem && (
-        <TransformModal
-          open={isTransformModalOpen}
-          onClose={() => {
-            setIsTransformModalOpen(false);
-            setActiveTableForTransform(null);
-          }}
-          connectionId={context.connection_id}
-          tableItem={activeTransformTableItem}
-          modalTitle={activeTransformDisplayName}
-          onApplyRowFilter={(config) => {
-            handleSaveRowFilter(config);
-          }}
-        />
+        <Suspense fallback={null}>
+          <TransformModal
+            open={isTransformModalOpen}
+            onClose={() => {
+              setIsTransformModalOpen(false);
+              setActiveTableForTransform(null);
+            }}
+            connectionId={context.connection_id}
+            tableItem={activeTransformTableItem}
+            modalTitle={activeTransformDisplayName}
+            onApplyRowFilter={(config) => {
+              handleSaveRowFilter(config);
+            }}
+          />
+        </Suspense>
       )}
     </Flex>
   );

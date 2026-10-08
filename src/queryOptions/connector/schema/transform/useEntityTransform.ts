@@ -1,4 +1,8 @@
 import ServerRoutes from "@/constants/server-routes";
+import {
+  TRANSFORM_DRY_RUN_TIMEOUT_MS,
+  TRANSFORM_VALIDATE_TIMEOUT_MS,
+} from "@/constants/transform-limits";
 import AxiosInstance from "@/lib/axios/api-client";
 import {
   type EntityTransformDetail,
@@ -32,6 +36,7 @@ export function useValidateTransform(connectionId: number, tableName: string) {
       const { data } = await AxiosInstance.post<TransformValidateResponse>(
         ServerRoutes.connector.entityTransformValidate(connectionId, tableName),
         payload,
+        { timeout: TRANSFORM_VALIDATE_TIMEOUT_MS },
       );
       return data;
     },
@@ -44,6 +49,7 @@ export function useDryRunTransform(connectionId: number, tableName: string) {
       const { data } = await AxiosInstance.post<TransformDryRunResponse>(
         ServerRoutes.connector.entityTransformDryRun(connectionId, tableName),
         payload,
+        { timeout: TRANSFORM_DRY_RUN_TIMEOUT_MS },
       );
       return data;
     },

@@ -68,7 +68,10 @@ const ExpandableCodeEditor = ({
           <Button
             size="sm"
             variant="outline"
-            colorPalette="gray"
+            color="white"
+            borderColor="white"
+            bg="transparent"
+            _hover={{ bg: "whiteAlpha.200", color: "white" }}
             onClick={() => setExpanded(false)}
           >
             <FiMinimize2 /> Collapse

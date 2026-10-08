@@ -147,7 +147,10 @@ AxiosInstance.interceptors.request.use(
     if (config.headers.customToken) {
       delete config.headers.customToken;
     }
-    config.timeout = 40000;
+    // Preserve per-request timeouts (e.g. transform dry-run); only bump the axios default.
+    if (config.timeout === undefined || config.timeout === 30000) {
+      config.timeout = 40000;
+    }
     return config;
   },
   (error) => Promise.reject(error),

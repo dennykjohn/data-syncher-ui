@@ -351,9 +351,11 @@ export type TransformSummary = {
 
 export type MappingTableRow = {
   sap_column: string | null;
-  target_column: string;
+  sap_columns?: string[];
+  target_column: string | null;
   renamed: boolean;
   status: string;
+  type_label?: string;
   source_type?: Record<string, unknown> | null;
   target_type?: Record<string, unknown> | null;
   constant_value?: unknown;
