@@ -339,6 +339,8 @@ export type ConnectorTable = {
   transform_summary?: TransformSummary | null;
 };
 
+export type DestinationNameSource = "DEFAULT" | "JSON" | "MANUAL";
+
 export type TransformSummary = {
   has_mapping: boolean;
   has_script: boolean;
@@ -347,6 +349,9 @@ export type TransformSummary = {
   is_active: boolean;
   entry_point?: string | null;
   run_order?: string | null;
+  destination_table_name?: string | null;
+  destination_name_source?: DestinationNameSource | null;
+  json_table_name?: string | null;
 };
 
 export type MappingTableRow = {
@@ -376,8 +381,32 @@ export type EntityTransformDetail = {
   entry_point: string;
   run_order: string;
   row_filter: Record<string, unknown> | null;
+  json_table_name?: string | null;
+  destination_table_name?: string | null;
+  destination_name_source?: DestinationNameSource | null;
+  previous_destination_table_name?: string | null;
+  destination_rename_mode?: string | null;
+  default_display_name?: string | null;
   created_at: string | null;
   badge: string | null;
+};
+
+export type DestinationPreview = {
+  json_table_name?: string | null;
+  destination_table_name?: string | null;
+  destination_name_source?: DestinationNameSource | null;
+  default_display_name?: string | null;
+  default_destination_table_name?: string | null;
+  warnings?: string[];
+  valid?: boolean;
+  collision?: {
+    entity_label: string;
+    entity_name: string;
+    table_name: string;
+    destination_table_name: string;
+  } | null;
+  existing_snowflake_table?: boolean;
+  error?: string | null;
 };
 
 export type TransformValidateResponse = {
@@ -395,6 +424,7 @@ export type TransformValidateResponse = {
   counts: { mapped: number; not_selected: number; from_script: number };
   mapping_table: MappingTableRow[];
   row_filter_config?: RowFilterConfig | null;
+  destination?: DestinationPreview | null;
 };
 
 export type TransformDryRunResponse = {

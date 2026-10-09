@@ -1,4 +1,8 @@
+import { useMemo } from "react";
+
 import { Box, Flex, Image, Table, Text } from "@chakra-ui/react";
+
+import { useOutletContext } from "react-router";
 
 import { LuCopy } from "react-icons/lu";
 import { MdWarning } from "react-icons/md";
@@ -12,7 +16,11 @@ import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { dateTimeFormat } from "@/constants/common";
 import { getUiState } from "@/helpers/log";
-import { type ConnectorActivityDetailResponse } from "@/types/connectors";
+import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
+import {
+  type Connector,
+  type ConnectorActivityDetailResponse,
+} from "@/types/connectors";
 
 const MigrationProgressTable = ({
   tables,
@@ -22,6 +30,19 @@ const MigrationProgressTable = ({
   /** base_merged = live cumulative rows merged to destination (Databricks per-chunk). */
   progressCountSource?: ConnectorActivityDetailResponse["progress_count_source"];
 }) => {
+  const context = useOutletContext<Connector | undefined>();
+  const { data: schemaTables } = useFetchConnectorTableById(
+    context?.connection_id || 0,
+  );
+  const destByTable = useMemo(() => {
+    const map = new Map<string, string>();
+    schemaTables?.tables?.forEach((t) => {
+      const dest = t.transform_summary?.destination_table_name;
+      if (dest) map.set(t.table.toLowerCase(), dest);
+    });
+    return map;
+  }, [schemaTables?.tables]);
+
   if (!tables || tables.length === 0) {
     return (
       <Flex
@@ -350,7 +371,14 @@ const MigrationProgressTable = ({
                   borderRightWidth={1}
                   borderColor="gray.200"
                 >
-                  {table.table_name}
+                  <Flex direction="column" minW={0}>
+                    <Text>{table.table_name}</Text>
+                    {destByTable.get(table.table_name.toLowerCase()) && (
+                      <Text fontSize="xs" color="gray.500" truncate>
+                        {destByTable.get(table.table_name.toLowerCase())}
+                      </Text>
+                    )}
+                  </Flex>
                 </Table.Cell>
                 <Table.Cell
                   color="gray.700"

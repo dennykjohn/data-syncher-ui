@@ -287,6 +287,8 @@ const EntityAccordion = ({
     tableItem.transform_summary?.has_mapping ||
       tableItem.transform_summary?.has_script,
   );
+  const destinationTableName =
+    tableItem.transform_summary?.destination_table_name || null;
   const showEntityActions = isSelected || selectionLocked;
 
   const handleEntityCheckedChange = (checked: boolean) => {
@@ -317,15 +319,24 @@ const EntityAccordion = ({
           <Box onClick={() => setIsOpen(!isOpen)} cursor="pointer" p={1}>
             {isOpen ? <IoCaretDownSharp size={12} /> : <IoMdPlay size={12} />}
           </Box>
-          <Text
-            fontSize="sm"
-            fontWeight="medium"
-            color="gray.800"
-            cursor="pointer"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {entityName}
-          </Text>
+          <Flex direction="column" minW={0}>
+            <Text
+              fontSize="sm"
+              fontWeight="medium"
+              color="gray.800"
+              cursor="pointer"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              {entityName}
+            </Text>
+            {destinationTableName && (
+              <Tooltip content={`Snowflake destination: ${destinationTableName}`}>
+                <Text fontSize="xs" color="gray.500" truncate>
+                  {destinationTableName}
+                </Text>
+              </Tooltip>
+            )}
+          </Flex>
           {transformBadge && (
             <Badge size="sm" colorPalette="brand" variant="subtle">
               {transformBadge}
@@ -615,6 +626,27 @@ const SAPODataSchema = () => {
     return map;
   }, [AllTableList]);
 
+  const destinationByTable = useMemo(() => {
+    const map = new Map<string, string>();
+    AllTableList?.forEach((t) => {
+      const dest = t.transform_summary?.destination_table_name;
+      if (dest) map.set(t.table.toLowerCase(), dest);
+    });
+    return map;
+  }, [AllTableList]);
+
+  const occupiedDestinations = useMemo(() => {
+    const map = new Map<string, string>();
+    AllTableList?.forEach((t) => {
+      if (t.table === activeTableForTransform) return;
+      const dest = t.transform_summary?.destination_table_name?.toUpperCase();
+      if (!dest) return;
+      const service = t.service_name || "";
+      map.set(dest, service ? `${service}_${t.table}` : t.table);
+    });
+    return map;
+  }, [AllTableList, activeTableForTransform]);
+
   const activeTableSettings = useMemo(() => {
     if (!activeTableItem) return null;
     const serviceName =
@@ -755,14 +787,18 @@ const SAPODataSchema = () => {
     }
   };
 
-  const handleSaveRowFilter = async (config: RowFilterConfig | null) => {
-    if (!activeTableForFilter) return;
+  const handleSaveRowFilter = async (
+    config: RowFilterConfig | null,
+    targetTableOverride?: string,
+  ) => {
+    const targetTable = targetTableOverride || activeTableForFilter;
+    if (!targetTable) return;
     setIsSavingFilter(true);
     try {
       await AxiosInstance.patch(
         ServerRoutes.connector.updateTableExportSettings(
           context.connection_id,
-          activeTableForFilter,
+          targetTable,
         ),
         {
           row_filter_config: config,
@@ -777,7 +813,7 @@ const SAPODataSchema = () => {
           return {
             ...oldData,
             tables: oldData.tables.map((t: ConnectorTable) => {
-              if (t.table === activeTableForFilter) {
+              if (t.table === targetTable) {
                 return {
                   ...t,
                   row_filter_config: config,
@@ -791,7 +827,7 @@ const SAPODataSchema = () => {
 
       // Optimistically update the tableFields cache for this table
       queryClient.setQueryData(
-        ["tableFields", context.connection_id, activeTableForFilter],
+        ["tableFields", context.connection_id, targetTable],
         (oldData: Record<string, unknown> | undefined) => {
           if (!oldData) return oldData;
           return {
@@ -807,7 +843,7 @@ const SAPODataSchema = () => {
       });
       // Trigger background refetch for both ConnectorTable and tableFields
       queryClient.invalidateQueries({
-        queryKey: ["tableFields", context.connection_id, activeTableForFilter],
+        queryKey: ["tableFields", context.connection_id, targetTable],
       });
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", context.connection_id],
@@ -1155,6 +1191,7 @@ const SAPODataSchema = () => {
           connectionId={context.connection_id}
           pendingUnassignedTables={pendingUnassignedTables}
           transformBadges={transformBadges}
+          sourceToDestination={destinationByTable}
         />
       </Grid>
 
@@ -1470,8 +1507,9 @@ const SAPODataSchema = () => {
             connectionId={context.connection_id}
             tableItem={activeTransformTableItem}
             modalTitle={activeTransformDisplayName}
+            occupiedDestinations={occupiedDestinations}
             onApplyRowFilter={(config) => {
-              handleSaveRowFilter(config);
+              handleSaveRowFilter(config, activeTransformTableItem.table);
             }}
           />
         </Suspense>
