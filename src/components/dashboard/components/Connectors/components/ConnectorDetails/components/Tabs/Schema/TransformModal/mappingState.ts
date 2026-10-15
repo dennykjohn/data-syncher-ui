@@ -622,7 +622,7 @@ export function mappingCounters(
 }
 
 export function columnsRemainMapped(
-  rows: MappingRow[],
+  _rows: MappingRow[],
   counters: MappingCounters,
   hasJson: boolean,
 ): boolean {
