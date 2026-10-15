@@ -1,21 +1,14 @@
-import {
-  Badge,
-  Box,
-  Button,
-  Flex,
-  IconButton,
-  Input,
-  Link,
-  Text,
-} from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 
-import { FiEdit2 } from "react-icons/fi";
+import { Badge, Box, Button, Flex, Input, Text } from "@chakra-ui/react";
 
-import { Tooltip } from "@/components/ui/tooltip";
+import { FiGrid } from "react-icons/fi";
+
 import { type DestinationNameSource } from "@/utils/snowflakeDestinationTableName";
 
 type DestinationTableFieldProps = {
   destinationTableName: string;
+  destinationConnectionName?: string | null;
   jsonTableName: string | null;
   source: DestinationNameSource;
   defaultDisplayName: string;
@@ -25,10 +18,7 @@ type DestinationTableFieldProps = {
   warnings: string[];
   existingSnowflakeTable: boolean;
   confirmUseExisting: boolean;
-  renamePrompt: {
-    previous: string;
-    next: string;
-  } | null;
+  readOnly?: boolean;
   onUseDefault: () => void;
   onStartEdit: () => void;
   onEditChange: (_value: string) => void;
@@ -36,7 +26,6 @@ type DestinationTableFieldProps = {
   onCancelEdit: () => void;
   onConfirmUseExisting: () => void;
   onChooseAnotherName: () => void;
-  onRenameChoice: (_mode: "create_new" | "rename_existing") => void;
 };
 
 const tagLabel = (source: DestinationNameSource) => {
@@ -47,6 +36,7 @@ const tagLabel = (source: DestinationNameSource) => {
 
 const DestinationTableField = ({
   destinationTableName,
+  destinationConnectionName,
   jsonTableName,
   source,
   defaultDisplayName,
@@ -56,7 +46,7 @@ const DestinationTableField = ({
   warnings,
   existingSnowflakeTable,
   confirmUseExisting,
-  renamePrompt,
+  readOnly,
   onUseDefault,
   onStartEdit,
   onEditChange,
@@ -64,83 +54,140 @@ const DestinationTableField = ({
   onCancelEdit,
   onConfirmUseExisting,
   onChooseAnotherName,
-  onRenameChoice,
 }: DestinationTableFieldProps) => {
-  const changedFromDefault =
-    source !== "DEFAULT" &&
-    Boolean(destinationTableName) &&
-    Boolean(defaultDisplayName) &&
-    destinationTableName.toUpperCase() !== defaultDisplayName.toUpperCase();
+  const [copied, setCopied] = useState(false);
+  const prefix = destinationConnectionName?.trim();
+  const subParts: string[] = [];
+  if (jsonTableName) subParts.push(`JSON value: ${jsonTableName}`);
+  if (
+    defaultDisplayName &&
+    defaultDisplayName.toUpperCase() !== destinationTableName.toUpperCase()
+  ) {
+    subParts.push(`default would be ${defaultDisplayName}`);
+  }
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  const copyName = async () => {
+    if (!destinationTableName) return;
+    try {
+      await navigator.clipboard.writeText(destinationTableName);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   return (
     <Box>
-      <Text fontSize="sm" fontWeight="semibold" mb={1}>
-        Destination table (Snowflake)
-      </Text>
-      <Flex gap={2} align="center" flexWrap="wrap">
-        {isEditing ? (
-          <>
-            <Input
-              size="sm"
-              value={editValue}
-              onChange={(e) => onEditChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onCommitEdit();
-                if (e.key === "Escape") onCancelEdit();
-              }}
-              autoFocus
-              maxW="280px"
-              fontFamily="mono"
-            />
-            <Button size="xs" colorPalette="brand" onClick={onCommitEdit}>
-              Apply
-            </Button>
-            <Button size="xs" variant="ghost" onClick={onCancelEdit}>
-              Cancel
-            </Button>
-          </>
-        ) : (
-          <>
-            <Text fontSize="sm" fontFamily="mono" fontWeight="medium">
-              {destinationTableName || "—"}
-            </Text>
-            <Tooltip
-              content={
-                jsonTableName
-                  ? `Raw value in JSON: ${jsonTableName}`
-                  : source === "DEFAULT"
-                    ? "Default Snowflake table name for this entity"
-                    : "Manually edited destination table"
-              }
+      <Box
+        data-testid="destination-banner"
+        position="sticky"
+        top={0}
+        zIndex={2}
+        style={{ position: "sticky", top: 0, zIndex: 2 }}
+        bg="purple.50"
+        borderLeftWidth="5px"
+        borderLeftColor="brand.500"
+        borderRadius="md"
+        px={3}
+        py={3}
+      >
+        <Flex gap={3} align="flex-start">
+          <Flex
+            boxSize="36px"
+            align="center"
+            justify="center"
+            bg="white"
+            borderRadius="md"
+            color="brand.800"
+            flexShrink={0}
+            aria-hidden
+          >
+            <FiGrid />
+          </Flex>
+          <Box flex="1" minW={0}>
+            <Text
+              fontSize="xs"
+              fontWeight="semibold"
+              letterSpacing="0.04em"
+              textTransform="uppercase"
+              color="gray.500"
             >
-              <Badge size="sm" variant="subtle" colorPalette="brand">
-                {tagLabel(source)}
-              </Badge>
-            </Tooltip>
-            {source === "JSON" && (
-              <Link fontSize="xs" onClick={onUseDefault}>
-                Use default name
-              </Link>
+              Destination table in Snowflake
+            </Text>
+            <Flex gap={2} align="center" wrap="wrap" mt={1}>
+              {prefix && (
+                <Text fontSize="sm" color="gray.500">
+                  {prefix} ›
+                </Text>
+              )}
+              {isEditing ? (
+                <Flex gap={2} align="center" wrap="wrap">
+                  <Input
+                    size="sm"
+                    aria-label="Destination table name"
+                    value={editValue}
+                    onChange={(e) => onEditChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") onCommitEdit();
+                      if (e.key === "Escape") onCancelEdit();
+                    }}
+                    autoFocus
+                    maxW="280px"
+                  />
+                  <Button size="xs" colorPalette="brand" onClick={onCommitEdit}>
+                    Apply
+                  </Button>
+                  <Button size="xs" variant="ghost" onClick={onCancelEdit}>
+                    Cancel
+                  </Button>
+                </Flex>
+              ) : (
+                <Text fontSize="18px" fontWeight="medium" color="brand.800">
+                  {destinationTableName || "—"}
+                </Text>
+              )}
+              {!isEditing && (
+                <Badge size="sm" variant="subtle" colorPalette="brand">
+                  {tagLabel(source)}
+                </Badge>
+              )}
+            </Flex>
+            {subParts.length > 0 && (
+              <Text fontSize="xs" color="gray.500" mt={1}>
+                {subParts.join(" · ")}
+              </Text>
             )}
-            <Tooltip content="Edit destination table name">
-              <IconButton
+          </Box>
+          {!isEditing && (
+            <Flex gap={1} align="center" flexShrink={0} wrap="wrap">
+              <Button
                 size="xs"
                 variant="ghost"
-                aria-label="Edit destination table name"
-                onClick={onStartEdit}
+                aria-label={copied ? "Copied" : "Copy destination table name"}
+                onClick={() => void copyName()}
               >
-                <FiEdit2 />
-              </IconButton>
-            </Tooltip>
-          </>
-        )}
-      </Flex>
-      {changedFromDefault && (
-        <Text fontSize="xs" color="blue.700" mt={1}>
-          Table will be created as {destinationTableName} (default was{" "}
-          {defaultDisplayName})
-        </Text>
-      )}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+              {!readOnly && (
+                <>
+                  <Button size="xs" variant="ghost" onClick={onStartEdit}>
+                    Edit
+                  </Button>
+                  <Button size="xs" variant="ghost" onClick={onUseDefault}>
+                    Use default name
+                  </Button>
+                </>
+              )}
+            </Flex>
+          )}
+        </Flex>
+      </Box>
       {warnings.map((w) => (
         <Text key={w} fontSize="xs" color="orange.600" mt={1}>
           {w}
@@ -152,42 +199,28 @@ const DestinationTableField = ({
         </Text>
       )}
       {existingSnowflakeTable && !confirmUseExisting && (
-        <Box mt={2} p={2} borderWidth={1} borderRadius="md" borderColor="orange.200">
+        <Box
+          mt={2}
+          p={2}
+          borderWidth={1}
+          borderRadius="md"
+          borderColor="orange.200"
+        >
           <Text fontSize="xs" mb={2}>
-            A Snowflake table named {destinationTableName} already exists and was
-            not created by this mapping. Use the existing table or choose
+            A Snowflake table named {destinationTableName} already exists and
+            was not created by this mapping. Use the existing table or choose
             another name.
           </Text>
           <Flex gap={2}>
-            <Button size="xs" colorPalette="brand" onClick={onConfirmUseExisting}>
+            <Button
+              size="xs"
+              colorPalette="brand"
+              onClick={onConfirmUseExisting}
+            >
               Use existing table
             </Button>
             <Button size="xs" variant="outline" onClick={onChooseAnotherName}>
               Choose another name
-            </Button>
-          </Flex>
-        </Box>
-      )}
-      {renamePrompt && (
-        <Box mt={2} p={2} borderWidth={1} borderRadius="md" borderColor="gray.200">
-          <Text fontSize="xs" mb={2}>
-            Data was already loaded into {renamePrompt.previous}. Destination is
-            now {renamePrompt.next}. Choose how to proceed.
-          </Text>
-          <Flex gap={2} wrap="wrap">
-            <Button
-              size="xs"
-              colorPalette="brand"
-              onClick={() => onRenameChoice("create_new")}
-            >
-              Create new table and full reload
-            </Button>
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => onRenameChoice("rename_existing")}
-            >
-              Rename existing table
             </Button>
           </Flex>
         </Box>

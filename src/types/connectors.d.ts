@@ -401,6 +401,7 @@ export type DestinationPreview = {
   valid?: boolean;
   collision?: {
     entity_label: string;
+    connector_name?: string;
     entity_name: string;
     table_name: string;
     destination_table_name: string;

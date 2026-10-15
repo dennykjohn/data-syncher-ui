@@ -330,7 +330,9 @@ const EntityAccordion = ({
               {entityName}
             </Text>
             {destinationTableName && (
-              <Tooltip content={`Snowflake destination: ${destinationTableName}`}>
+              <Tooltip
+                content={`Snowflake destination: ${destinationTableName}`}
+              >
                 <Text fontSize="xs" color="gray.500" truncate>
                   {destinationTableName}
                 </Text>
@@ -1507,6 +1509,7 @@ const SAPODataSchema = () => {
             connectionId={context.connection_id}
             tableItem={activeTransformTableItem}
             modalTitle={activeTransformDisplayName}
+            destinationName={context.destination_name}
             occupiedDestinations={occupiedDestinations}
             onApplyRowFilter={(config) => {
               handleSaveRowFilter(config, activeTransformTableItem.table);

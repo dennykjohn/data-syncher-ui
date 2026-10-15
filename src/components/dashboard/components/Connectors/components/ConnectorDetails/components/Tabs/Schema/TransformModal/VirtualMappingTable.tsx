@@ -9,7 +9,12 @@ import { type MappingTableRow } from "@/types/connectors";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-type FilterChip = "all" | "unmapped_source" | "unmapped_target" | "warnings";
+type FilterChip =
+  | "all"
+  | "unmapped_source"
+  | "unmapped_target"
+  | "warnings"
+  | "removed";
 
 interface VirtualMappingTableProps {
   rows: MappingTableRow[];
@@ -25,6 +30,7 @@ const STATUS_COLOR: Record<string, string> = {
   "From script": "purple",
   "Not in SAP": "red",
   "Added by user": "teal",
+  Overridden: "purple",
   Dropped: "gray",
 };
 
@@ -145,7 +151,7 @@ const VirtualMappingTable = ({
           <Box w="40px" textAlign="center">
             →
           </Box>
-          <Box flex="1.2">Target column</Box>
+          <Box flex="1.2">Mapped column</Box>
           <Box w="90px">Type</Box>
           <Box w="110px">Status</Box>
         </Flex>

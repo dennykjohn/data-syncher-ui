@@ -12,7 +12,7 @@ export const MAX_DRY_RUN_ROWS = Number(
   import.meta.env.VITE_MAX_DRY_RUN_ROWS ?? 1000,
 );
 export const DEFAULT_DRY_RUN_ROWS = Number(
-  import.meta.env.VITE_DEFAULT_DRY_RUN_ROWS ?? 100,
+  import.meta.env.VITE_DEFAULT_DRY_RUN_ROWS ?? 50,
 );
 
 export const MAX_MAPPING_JSON_BYTES = MAX_MAPPING_JSON_MB * 1024 * 1024;
