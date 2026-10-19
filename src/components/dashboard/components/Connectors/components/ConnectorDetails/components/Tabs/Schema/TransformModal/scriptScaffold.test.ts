@@ -6,6 +6,8 @@ import {
   TRANSFORM_SHELL_HEADER,
   TRANSFORM_SHELL_HEADER_LINES,
   TRANSFORM_SHELL_RETURN,
+  defaultScriptFileName,
+  deriveRunOrder,
   inputSchemaFields,
   mappingFieldDetails,
   mappingFieldNames,
@@ -15,6 +17,7 @@ import {
   sapDatatypeToPandasDtype,
   scriptBodyLine,
   unwrapTransformBody,
+  validateTransformRoot,
   wrapTransformBody,
 } from "./scriptScaffold";
 
@@ -188,6 +191,41 @@ describe("transform script scaffold", () => {
     expect(scriptBodyLine(undefined)).toBeUndefined();
     expect(scriptBodyLine(3)).toBe(3);
     expect(scriptBodyLine(TRANSFORM_SHELL_HEADER_LINES + 1)).toBe(1);
+  });
+
+  it("derives run order from whether a mapping JSON is loaded", () => {
+    expect(deriveRunOrder(null)).toBe("filter_script_mapping");
+    expect(deriveRunOrder({ field_mapping: [] })).toBe("mapping_script");
+  });
+
+  it("names the script after the JSON target object, otherwise the entity", () => {
+    expect(
+      defaultScriptFileName(
+        { target: { objectname: "/IMO/CMFIGL04" } },
+        "0FI_GL_4",
+      ),
+    ).toBe("IMO_CMFIGL04.py");
+    expect(defaultScriptFileName(null, "0FI_GL_4")).toBe("0FI_GL_4.py");
+  });
+
+  it("requires a single top-level transform function", () => {
+    expect(validateTransformRoot(wrapTransformBody('df["A"] = 1'))).toBeNull();
+    expect(validateTransformRoot("def foo(df):\n    return df\n")).toEqual({
+      message: "Root function must be named transform (found foo).",
+      line: 1,
+    });
+    expect(
+      validateTransformRoot(
+        "def transform(df):\n    return df\n\ndef extra(df):\n    return df\n",
+      ),
+    ).toEqual({
+      message: "Only transform may be a top-level function (found extra).",
+      line: 4,
+    });
+    expect(validateTransformRoot("df['A'] = 1\n")).toEqual({
+      message: "Root function must be named transform.",
+      line: undefined,
+    });
   });
 });
 

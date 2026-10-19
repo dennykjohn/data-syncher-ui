@@ -1,6 +1,79 @@
+import { extractJsonTargetObjectname } from "@/utils/snowflakeDestinationTableName";
+
 import { formatFieldType } from "./mappingState";
 
 export const TRANSFORM_ENTRY_POINT = "transform";
+
+export const RUN_ORDER_MAPPING_SCRIPT = "mapping_script";
+export const RUN_ORDER_FILTER_SCRIPT_MAPPING = "filter_script_mapping";
+
+/** Mapping JSON present: map first, then script. Otherwise the script runs on the SAP extract. */
+export function deriveRunOrder(
+  mappingJson: Record<string, unknown> | null | undefined,
+): string {
+  return mappingJson
+    ? RUN_ORDER_MAPPING_SCRIPT
+    : RUN_ORDER_FILTER_SCRIPT_MAPPING;
+}
+
+function scriptFileStem(raw: string): string {
+  const cleaned = raw
+    .trim()
+    .replace(/[\\/:*?"<>|\s]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return cleaned || "transform";
+}
+
+/** Chip and editor title: JSON target object, otherwise the SAP entity name. */
+export function defaultScriptFileName(
+  mappingJson: Record<string, unknown> | null | undefined,
+  entityName: string,
+): string {
+  const target = extractJsonTargetObjectname(mappingJson);
+  const stem = scriptFileStem(target || entityName || "transform");
+  return stem.toLowerCase().endsWith(".py") ? stem : `${stem}.py`;
+}
+
+export type TransformRootIssue = {
+  message: string;
+  line?: number;
+};
+
+/** The script must keep a single top-level function named transform. */
+export function validateTransformRoot(
+  script: string,
+): TransformRootIssue | null {
+  const lines = script.replace(/\r\n/g, "\n").split("\n");
+  const defs: { name: string; line: number }[] = [];
+  lines.forEach((line, index) => {
+    const match = line.match(/^def\s+(\w+)\s*\(/);
+    if (match) defs.push({ name: match[1], line: index + 1 });
+  });
+  const transforms = defs.filter((item) => item.name === TRANSFORM_ENTRY_POINT);
+  if (transforms.length === 0) {
+    const renamed = defs[0];
+    return {
+      message: renamed
+        ? `Root function must be named transform (found ${renamed.name}).`
+        : "Root function must be named transform.",
+      line: renamed?.line,
+    };
+  }
+  if (transforms.length > 1) {
+    return {
+      message: "Script must contain exactly one transform function.",
+      line: transforms[1].line,
+    };
+  }
+  const extra = defs.find((item) => item.name !== TRANSFORM_ENTRY_POINT);
+  if (extra) {
+    return {
+      message: `Only transform may be a top-level function (found ${extra.name}).`,
+      line: extra.line,
+    };
+  }
+  return null;
+}
 
 const LEGACY_SHELL_HEADER = `import pandas as pd
 

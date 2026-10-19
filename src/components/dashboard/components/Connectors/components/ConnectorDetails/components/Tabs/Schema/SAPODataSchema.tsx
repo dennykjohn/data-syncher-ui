@@ -1511,9 +1511,6 @@ const SAPODataSchema = () => {
             modalTitle={activeTransformDisplayName}
             destinationName={context.destination_name}
             occupiedDestinations={occupiedDestinations}
-            onApplyRowFilter={(config) => {
-              handleSaveRowFilter(config, activeTransformTableItem.table);
-            }}
           />
         </Suspense>
       )}

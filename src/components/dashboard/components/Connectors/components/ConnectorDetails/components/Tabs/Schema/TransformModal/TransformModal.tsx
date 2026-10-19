@@ -10,7 +10,6 @@ import {
   IconButton,
   Input,
   Link,
-  NativeSelect,
   Portal,
   Switch,
   Text,
@@ -48,7 +47,6 @@ import {
 import {
   type ConnectorTable,
   type MappingTableRow,
-  type RowFilterConfig,
   type TransformDryRunResponse,
   type TransformValidateResponse,
 } from "@/types/connectors";
@@ -113,14 +111,14 @@ import {
 import { buildScriptExamples } from "./scriptExamples";
 import {
   TRANSFORM_ENTRY_POINT,
-  TRANSFORM_SHELL_HEADER,
-  TRANSFORM_SHELL_RETURN,
+  defaultScriptFileName,
+  deriveRunOrder,
   inputSchemaFields,
   normalizeTransformScript,
   outputSchemaFields,
   persistedScriptText,
-  scriptBodyLine,
   unwrapTransformBody,
+  validateTransformRoot,
   wrapTransformBody,
 } from "./scriptScaffold";
 
@@ -138,7 +136,6 @@ interface TransformModalProps {
   tableItem: ConnectorTable;
   modalTitle: string;
   destinationName?: string | null;
-  onApplyRowFilter?: (_config: RowFilterConfig) => void;
   occupiedDestinations?: Map<string, string>;
 }
 
@@ -282,7 +279,6 @@ const TransformModal = ({
   tableItem,
   modalTitle,
   destinationName,
-  onApplyRowFilter,
   occupiedDestinations,
 }: TransformModalProps) => {
   const parts = entityParts(tableItem);
@@ -304,7 +300,7 @@ const TransformModal = ({
   const [scriptText, setScriptText] = useState("");
   const [applyScript, setApplyScript] = useState(false);
   const [entryPoint, setEntryPoint] = useState(TRANSFORM_ENTRY_POINT);
-  const [runOrder, setRunOrder] = useState("filter_script_mapping");
+  const [scriptNameFromUpload, setScriptNameFromUpload] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterChip>("all");
   const [parsing, setParsing] = useState(false);
@@ -361,6 +357,10 @@ const TransformModal = ({
   const { can } = usePermissions();
   const readOnly = !can("can_edit_tables");
   const confirmOpen = useConfirmPending();
+  const effectiveRunOrder = useMemo(
+    () => deriveRunOrder(mappingJson),
+    [mappingJson],
+  );
 
   const destNameRef = useRef(destName);
   destNameRef.current = destName;
@@ -405,7 +405,7 @@ const TransformModal = ({
       setScriptText(normalizedScript);
       setApplyScript(Boolean(unwrapTransformBody(normalizedScript).trim()));
       setEntryPoint(TRANSFORM_ENTRY_POINT);
-      setRunOrder(active.run_order || "filter_script_mapping");
+      setScriptNameFromUpload(false);
       const source =
         (active.destination_name_source as DestinationNameSource) || "DEFAULT";
       setDestSource(source);
@@ -420,7 +420,10 @@ const TransformModal = ({
       setScriptFileMeta(
         normalizedScript.trim()
           ? {
-              fileName: "Saved script",
+              fileName: defaultScriptFileName(
+                (active.mapping_json as Record<string, unknown>) || null,
+                parts.entityName,
+              ),
               size: new Blob([normalizedScript]).size,
             }
           : null,
@@ -430,7 +433,7 @@ const TransformModal = ({
       setScriptText("");
       setApplyScript(false);
       setEntryPoint(TRANSFORM_ENTRY_POINT);
-      setRunOrder("filter_script_mapping");
+      setScriptNameFromUpload(false);
       setDestSource("DEFAULT");
       setDestName(defaultTable);
       setJsonRawName(null);
@@ -444,7 +447,9 @@ const TransformModal = ({
           overrides: snapshotFromSaved(active.mapping_overrides),
           scriptText: normalizedScript,
           entryPoint: TRANSFORM_ENTRY_POINT,
-          runOrder: active.run_order || "filter_script_mapping",
+          runOrder: deriveRunOrder(
+            (active.mapping_json as Record<string, unknown>) || null,
+          ),
           destName: (
             active.destination_table_name || defaultTable
           ).toUpperCase(),
@@ -457,7 +462,7 @@ const TransformModal = ({
           overrides: emptyOverrides(),
           scriptText: "",
           entryPoint: TRANSFORM_ENTRY_POINT,
-          runOrder: "filter_script_mapping",
+          runOrder: deriveRunOrder(null),
           destName: defaultTable,
           destSource: "DEFAULT",
         };
@@ -486,6 +491,11 @@ const TransformModal = ({
       fileSize?: number;
       scriptFileName?: string;
       scriptFileSize?: number;
+      step?: number;
+      applyScript?: boolean;
+      dryRunResult?: TransformDryRunResponse | null;
+      scriptValidatedText?: string;
+      scriptNameFromUpload?: boolean;
     };
     try {
       parsed = JSON.parse(stored) as typeof parsed;
@@ -513,11 +523,29 @@ const TransformModal = ({
         if (parsed.mappingJson) setMappingJson(parsed.mappingJson);
         if (parsed.overrides) setHistory(createHistory(parsed.overrides));
         if (typeof parsed.scriptText === "string") {
-          const restored = normalizeTransformScript(parsed.scriptText);
+          const restored = validateTransformRoot(parsed.scriptText)
+            ? normalizeTransformScript(parsed.scriptText)
+            : parsed.scriptText;
           setScriptText(restored);
-          setApplyScript(Boolean(unwrapTransformBody(restored).trim()));
           setEntryPoint(TRANSFORM_ENTRY_POINT);
+          if (typeof parsed.applyScript === "boolean") {
+            setApplyScript(parsed.applyScript);
+          } else {
+            setApplyScript(Boolean(unwrapTransformBody(restored).trim()));
+          }
+        } else if (typeof parsed.applyScript === "boolean") {
+          setApplyScript(parsed.applyScript);
         }
+        if (typeof parsed.step === "number") {
+          setStep(Math.min(2, Math.max(0, parsed.step)));
+        }
+        if (parsed.dryRunResult && typeof parsed.dryRunResult === "object") {
+          setDryRunResult(parsed.dryRunResult);
+        }
+        if (typeof parsed.scriptValidatedText === "string") {
+          setScriptValidatedText(parsed.scriptValidatedText);
+        }
+        setScriptNameFromUpload(Boolean(parsed.scriptNameFromUpload));
         if (parsed.destName) setDestName(parsed.destName);
         if (parsed.destSource) setDestSource(parsed.destSource);
         if (parsed.fileName) {
@@ -536,7 +564,14 @@ const TransformModal = ({
         pendingDraftRestores.delete(token);
       }
     })();
-  }, [open, transformData?.active, defaultTable, draftKey, tableItem.table]);
+  }, [
+    open,
+    transformData?.active,
+    defaultTable,
+    draftKey,
+    tableItem.table,
+    parts.entityName,
+  ]);
 
   const sapColumns = useMemo(() => {
     const fromTable = sapColumnsFromTable(tableItem);
@@ -1050,6 +1085,7 @@ const TransformModal = ({
       setScriptText(wrapped);
       setApplyScript(true);
       setEntryPoint(TRANSFORM_ENTRY_POINT);
+      setScriptNameFromUpload(true);
       setScriptFileMeta({ fileName: file.name, size: file.size });
       setScriptValidatedText("");
       setDryRunResult(null);
@@ -1069,6 +1105,7 @@ const TransformModal = ({
     if (!ok) return;
     setScriptText("");
     setScriptFileMeta(null);
+    setScriptNameFromUpload(false);
     setScriptValidatedText("");
     setApplyScript(false);
     setEntryPoint(TRANSFORM_ENTRY_POINT);
@@ -1128,7 +1165,7 @@ const TransformModal = ({
         mapping_overrides: overridePayload(history.present),
         script_text: persistedScriptText(applyScript, scriptText),
         entry_point: TRANSFORM_ENTRY_POINT,
-        run_order: runOrder,
+        run_order: effectiveRunOrder,
         sample_size: DEFAULT_DRY_RUN_ROWS,
       });
       setDryRunResult(result);
@@ -1159,7 +1196,7 @@ const TransformModal = ({
     dryRunMut,
     mappingJson,
     scriptText,
-    runOrder,
+    effectiveRunOrder,
     history.present,
   ]);
 
@@ -1199,9 +1236,21 @@ const TransformModal = ({
   const scriptBytes = new Blob([scriptText]).size;
   const scriptLines = scriptText ? scriptText.split("\n").length : 0;
   const scriptBody = unwrapTransformBody(scriptText);
+  const defaultScriptName = defaultScriptFileName(
+    mappingJson,
+    parts.entityName,
+  );
   const scriptChipName =
-    scriptFileMeta?.fileName ?? (scriptBody.trim() ? "Script in editor" : null);
+    scriptNameFromUpload && scriptFileMeta?.fileName
+      ? scriptFileMeta.fileName
+      : scriptText.trim()
+        ? defaultScriptName
+        : null;
   const scriptChipSize = scriptFileMeta?.size ?? scriptBytes;
+  const transformRootIssue = useMemo(() => {
+    if (!applyScript || !scriptText.trim()) return null;
+    return validateTransformRoot(scriptText);
+  }, [applyScript, scriptText]);
   const scriptEdited = useMemo(() => {
     if (!scriptBody.trim()) return false;
     const current = normalizeTransformScript(
@@ -1211,6 +1260,13 @@ const TransformModal = ({
     return current !== saved;
   }, [applyScript, scriptBody, scriptText, scriptValidatedText]);
   const editorScriptValidation = useMemo((): EditorValidation | null => {
+    if (transformRootIssue) {
+      return {
+        passed: false,
+        message: transformRootIssue.message,
+        line: transformRootIssue.line,
+      };
+    }
     if (scriptEdited) {
       return { passed: false, message: "Edited — save and validate" };
     }
@@ -1229,13 +1285,15 @@ const TransformModal = ({
       return {
         passed: false,
         message: failed.message || failed.label,
-        line: scriptBodyLine(failed.line),
+        line: failed.line,
       };
     }
     return { passed: true, message: "Validated" };
-  }, [scriptEdited, validateResult?.checklist]);
+  }, [scriptEdited, transformRootIssue, validateResult?.checklist]);
   const scriptBlocksNext =
-    scriptBytes > MAX_SCRIPT_BYTES || scriptLines > MAX_SCRIPT_LINES;
+    scriptBytes > MAX_SCRIPT_BYTES ||
+    scriptLines > MAX_SCRIPT_LINES ||
+    Boolean(transformRootIssue);
   const noneMapped = !columnsRemainMapped(
     effectiveRows,
     counts,
@@ -1255,7 +1313,7 @@ const TransformModal = ({
       overrides: history.present,
       scriptText,
       entryPoint,
-      runOrder,
+      runOrder: effectiveRunOrder,
       destName,
       destSource,
     }),
@@ -1264,7 +1322,7 @@ const TransformModal = ({
       history.present,
       scriptText,
       entryPoint,
-      runOrder,
+      effectiveRunOrder,
       destName,
       destSource,
     ],
@@ -1339,7 +1397,7 @@ const TransformModal = ({
         mapping_json: mappingJson,
         script_text: persistedScriptText(applyScript, scriptText),
         entry_point: TRANSFORM_ENTRY_POINT,
-        run_order: runOrder,
+        run_order: effectiveRunOrder,
         mapping_overrides: overridePayload(history.present),
         destination_name_source: destSource,
         destination_table_name: destName,
@@ -1534,7 +1592,8 @@ const TransformModal = ({
 
   useEffect(() => {
     if (!open || !baseline) return;
-    if (!isDirty) {
+    const keepSession = isDirty || dryRunResult !== null || step > 0;
+    if (!keepSession) {
       sessionStorage.removeItem(draftKey);
       return;
     }
@@ -1548,8 +1607,14 @@ const TransformModal = ({
         destSource,
         fileName: jsonFileMeta?.fileName,
         fileSize: jsonFileMeta?.size,
-        scriptFileName: scriptFileMeta?.fileName,
-        scriptFileSize: scriptFileMeta?.size,
+        scriptFileName: scriptChipName,
+        scriptFileSize: scriptChipSize,
+        step,
+        applyScript,
+        dryRunResult,
+        scriptValidatedText,
+        scriptNameFromUpload,
+        runOrder: effectiveRunOrder,
       }),
     );
   }, [
@@ -1563,7 +1628,14 @@ const TransformModal = ({
     destName,
     destSource,
     jsonFileMeta,
-    scriptFileMeta,
+    scriptChipName,
+    scriptChipSize,
+    step,
+    applyScript,
+    dryRunResult,
+    scriptValidatedText,
+    scriptNameFromUpload,
+    effectiveRunOrder,
   ]);
 
   useEffect(() => {
@@ -1592,6 +1664,10 @@ const TransformModal = ({
 
   const requestClose = async (intent: "close" | "back" = "close") => {
     if (closeGuard.current) return;
+    if (intent === "back") {
+      setStep(0);
+      return;
+    }
     if (intent === "close" && modalExpanded) {
       setModalExpanded(false);
       return;
@@ -1613,11 +1689,6 @@ const TransformModal = ({
       onClose();
       return;
     }
-    if (intent === "back") {
-      setStep(0);
-      return;
-    }
-    sessionStorage.removeItem(draftKey);
     onClose();
   };
 
@@ -2089,21 +2160,6 @@ const TransformModal = ({
                         {filterSummary}
                       </Text>
                     )}
-                    {validateResult?.row_filter_config && onApplyRowFilter && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        colorPalette="brand"
-                        disabled={readOnly}
-                        onClick={() =>
-                          onApplyRowFilter(
-                            validateResult.row_filter_config as RowFilterConfig,
-                          )
-                        }
-                      >
-                        Apply to entity filter
-                      </Button>
-                    )}
                     {entityMismatch && (
                       <Text fontSize="xs" color="orange.600">
                         JSON source.objectname does not match this entity after
@@ -2177,7 +2233,11 @@ const TransformModal = ({
                             colorPalette="brand"
                             variant="outline"
                             loading={validateMut.isPending}
-                            disabled={readOnly || !scriptBody.trim()}
+                            disabled={
+                              readOnly ||
+                              !scriptBody.trim() ||
+                              Boolean(transformRootIssue)
+                            }
                             onClick={() => {
                               void handleScriptSaveAndValidate();
                             }}
@@ -2186,14 +2246,13 @@ const TransformModal = ({
                           </Button>
                         </Flex>
                         <ExpandableCodeEditor
-                          value={unwrapTransformBody(scriptText)}
+                          value={scriptText}
+                          fileName={scriptChipName || defaultScriptName}
                           exportText={
                             scriptText.trim()
                               ? scriptText
                               : wrapTransformBody("")
                           }
-                          lockedHeader={TRANSFORM_SHELL_HEADER}
-                          lockedFooter={TRANSFORM_SHELL_RETURN}
                           schemaFolds={scriptSchemaFolds}
                           examples={scriptExamples}
                           onInsertExample={handleInsertScriptExample}
@@ -2201,15 +2260,21 @@ const TransformModal = ({
                           validation={editorScriptValidation}
                           readOnly={readOnly}
                           compact
-                          onChange={(body) => {
-                            const next = wrapTransformBody(body);
+                          onChange={(next) => {
                             if (next === scriptText) return;
-                            if (!scriptText.trim() && !body.trim()) return;
                             setScriptText(next);
                             setEntryPoint(TRANSFORM_ENTRY_POINT);
                             setDryRunResult(null);
                           }}
                         />
+                        {transformRootIssue && (
+                          <Text fontSize="xs" color="red.600">
+                            {transformRootIssue.message}
+                            {transformRootIssue.line
+                              ? ` (line ${transformRootIssue.line})`
+                              : ""}
+                          </Text>
+                        )}
                         {validateResult?.checklist
                           ?.filter((item) =>
                             [
@@ -2220,36 +2285,34 @@ const TransformModal = ({
                               "entry_point",
                             ].includes(item.id),
                           )
-                          .map((item) => {
-                            const line = scriptBodyLine(item.line);
-                            return (
-                              <Flex
-                                key={item.id}
-                                gap={2}
-                                fontSize="sm"
-                                align="center"
+                          .map((item) => (
+                            <Flex
+                              key={item.id}
+                              gap={2}
+                              fontSize="sm"
+                              align="center"
+                            >
+                              <Text
+                                color={item.passed ? "green.500" : "red.500"}
                               >
-                                <Text
-                                  color={item.passed ? "green.500" : "red.500"}
-                                >
-                                  {item.passed ? "✓" : "✗"}
+                                {item.passed ? "✓" : "✗"}
+                              </Text>
+                              <Text>{item.label}</Text>
+                              {item.message && (
+                                <Text color="red.500" fontSize="xs">
+                                  {item.message}
+                                  {item.line ? ` (line ${item.line})` : ""}
                                 </Text>
-                                <Text>{item.label}</Text>
-                                {item.message && (
-                                  <Text color="red.500" fontSize="xs">
-                                    {item.message}
-                                    {line ? ` (line ${line})` : ""}
-                                  </Text>
-                                )}
-                              </Flex>
-                            );
-                          })}
-                        {scriptBlocksNext && (
+                              )}
+                            </Flex>
+                          ))}
+                        {scriptBytes > MAX_SCRIPT_BYTES ||
+                        scriptLines > MAX_SCRIPT_LINES ? (
                           <Text fontSize="xs" color="red.600">
                             Script exceeds {MAX_SCRIPT_LINES} lines or{" "}
                             {MAX_SCRIPT_BYTES / 1024} KB.
                           </Text>
-                        )}
+                        ) : null}
                       </>
                     )}
                   </VStack>
@@ -2278,27 +2341,22 @@ const TransformModal = ({
                       onConfirmUseExisting={() => undefined}
                       onChooseAnotherName={() => undefined}
                     />
+                    <Box>
+                      <Text fontSize="sm" fontWeight="semibold" mb={1}>
+                        Run order
+                      </Text>
+                      <Text fontSize="sm" color="gray.600">
+                        {mappingJson
+                          ? applyScript
+                            ? "JSON mapping is applied first, then the script."
+                            : "JSON mapping is applied. No script will run."
+                          : applyScript
+                            ? "No JSON mapping. The script runs directly on the SAP extract."
+                            : "No JSON mapping and no script. Rows load from the SAP extract."}
+                      </Text>
+                    </Box>
                     {applyScript && (
                       <>
-                        <Box>
-                          <Text fontSize="sm" fontWeight="semibold" mb={1}>
-                            Run order
-                          </Text>
-                          <NativeSelect.Root size="sm">
-                            <NativeSelect.Field
-                              value={runOrder}
-                              onChange={(e) => setRunOrder(e.target.value)}
-                            >
-                              <option value="filter_script_mapping">
-                                SAP filter, script, mapping on leftover columns,
-                                load
-                              </option>
-                              <option value="mapping_script">
-                                Mapping first, then script
-                              </option>
-                            </NativeSelect.Field>
-                          </NativeSelect.Root>
-                        </Box>
                         {mappingJson &&
                           (
                             mappingJson.transformation as
@@ -2321,7 +2379,11 @@ const TransformModal = ({
                             variant="outline"
                             colorPalette="brand"
                             loading={validateMut.isPending}
-                            disabled={readOnly || !scriptBody.trim()}
+                            disabled={
+                              readOnly ||
+                              !scriptBody.trim() ||
+                              Boolean(transformRootIssue)
+                            }
                             onClick={() => {
                               void handleScriptSaveAndValidate();
                             }}
@@ -2339,30 +2401,27 @@ const TransformModal = ({
                               "entry_point",
                             ].includes(item.id),
                           )
-                          .map((item) => {
-                            const line = scriptBodyLine(item.line);
-                            return (
-                              <Flex
-                                key={item.id}
-                                gap={2}
-                                fontSize="sm"
-                                align="center"
+                          .map((item) => (
+                            <Flex
+                              key={item.id}
+                              gap={2}
+                              fontSize="sm"
+                              align="center"
+                            >
+                              <Text
+                                color={item.passed ? "green.500" : "red.500"}
                               >
-                                <Text
-                                  color={item.passed ? "green.500" : "red.500"}
-                                >
-                                  {item.passed ? "✓" : "✗"}
+                                {item.passed ? "✓" : "✗"}
+                              </Text>
+                              <Text>{item.label}</Text>
+                              {item.message && (
+                                <Text color="red.500" fontSize="xs">
+                                  {item.message}
+                                  {item.line ? ` (line ${item.line})` : ""}
                                 </Text>
-                                <Text>{item.label}</Text>
-                                {item.message && (
-                                  <Text color="red.500" fontSize="xs">
-                                    {item.message}
-                                    {line ? ` (line ${line})` : ""}
-                                  </Text>
-                                )}
-                              </Flex>
-                            );
-                          })}
+                              )}
+                            </Flex>
+                          ))}
                       </>
                     )}
                     <Flex gap={2} align="center" flexWrap="wrap">
@@ -2373,11 +2432,20 @@ const TransformModal = ({
                         colorPalette="brand"
                         size="sm"
                         loading={dryRunMut.isPending}
+                        disabled={Boolean(transformRootIssue)}
                         onClick={runDryRun}
                       >
                         Run dry run
                       </Button>
                     </Flex>
+                    {transformRootIssue && (
+                      <Text fontSize="xs" color="red.600">
+                        {transformRootIssue.message}
+                        {transformRootIssue.line
+                          ? ` (line ${transformRootIssue.line})`
+                          : ""}
+                      </Text>
+                    )}
                     {dryRunResult && (
                       <>
                         <Text fontSize="sm">
@@ -2401,6 +2469,19 @@ const TransformModal = ({
                             {e.line ? ` (line ${e.line})` : ""}
                           </Text>
                         ))}
+                        {(dryRunResult.input_preview?.length ?? 0) > 0 ? (
+                          <ExpandablePreviewTable
+                            title="Input sample (mapped SAP columns)"
+                            rows={dryRunResult.input_preview}
+                          />
+                        ) : (
+                          dryRunResult.rows_in > 0 && (
+                            <Text fontSize="xs" color="gray.600">
+                              No mapped source columns were available for the
+                              input preview.
+                            </Text>
+                          )
+                        )}
                         {dryRunResult.output_preview?.length > 0 && (
                           <ExpandablePreviewTable
                             title="Target preview (__target_df)"

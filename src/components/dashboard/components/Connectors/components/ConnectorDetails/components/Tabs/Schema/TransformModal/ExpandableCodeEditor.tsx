@@ -65,6 +65,8 @@ interface ExpandableCodeEditorProps {
   validation?: EditorValidation | null;
   /** Script step: editor + expand only. Hide validate, copy, and download. */
   compact?: boolean;
+  /** Label shown in the editor chrome. Defaults to transform.py. */
+  fileName?: string;
 }
 
 const EDITOR_BG = "#282c34";
@@ -86,6 +88,7 @@ const ExpandableCodeEditor = ({
   validating = false,
   validation = null,
   compact = false,
+  fileName = "transform.py",
 }: ExpandableCodeEditorProps) => {
   const textToExport = exportText ?? value;
   const [expanded, setExpanded] = useState(false);
@@ -143,7 +146,7 @@ const ExpandableCodeEditor = ({
       >
         <Flex align="center" gap={2} mr={2}>
           <Text fontSize="xs" color="white" fontFamily="mono">
-            transform.py
+            {fileName}
           </Text>
           <Text
             fontSize="2xs"
