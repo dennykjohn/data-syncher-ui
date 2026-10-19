@@ -58,5 +58,8 @@ describe("getPipelineListGroup", () => {
     );
     expect(getPipelineListGroup(pipeline(2, "x", "active"))).toBe("active");
     expect(getPipelineListGroup(pipeline(3, "x", "paused"))).toBe("paused");
+    expect(getPipelineListGroup(pipeline(4, "x", "active", "queued"))).toBe(
+      "active",
+    );
   });
 });

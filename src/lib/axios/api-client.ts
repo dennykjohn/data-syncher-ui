@@ -5,6 +5,7 @@ import axios, {
 } from "axios";
 
 import { toaster } from "@/components/ui/toaster";
+import { LONG_DESTINATION_AUTH_TIMEOUT_MS } from "@/constants/api-timeouts";
 import ServerRoutes from "@/constants/server-routes";
 import {
   clearAuthTokens,
@@ -13,6 +14,8 @@ import {
   setAuthTokens,
 } from "@/lib/auth/token-cookies";
 import { type ErrorResponseType } from "@/types/error";
+
+export { LONG_DESTINATION_AUTH_TIMEOUT_MS };
 
 const envApiOrigin = import.meta.env.VITE_API_ORIGIN as string | undefined;
 
@@ -64,6 +67,58 @@ const AxiosInstance = axios.create({
   baseURL: getAxiosBaseURL(),
   timeout: 30000,
 });
+
+const DEFAULT_AXIOS_TIMEOUT_MS = 30000;
+const BUMPED_AXIOS_TIMEOUT_MS = 40000;
+
+function requestUrl(config: InternalAxiosRequestConfig): string {
+  const base = config.baseURL ?? "";
+  const path = config.url ?? "";
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+  return `${base}${path}`;
+}
+
+function isLongDestinationAuthRequest(
+  config: InternalAxiosRequestConfig,
+): boolean {
+  const url = requestUrl(config);
+  return (
+    /destinations\/create(\/|\?|$)/.test(url) ||
+    /destinations\/update\/[^/]+(\/|\?|$)/.test(url) ||
+    /destinations\/test\/\d+/.test(url) ||
+    /connection\/\d+\/test(\/|\?|$)/.test(url) ||
+    /source-config\/[^/]+\/create(\/|\?|$)/.test(url)
+  );
+}
+
+function shouldSuppressGlobalErrorToast(
+  config: RetryableRequestConfig | undefined,
+): boolean {
+  const headers = config?.headers;
+  if (!headers) {
+    return false;
+  }
+  const flag =
+    (headers as Record<string, unknown>)["X-Suppress-Global-Error-Toast"] ??
+    (typeof headers.get === "function"
+      ? headers.get("X-Suppress-Global-Error-Toast")
+      : undefined);
+  return flag === "1" || flag === "true";
+}
+
+function isDestinationConnectionTestRequest(url: string): boolean {
+  return /destinations\/test\/\d+/.test(url);
+}
+
+function isDefaultAxiosTimeout(timeout: number | undefined): boolean {
+  return (
+    timeout === undefined ||
+    timeout === DEFAULT_AXIOS_TIMEOUT_MS ||
+    timeout === BUMPED_AXIOS_TIMEOUT_MS
+  );
+}
 
 type RefreshTokenResponse = {
   access?: string;
@@ -120,7 +175,7 @@ AxiosInstance.defaults.headers.common["Pragma"] = "no-cache";
 
 AxiosInstance.interceptors.request.use(
   (config: RetryableRequestConfig): InternalAxiosRequestConfig => {
-    const url = `${config.baseURL ?? ""}${config.url ?? ""}`;
+    const url = requestUrl(config);
     const isAuthCredentialRequest =
       /authentication\/?(\?|$)/.test(url) ||
       /authentication\/refresh/.test(url) ||
@@ -147,9 +202,14 @@ AxiosInstance.interceptors.request.use(
     if (config.headers.customToken) {
       delete config.headers.customToken;
     }
-    // Preserve per-request timeouts (e.g. transform dry-run); only bump the axios default.
-    if (config.timeout === undefined || config.timeout === 30000) {
-      config.timeout = 40000;
+    // Preserve per-request timeouts (e.g. transform dry-run).
+    if (
+      isLongDestinationAuthRequest(config) &&
+      isDefaultAxiosTimeout(config.timeout)
+    ) {
+      config.timeout = LONG_DESTINATION_AUTH_TIMEOUT_MS;
+    } else if (isDefaultAxiosTimeout(config.timeout)) {
+      config.timeout = BUMPED_AXIOS_TIMEOUT_MS;
     }
     return config;
   },
@@ -207,20 +267,26 @@ AxiosInstance.interceptors.response.use(
       }
     }
 
-    if (error.code === "ECONNABORTED") {
-      toaster.error({
-        title: "Request Timeout",
-        description: "The server took too long to respond. Try again soon.",
-      });
-    } else if (!error.response) {
-      const devDetail =
-        import.meta.env.DEV && error.message ? ` ${error.message}` : "";
-      toaster.error({
-        title: "Server Unreachable",
-        description: import.meta.env.DEV
-          ? `No response from API (use Vite proxy /api → Django on :8000). Is runserver up?${devDetail}`
-          : "The server appears to be down or unreachable. Please try again later.",
-      });
+    const suppressGlobalToast =
+      shouldSuppressGlobalErrorToast(original) ||
+      isDestinationConnectionTestRequest(reqUrl);
+
+    if (!suppressGlobalToast) {
+      if (error.code === "ECONNABORTED") {
+        toaster.error({
+          title: "Request Timeout",
+          description: "The server took too long to respond. Try again soon.",
+        });
+      } else if (!error.response) {
+        const devDetail =
+          import.meta.env.DEV && error.message ? ` ${error.message}` : "";
+        toaster.error({
+          title: "Server Unreachable",
+          description: import.meta.env.DEV
+            ? `No response from API (use Vite proxy /api → Django on :8000). Is runserver up?${devDetail}`
+            : "The server appears to be down or unreachable. Please try again later.",
+        });
+      }
     }
     return Promise.reject(error.response?.data ?? error);
   },

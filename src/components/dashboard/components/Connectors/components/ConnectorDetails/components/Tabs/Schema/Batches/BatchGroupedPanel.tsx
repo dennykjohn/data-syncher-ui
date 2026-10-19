@@ -345,9 +345,7 @@ const BatchGroupedPanel = ({
                 batch={b}
                 connectionId={connectionId}
                 transformBadges={transformBadges}
-                sourceToDestination={
-                  isMappingFlow ? sourceToDestination : undefined
-                }
+                sourceToDestination={sourceToDestination}
               />
             ))}
 

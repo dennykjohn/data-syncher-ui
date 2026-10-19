@@ -24,6 +24,7 @@ import {
   monthlyRelativeCronDay,
   parseCustomMinutes,
   parseMonthlyRelativeCronDay,
+  pipelineScheduleLabel,
   splitSyncStartDate,
   startNodeScheduleLabels,
   toApiSchedule,
@@ -371,6 +372,21 @@ describe("scheduleOptions", () => {
         status: "active",
       });
       expect(labels.nextSyncLabel).toBe("Manual");
+    });
+
+    it("shows Paused instead of cadence when schedule is paused", () => {
+      expect(
+        pipelineScheduleLabel({
+          readable_schedule: "1 hour",
+          schedule_paused: true,
+        }),
+      ).toBe("Paused");
+      expect(
+        pipelineScheduleLabel({
+          readable_schedule: "1 hour",
+          schedule_paused: false,
+        }),
+      ).toBe("1 hour");
     });
   });
 

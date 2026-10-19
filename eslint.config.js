@@ -58,5 +58,15 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: [
+      "src/components/dashboard/components/Connectors/components/ConnectorDetails/components/Tabs/Schema/TransformModal/**/*.{ts,tsx}",
+      "src/components/ui/ConfirmDialog.tsx",
+      "src/components/ui/confirm.tsx",
+    ],
+    rules: {
+      "no-alert": "error",
+    },
+  },
   prettierConfig,
 );

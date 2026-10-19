@@ -130,7 +130,12 @@ export type PipelineNodeRunStatus =
   | "timeout"
   | "skipped";
 
-export type PipelineRunStatus = "running" | "completed" | "failed" | "deleted";
+export type PipelineRunStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "deleted";
 
 export type PipelineRunOverall = {
   nodes_total: number;

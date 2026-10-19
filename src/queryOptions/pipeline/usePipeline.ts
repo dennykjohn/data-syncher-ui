@@ -104,7 +104,10 @@ export function usePipelines() {
     },
     staleTime: 30 * 1000,
     refetchInterval: (query) =>
-      query.state.data?.some((p) => p.latest_run_status === "running")
+      query.state.data?.some(
+        (p) =>
+          p.latest_run_status === "running" || p.latest_run_status === "queued",
+      )
         ? 4000
         : false,
   });

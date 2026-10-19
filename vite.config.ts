@@ -15,10 +15,12 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "src"),
     },
+    // Prefer TypeScript sources over stale committed .js siblings (same basename).
+    extensions: [".ts", ".tsx", ".mts", ".mjs", ".js", ".jsx", ".json"],
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
   server: {
     proxy: {

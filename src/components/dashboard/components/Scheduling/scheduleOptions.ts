@@ -924,7 +924,11 @@ export const pipelineScheduleLabel = (pipeline: {
   schedule_type?: string;
   schedule_config?: BatchScheduleConfig | null;
   sync_end_date?: string | null;
+  schedule_paused?: boolean;
 }): string => {
+  if (pipeline.schedule_paused) {
+    return "Paused";
+  }
   if (pipeline.readable_schedule) return pipeline.readable_schedule;
   return batchScheduleLabel(pipeline);
 };

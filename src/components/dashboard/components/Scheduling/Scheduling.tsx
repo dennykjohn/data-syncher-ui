@@ -2414,7 +2414,13 @@ const Scheduling = () => {
               Pipeline Flow
             </Text>
             {scheduleSummary && batchNodeCount > 0 && (
-              <Text fontSize="xs" color="gray.600" whiteSpace="nowrap">
+              <Text
+                fontSize="xs"
+                color={
+                  selectedPipeline?.schedule_paused ? "orange.700" : "gray.600"
+                }
+                whiteSpace="nowrap"
+              >
                 Schedule: {scheduleSummary}
               </Text>
             )}

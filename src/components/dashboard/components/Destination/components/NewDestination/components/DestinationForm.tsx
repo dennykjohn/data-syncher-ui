@@ -38,6 +38,32 @@ import { initialState, newDestinationFormReducer } from "./reducer";
 const GDRIVE_FOLDER_CONFIRMATION_ERROR =
   "GOOGLE_DRIVE_FOLDER_CONFIRMATION_REQUIRED";
 
+function destinationTestErrorDescription(err: unknown): string {
+  if (typeof err === "string" && err.trim()) {
+    return err.trim();
+  }
+  if (err && typeof err === "object" && "message" in err) {
+    const axiosMsg = (err as { message?: unknown }).message;
+    if (typeof axiosMsg === "string" && axiosMsg.includes("timeout")) {
+      return (
+        "Connection test timed out before Databricks finished starting. " +
+        "Wait for compute to be running in Databricks, then try again."
+      );
+    }
+  }
+  if (!err || typeof err !== "object") {
+    return "Could not test this destination. Check credentials and try again.";
+  }
+  const payload = err as ErrorResponseType & { detail?: unknown };
+  const candidates = [payload.message, payload.error, payload.detail];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+  return "Could not test this destination. Check credentials and try again.";
+}
+
 const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -333,10 +359,15 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
                     colorPalette="brand"
                     color="brand.500"
                     loading={isTriggeringBackend}
+                    disabled={isTriggeringBackend}
+                    loadingText={
+                      destinationData?.dst === "Databricks"
+                        ? "Testing (up to 15 min)…"
+                        : "Testing…"
+                    }
                     onClick={() =>
                       triggerBackend(
                         {
-                          // send current edited form values to backend for testing
                           config_data:
                             Object.keys(currentFormValues).length > 0
                               ? currentFormValues
@@ -356,13 +387,9 @@ const DestinationForm = ({ mode }: { mode: "edit" | "add" }) => {
                             }
                           },
                           onError: (err: unknown) => {
-                            const error = err as ErrorResponseType;
                             toaster.error({
                               title: "Destination test failed",
-                              description:
-                                error?.message ||
-                                error?.error ||
-                                "Could not test this destination. Check credentials and try again.",
+                              description: destinationTestErrorDescription(err),
                             });
                           },
                         },

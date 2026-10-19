@@ -31,6 +31,9 @@ const DEFAULT_MAX_WIDTH = "min(320px, 48vw)";
 export const isPipelineRunning = (pipeline: PipelineDetail) =>
   pipeline.latest_run_status === "running";
 
+export const isPipelineQueued = (pipeline: PipelineDetail) =>
+  pipeline.latest_run_status === "queued";
+
 export const getPipelineListGroup = (
   pipeline: PipelineDetail,
 ): PipelineListGroup => {
@@ -130,6 +133,40 @@ const RunningLiveBadge = ({ compact = false }: { compact?: boolean }) => (
   </Flex>
 );
 
+/** Waiting for a plan flow slot. Not an execution in progress. */
+const QueuedBadge = ({ compact = false }: { compact?: boolean }) => (
+  <Flex
+    alignItems="center"
+    gap={0.5}
+    px={compact ? 1 : 1.25}
+    py={compact ? 0 : 0.5}
+    borderRadius="full"
+    bg="purple.50"
+    borderWidth="1px"
+    borderColor="purple.200"
+    flexShrink={0}
+    title="Waiting for a free flow slot on this plan"
+  >
+    <Box
+      as="span"
+      w="6px"
+      h="6px"
+      borderRadius="full"
+      bg="purple.500"
+      flexShrink={0}
+    />
+    <Text
+      as="span"
+      fontSize="2xs"
+      fontWeight="semibold"
+      color="purple.700"
+      letterSpacing="0.03em"
+    >
+      Queued
+    </Text>
+  </Flex>
+);
+
 const ScheduleStatusLabel = ({ paused }: { paused: boolean }) => (
   <Text
     as="span"
@@ -157,6 +194,9 @@ const PipelineRightStatus = ({
   if (isPipelineRunning(pipeline)) {
     return <RunningLiveBadge compact={compact} />;
   }
+  if (isPipelineQueued(pipeline)) {
+    return <QueuedBadge compact={compact} />;
+  }
   if (!showScheduleLabel) return null;
   return <ScheduleStatusLabel paused={pipeline.status === "paused"} />;
 };
@@ -172,6 +212,7 @@ const PipelinePicker = ({
   const selected = pipelines.find((p) => p.id === selectedPipelineId) ?? null;
   const selectedPaused = selected?.status === "paused";
   const selectedRunning = selected ? isPipelineRunning(selected) : false;
+  const selectedQueued = selected ? isPipelineQueued(selected) : false;
 
   const groupedPipelines = useMemo(() => {
     const sorted = sortPipelinesForPicker(pipelines);
@@ -195,7 +236,7 @@ const PipelinePicker = ({
   }, [pipelines]);
 
   const triggerTitle = selected
-    ? `${selected.name}${selectedRunning ? " · Run in progress" : ""}${selectedPaused ? " · Schedule paused" : ""}`
+    ? `${selected.name}${selectedRunning ? " · Run in progress" : ""}${selectedQueued ? " · Queued for a flow slot" : ""}${selectedPaused ? " · Schedule paused" : ""}`
     : undefined;
 
   return (

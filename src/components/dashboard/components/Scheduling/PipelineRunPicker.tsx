@@ -45,7 +45,9 @@ const matchesStatusFilter = (
     return status === "failed" || status === "timeout";
   }
   if (filter === "running") {
-    return status === "running" || status === "in_progress";
+    return (
+      status === "running" || status === "in_progress" || status === "queued"
+    );
   }
   return status === filter;
 };
