@@ -420,6 +420,7 @@ export type TransformValidateResponse = {
     passed: boolean;
     line?: number;
     message?: string;
+    all_errors?: Array<{ line?: number; message?: string }>;
   }>;
   entry_points: string[];
   counts: { mapped: number; not_selected: number; from_script: number };

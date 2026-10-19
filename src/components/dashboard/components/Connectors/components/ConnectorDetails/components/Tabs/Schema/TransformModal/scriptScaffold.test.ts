@@ -16,6 +16,7 @@ import {
   persistedScriptText,
   sapDatatypeToPandasDtype,
   scriptBodyLine,
+  scriptErrorLine,
   unwrapTransformBody,
   validateTransformRoot,
   wrapTransformBody,
@@ -185,6 +186,18 @@ describe("transform script scaffold", () => {
     expect(
       persistedScriptText(true, wrapTransformBody('df["A"] = 1')),
     ).toContain('df["A"] = 1');
+  });
+
+  it("reads the script line from a sandbox traceback", () => {
+    const traceback = [
+      "Traceback (most recent call last):",
+      '  File "<transform_script>", line 8, in transform',
+      '    __target_df["AMT"] = __source_df["MISSING"]',
+      "KeyError: 'MISSING'",
+    ].join("\n");
+    expect(scriptErrorLine(traceback, 2)).toBe(8);
+    expect(scriptErrorLine(undefined, 4)).toBe(4);
+    expect(scriptErrorLine("", 0)).toBeUndefined();
   });
 
   it("maps a wrapped-script line number onto the editable body", () => {

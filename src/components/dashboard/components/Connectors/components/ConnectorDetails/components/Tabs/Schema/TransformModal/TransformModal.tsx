@@ -17,7 +17,6 @@ import {
 } from "@chakra-ui/react";
 
 import {
-  FiCheck,
   FiMaximize2,
   FiMinimize2,
   FiRotateCcw,
@@ -63,6 +62,7 @@ import {
 import ColumnMapper from "./ColumnMapper";
 import DestinationTableField from "./DestinationTableField";
 import ExpandableCodeEditor, {
+  type EditorDiagnostic,
   type EditorValidation,
 } from "./ExpandableCodeEditor";
 import ExpandablePreviewTable from "./ExpandablePreviewTable";
@@ -118,6 +118,7 @@ import {
   normalizeTransformScript,
   outputSchemaFields,
   persistedScriptText,
+  scriptErrorLine,
   unwrapTransformBody,
   validateTransformRoot,
   wrapTransformBody,
@@ -312,6 +313,8 @@ const TransformModal = ({
   const [parsing, setParsing] = useState(false);
   const [validateResult, setValidateResult] =
     useState<TransformValidateResponse | null>(null);
+  /** Script text the latest validation checklist was computed for. */
+  const [markedScriptText, setMarkedScriptText] = useState<string | null>(null);
   const [dryRunResult, setDryRunResult] =
     useState<TransformDryRunResponse | null>(null);
 
@@ -478,6 +481,7 @@ const TransformModal = ({
     setModalExpanded(false);
     setStep(0);
     setValidateResult(null);
+    setMarkedScriptText(null);
     setDryRunResult(null);
     setIsEditingDest(false);
     setDestError(null);
@@ -970,6 +974,7 @@ const TransformModal = ({
         ...destPayload,
       });
       setValidateResult(result);
+      setMarkedScriptText(persistedScriptText(applyScript, scriptText));
       if (result.destination?.warnings?.length) {
         setDestWarnings(result.destination.warnings);
       }
@@ -979,6 +984,7 @@ const TransformModal = ({
       return result;
     } catch {
       setValidateResult(null);
+      setMarkedScriptText(null);
       toaster.error({
         title: "Mapping preview unavailable",
         description:
@@ -1142,19 +1148,24 @@ const TransformModal = ({
     if (!open || !mappingJson) return;
     let cancelled = false;
     void (async () => {
+      const sentScript = persistedScriptText(applyScript, scriptText);
       try {
         const result = await validateMut.mutateAsync({
           mapping_json: mappingJson,
           mapping_overrides: overridePayload(historyRef.current.present),
-          script_text: persistedScriptText(applyScript, scriptText),
+          script_text: sentScript,
           entry_point: TRANSFORM_ENTRY_POINT,
           destination_name_source: destSourceRef.current,
           destination_table_name: destNameRef.current,
         });
         if (cancelled) return;
         setValidateResult(result);
+        setMarkedScriptText(sentScript);
       } catch {
-        if (!cancelled) setValidateResult(null);
+        if (!cancelled) {
+          setValidateResult(null);
+          setMarkedScriptText(null);
+        }
       }
     })();
     return () => {
@@ -1273,7 +1284,9 @@ const TransformModal = ({
         line: transformRootIssue.line,
       };
     }
-    if (scriptEdited) {
+    const checklistCurrent =
+      markedScriptText === persistedScriptText(applyScript, scriptText);
+    if (scriptEdited && !checklistCurrent) {
       return { passed: false, message: "Edited — save and validate" };
     }
     const scriptIds = new Set([
@@ -1295,7 +1308,68 @@ const TransformModal = ({
       };
     }
     return { passed: true, message: "Validated" };
-  }, [scriptEdited, transformRootIssue, validateResult?.checklist]);
+  }, [
+    applyScript,
+    markedScriptText,
+    scriptEdited,
+    scriptText,
+    transformRootIssue,
+    validateResult?.checklist,
+  ]);
+  const editorDiagnostics = useMemo((): EditorDiagnostic[] => {
+    const items: EditorDiagnostic[] = [];
+    if (transformRootIssue) {
+      items.push({
+        line: transformRootIssue.line,
+        message: transformRootIssue.message,
+        source: "editor",
+      });
+    }
+    if (scriptBytes > MAX_SCRIPT_BYTES || scriptLines > MAX_SCRIPT_LINES) {
+      items.push({
+        line: scriptLines > MAX_SCRIPT_LINES ? scriptLines : 1,
+        message: `Script exceeds ${MAX_SCRIPT_LINES} lines or ${MAX_SCRIPT_BYTES / 1024} KB (${scriptLines} lines, ${(scriptBytes / 1024).toFixed(1)} KB).`,
+        source: "editor",
+      });
+    }
+    const checklistCurrent =
+      markedScriptText === persistedScriptText(applyScript, scriptText);
+    if (checklistCurrent) {
+      const scriptIds = new Set(["parse", "imports", "banned", "entry_point"]);
+      for (const item of validateResult?.checklist ?? []) {
+        if (!scriptIds.has(item.id) || item.passed) continue;
+        const locations = item.all_errors?.length
+          ? item.all_errors
+          : [{ line: item.line, message: item.message || item.label }];
+        for (const location of locations) {
+          items.push({
+            line: location.line || undefined,
+            message: location.message || item.message || item.label,
+            detail: item.label,
+            source: "server",
+          });
+        }
+      }
+    }
+    for (const error of dryRunResult?.errors ?? []) {
+      items.push({
+        line: scriptErrorLine(error.traceback, error.line),
+        message: error.message,
+        detail: error.traceback || undefined,
+        source: "server",
+      });
+    }
+    return items;
+  }, [
+    applyScript,
+    dryRunResult?.errors,
+    markedScriptText,
+    scriptBytes,
+    scriptLines,
+    scriptText,
+    transformRootIssue,
+    validateResult?.checklist,
+  ]);
   const scriptBlocksNext =
     scriptBytes > MAX_SCRIPT_BYTES ||
     scriptLines > MAX_SCRIPT_LINES ||
@@ -2232,35 +2306,6 @@ const TransformModal = ({
                             void handleRemoveScript();
                           }}
                         />
-                        <Flex
-                          align="center"
-                          justify="flex-end"
-                          gap={3}
-                          flexWrap="wrap"
-                        >
-                          {scriptEdited && (
-                            <Text fontSize="xs" color="orange.600" flex="1">
-                              Script has unsaved validation. Save and validate
-                              before dry run.
-                            </Text>
-                          )}
-                          <Button
-                            size="sm"
-                            colorPalette="brand"
-                            variant="outline"
-                            loading={validateMut.isPending}
-                            disabled={
-                              readOnly ||
-                              !scriptBody.trim() ||
-                              Boolean(transformRootIssue)
-                            }
-                            onClick={() => {
-                              void handleScriptSaveAndValidate();
-                            }}
-                          >
-                            <FiCheck /> Save and validate
-                          </Button>
-                        </Flex>
                         <ExpandableCodeEditor
                           value={scriptText}
                           fileName={scriptChipName || defaultScriptName}
@@ -2272,8 +2317,18 @@ const TransformModal = ({
                           schemaFolds={scriptSchemaFolds}
                           examples={scriptExamples}
                           onInsertExample={handleInsertScriptExample}
+                          onValidate={() => {
+                            void handleScriptSaveAndValidate();
+                          }}
+                          validateLabel="Save and validate"
+                          validateDisabled={
+                            readOnly ||
+                            !scriptBody.trim() ||
+                            Boolean(transformRootIssue)
+                          }
                           validating={validateMut.isPending}
                           validation={editorScriptValidation}
+                          diagnostics={editorDiagnostics}
                           readOnly={readOnly}
                           compact
                           onChange={(next) => {
@@ -2283,52 +2338,6 @@ const TransformModal = ({
                             setDryRunResult(null);
                           }}
                         />
-                        {transformRootIssue && (
-                          <Text fontSize="xs" color="red.600">
-                            {transformRootIssue.message}
-                            {transformRootIssue.line
-                              ? ` (line ${transformRootIssue.line})`
-                              : ""}
-                          </Text>
-                        )}
-                        {validateResult?.checklist
-                          ?.filter((item) =>
-                            [
-                              "parse",
-                              "imports",
-                              "banned",
-                              "size",
-                              "entry_point",
-                            ].includes(item.id),
-                          )
-                          .map((item) => (
-                            <Flex
-                              key={item.id}
-                              gap={2}
-                              fontSize="sm"
-                              align="center"
-                            >
-                              <Text
-                                color={item.passed ? "green.500" : "red.500"}
-                              >
-                                {item.passed ? "✓" : "✗"}
-                              </Text>
-                              <Text>{item.label}</Text>
-                              {item.message && (
-                                <Text color="red.500" fontSize="xs">
-                                  {item.message}
-                                  {item.line ? ` (line ${item.line})` : ""}
-                                </Text>
-                              )}
-                            </Flex>
-                          ))}
-                        {scriptBytes > MAX_SCRIPT_BYTES ||
-                        scriptLines > MAX_SCRIPT_LINES ? (
-                          <Text fontSize="xs" color="red.600">
-                            Script exceeds {MAX_SCRIPT_LINES} lines or{" "}
-                            {MAX_SCRIPT_BYTES / 1024} KB.
-                          </Text>
-                        ) : null}
                       </>
                     )}
                   </VStack>
@@ -2384,60 +2393,38 @@ const TransformModal = ({
                               JSON says no transformation, script found
                             </Text>
                           )}
-                        <Flex gap={2} align="center" flexWrap="wrap">
-                          {scriptEdited && (
-                            <Badge colorPalette="orange" variant="subtle">
-                              Edited
-                            </Badge>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            colorPalette="brand"
-                            loading={validateMut.isPending}
-                            disabled={
-                              readOnly ||
-                              !scriptBody.trim() ||
-                              Boolean(transformRootIssue)
-                            }
-                            onClick={() => {
-                              void handleScriptSaveAndValidate();
-                            }}
-                          >
-                            <FiCheck /> Save and validate
-                          </Button>
-                        </Flex>
-                        {validateResult?.checklist
-                          ?.filter((item) =>
-                            [
-                              "parse",
-                              "imports",
-                              "banned",
-                              "size",
-                              "entry_point",
-                            ].includes(item.id),
-                          )
-                          .map((item) => (
-                            <Flex
-                              key={item.id}
-                              gap={2}
-                              fontSize="sm"
-                              align="center"
-                            >
-                              <Text
-                                color={item.passed ? "green.500" : "red.500"}
-                              >
-                                {item.passed ? "✓" : "✗"}
-                              </Text>
-                              <Text>{item.label}</Text>
-                              {item.message && (
-                                <Text color="red.500" fontSize="xs">
-                                  {item.message}
-                                  {item.line ? ` (line ${item.line})` : ""}
-                                </Text>
-                              )}
-                            </Flex>
-                          ))}
+                        <ExpandableCodeEditor
+                          value={scriptText}
+                          fileName={scriptChipName || defaultScriptName}
+                          exportText={
+                            scriptText.trim()
+                              ? scriptText
+                              : wrapTransformBody("")
+                          }
+                          schemaFolds={scriptSchemaFolds}
+                          examples={scriptExamples}
+                          onInsertExample={handleInsertScriptExample}
+                          onValidate={() => {
+                            void handleScriptSaveAndValidate();
+                          }}
+                          validateLabel="Save and validate"
+                          validateDisabled={
+                            readOnly ||
+                            !scriptBody.trim() ||
+                            Boolean(transformRootIssue)
+                          }
+                          validating={validateMut.isPending}
+                          validation={editorScriptValidation}
+                          diagnostics={editorDiagnostics}
+                          readOnly={readOnly}
+                          compact
+                          onChange={(next) => {
+                            if (next === scriptText) return;
+                            setScriptText(next);
+                            setEntryPoint(TRANSFORM_ENTRY_POINT);
+                            setDryRunResult(null);
+                          }}
+                        />
                       </>
                     )}
                     <Flex gap={2} align="center" flexWrap="wrap">
@@ -2454,14 +2441,6 @@ const TransformModal = ({
                         Run dry run
                       </Button>
                     </Flex>
-                    {transformRootIssue && (
-                      <Text fontSize="xs" color="red.600">
-                        {transformRootIssue.message}
-                        {transformRootIssue.line
-                          ? ` (line ${transformRootIssue.line})`
-                          : ""}
-                      </Text>
-                    )}
                     {dryRunResult && (
                       <>
                         <Text fontSize="sm">
@@ -2479,12 +2458,31 @@ const TransformModal = ({
                             {w.message}
                           </Text>
                         ))}
-                        {dryRunResult.errors.map((e) => (
-                          <Text key={e.message} fontSize="xs" color="red.600">
-                            {e.message}
-                            {e.line ? ` (line ${e.line})` : ""}
-                          </Text>
-                        ))}
+                        {dryRunResult.errors
+                          .filter(
+                            (error) =>
+                              !applyScript ||
+                              !scriptErrorLine(error.traceback, error.line),
+                          )
+                          .map((error) => (
+                            <Text
+                              key={error.message}
+                              fontSize="xs"
+                              color="red.600"
+                            >
+                              {error.message}
+                              {error.traceback ? (
+                                <Box
+                                  as="pre"
+                                  mt={1}
+                                  whiteSpace="pre-wrap"
+                                  fontFamily="mono"
+                                >
+                                  {error.traceback}
+                                </Box>
+                              ) : null}
+                            </Text>
+                          ))}
                         {(dryRunResult.input_preview?.length ?? 0) > 0 ? (
                           <ExpandablePreviewTable
                             title="Input sample (mapped SAP columns)"

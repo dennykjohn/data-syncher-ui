@@ -545,3 +545,20 @@ export function scriptBodyLine(scriptLine?: number): number | undefined {
   if (scriptLine <= TRANSFORM_SHELL_HEADER_LINES) return scriptLine;
   return scriptLine - TRANSFORM_SHELL_HEADER_LINES;
 }
+
+/** Line in the user script from a sandbox traceback, otherwise the reported line. */
+export function scriptErrorLine(
+  traceback: string | undefined,
+  fallback?: number,
+): number | undefined {
+  if (traceback) {
+    const pattern = /File "<transform_script>", line (\d+)/g;
+    let line: number | undefined;
+    for (const match of traceback.matchAll(pattern)) {
+      const parsed = Number(match[1]);
+      if (parsed > 0) line = parsed;
+    }
+    if (line) return line;
+  }
+  return fallback && fallback > 0 ? fallback : undefined;
+}
