@@ -61,6 +61,7 @@ const renderMapper = (
     onClearJson: vi.fn(),
     onRestore: vi.fn(),
     onRestoreAll: vi.fn(),
+    onReorder: vi.fn(),
     onAnnounce: vi.fn(),
     confirm: vi.fn().mockResolvedValue(true),
   };

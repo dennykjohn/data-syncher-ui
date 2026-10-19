@@ -31,6 +31,8 @@ export type OverrideSnapshot = {
   removedTargets: string[];
   removedJsonMappings: string[];
   overrideMappings: SavedMappingOverride[];
+  /** Mapped-column order by target name. Empty keeps the JSON order. */
+  targetOrder?: string[];
 };
 
 export type MappingJsonFile = {
@@ -48,6 +50,7 @@ export type MappingDraft = {
   removedTargets: string[];
   removedJsonMappings: string[];
   overrideMappings: SavedMappingOverride[];
+  targetOrder?: string[];
 };
 
 export type MappingRow = {
@@ -80,6 +83,7 @@ const emptySnapshot = (): OverrideSnapshot => ({
   removedTargets: [],
   removedJsonMappings: [],
   overrideMappings: [],
+  targetOrder: [],
 });
 
 export function emptyDraft(sapColumns: SapColumn[] = []): MappingDraft {
@@ -90,6 +94,7 @@ export function emptyDraft(sapColumns: SapColumn[] = []): MappingDraft {
     removedTargets: [],
     removedJsonMappings: [],
     overrideMappings: [],
+    targetOrder: [],
   };
 }
 
@@ -99,6 +104,7 @@ export function snapshotOf(draft: MappingDraft): OverrideSnapshot {
     removedTargets: [...draft.removedTargets],
     removedJsonMappings: [...(draft.removedJsonMappings || [])],
     overrideMappings: draft.overrideMappings.map((row) => ({ ...row })),
+    targetOrder: [...(draft.targetOrder || [])],
   };
 }
 
@@ -112,6 +118,7 @@ export function applySnapshot(
     removedTargets: [...snapshot.removedTargets],
     removedJsonMappings: [...(snapshot.removedJsonMappings || [])],
     overrideMappings: snapshot.overrideMappings.map((row) => ({ ...row })),
+    targetOrder: [...(snapshot.targetOrder || [])],
   };
 }
 
@@ -587,9 +594,25 @@ export function selectEffectiveMappings(draft: MappingDraft): MappingRow[] {
     usedSources.add(source);
   }
 
-  return [...byId.values()].map((row) =>
+  const mapped = [...byId.values()].map((row) =>
     toMappingRow(row, sourceFields, targetFields, sapNames),
   );
+  const order = draft.targetOrder || [];
+  if (order.length === 0) return mapped;
+  const rank = new Map(order.map((name, index) => [name.toUpperCase(), index]));
+  return mapped
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => {
+      const leftRank = rank.has(left.row.target.toUpperCase())
+        ? (rank.get(left.row.target.toUpperCase()) as number)
+        : Number.MAX_SAFE_INTEGER;
+      const rightRank = rank.has(right.row.target.toUpperCase())
+        ? (rank.get(right.row.target.toUpperCase()) as number)
+        : Number.MAX_SAFE_INTEGER;
+      if (leftRank !== rightRank) return leftRank - rightRank;
+      return left.index - right.index;
+    })
+    .map((item) => item.row);
 }
 
 export function mappingCounters(
@@ -709,19 +732,35 @@ export function renameTarget(
   const error = targetNameError(newName, rows, targetId);
   if (error) return draft;
   const without = draft.overrideMappings.filter((item) => item.id !== targetId);
+  const nextName = newName.trim().toUpperCase();
   return {
     ...draft,
+    targetOrder: draft.targetOrder?.map((name) =>
+      name.toUpperCase() === row.target.toUpperCase() ? nextName : name,
+    ),
     overrideMappings: [
       ...without,
       {
         id: targetId,
         kind: row.origin === "USER" ? "added" : "rename",
         source: row.source,
-        target: newName.trim().toUpperCase(),
+        target: nextName,
         jsonTarget: row.origin === "IDENTITY" ? row.source : row.target,
       },
     ],
   };
+}
+
+export function reorderMappedColumns(
+  draft: MappingDraft,
+  orderedIds: string[],
+): MappingDraft {
+  const rows = selectEffectiveMappings(draft);
+  const byId = new Map(rows.map((row) => [row.id, row.target]));
+  const targetOrder = orderedIds
+    .map((id) => byId.get(id))
+    .filter((name): name is string => Boolean(name));
+  return { ...draft, targetOrder };
 }
 
 export function clearUserMapping(
@@ -878,6 +917,7 @@ export function resetToJson(draft: MappingDraft): MappingDraft {
     removedTargets: [],
     removedJsonMappings: [],
     overrideMappings: [],
+    targetOrder: [],
   };
 }
 
@@ -926,11 +966,19 @@ export function keepApplicableOverrides(
   const addedSources = snapshot.addedSources.filter((name) =>
     sources.has(name),
   );
+  const knownTargets = new Set(
+    [...targets, ...addedSources.map((name) => name.toUpperCase())].map(
+      (name) => name.toUpperCase(),
+    ),
+  );
   return {
     addedSources,
     removedTargets: [],
     removedJsonMappings,
     overrideMappings,
+    targetOrder: (snapshot.targetOrder || []).filter((name) =>
+      knownTargets.has(name.toUpperCase()),
+    ),
   };
 }
 
@@ -963,6 +1011,7 @@ const canonicalOverrides = (snapshot: OverrideSnapshot) => ({
     target: row.target,
     jsonTarget: row.jsonTarget ?? null,
   })),
+  targetOrder: [...(snapshot.targetOrder || [])],
 });
 
 const normalizeBaseline = (value: MappingBaseline) => ({
@@ -994,6 +1043,7 @@ const draftFromChange = (value: MappingChangeInput): MappingDraft => ({
   removedTargets: [...value.overrides.removedTargets],
   removedJsonMappings: [...(value.overrides.removedJsonMappings || [])],
   overrideMappings: value.overrides.overrideMappings.map((row) => ({ ...row })),
+  targetOrder: [...(value.overrides.targetOrder || [])],
 });
 
 const chipCount = (count: number, singular: string, plural: string) => {

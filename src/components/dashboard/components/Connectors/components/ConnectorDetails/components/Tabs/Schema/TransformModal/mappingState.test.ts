@@ -17,6 +17,7 @@ import {
   pushHistory,
   redoHistory,
   renameTarget,
+  reorderMappedColumns,
   repointMapping,
   resetToJson,
   restoreJsonMapping,
@@ -208,6 +209,31 @@ describe("selectEffectiveMappings", () => {
     expect(history.present.addedSources).toEqual([]);
     history = redoHistory(history);
     expect(history.present.addedSources).toEqual(["A"]);
+  });
+
+  it("reorders mapped columns without changing their sources", () => {
+    const draft = draftWith(sampleJson, ["BUKRS", "DMBTR", "BLDAT"]);
+    const before = selectEffectiveMappings(draft).map((row) => row.target);
+    const reordered = reorderMappedColumns(draft, [
+      "json:BLDAT",
+      "json:BUKRS",
+      "json:DMBTR",
+      "script:UPD_DATE",
+    ]);
+    const after = selectEffectiveMappings(reordered);
+    expect(after.map((row) => row.target)).toEqual([
+      "BLDAT",
+      "BUKRS",
+      "DMBTR",
+      "UPD_DATE",
+    ]);
+    expect(after.map((row) => row.source)).toEqual([
+      "BLDAT",
+      "BUKRS",
+      "DMBTR",
+      null,
+    ]);
+    expect(before).toEqual(["BUKRS", "DMBTR", "BLDAT", "UPD_DATE"]);
   });
 
   it("keeps only overrides that still apply to a new JSON", () => {

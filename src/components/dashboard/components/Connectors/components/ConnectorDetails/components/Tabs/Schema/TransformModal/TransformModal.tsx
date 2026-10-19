@@ -92,6 +92,7 @@ import {
   pushHistory,
   redoHistory,
   renameTarget,
+  reorderMappedColumns,
   repointMapping,
   resetToJson,
   resetToJsonImpact,
@@ -149,13 +150,15 @@ const overridePayload = (snapshot: OverrideSnapshot) => ({
   removedTargets: snapshot.removedTargets,
   removedJsonMappings: snapshot.removedJsonMappings || [],
   mappings: snapshot.overrideMappings,
+  targetOrder: snapshot.targetOrder || [],
 });
 
 const hasManualOverrides = (snapshot: OverrideSnapshot) =>
   snapshot.overrideMappings.length > 0 ||
   snapshot.addedSources.length > 0 ||
   snapshot.removedTargets.length > 0 ||
-  (snapshot.removedJsonMappings || []).length > 0;
+  (snapshot.removedJsonMappings || []).length > 0 ||
+  (snapshot.targetOrder || []).length > 0;
 
 const snapshotFromSaved = (raw: unknown): OverrideSnapshot => {
   if (!raw || typeof raw !== "object") return emptyOverrides();
@@ -176,6 +179,9 @@ const snapshotFromSaved = (raw: unknown): OverrideSnapshot => {
       ? value.removedJsonMappings.map(String)
       : [],
     overrideMappings: mappings as OverrideSnapshot["overrideMappings"],
+    targetOrder: Array.isArray(value.targetOrder)
+      ? value.targetOrder.map(String)
+      : [],
   };
 };
 
@@ -2056,6 +2062,16 @@ const TransformModal = ({
                             commitOverrides(
                               snapshotOf(
                                 repointMapping(draft, targetId, source),
+                              ),
+                            )
+                          }
+                          onReorder={(orderedIds) =>
+                            commitOverrides(
+                              snapshotOf(
+                                reorderMappedColumns(
+                                  currentMappingDraft(),
+                                  orderedIds,
+                                ),
                               ),
                             )
                           }

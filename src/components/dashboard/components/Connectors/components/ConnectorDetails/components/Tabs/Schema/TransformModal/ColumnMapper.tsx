@@ -58,6 +58,7 @@ type ColumnMapperProps = {
   onClearJson: () => void;
   onRestore: (_targetId: string) => void;
   onRestoreAll: () => void;
+  onReorder: (_orderedIds: string[]) => void;
   onAnnounce: (_message: string) => void;
   confirm: (_options: BinaryConfirmOptions) => Promise<boolean>;
   paneMaxHeight?: string;
@@ -111,6 +112,7 @@ const ColumnMapper = ({
   onClearJson,
   onRestore,
   onRestoreAll,
+  onReorder,
   onAnnounce,
   confirm,
   paneMaxHeight = "420px",
@@ -122,16 +124,22 @@ const ColumnMapper = ({
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [dragSource, setDragSource] = useState<string | null>(null);
   const [dragFromTarget, setDragFromTarget] = useState<string | null>(null);
+  const [reorderId, setReorderId] = useState<string | null>(null);
+  const [floatLabel, setFloatLabel] = useState<string | null>(null);
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
   const confirmRef = useRef(confirm);
   confirmRef.current = confirm;
   const dragMoved = useRef(false);
   const dragOrigin = useRef({ x: 0, y: 0 });
+  const ghostRef = useRef<HTMLDivElement>(null);
+  const dropTargetRef = useRef<string | null>(null);
+  const targetRowsRef = useRef<MappingRow[]>([]);
+  const onReorderRef = useRef(onReorder);
+  onReorderRef.current = onReorder;
   const newTargetDropHandled = useRef(false);
   const suppressNewTargetClick = useRef(false);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
   const [showConnectors, setShowConnectors] = useState(false);
   const [connector, setConnector] = useState<{
     x1: number;
@@ -236,6 +244,7 @@ const ColumnMapper = ({
       );
     });
   }, [filter, query, rows]);
+  targetRowsRef.current = targetRows;
 
   const fromVirtualizer = useVirtualizer({
     count: fromJson.length,
@@ -315,7 +324,38 @@ const ColumnMapper = ({
     event.stopPropagation();
     dragOrigin.current = { x: event.clientX, y: event.clientY };
     setDragFromTarget(null);
+    setReorderId(null);
+    setFloatLabel(columnName);
     setDragSource(columnName);
+  };
+
+  const startReorder = (event: ReactPointerEvent, row: MappingRow) => {
+    if (readOnly) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragOrigin.current = { x: event.clientX, y: event.clientY };
+    setDragSource(null);
+    setDragFromTarget(null);
+    setFloatLabel(row.target);
+    setReorderId(row.id);
+  };
+
+  const applyReorder = (movingId: string, overId: string) => {
+    const visible = targetRowsRef.current;
+    const fullIds = rowsRef.current.map((row) => row.id);
+    const from = visible.findIndex((row) => row.id === movingId);
+    const to = visible.findIndex((row) => row.id === overId);
+    if (from < 0 || to < 0 || from === to) return;
+    const nextVisible = visible.map((row) => row.id);
+    const [moved] = nextVisible.splice(from, 1);
+    nextVisible.splice(to, 0, moved);
+    const queue = [...nextVisible];
+    const visibleSet = new Set(nextVisible);
+    const merged = fullIds.map((id) =>
+      visibleSet.has(id) ? (queue.shift() as string) : id,
+    );
+    onReorderRef.current(merged);
+    onAnnounce("Mapped column order updated");
   };
 
   const applySource = async (targetId: string, source: string) => {
@@ -331,9 +371,21 @@ const ColumnMapper = ({
   };
 
   useEffect(() => {
-    if (!dragSource) return;
+    if (!dragSource && !reorderId) return;
     dragMoved.current = false;
-    const move = (event: PointerEvent) => {
+    dropTargetRef.current = null;
+    let frame = 0;
+    let latest: PointerEvent | null = null;
+    const placeGhost = (x: number, y: number) => {
+      const ghost = ghostRef.current;
+      if (!ghost) return;
+      ghost.style.transform = `translate3d(${x + 12}px, ${y + 8}px, 0)`;
+    };
+    placeGhost(dragOrigin.current.x, dragOrigin.current.y);
+    const paint = () => {
+      frame = 0;
+      const event = latest;
+      if (!event) return;
       if (
         Math.hypot(
           event.clientX - dragOrigin.current.x,
@@ -343,36 +395,47 @@ const ColumnMapper = ({
         dragMoved.current = true;
       }
       if (!dragMoved.current) return;
-      setPointer({ x: event.clientX, y: event.clientY });
+      placeGhost(event.clientX, event.clientY);
       const node = document.elementFromPoint(event.clientX, event.clientY);
       const target = node?.closest("[data-target-row]") as HTMLElement | null;
-      const fresh = node?.closest("[data-new-target]");
-      setDropTargetId(fresh ? "__new__" : target?.dataset.targetRow || null);
+      const fresh = reorderId ? null : node?.closest("[data-new-target]");
+      const next = fresh ? "__new__" : target?.dataset.targetRow || null;
+      if (next !== dropTargetRef.current) {
+        dropTargetRef.current = next;
+        setDropTargetId(next);
+      }
       const tray = sourceRef.current;
       const list = targetRef.current;
       if (list) {
         const rect = list.getBoundingClientRect();
-        if (event.clientY < rect.top + 36) list.scrollTop -= 12;
-        else if (event.clientY > rect.bottom - 36) list.scrollTop += 12;
+        if (event.clientY < rect.top + 36) list.scrollTop -= 14;
+        else if (event.clientY > rect.bottom - 36) list.scrollTop += 14;
       }
-      if (tray) {
+      if (tray && !reorderId) {
         const rect = tray.getBoundingClientRect();
-        if (event.clientY < rect.top + 28) tray.scrollTop -= 12;
-        else if (event.clientY > rect.bottom - 28) tray.scrollTop += 12;
+        if (event.clientY < rect.top + 28) tray.scrollTop -= 14;
+        else if (event.clientY > rect.bottom - 28) tray.scrollTop += 14;
       }
     };
+    const move = (event: PointerEvent) => {
+      latest = event;
+      if (!frame) frame = requestAnimationFrame(paint);
+    };
     const up = (event: PointerEvent) => {
+      if (frame) cancelAnimationFrame(frame);
       if (newTargetDropHandled.current) {
         newTargetDropHandled.current = false;
         dragMoved.current = false;
         setDragSource(null);
         setDragFromTarget(null);
+        setReorderId(null);
+        setFloatLabel(null);
         setDropTargetId(null);
-        setPointer(null);
         return;
       }
       const moved = dragMoved.current;
       const source = dragSource;
+      const movingId = reorderId;
       const fromTarget = dragFromTarget;
       const node = document.elementFromPoint(event.clientX, event.clientY);
       const backToTray = node?.closest("[data-source-tray]");
@@ -380,8 +443,18 @@ const ColumnMapper = ({
       const target = node?.closest("[data-target-row]") as HTMLElement | null;
       setDragSource(null);
       setDragFromTarget(null);
+      setReorderId(null);
+      setFloatLabel(null);
       setDropTargetId(null);
-      setPointer(null);
+      if (
+        moved &&
+        movingId &&
+        target?.dataset.targetRow &&
+        target.dataset.targetRow !== movingId
+      ) {
+        applyReorder(movingId, target.dataset.targetRow);
+        return;
+      }
       void (async () => {
         if (moved && backToTray && fromTarget) {
           onClear(fromTarget);
@@ -417,12 +490,13 @@ const ColumnMapper = ({
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     return () => {
+      if (frame) cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     };
-    // applySource reads the latest rows for the active drag.
+    // Callbacks are read from the drag-start render and refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragSource]);
+  }, [dragSource, reorderId]);
 
   const hoverRow = rows.find((row) => row.id === hoverTargetId) || null;
 
@@ -550,6 +624,7 @@ const ColumnMapper = ({
               ? undefined
               : { color: "gray.600", bg: "gray.100" }
           }
+          style={{ touchAction: "none" }}
           onPointerDown={(event) =>
             startSourceDrag(event, column.name, removed)
           }
@@ -655,7 +730,18 @@ const ColumnMapper = ({
         h={nameError ? "auto" : "40px"}
         minH="40px"
         px={2}
-        bg={hoverTargetId === row.id ? "purple.50" : "white"}
+        bg={
+          reorderId && dropTargetId === row.id
+            ? "purple.100"
+            : hoverTargetId === row.id
+              ? "purple.50"
+              : "white"
+        }
+        boxShadow={
+          reorderId && dropTargetId === row.id
+            ? "inset 0 2px 0 #7c3aed"
+            : undefined
+        }
         borderBottomWidth="1px"
         borderColor="gray.100"
         onMouseEnter={() => setHoverTargetId(row.id)}
@@ -667,6 +753,25 @@ const ColumnMapper = ({
         }}
       >
         <Flex h="40px" align="center" gap={2}>
+          <Box
+            as="span"
+            role="button"
+            tabIndex={readOnly ? -1 : 0}
+            aria-label={`Reorder ${row.target}`}
+            flexShrink={0}
+            display="inline-flex"
+            alignItems="center"
+            justifyContent="center"
+            w="18px"
+            h="28px"
+            color="gray.400"
+            cursor={readOnly ? "default" : "grab"}
+            style={{ touchAction: "none" }}
+            onPointerDown={(event) => startReorder(event, row)}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <MdDragIndicator aria-hidden />
+          </Box>
           {!row.targetLocked ? (
             <NativeSelect.Root
               size="xs"
@@ -1058,7 +1163,7 @@ const ColumnMapper = ({
               Mapped columns {rows.length}
             </Text>
             <Text fontSize="xs" color="gray.500" ml="auto">
-              SAP column → Mapped column
+              Drag the handle to reorder
             </Text>
           </Flex>
           <Box
@@ -1198,8 +1303,8 @@ const ColumnMapper = ({
                   suppressNewTargetClick.current = true;
                   setDragSource(null);
                   setDragFromTarget(null);
+                  setFloatLabel(null);
                   setDropTargetId(null);
-                  setPointer(null);
                   onAddTarget(source);
                   onAnnounce(`${source} added as a new target`);
                 }}
@@ -1246,11 +1351,12 @@ const ColumnMapper = ({
           {showConnectors ? "Hide connectors" : "Show connectors"}
         </Button>
       </Flex>
-      {dragSource && pointer && (
+      {floatLabel && (
         <Flex
+          ref={ghostRef}
           position="fixed"
-          left={`${pointer.x + 12}px`}
-          top={`${pointer.y + 8}px`}
+          left={0}
+          top={0}
           zIndex={2000}
           pointerEvents="none"
           align="center"
@@ -1262,9 +1368,13 @@ const ColumnMapper = ({
           color="white"
           fontSize="sm"
           fontWeight="medium"
+          style={{
+            transform: "translate3d(-9999px, -9999px, 0)",
+            willChange: "transform",
+          }}
         >
           <MdDragIndicator />
-          {dragSource}
+          {floatLabel}
         </Flex>
       )}
     </Box>
