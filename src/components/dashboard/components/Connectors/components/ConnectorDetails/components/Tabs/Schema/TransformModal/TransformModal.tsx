@@ -2393,38 +2393,6 @@ const TransformModal = ({
                               JSON says no transformation, script found
                             </Text>
                           )}
-                        <ExpandableCodeEditor
-                          value={scriptText}
-                          fileName={scriptChipName || defaultScriptName}
-                          exportText={
-                            scriptText.trim()
-                              ? scriptText
-                              : wrapTransformBody("")
-                          }
-                          schemaFolds={scriptSchemaFolds}
-                          examples={scriptExamples}
-                          onInsertExample={handleInsertScriptExample}
-                          onValidate={() => {
-                            void handleScriptSaveAndValidate();
-                          }}
-                          validateLabel="Save and validate"
-                          validateDisabled={
-                            readOnly ||
-                            !scriptBody.trim() ||
-                            Boolean(transformRootIssue)
-                          }
-                          validating={validateMut.isPending}
-                          validation={editorScriptValidation}
-                          diagnostics={editorDiagnostics}
-                          readOnly={readOnly}
-                          compact
-                          onChange={(next) => {
-                            if (next === scriptText) return;
-                            setScriptText(next);
-                            setEntryPoint(TRANSFORM_ENTRY_POINT);
-                            setDryRunResult(null);
-                          }}
-                        />
                       </>
                     )}
                     <Flex gap={2} align="center" flexWrap="wrap">
@@ -2441,6 +2409,14 @@ const TransformModal = ({
                         Run dry run
                       </Button>
                     </Flex>
+                    {transformRootIssue && (
+                      <Text fontSize="xs" color="red.600">
+                        {transformRootIssue.message}
+                        {transformRootIssue.line
+                          ? ` (line ${transformRootIssue.line})`
+                          : ""}
+                      </Text>
+                    )}
                     {dryRunResult && (
                       <>
                         <Text fontSize="sm">
@@ -2458,19 +2434,19 @@ const TransformModal = ({
                             {w.message}
                           </Text>
                         ))}
-                        {dryRunResult.errors
-                          .filter(
-                            (error) =>
-                              !applyScript ||
-                              !scriptErrorLine(error.traceback, error.line),
-                          )
-                          .map((error) => (
+                        {dryRunResult.errors.map((error) => {
+                          const line = scriptErrorLine(
+                            error.traceback,
+                            error.line,
+                          );
+                          return (
                             <Text
                               key={error.message}
                               fontSize="xs"
                               color="red.600"
                             >
                               {error.message}
+                              {line ? ` (line ${line})` : ""}
                               {error.traceback ? (
                                 <Box
                                   as="pre"
@@ -2482,7 +2458,8 @@ const TransformModal = ({
                                 </Box>
                               ) : null}
                             </Text>
-                          ))}
+                          );
+                        })}
                         {(dryRunResult.input_preview?.length ?? 0) > 0 ? (
                           <ExpandablePreviewTable
                             title="Input sample (mapped SAP columns)"
