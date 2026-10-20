@@ -1,7 +1,4 @@
-import {
-  pipelineRunRefetchInterval,
-  resolvePipelineRunStatus,
-} from "@/components/dashboard/components/Scheduling/pipelineRunHelpers";
+import { pipelineRunRefetchInterval } from "@/components/dashboard/components/Scheduling/pipelineRunHelpers";
 import ServerRoutes from "@/constants/server-routes";
 import AxiosInstance from "@/lib/axios/api-client";
 import {
@@ -363,10 +360,12 @@ export function usePipelineRuns(pipelineId: number | null) {
     enabled: !!pipelineId,
     refetchInterval: (query) =>
       query.state.data?.runs.some(
-        (run) => resolvePipelineRunStatus(run) === "running",
+        (run) => pipelineRunRefetchInterval(run.status) !== false,
       )
         ? 4000
-        : false,
+        : // Scheduled runs can start without a local mutation. Keep discovering
+          // new runs even after the previously selected run has finished.
+          15000,
     staleTime: 30 * 1000,
   });
 }
@@ -387,11 +386,7 @@ export function usePipelineRun(
     queryFn: () => fetchPipelineRun(pipelineId!, runId!),
     enabled: !!pipelineId && !!runId,
     refetchInterval: (query) =>
-      pipelineRunRefetchInterval(
-        query.state.data
-          ? resolvePipelineRunStatus(query.state.data)
-          : undefined,
-      ),
+      pipelineRunRefetchInterval(query.state.data?.status),
     staleTime: 30 * 1000,
   });
 }

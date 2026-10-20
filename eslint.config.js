@@ -1,5 +1,4 @@
 import prettierConfig from "eslint-config-prettier";
-import checkFile from "eslint-plugin-check-file";
 import prettierPlugin from "eslint-plugin-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
@@ -7,6 +6,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 import prettierRules from "./.prettierrc.cjs";
+import filenameConvention from "./scripts/filename-convention.mjs";
 import js from "@eslint/js";
 
 export default tseslint.config(
@@ -22,7 +22,7 @@ export default tseslint.config(
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
       prettier: prettierPlugin,
-      "check-file": checkFile,
+      project: { rules: { "filename-convention": filenameConvention } },
     },
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
@@ -46,16 +46,7 @@ export default tseslint.config(
       "no-trailing-spaces": "error",
       "no-multiple-empty-lines": "error",
       "prettier/prettier": ["error", prettierRules],
-      "check-file/filename-naming-convention": [
-        "error",
-        {
-          "src/*.{tsx}": "PASCAL_CASE",
-          "src/*.{js,ts}": "KEBAB_CASE",
-        },
-        {
-          ignoreMiddleExtensions: true,
-        },
-      ],
+      "project/filename-convention": "error",
     },
   },
   prettierConfig,

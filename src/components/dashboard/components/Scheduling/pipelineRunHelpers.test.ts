@@ -10,10 +10,98 @@ import {
   pickDefaultNodeTab,
   pipelineRunRefetchInterval,
   pipelineStatusColor,
+  resolvePipelineNodeStatus,
   resolvePipelineRunStatus,
 } from "./pipelineRunHelpers";
 
 describe("pipelineRunHelpers", () => {
+  describe("resolvePipelineNodeStatus", () => {
+    const node = {
+      status: "pending",
+      migration_session_id: 12,
+      migration_status: { overall_status: "failed" },
+    } as Parameters<typeof resolvePipelineNodeStatus>[0];
+
+    it.each([
+      "running",
+      "in_progress",
+      "waiting",
+      "completed",
+      "failed",
+      "skipped",
+    ])(
+      "preserves the current node lifecycle %s despite a failed summary",
+      (status) => {
+        expect(resolvePipelineNodeStatus({ ...node!, status }, "running")).toBe(
+          status,
+        );
+      },
+    );
+
+    it.each(["running", "in_progress"])(
+      "does not mark pending nodes failed during %s runs",
+      (status) => {
+        expect(resolvePipelineNodeStatus(node, status)).toBe("pending");
+      },
+    );
+
+    it("retains session failures for historical pending nodes", () => {
+      expect(resolvePipelineNodeStatus(node, "failed")).toBe("failed");
+    });
+
+    it.each(["running", "in_progress", "waiting", "pending"])(
+      "reconciles a stale %s node when its run has ended",
+      (status) => {
+        for (const runStatus of ["completed", "failed", "timeout", "deleted"]) {
+          for (const migrationStatus of ["failed", "timeout"]) {
+            expect(
+              resolvePipelineNodeStatus(
+                {
+                  ...node!,
+                  status,
+                  migration_status: { overall_status: migrationStatus },
+                },
+                runStatus,
+              ),
+            ).toBe(migrationStatus);
+          }
+        }
+      },
+    );
+
+    it.each(["completed", "failed", "timeout", "skipped"])(
+      "preserves an explicit terminal node status of %s",
+      (status) => {
+        expect(resolvePipelineNodeStatus({ ...node!, status }, "failed")).toBe(
+          status,
+        );
+      },
+    );
+
+    it("does not infer failure for an unfinished node without a run session", () => {
+      expect(
+        resolvePipelineNodeStatus(
+          { ...node!, status: "running", migration_session_id: null },
+          "failed",
+        ),
+      ).toBe("running");
+    });
+
+    it("does not use a summary to stop an active run with uppercase status", () => {
+      expect(
+        resolvePipelineNodeStatus({ ...node!, status: "running" }, "RUNNING"),
+      ).toBe("running");
+    });
+
+    it("ignores migration summaries without a run session", () => {
+      expect(
+        resolvePipelineNodeStatus(
+          { ...node!, migration_session_id: null },
+          "failed",
+        ),
+      ).toBe("pending");
+    });
+  });
   describe("pipelineStatusColor", () => {
     it.each([
       ["completed", "green"],
@@ -154,23 +242,38 @@ describe("pipelineRunHelpers", () => {
       ).toBe("failed");
     });
 
-    it("derives failed from overall tables_failed while run is running", () => {
-      expect(
-        resolvePipelineRunStatus({
+    it.each(["running", "in_progress"])(
+      "keeps %s runs live despite table failures",
+      (status) => {
+        expect(
+          resolvePipelineRunStatus({
+            status,
+            overall: {
+              nodes_total: 2,
+              nodes_completed: 0,
+              nodes_failed: 0,
+              nodes_running: 2,
+              tables_total: 5,
+              tables_completed: 1,
+              tables_failed: 1,
+              status: "running",
+            },
+          }),
+        ).toBe("running");
+      },
+    );
+
+    it.each(["failed", "completed"])(
+      "keeps polling an active run despite a %s summary",
+      (status) => {
+        const run = {
           status: "running",
-          overall: {
-            nodes_total: 2,
-            nodes_completed: 0,
-            nodes_failed: 0,
-            nodes_running: 2,
-            tables_total: 5,
-            tables_completed: 1,
-            tables_failed: 1,
-            status: "running",
-          },
-        }),
-      ).toBe("failed");
-    });
+          overall: { status },
+        } as Parameters<typeof resolvePipelineRunStatus>[0];
+        expect(resolvePipelineRunStatus(run)).toBe("running");
+        expect(pipelineRunRefetchInterval(run.status)).toBe(4000);
+      },
+    );
   });
 
   describe("pipelineRunRefetchInterval", () => {

@@ -78,6 +78,36 @@ export function pipelineStatusColor(status: string): string {
   return "gray";
 }
 
+/** Keep active runs live; reconcile unfinished nodes when the run ends. */
+export function resolvePipelineNodeStatus(
+  node: PipelineRunNodeDetail | undefined,
+  runStatus: string | undefined,
+): string {
+  const status = (node?.status || "pending").toLowerCase();
+  const lifecycle = (runStatus || "").toLowerCase();
+  if (["completed", "failed", "timeout", "skipped"].includes(status)) {
+    return status;
+  }
+  // Pending nodes in an active run may still carry the previous migration's
+  // summary, including failures. Wait for the scheduler to start this node.
+  if (lifecycle === "running" || lifecycle === "in_progress") return status;
+  const finished = ["completed", "failed", "timeout", "deleted"].includes(
+    lifecycle,
+  );
+  if (status !== "pending" && !finished) return status;
+  if (
+    node?.migration_session_id === null ||
+    node?.migration_session_id === undefined
+  ) {
+    return status;
+  }
+  const migrationStatus = node.migration_status?.overall_status?.toLowerCase();
+  if (migrationStatus === "failed" || migrationStatus === "timeout") {
+    return migrationStatus;
+  }
+  return status;
+}
+
 export function pickDefaultNodeTab(
   nodes: PipelineRunNodeDetail[],
   currentNodeId: number | null,
@@ -104,6 +134,9 @@ export function resolvePipelineRunStatus(
   const top = (run.status || "").toLowerCase();
   const rolled = (run.overall?.status || "").toLowerCase();
   if (top === "failed" || top === "timeout") return top;
+  // Table/node failures are outcomes within a run, not proof the scheduler
+  // has stopped. Keep active runs live until their lifecycle becomes terminal.
+  if (top === "running" || top === "in_progress") return "running";
   if (rolled === "failed" || rolled === "timeout") return rolled;
   if (
     (run.overall?.tables_failed ?? 0) > 0 ||

@@ -107,7 +107,10 @@ import {
   PIPELINE_NODE,
   type PipelineNodeRunVisualStatus,
 } from "./pipelineNodeStyles";
-import { resolvePipelineRunStatus } from "./pipelineRunHelpers";
+import {
+  resolvePipelineNodeStatus,
+  resolvePipelineRunStatus,
+} from "./pipelineRunHelpers";
 import {
   pipelineScheduleLabel,
   startNodeScheduleLabels,
@@ -211,13 +214,12 @@ function resolveRunVisualStatus(
   pipelineRun: PipelineRunDetail | null | undefined,
   runNode: PipelineRunNodeDetail | undefined,
 ): PipelineNodeRunVisualStatus {
-  const migOverall = (
-    runNode?.migration_status?.overall_status || ""
-  ).toLowerCase();
   const runStatus = pipelineRun
     ? resolvePipelineRunStatus(pipelineRun)
     : undefined;
-  const nodeStatus = normalizeNodeRunStatus(runNode?.status);
+  const nodeStatus = normalizeNodeRunStatus(
+    resolvePipelineNodeStatus(runNode, pipelineRun?.status?.toLowerCase()),
+  );
   // Historic runs may leave node metadata as pending after the run finished.
   if (
     runNode &&
@@ -227,20 +229,11 @@ function resolveRunVisualStatus(
   ) {
     return "completed";
   }
-  if (nodeStatus === "completed") {
-    return "completed";
-  }
+  if (nodeStatus !== "pending") return nodeStatus;
   if (
-    (migOverall === "failed" || migOverall === "timeout") &&
-    runStatus !== "running"
+    !pipelineRun ||
+    !["running", "in_progress"].includes(pipelineRun.status.toLowerCase())
   ) {
-    return "failed";
-  }
-  if (runNode?.status) {
-    const normalized = normalizeNodeRunStatus(runNode.status);
-    if (normalized !== "pending") return normalized;
-  }
-  if (!pipelineRun || resolvePipelineRunStatus(pipelineRun) !== "running") {
     return normalizeNodeRunStatus(runNode?.status);
   }
 
@@ -335,8 +328,8 @@ function pipelineToFlow(
   const connectionHighlight = options.connectionHighlight ?? null;
   const highlightActive = Boolean(
     connectionHighlight &&
-      (connectionHighlight.edgeIds.size > 0 ||
-        connectionHighlight.nodeIds.size > 0),
+    (connectionHighlight.edgeIds.size > 0 ||
+      connectionHighlight.nodeIds.size > 0),
   );
   const published = pipeline.published_graph;
   const isPublishedView =
@@ -565,7 +558,7 @@ function pipelineToFlow(
     isPublishedView || isRunSnapshotView
       ? computeRootNodeIds(viewNodes, viewEdges)
       : (pipeline.root_node_ids ??
-        computeRootNodeIds(pipeline.nodes, pipeline.edges)),
+          computeRootNodeIds(pipeline.nodes, pipeline.edges)),
   );
   const draftNodeIds = new Set(
     isPublishedView || isRunSnapshotView
@@ -614,8 +607,8 @@ function pipelineToFlow(
           selectedNode?.nodeId === startNode.id ||
           Boolean(
             highlightActive &&
-              connectionHighlight?.mode === "edge" &&
-              connectionHighlight.nodeIds.has(startId),
+            connectionHighlight?.mode === "edge" &&
+            connectionHighlight.nodeIds.has(startId),
           ),
         nextSyncLabel: isCanvasReadOnly ? null : nextSyncLabel,
       } satisfies StartFlowNodeData,
@@ -1813,7 +1806,10 @@ const Scheduling = () => {
     isFetching: isPipelineRunFetching,
   } = usePipelineRun(selectedPipelineId, activeRunId);
   const { data: pipelineRunsData } = usePipelineRuns(selectedPipelineId);
-  const pipelineRuns = pipelineRunsData?.runs ?? [];
+  const pipelineRuns = useMemo(
+    () => pipelineRunsData?.runs ?? [],
+    [pipelineRunsData?.runs],
+  );
   // Show spinner while the selected run's detail is missing / mismatched —
   // not on background refetches of the same run.
   const runDetailLoading =
