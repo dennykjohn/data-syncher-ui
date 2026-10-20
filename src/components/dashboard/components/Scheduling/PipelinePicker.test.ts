@@ -4,7 +4,7 @@ import { type PipelineDetail } from "@/types/pipeline";
 
 import {
   getPipelineListGroup,
-  isPipelineSchedulePaused,
+  isPipelineFlowPaused,
   sortPipelinesForPicker,
 } from "./PipelinePicker";
 
@@ -55,17 +55,23 @@ describe("sortPipelinesForPicker", () => {
   });
 });
 
-describe("isPipelineSchedulePaused", () => {
-  it("treats schedule_paused as paused while flow status stays active", () => {
+describe("isPipelineFlowPaused", () => {
+  it("uses flow status and ignores schedule_paused", () => {
     expect(
-      isPipelineSchedulePaused({
+      isPipelineFlowPaused({
         ...pipeline(1, "x", "active"),
         schedule_paused: true,
       }),
+    ).toBe(false);
+    expect(
+      isPipelineFlowPaused({
+        ...pipeline(2, "y", "paused"),
+        schedule_paused: false,
+      }),
     ).toBe(true);
     expect(
-      isPipelineSchedulePaused({
-        ...pipeline(2, "y", "active"),
+      isPipelineFlowPaused({
+        ...pipeline(3, "z", "active"),
         schedule_paused: false,
       }),
     ).toBe(false);
@@ -73,13 +79,13 @@ describe("isPipelineSchedulePaused", () => {
 });
 
 describe("getPipelineListGroup", () => {
-  it("groups schedule_paused flows with paused", () => {
+  it("does not group a schedule-paused flow as paused when the flow is active", () => {
     expect(
       getPipelineListGroup({
         ...pipeline(1, "x", "active"),
         schedule_paused: true,
       }),
-    ).toBe("paused");
+    ).toBe("active");
   });
 
   it("treats running execution as the running group regardless of schedule", () => {

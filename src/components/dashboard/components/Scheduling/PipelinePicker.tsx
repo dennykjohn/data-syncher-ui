@@ -34,15 +34,15 @@ export const isPipelineRunning = (pipeline: PipelineDetail) =>
 export const isPipelineQueued = (pipeline: PipelineDetail) =>
   pipeline.latest_run_status === "queued";
 
-/** Flow-level pause or automatic schedule paused (Start node schedule). */
-export const isPipelineSchedulePaused = (pipeline: PipelineDetail): boolean =>
-  pipeline.status === "paused" || Boolean(pipeline.schedule_paused);
+/** Flow-level pause (toolbar Pause/Resume). Independent of schedule_paused. */
+export const isPipelineFlowPaused = (pipeline: PipelineDetail): boolean =>
+  pipeline.status === "paused";
 
 export const getPipelineListGroup = (
   pipeline: PipelineDetail,
 ): PipelineListGroup => {
   if (isPipelineRunning(pipeline)) return "running";
-  if (isPipelineSchedulePaused(pipeline)) return "paused";
+  if (isPipelineFlowPaused(pipeline)) return "paused";
   return "active";
 };
 
@@ -63,8 +63,8 @@ export const sortPipelinesForPicker = (
     return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
   });
 
-/** Green/orange dot = schedule enabled (Active) or schedule paused (Paused). */
-const ScheduleStatusDot = ({ paused }: { paused: boolean }) => (
+/** Green/orange dot = flow active or flow paused. */
+const FlowStatusDot = ({ paused }: { paused: boolean }) => (
   <Box
     as="span"
     w="6px"
@@ -72,7 +72,7 @@ const ScheduleStatusDot = ({ paused }: { paused: boolean }) => (
     borderRadius="full"
     flexShrink={0}
     bg={paused ? "orange.500" : "green.600"}
-    title={paused ? "Schedule paused" : "Schedule active"}
+    title={paused ? "Flow paused" : "Flow active"}
   />
 );
 
@@ -171,7 +171,7 @@ const QueuedBadge = ({ compact = false }: { compact?: boolean }) => (
   </Flex>
 );
 
-const ScheduleStatusLabel = ({ paused }: { paused: boolean }) => (
+const FlowStatusLabel = ({ paused }: { paused: boolean }) => (
   <Text
     as="span"
     fontSize="2xs"
@@ -180,7 +180,7 @@ const ScheduleStatusLabel = ({ paused }: { paused: boolean }) => (
     w="48px"
     textAlign="right"
     letterSpacing="0.02em"
-    title={paused ? "Schedule paused" : "Schedule active"}
+    title={paused ? "Flow paused" : "Flow active"}
   >
     {paused ? "Paused" : "Active"}
   </Text>
@@ -202,7 +202,7 @@ const PipelineRightStatus = ({
     return <QueuedBadge compact={compact} />;
   }
   if (!showScheduleLabel) return null;
-  return <ScheduleStatusLabel paused={isPipelineSchedulePaused(pipeline)} />;
+  return <FlowStatusLabel paused={isPipelineFlowPaused(pipeline)} />;
 };
 
 const PipelinePicker = ({
@@ -214,7 +214,7 @@ const PipelinePicker = ({
   maxWidth = DEFAULT_MAX_WIDTH,
 }: PipelinePickerProps) => {
   const selected = pipelines.find((p) => p.id === selectedPipelineId) ?? null;
-  const selectedPaused = selected ? isPipelineSchedulePaused(selected) : false;
+  const selectedPaused = selected ? isPipelineFlowPaused(selected) : false;
   const selectedRunning = selected ? isPipelineRunning(selected) : false;
   const selectedQueued = selected ? isPipelineQueued(selected) : false;
 
@@ -240,7 +240,7 @@ const PipelinePicker = ({
   }, [pipelines]);
 
   const triggerTitle = selected
-    ? `${selected.name}${selectedRunning ? " · Run in progress" : ""}${selectedQueued ? " · Queued for a flow slot" : ""}${selectedPaused ? " · Schedule paused" : ""}`
+    ? `${selected.name}${selectedRunning ? " · Run in progress" : ""}${selectedQueued ? " · Queued for a flow slot" : ""}${selectedPaused ? " · Flow paused" : ""}`
     : undefined;
 
   return (
@@ -275,7 +275,7 @@ const PipelinePicker = ({
           }}
         >
           <Flex alignItems="center" gap={2} minW={0} flex="1">
-            {selected && <ScheduleStatusDot paused={selectedPaused} />}
+            {selected && <FlowStatusDot paused={selectedPaused} />}
             <Text
               truncate
               fontSize="sm"
@@ -353,7 +353,7 @@ const PipelinePicker = ({
                 </Box>
                 {section.items.map((p) => {
                   const isSelected = p.id === selectedPipelineId;
-                  const paused = isPipelineSchedulePaused(p);
+                  const paused = isPipelineFlowPaused(p);
                   const running = isPipelineRunning(p);
                   return (
                     <Menu.Item
@@ -383,7 +383,7 @@ const PipelinePicker = ({
                         minW={0}
                       >
                         <Flex alignItems="center" gap={2} minW={0} flex="1">
-                          <ScheduleStatusDot paused={paused} />
+                          <FlowStatusDot paused={paused} />
                           <Text
                             truncate
                             fontSize="sm"
