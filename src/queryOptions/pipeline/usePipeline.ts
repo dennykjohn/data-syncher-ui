@@ -305,10 +305,8 @@ export function useRunPipeline() {
       }>(ServerRoutes.pipeline.run(pipelineId), {});
       return data;
     },
-    onSuccess: async (_data, pipelineId) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["pipelineRun", pipelineId],
-      });
+    onSuccess: async (data, pipelineId) => {
+      await prefetchPipelineRun(queryClient, pipelineId, data.pipeline_run_id);
       await queryClient.invalidateQueries({
         queryKey: ["pipelineRuns", pipelineId],
       });

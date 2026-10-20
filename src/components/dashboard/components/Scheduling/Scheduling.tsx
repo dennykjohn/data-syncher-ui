@@ -1973,7 +1973,9 @@ const Scheduling = () => {
 
   const handleRunStarted = useCallback((runId: number) => {
     setDraftCanvasMode(false);
-    setPinnedRunId(null);
+    // Pin until pipelineRuns includes this id — avoids snapping back to a stale
+    // failed "latest" row while the runs list refetches after Run now.
+    setPinnedRunId(runId);
     setActiveRunId(runId);
   }, []);
 
