@@ -2133,7 +2133,11 @@ const Scheduling = () => {
       name = suggestPipelineName(pipelines);
     }
     try {
-      const pipeline = await createPipeline.mutateAsync({ name });
+      const pipeline = await createPipeline.mutateAsync({
+        name,
+        schedule_type: "manual",
+        schedule_paused: true,
+      });
       selectPipeline(pipeline.id);
       setNewPipelineDialogOpen(false);
       setNewPipelineName("");

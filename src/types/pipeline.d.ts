@@ -81,6 +81,7 @@ export type PipelinePublishedGraph = {
 export type CreatePipelinePayload = {
   name?: string;
   schedule_type?: string;
+  schedule_paused?: boolean;
   time_frequency?: string;
   schedule_config?: Record<string, unknown>;
   sync_start_date?: string | null;

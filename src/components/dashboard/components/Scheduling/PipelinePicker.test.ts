@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { type PipelineDetail } from "@/types/pipeline";
 
-import { getPipelineListGroup, sortPipelinesForPicker } from "./PipelinePicker";
+import {
+  getPipelineListGroup,
+  isPipelineSchedulePaused,
+  sortPipelinesForPicker,
+} from "./PipelinePicker";
 
 const pipeline = (
   id: number,
@@ -51,7 +55,33 @@ describe("sortPipelinesForPicker", () => {
   });
 });
 
+describe("isPipelineSchedulePaused", () => {
+  it("treats schedule_paused as paused while flow status stays active", () => {
+    expect(
+      isPipelineSchedulePaused({
+        ...pipeline(1, "x", "active"),
+        schedule_paused: true,
+      }),
+    ).toBe(true);
+    expect(
+      isPipelineSchedulePaused({
+        ...pipeline(2, "y", "active"),
+        schedule_paused: false,
+      }),
+    ).toBe(false);
+  });
+});
+
 describe("getPipelineListGroup", () => {
+  it("groups schedule_paused flows with paused", () => {
+    expect(
+      getPipelineListGroup({
+        ...pipeline(1, "x", "active"),
+        schedule_paused: true,
+      }),
+    ).toBe("paused");
+  });
+
   it("treats running execution as the running group regardless of schedule", () => {
     expect(getPipelineListGroup(pipeline(1, "x", "paused", "running"))).toBe(
       "running",

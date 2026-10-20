@@ -34,11 +34,15 @@ export const isPipelineRunning = (pipeline: PipelineDetail) =>
 export const isPipelineQueued = (pipeline: PipelineDetail) =>
   pipeline.latest_run_status === "queued";
 
+/** Flow-level pause or automatic schedule paused (Start node schedule). */
+export const isPipelineSchedulePaused = (pipeline: PipelineDetail): boolean =>
+  pipeline.status === "paused" || Boolean(pipeline.schedule_paused);
+
 export const getPipelineListGroup = (
   pipeline: PipelineDetail,
 ): PipelineListGroup => {
   if (isPipelineRunning(pipeline)) return "running";
-  if (pipeline.status === "paused") return "paused";
+  if (isPipelineSchedulePaused(pipeline)) return "paused";
   return "active";
 };
 
@@ -198,7 +202,7 @@ const PipelineRightStatus = ({
     return <QueuedBadge compact={compact} />;
   }
   if (!showScheduleLabel) return null;
-  return <ScheduleStatusLabel paused={pipeline.status === "paused"} />;
+  return <ScheduleStatusLabel paused={isPipelineSchedulePaused(pipeline)} />;
 };
 
 const PipelinePicker = ({
@@ -210,7 +214,7 @@ const PipelinePicker = ({
   maxWidth = DEFAULT_MAX_WIDTH,
 }: PipelinePickerProps) => {
   const selected = pipelines.find((p) => p.id === selectedPipelineId) ?? null;
-  const selectedPaused = selected?.status === "paused";
+  const selectedPaused = selected ? isPipelineSchedulePaused(selected) : false;
   const selectedRunning = selected ? isPipelineRunning(selected) : false;
   const selectedQueued = selected ? isPipelineQueued(selected) : false;
 
@@ -349,7 +353,7 @@ const PipelinePicker = ({
                 </Box>
                 {section.items.map((p) => {
                   const isSelected = p.id === selectedPipelineId;
-                  const paused = p.status === "paused";
+                  const paused = isPipelineSchedulePaused(p);
                   const running = isPipelineRunning(p);
                   return (
                     <Menu.Item
