@@ -107,7 +107,12 @@ import {
   PIPELINE_NODE,
   type PipelineNodeRunVisualStatus,
 } from "./pipelineNodeStyles";
-import { resolvePipelineRunStatus } from "./pipelineRunHelpers";
+import {
+  PLAN_FLOW_CAP_FALLBACK,
+  isPlanFlowCapError,
+  resolvePipelineRunStatus,
+  unwrapPipelineRunApiError,
+} from "./pipelineRunHelpers";
 import {
   pipelineScheduleLabel,
   startNodeScheduleLabels,
@@ -2250,19 +2255,8 @@ const Scheduling = () => {
         description: result.message,
       });
     } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: {
-          status?: number;
-          data?: {
-            error?: string;
-            warning?: string;
-            code?: string;
-            errors?: string[];
-            warnings?: string[];
-          };
-        };
-      };
-      const data = axiosErr?.response?.data;
+      // api-client rejects with response.data (not AxiosError) — unwrap both shapes.
+      const { data, status } = unwrapPipelineRunApiError(err);
       if (data?.errors?.length) {
         setValidationPanelDismissed(false);
         setValidationSnapshot({
@@ -2278,19 +2272,10 @@ const Scheduling = () => {
           },
         });
       }
-      const isPlanFlowCap =
-        data?.code === "plan_flow_cap" ||
-        (axiosErr?.response?.status === 409 &&
-          Boolean(
-            data?.warning || data?.error?.toLowerCase().includes("concurrent"),
-          ));
-      if (isPlanFlowCap) {
+      if (isPlanFlowCapError(data, status)) {
         toaster.warning({
           title: "Flow limit reached",
-          description:
-            data?.warning ||
-            data?.error ||
-            "Your plan's concurrent flow limit is in use. Wait for a running flow to finish.",
+          description: data?.warning || data?.error || PLAN_FLOW_CAP_FALLBACK,
         });
         return;
       }

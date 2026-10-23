@@ -2,6 +2,10 @@ import { format } from "date-fns";
 
 import { dateTimeFormat } from "@/constants/common";
 import {
+  isGenericTableFailureMessage,
+  resolveTableDisplayError,
+} from "@/helpers/migrationTableErrors";
+import {
   type PipelineRunDetail,
   type PipelineRunMode,
   type PipelineRunNodeDetail,
@@ -47,9 +51,79 @@ export function nodeHasMigrationActivity(node: PipelineRunNodeDetail): boolean {
   return MIGRATION_ACTIVE_STATUSES.has(String(node.status).toLowerCase());
 }
 
+/** Run is live but this task has not opened a migration session yet (worker prep / orchestrator). */
+export function isPipelineNodeStartingUp(
+  run: Pick<
+    PipelineRunDetail,
+    | "status"
+    | "current_node_id"
+    | "current_node_ids"
+    | "waiting_for_flow_slot"
+    | "overall"
+  >,
+  node: Pick<
+    PipelineRunNodeDetail,
+    "node_id" | "status" | "migration_session_id"
+  >,
+): boolean {
+  if (run.waiting_for_flow_slot) return false;
+  const runStatus = resolvePipelineRunStatus(run);
+  if (runStatus !== "running" && runStatus !== "in_progress") return false;
+  if (
+    node.migration_session_id !== null &&
+    node.migration_session_id !== undefined
+  ) {
+    return false;
+  }
+  const nodeStatus = String(node.status || "").toLowerCase();
+  if (!["pending", "waiting", ""].includes(nodeStatus)) return false;
+
+  const activeIds =
+    run.current_node_ids && run.current_node_ids.length > 0
+      ? run.current_node_ids
+      : run.current_node_id !== null && run.current_node_id !== undefined
+        ? [run.current_node_id]
+        : [];
+
+  if (activeIds.includes(node.node_id)) return true;
+  // Single-wave runs often have empty current_node_ids until the session is created.
+  return (run.overall?.nodes_running ?? 0) > 0 || activeIds.length === 0;
+}
+
+export function pipelineNodeStartupMessage(
+  run: Pick<
+    PipelineRunDetail,
+    | "status"
+    | "current_node_id"
+    | "current_node_ids"
+    | "waiting_for_flow_slot"
+    | "overall"
+  >,
+  node: Pick<
+    PipelineRunNodeDetail,
+    "node_id" | "status" | "migration_session_id"
+  >,
+): string | null {
+  if (run.waiting_for_flow_slot) {
+    return "Queued — waiting for a free flow slot on your plan…";
+  }
+  if (isPipelineNodeStartingUp(run, node)) {
+    return "Starting task — preparing workers and migration session…";
+  }
+  return null;
+}
+
 export function executionLogNodeBadge(
   runMode: PipelineRunMode,
   node: PipelineRunNodeDetail,
+  run?: Pick<
+    PipelineRunDetail,
+    | "status"
+    | "current_node_id"
+    | "current_node_ids"
+    | "waiting_for_flow_slot"
+    | "overall"
+  >,
 ): {
   label: string;
   colorPalette: string;
@@ -57,6 +131,9 @@ export function executionLogNodeBadge(
 } | null {
   if (runMode === "draft") {
     return { label: "Draft", colorPalette: "orange", variant: "subtle" };
+  }
+  if (run && isPipelineNodeStartingUp(run, node)) {
+    return { label: "starting", colorPalette: "blue", variant: "subtle" };
   }
   if (!nodeHasMigrationActivity(node)) {
     return null;
@@ -97,6 +174,40 @@ export function pickDefaultNodeTab(
       ACTIVE_NODE_STATUSES.has(String(n.status).toLowerCase()),
     ) ?? nodes[0];
   return active ? String(active.node_id) : "";
+}
+
+export { isGenericTableFailureMessage };
+
+/** Prefer actionable per-table errors over stored aggregate node metadata. */
+export function summarizePipelineTableErrors(
+  tables:
+    | ReadonlyArray<{
+        table_name?: string;
+        status?: string;
+        status_icon?: string;
+        error_message?: string | null;
+        message?: string | null;
+      }>
+    | undefined,
+): string | null {
+  if (!tables?.length) return null;
+  const parts: string[] = [];
+  for (const table of tables) {
+    const status = String(
+      table.status_icon || table.status || "",
+    ).toLowerCase();
+    if (!["failed", "error", "f", "e"].includes(status)) continue;
+    const raw = resolveTableDisplayError(table);
+    if (!raw || isGenericTableFailureMessage(raw)) continue;
+    const name = (table.table_name || "").trim();
+    const line =
+      name && !raw.toLowerCase().includes(name.toLowerCase())
+        ? `${name}: ${raw}`
+        : raw;
+    if (!parts.includes(line)) parts.push(line);
+  }
+  if (!parts.length) return null;
+  return parts.slice(0, 3).join("; ");
 }
 
 /** Node-level error, or run-level orchestrator error when the task never started. */
@@ -213,3 +324,60 @@ export function computeRunDurationMs(
   if (Number.isNaN(endMs)) return null;
   return Math.max(0, endMs - startMs);
 }
+
+/** Body returned by PipelineRunNowView (and similar) on failure. */
+export type PipelineRunApiErrorBody = {
+  error?: string;
+  warning?: string;
+  code?: string;
+  errors?: string[];
+  warnings?: string[];
+};
+
+/**
+ * Axios interceptor rejects with `error.response.data` (not the full AxiosError).
+ * Support both the unwrapped body and a classic `{ response: { data, status } }` shape.
+ */
+export function unwrapPipelineRunApiError(err: unknown): {
+  data: PipelineRunApiErrorBody | undefined;
+  status: number | undefined;
+} {
+  if (!err || typeof err !== "object") {
+    return { data: undefined, status: undefined };
+  }
+  const asAxios = err as {
+    response?: { status?: number; data?: PipelineRunApiErrorBody };
+  };
+  if (asAxios.response?.data && typeof asAxios.response.data === "object") {
+    return {
+      data: asAxios.response.data,
+      status: asAxios.response.status,
+    };
+  }
+  const body = err as PipelineRunApiErrorBody;
+  if (
+    body.code !== undefined ||
+    body.error !== undefined ||
+    body.warning !== undefined ||
+    body.errors !== undefined
+  ) {
+    return { data: body, status: undefined };
+  }
+  return { data: undefined, status: undefined };
+}
+
+/** True when Run Now was blocked by the org concurrent-flow / worker-fleet plan cap. */
+export function isPlanFlowCapError(
+  data: PipelineRunApiErrorBody | undefined,
+  status?: number,
+): boolean {
+  if (!data) return false;
+  if (data.code === "plan_flow_cap") return true;
+  if (status !== 409) return false;
+  if (data.warning) return true;
+  const errorText = data.error?.toLowerCase() ?? "";
+  return errorText.includes("concurrent");
+}
+
+export const PLAN_FLOW_CAP_FALLBACK =
+  "Your plan's concurrent flow limit is in use. Wait for a running flow to finish.";

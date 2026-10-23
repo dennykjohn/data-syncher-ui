@@ -7,10 +7,12 @@ import {
   formatElapsedDuration,
   formatPipelineRunTimestamp,
   formatPipelineRunTimestampCompact,
+  isPlanFlowCapError,
   pickDefaultNodeTab,
   pipelineRunRefetchInterval,
   pipelineStatusColor,
   resolvePipelineRunStatus,
+  unwrapPipelineRunApiError,
 } from "./pipelineRunHelpers";
 
 describe("pipelineRunHelpers", () => {
@@ -208,6 +210,41 @@ describe("pipelineRunHelpers", () => {
           "2026-01-01T00:05:10.000Z",
         ),
       ).toBe(310_000);
+    });
+  });
+
+  describe("unwrapPipelineRunApiError / isPlanFlowCapError", () => {
+    it("reads plan_flow_cap from interceptor-unwrapped body", () => {
+      const body = {
+        code: "plan_flow_cap",
+        warning: "Your free plan allows 1 concurrent flow.",
+        error: "Your free plan allows 1 concurrent flow.",
+      };
+      const { data, status } = unwrapPipelineRunApiError(body);
+      expect(status).toBeUndefined();
+      expect(data?.code).toBe("plan_flow_cap");
+      expect(isPlanFlowCapError(data, status)).toBe(true);
+    });
+
+    it("reads plan_flow_cap from classic AxiosError shape", () => {
+      const { data, status } = unwrapPipelineRunApiError({
+        response: {
+          status: 409,
+          data: {
+            code: "plan_flow_cap",
+            warning: "limit reached",
+          },
+        },
+      });
+      expect(status).toBe(409);
+      expect(isPlanFlowCapError(data, status)).toBe(true);
+    });
+
+    it("does not treat unrelated errors as plan cap", () => {
+      const { data, status } = unwrapPipelineRunApiError({
+        error: "Validate the Draft flow first.",
+      });
+      expect(isPlanFlowCapError(data, status)).toBe(false);
     });
   });
 });
