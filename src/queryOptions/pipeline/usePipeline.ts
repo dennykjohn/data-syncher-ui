@@ -1,4 +1,6 @@
 import {
+  PIPELINE_RUN_LIVE_REFETCH_MS,
+  isLivePipelineRunStatus,
   pipelineRunRefetchInterval,
   resolvePipelineRunStatus,
 } from "@/components/dashboard/components/Scheduling/pipelineRunHelpers";
@@ -102,13 +104,12 @@ export function usePipelines() {
       );
       return data.pipelines ?? [];
     },
-    staleTime: 30 * 1000,
+    staleTime: 15 * 1000,
     refetchInterval: (query) =>
-      query.state.data?.some(
-        (p) =>
-          p.latest_run_status === "running" || p.latest_run_status === "queued",
+      query.state.data?.some((p) =>
+        isLivePipelineRunStatus(p.latest_run_status),
       )
-        ? 4000
+        ? PIPELINE_RUN_LIVE_REFETCH_MS
         : false,
   });
 }
@@ -362,13 +363,15 @@ export function usePipelineRuns(pipelineId: number | null) {
     queryKey: pipelineRunsQueryKey(pipelineId ?? 0),
     queryFn: () => fetchPipelineRuns(pipelineId!),
     enabled: !!pipelineId,
+    // Must poll while queued too — otherwise the run picker stays stuck on
+    // "queued" after the worker has already started (no pipeline-run WebSocket).
     refetchInterval: (query) =>
-      query.state.data?.runs.some(
-        (run) => resolvePipelineRunStatus(run) === "running",
+      query.state.data?.runs.some((run) =>
+        isLivePipelineRunStatus(resolvePipelineRunStatus(run)),
       )
-        ? 4000
+        ? PIPELINE_RUN_LIVE_REFETCH_MS
         : false,
-    staleTime: 30 * 1000,
+    staleTime: 15 * 1000,
   });
 }
 
@@ -387,12 +390,23 @@ export function usePipelineRun(
     queryKey: pipelineRunQueryKey(pipelineId ?? 0, runId),
     queryFn: () => fetchPipelineRun(pipelineId!, runId!),
     enabled: !!pipelineId && !!runId,
-    refetchInterval: (query) =>
-      pipelineRunRefetchInterval(
-        query.state.data
-          ? resolvePipelineRunStatus(query.state.data)
-          : undefined,
-      ),
-    staleTime: 30 * 1000,
+    refetchInterval: (query) => {
+      const status = query.state.data
+        ? resolvePipelineRunStatus(query.state.data)
+        : undefined;
+      const live = pipelineRunRefetchInterval(status);
+      if (live) return live;
+      // After the run ends, poll briefly so nested migration_status catches up
+      // (tables may still show in_progress until the final fail rows are written).
+      if (
+        status &&
+        ["failed", "completed", "timeout"].includes(status) &&
+        Date.now() - query.state.dataUpdatedAt < 20_000
+      ) {
+        return PIPELINE_RUN_LIVE_REFETCH_MS;
+      }
+      return false;
+    },
+    staleTime: 5 * 1000,
   });
 }

@@ -69,6 +69,7 @@ import {
   type PipelineRunDetail,
   type PipelineRunMode,
   type PipelineRunNodeDetail,
+  type PipelineRunSummary,
   type PipelineValidationResult,
 } from "@/types/pipeline";
 
@@ -109,6 +110,7 @@ import {
 } from "./pipelineNodeStyles";
 import {
   PLAN_FLOW_CAP_FALLBACK,
+  isLivePipelineRunStatus,
   isPlanFlowCapError,
   resolvePipelineRunStatus,
   unwrapPipelineRunApiError,
@@ -840,10 +842,13 @@ const PipelineCanvas = ({
   }, []);
 
   const isPublishedView = graphView === "published";
+  const runLiveStatus =
+    pipelineRun !== null && pipelineRun !== undefined
+      ? resolvePipelineRunStatus(pipelineRun)
+      : null;
+  // Edge pulse only while batches are executing (not while queued for a slot).
   const isRunLive =
-    pipelineRun !== null &&
-    pipelineRun !== undefined &&
-    resolvePipelineRunStatus(pipelineRun) === "running";
+    runLiveStatus === "running" || runLiveStatus === "in_progress";
   const hasPublishedGraph = Boolean(
     selectedPipeline?.has_published_graph && selectedPipeline?.published_graph,
   );
@@ -1908,7 +1913,7 @@ const Scheduling = () => {
     if (pipelineRuns.length === 0) return;
     // If a run is in progress, leave draft edit and show live status on the canvas.
     const latest = pipelineRuns[0];
-    if (resolvePipelineRunStatus(latest) === "running") {
+    if (isLivePipelineRunStatus(resolvePipelineRunStatus(latest))) {
       setDraftCanvasMode(false);
       setActiveRunId(latest.pipeline_run_id);
     }
@@ -1924,11 +1929,44 @@ const Scheduling = () => {
     const previousStatus = previousRunStatusRef.current;
     previousRunStatusRef.current = nextStatus;
 
-    if (previousStatus === "running" && nextStatus !== "running") {
+    // Keep the run picker / pipeline list in sync with detail polls (no WS).
+    queryClient.setQueryData<{ runs: PipelineRunSummary[] }>(
+      pipelineRunsQueryKey(selectedPipelineId),
+      (cached) => {
+        if (!cached?.runs?.length) return cached;
+        let changed = false;
+        const runs = cached.runs.map((run) => {
+          if (run.pipeline_run_id !== pipelineRun.pipeline_run_id) return run;
+          if (
+            run.status === pipelineRun.status &&
+            run.finished_at === pipelineRun.finished_at &&
+            run.overall?.status === pipelineRun.overall?.status
+          ) {
+            return run;
+          }
+          changed = true;
+          return {
+            ...run,
+            status: pipelineRun.status,
+            finished_at: pipelineRun.finished_at,
+            overall: pipelineRun.overall,
+            error: pipelineRun.error ?? run.error,
+          };
+        });
+        return changed ? { runs } : cached;
+      },
+    );
+
+    if (
+      previousStatus !== null &&
+      previousStatus !== nextStatus &&
+      (isLivePipelineRunStatus(previousStatus) ||
+        isLivePipelineRunStatus(nextStatus) ||
+        previousStatus === "running")
+    ) {
       void queryClient.invalidateQueries({
-        queryKey: ["pipelineRuns", selectedPipelineId],
+        queryKey: pipelinesQueryKey,
       });
-      void queryClient.invalidateQueries({ queryKey: pipelinesQueryKey });
     }
   }, [pipelineRun, queryClient, selectedPipelineId]);
 
@@ -2008,9 +2046,11 @@ const Scheduling = () => {
     batchNodeCount > 0 && roots.length > 0 && !selectedPipeline?.schedule_type;
   const hasRunningPipelineRun =
     (activePipelineRun !== null &&
-      resolvePipelineRunStatus(activePipelineRun) === "running") ||
-    pipelineRuns.some(
-      (run) => resolvePipelineRunStatus(run as PipelineRunDetail) === "running",
+      isLivePipelineRunStatus(resolvePipelineRunStatus(activePipelineRun))) ||
+    pipelineRuns.some((run) =>
+      isLivePipelineRunStatus(
+        resolvePipelineRunStatus(run as PipelineRunDetail),
+      ),
     );
   const canValidatePipeline =
     Boolean(selectedPipelineId) &&

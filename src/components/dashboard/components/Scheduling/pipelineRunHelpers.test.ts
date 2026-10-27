@@ -9,6 +9,7 @@ import {
   formatPipelineRunTimestampCompact,
   isPlanFlowCapError,
   pickDefaultNodeTab,
+  pipelineHasPublishedRunnableGraph,
   pipelineRunRefetchInterval,
   pipelineStatusColor,
   resolvePipelineRunStatus,
@@ -176,8 +177,10 @@ describe("pipelineRunHelpers", () => {
   });
 
   describe("pipelineRunRefetchInterval", () => {
-    it("polls every 4s while running", () => {
-      expect(pipelineRunRefetchInterval("running")).toBe(4000);
+    it("polls every 2s while running or queued", () => {
+      expect(pipelineRunRefetchInterval("running")).toBe(2000);
+      expect(pipelineRunRefetchInterval("queued")).toBe(2000);
+      expect(pipelineRunRefetchInterval("in_progress")).toBe(2000);
     });
 
     it("stops polling when run is terminal", () => {
@@ -245,6 +248,29 @@ describe("pipelineRunHelpers", () => {
         error: "Validate the Draft flow first.",
       });
       expect(isPlanFlowCapError(data, status)).toBe(false);
+    });
+  });
+
+  describe("pipelineHasPublishedRunnableGraph", () => {
+    it("requires published batch nodes", () => {
+      expect(
+        pipelineHasPublishedRunnableGraph({
+          has_published_graph: true,
+          published_graph: { node_ids: [1, 2], edges: [] },
+        } as never),
+      ).toBe(true);
+      expect(
+        pipelineHasPublishedRunnableGraph({
+          has_published_graph: true,
+          published_graph: { node_ids: [], edges: [] },
+        } as never),
+      ).toBe(false);
+      expect(
+        pipelineHasPublishedRunnableGraph({
+          has_published_graph: false,
+          published_graph: null,
+        } as never),
+      ).toBe(false);
     });
   });
 });

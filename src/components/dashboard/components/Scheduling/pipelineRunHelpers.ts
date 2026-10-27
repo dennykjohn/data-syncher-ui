@@ -6,11 +6,24 @@ import {
   resolveTableDisplayError,
 } from "@/helpers/migrationTableErrors";
 import {
+  type PipelineDetail,
   type PipelineRunDetail,
   type PipelineRunMode,
   type PipelineRunNodeDetail,
   type PipelineRunOverall,
 } from "@/types/pipeline";
+
+/** True when Validate has published a runnable topology (Run Now / schedule). */
+export function pipelineHasPublishedRunnableGraph(
+  pipeline:
+    | Pick<PipelineDetail, "has_published_graph" | "published_graph">
+    | null
+    | undefined,
+): boolean {
+  if (!pipeline?.has_published_graph) return false;
+  const nodeIds = pipeline.published_graph?.node_ids;
+  return Array.isArray(nodeIds) && nodeIds.length > 0;
+}
 
 const MIGRATION_ACTIVE_STATUSES = new Set([
   "running",
@@ -275,11 +288,23 @@ export function computeTableProgress(overall: PipelineRunOverall): number {
   return Math.round((resolved / overall.tables_total) * 100);
 }
 
+/** Statuses that should keep Scheduling live-polling (no pipeline-run WebSocket). */
+export function isLivePipelineRunStatus(
+  status: string | undefined | null,
+): boolean {
+  const s = (status || "").toLowerCase();
+  return (
+    s === "running" || s === "in_progress" || s === "queued" || s === "waiting"
+  );
+}
+
+/** Poll cadence while a run is queued/running. Kept short — there is no WS push. */
+export const PIPELINE_RUN_LIVE_REFETCH_MS = 2000;
+
 export function pipelineRunRefetchInterval(
   status: string | undefined,
 ): number | false {
-  const s = (status || "").toLowerCase();
-  if (s === "running" || s === "in_progress" || s === "queued") return 4000;
+  if (isLivePipelineRunStatus(status)) return PIPELINE_RUN_LIVE_REFETCH_MS;
   return false;
 }
 
