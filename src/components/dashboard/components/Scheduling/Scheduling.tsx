@@ -2378,7 +2378,18 @@ const Scheduling = () => {
     event: DragEvent<HTMLDivElement>,
     batchId: number,
     connectionId: number,
+    opts?: { blocked?: boolean; pipelineName?: string | null },
   ) => {
+    if (opts?.blocked) {
+      event.preventDefault();
+      toaster.warning({
+        title: "Batch already in a flow",
+        description: opts.pipelineName
+          ? `Remove it from "${opts.pipelineName}" before adding it to another pipeline.`
+          : "A batch can only be used in one pipeline. Remove it from the other flow first.",
+      });
+      return;
+    }
     const payload = JSON.stringify({ batchId, connectionId });
     event.dataTransfer.setData(DRAG_BATCH_MIME, payload);
     event.dataTransfer.setData("text/plain", payload);
@@ -2769,37 +2780,72 @@ const Scheduling = () => {
                             No batches
                           </Text>
                         )}
-                        {conn.batches.map((b) => (
-                          <Box
-                            key={b.id}
-                            draggable
-                            onDragStart={(e) =>
-                              onBatchDragStart(e, b.id, conn.connection_id)
-                            }
-                            borderWidth={1}
-                            borderColor="gray.200"
-                            borderRadius="md"
-                            p={2}
-                            cursor="grab"
-                            bg="white"
-                            _hover={{
-                              borderColor: "brand.300",
-                              bg: "brand.50",
-                            }}
-                            _active={{ cursor: "grabbing" }}
-                          >
-                            <Text
-                              fontSize="xs"
-                              fontWeight="semibold"
-                              color="gray.800"
+                        {conn.batches.map((b) => {
+                          const usedElsewhere =
+                            !!b.in_pipeline &&
+                            b.pipeline_id !== null &&
+                            b.pipeline_id !== undefined &&
+                            b.pipeline_id !== selectedPipelineId;
+                          const usedHere =
+                            !!b.in_pipeline &&
+                            b.pipeline_id === selectedPipelineId;
+                          const blocked = usedElsewhere || usedHere;
+                          return (
+                            <Box
+                              key={b.id}
+                              draggable={!blocked}
+                              onDragStart={(e) =>
+                                onBatchDragStart(e, b.id, conn.connection_id, {
+                                  blocked,
+                                  pipelineName: b.pipeline_name,
+                                })
+                              }
+                              borderWidth={1}
+                              borderColor={
+                                usedElsewhere ? "orange.200" : "gray.200"
+                              }
+                              borderRadius="md"
+                              p={2}
+                              cursor={blocked ? "not-allowed" : "grab"}
+                              bg={usedElsewhere ? "orange.50" : "white"}
+                              opacity={blocked ? 0.7 : 1}
+                              title={
+                                usedElsewhere
+                                  ? `Used in "${b.pipeline_name}". Remove from that flow first.`
+                                  : usedHere
+                                    ? "Already on this pipeline canvas"
+                                    : undefined
+                              }
+                              _hover={
+                                blocked
+                                  ? undefined
+                                  : {
+                                      borderColor: "brand.300",
+                                      bg: "brand.50",
+                                    }
+                              }
+                              _active={
+                                blocked ? undefined : { cursor: "grabbing" }
+                              }
                             >
-                              {b.name}
-                            </Text>
-                            <Text fontSize="2xs" color="gray.500">
-                              {b.table_count} tables · {b.execution_order}
-                            </Text>
-                          </Box>
-                        ))}
+                              <Text
+                                fontSize="xs"
+                                fontWeight="semibold"
+                                color="gray.800"
+                              >
+                                {b.name}
+                              </Text>
+                              <Text fontSize="2xs" color="gray.500">
+                                {b.table_count} tables · {b.execution_order}
+                                {usedElsewhere && b.pipeline_name
+                                  ? ` · in ${b.pipeline_name}`
+                                  : usedHere
+                                    ? " · on this flow"
+                                    : ""}
+                              </Text>
+                            </Box>
+                          );
+                        })}
                       </Flex>
                     )}
                   </Box>
