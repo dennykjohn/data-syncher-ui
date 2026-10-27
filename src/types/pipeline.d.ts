@@ -4,6 +4,10 @@ export type PipelineBatchRef = {
   table_count: number;
   execution_order: "parallel" | "sequential";
   time_frequency: string;
+  /** True when this batch already appears on a pipeline canvas. */
+  in_pipeline?: boolean;
+  pipeline_id?: number | null;
+  pipeline_name?: string | null;
 };
 
 export type PipelineConnectionItem = {
