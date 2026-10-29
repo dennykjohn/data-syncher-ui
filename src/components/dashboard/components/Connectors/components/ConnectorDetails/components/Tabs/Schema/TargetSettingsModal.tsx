@@ -19,7 +19,10 @@ import { IoMdTrash } from "react-icons/io";
 
 import { format } from "date-fns";
 
-import { isSnowflakeConnector } from "@/components/dashboard/helpers/helpers";
+import {
+  isDatabricksConnector,
+  isSnowflakeConnector,
+} from "@/components/dashboard/helpers/helpers";
 import { Tooltip } from "@/components/ui/tooltip";
 import useDeleteDeltaTable from "@/queryOptions/connector/schema/useDeleteDeltaTable";
 import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
@@ -185,17 +188,22 @@ const TargetSettingsModal = ({
   );
 
   const normalizedDest = destinationName?.toLowerCase() || "";
+  const normalizedConnector = normalizeConnectorName(destinationName);
   const isADLS =
     normalizedDest.includes("adls") ||
     normalizedDest.includes("lake") ||
     normalizedDest.includes("azure") ||
     normalizedDest.includes("storage");
   const isSnowflake =
-    isSnowflakeConnector(normalizeConnectorName(destinationName)) ||
+    isSnowflakeConnector(normalizedConnector) ||
     normalizedDest.includes("snowflake");
+  const isDatabricks =
+    isDatabricksConnector(normalizedConnector) ||
+    normalizedDest.includes("databricks");
   const showFileExportOptions =
     isFileBasedDestination ??
     (!isSnowflake &&
+      !isDatabricks &&
       (isADLS ||
         normalizedDest.includes("s3") ||
         normalizedDest.includes("sharepoint") ||

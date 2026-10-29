@@ -371,6 +371,7 @@ export type EntityTransformDetail = {
   id: number;
   version: number;
   is_active: boolean;
+  status?: "draft" | "validated";
   service_name: string;
   entity_name: string;
   table_name: string;
@@ -389,6 +390,7 @@ export type EntityTransformDetail = {
   default_display_name?: string | null;
   created_at: string | null;
   badge: string | null;
+  save_meta?: Record<string, unknown>;
 };
 
 export type DestinationPreview = {
@@ -427,6 +429,10 @@ export type TransformValidateResponse = {
   mapping_table: MappingTableRow[];
   row_filter_config?: RowFilterConfig | null;
   destination?: DestinationPreview | null;
+  draft?: EntityTransformDetail | null;
+  published?: EntityTransformDetail | null;
+  publish_error?: string;
+  requires_rename_confirmation?: boolean;
 };
 
 export type TransformDryRunResponse = {

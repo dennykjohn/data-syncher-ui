@@ -244,6 +244,9 @@ export const generateKeyPair = async (
 export const isSnowflakeConnector = (name?: string): boolean =>
   name?.toLowerCase() === "snowflake";
 
+export const isDatabricksConnector = (name?: string): boolean =>
+  !!name?.toLowerCase().includes("databricks");
+
 export const isSalesforceConnector = (name?: string): boolean =>
   !!name?.toLowerCase().includes("salesforce");
 

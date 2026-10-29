@@ -2,33 +2,39 @@ import { useMemo } from "react";
 
 import { Box, Flex, Image, Table, Text } from "@chakra-ui/react";
 
-import { useOutletContext } from "react-router";
-
-import { LuCopy } from "react-icons/lu";
 import { MdWarning } from "react-icons/md";
 
 import { format } from "date-fns";
+import { useOutletContext } from "react-router";
 
 import CheckIcon from "@/assets/icons/check-icon.svg";
 import ErrorIcon from "@/assets/icons/error-icon.svg";
 import SandtimeIcon from "@/assets/icons/sand-time-icon.svg";
-import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { dateTimeFormat } from "@/constants/common";
 import { getUiState } from "@/helpers/log";
+import {
+  isTableRowFailed,
+  resolveTableRowDisplayError,
+} from "@/helpers/migrationTableErrors";
 import useFetchConnectorTableById from "@/queryOptions/connector/schema/useFetchTable";
 import {
   type Connector,
   type ConnectorActivityDetailResponse,
 } from "@/types/connectors";
 
+import { TableFailureTooltip } from "./TableFailureTooltip";
+
 const MigrationProgressTable = ({
   tables,
   progressCountSource = "staging",
+  nodeOrBatchErrorFallback,
 }: {
   tables: ConnectorActivityDetailResponse["tables"];
   /** base_merged = live cumulative rows merged to destination (Databricks per-chunk). */
   progressCountSource?: ConnectorActivityDetailResponse["progress_count_source"];
+  /** Pipeline/batch-level error when per-table messages are empty or generic. */
+  nodeOrBatchErrorFallback?: string | null;
 }) => {
   const context = useOutletContext<Connector | undefined>();
   const { data: schemaTables } = useFetchConnectorTableById(
@@ -166,9 +172,9 @@ const MigrationProgressTable = ({
             const isSuccess = ["success", "completed", "s"].includes(
               normalizedState,
             );
-            const isFailed = ["failed", "error", "f", "e"].includes(
-              normalizedState,
-            );
+            const isFailed =
+              isTableRowFailed(table) ||
+              ["failed", "error", "f", "e"].includes(normalizedState);
             const isWarning = ["warning", "p", "w"].includes(normalizedState);
             const isSkipped = ["skipped"].includes(normalizedState);
             const isPending =
@@ -178,10 +184,12 @@ const MigrationProgressTable = ({
               normalizedState === "running" ||
               (!isSuccess && !isFailed && !isWarning && !isSkipped);
 
-            const displayError = table.error_message || table.message || "";
+            const displayError = resolveTableRowDisplayError(
+              table,
+              nodeOrBatchErrorFallback,
+            );
             const showErrorTooltip =
-              (isFailed || (isSkipped && displayError)) &&
-              Boolean(displayError);
+              isFailed || (isSkipped && Boolean(displayError));
 
             // Format times if available
             const startTime = table.start_time
@@ -240,85 +248,13 @@ const MigrationProgressTable = ({
                       />
                     )}
                     {isFailed && (
-                      <Tooltip
-                        content={
-                          <Flex alignItems="flex-start" gap={2}>
-                            <Box
-                              bg="red.500"
-                              borderRadius="full"
-                              p={1}
-                              mt={0.5}
-                              minW="16px"
-                              h="16px"
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                            >
-                              <Text
-                                fontSize="xs"
-                                fontWeight="bold"
-                                lineHeight={1}
-                              >
-                                !
-                              </Text>
-                            </Box>
-                            <Text
-                              fontSize="xs"
-                              fontWeight="medium"
-                              flex={1}
-                              wordBreak="break-word"
-                            >
-                              {displayError
-                                ? `Error: ${displayError}`
-                                : "Failed"}
-                            </Text>
-                            {displayError ? (
-                              <Box
-                                as="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(displayError);
-                                  toaster.success({
-                                    title: "Copied to clipboard",
-                                    description: "Error message copied",
-                                  });
-                                }}
-                                _hover={{
-                                  color: "gray.300",
-                                  bg: "whiteAlpha.200",
-                                }}
-                                cursor="pointer"
-                                p={1}
-                                borderRadius="md"
-                                transition="all 0.2s"
-                                title="Copy error message"
-                                color="white"
-                              >
-                                <LuCopy size={16} />
-                              </Box>
-                            ) : null}
-                          </Flex>
-                        }
-                        interactive={Boolean(displayError)}
-                        closeOnPointerDown={false}
-                        disabled={!displayError}
-                        showArrow
-                        contentProps={{
-                          bg: "gray.800",
-                          color: "white",
-                          p: 3,
-                          borderRadius: "md",
-                          maxW: "500px",
-                        }}
-                      >
-                        <Box cursor={displayError ? "help" : "default"}>
-                          <Image
-                            src={ErrorIcon}
-                            boxSize="20px"
-                            objectFit="contain"
-                          />
-                        </Box>
-                      </Tooltip>
+                      <TableFailureTooltip errorText={displayError}>
+                        <Image
+                          src={ErrorIcon}
+                          boxSize="20px"
+                          objectFit="contain"
+                        />
+                      </TableFailureTooltip>
                     )}
                     {isWarning && (
                       <Box color="orange.500">
@@ -371,14 +307,27 @@ const MigrationProgressTable = ({
                   borderRightWidth={1}
                   borderColor="gray.200"
                 >
-                  <Flex direction="column" minW={0}>
-                    <Text>{table.table_name}</Text>
-                    {destByTable.get(table.table_name.toLowerCase()) && (
-                      <Text fontSize="xs" color="gray.500" truncate>
-                        {destByTable.get(table.table_name.toLowerCase())}
-                      </Text>
-                    )}
-                  </Flex>
+                  {isFailed ? (
+                    <TableFailureTooltip errorText={displayError}>
+                      <Flex direction="column" minW={0}>
+                        <Text color="red.700">{table.table_name}</Text>
+                        {destByTable.get(table.table_name.toLowerCase()) && (
+                          <Text fontSize="xs" color="gray.500" truncate>
+                            {destByTable.get(table.table_name.toLowerCase())}
+                          </Text>
+                        )}
+                      </Flex>
+                    </TableFailureTooltip>
+                  ) : (
+                    <Flex direction="column" minW={0}>
+                      <Text>{table.table_name}</Text>
+                      {destByTable.get(table.table_name.toLowerCase()) && (
+                        <Text fontSize="xs" color="gray.500" truncate>
+                          {destByTable.get(table.table_name.toLowerCase())}
+                        </Text>
+                      )}
+                    </Flex>
+                  )}
                 </Table.Cell>
                 <Table.Cell
                   color="gray.700"

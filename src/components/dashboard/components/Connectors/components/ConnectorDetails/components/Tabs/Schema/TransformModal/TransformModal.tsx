@@ -23,6 +23,7 @@ import {
   FiRotateCw,
 } from "react-icons/fi";
 
+import { isDatabricksConnector } from "@/components/dashboard/helpers/helpers";
 import {
   ConfirmHost,
   confirm,
@@ -40,7 +41,7 @@ import {
   useDeactivateTransform,
   useDryRunTransform,
   useEntityTransform,
-  useSaveTransform,
+  useSaveDraftTransform,
   useValidateTransform,
 } from "@/queryOptions/connector/schema/transform/useEntityTransform";
 import {
@@ -103,7 +104,6 @@ import {
   selectRemovedMappings,
   setJsonSourcesIncluded,
   snapshotOf,
-  summarizeMappingChanges,
   targetNameError,
   toggleAddedSource,
   undoHistory,
@@ -382,8 +382,10 @@ const TransformModal = ({
   );
   const validateMut = useValidateTransform(connectionId, tableItem.table);
   const dryRunMut = useDryRunTransform(connectionId, tableItem.table);
-  const saveMut = useSaveTransform(connectionId, tableItem.table);
+  const draftSaveMut = useSaveDraftTransform(connectionId, tableItem.table);
   const deactivateMut = useDeactivateTransform(connectionId, tableItem.table);
+  const [draftSaveLabel, setDraftSaveLabel] = useState<string | null>(null);
+  const skipAutosaveUntilRef = useRef(0);
 
   const previousSavedDest = (
     transformData?.active?.destination_table_name || ""
@@ -393,6 +395,7 @@ const TransformModal = ({
   const hasLoadedData = Boolean(
     tableItem.initial_completed_flag || tableItem.first_sync_timestamp,
   );
+  const publishedVersion = transformData?.active?.version ?? null;
 
   const draftKey = `transform-draft:${connectionId}:${tableItem.table}`;
   const loadedKeyRef = useRef("");
@@ -402,35 +405,47 @@ const TransformModal = ({
       loadedKeyRef.current = "";
       return;
     }
-    const loadKey = `${tableItem.table}:${transformData?.active?.version ?? "none"}`;
+    const loadKey = `${tableItem.table}:a${transformData?.active?.version ?? "none"}:d${transformData?.draft?.version ?? "none"}`;
     if (loadedKeyRef.current === loadKey) return;
     loadedKeyRef.current = loadKey;
-    const active = transformData?.active;
+    // Prefer open server draft so autosaved edits reload; else published active.
+    const sourceRow = transformData?.draft ?? transformData?.active ?? null;
     const normalizedScript = normalizeTransformScript(
-      active?.script_text || "",
+      sourceRow?.script_text || "",
     );
-    if (active) {
-      setMappingJson((active.mapping_json as Record<string, unknown>) || null);
+    if (sourceRow) {
+      setMappingJson(
+        (sourceRow.mapping_json as Record<string, unknown>) || null,
+      );
       setScriptText(normalizedScript);
       setApplyScript(Boolean(unwrapTransformBody(normalizedScript).trim()));
       setEntryPoint(TRANSFORM_ENTRY_POINT);
       setScriptNameFromUpload(false);
       const source =
-        (active.destination_name_source as DestinationNameSource) || "DEFAULT";
+        (sourceRow.destination_name_source as DestinationNameSource) ||
+        "DEFAULT";
       setDestSource(source);
       setDestName(
-        (active.destination_table_name || defaultTable).toUpperCase(),
+        (sourceRow.destination_table_name || defaultTable).toUpperCase(),
       );
-      setJsonRawName(active.json_table_name || null);
-      setHistory(createHistory(snapshotFromSaved(active.mapping_overrides)));
+      setJsonRawName(sourceRow.json_table_name || null);
+      setHistory(createHistory(snapshotFromSaved(sourceRow.mapping_overrides)));
       setJsonFileMeta(
-        active.mapping_json ? { fileName: "Saved mapping", size: 0 } : null,
+        sourceRow.mapping_json
+          ? {
+              fileName:
+                sourceRow.status === "draft"
+                  ? "Draft mapping"
+                  : "Saved mapping",
+              size: 0,
+            }
+          : null,
       );
       setScriptFileMeta(
         normalizedScript.trim()
           ? {
               fileName: defaultScriptFileName(
-                (active.mapping_json as Record<string, unknown>) || null,
+                (sourceRow.mapping_json as Record<string, unknown>) || null,
                 parts.entityName,
               ),
               size: new Blob([normalizedScript]).size,
@@ -450,20 +465,21 @@ const TransformModal = ({
       setJsonFileMeta(null);
       setScriptFileMeta(null);
     }
-    const loadedBaseline: MappingBaseline = active
+    const loadedBaseline: MappingBaseline = sourceRow
       ? {
-          mappingJson: (active.mapping_json as Record<string, unknown>) || null,
-          overrides: snapshotFromSaved(active.mapping_overrides),
+          mappingJson:
+            (sourceRow.mapping_json as Record<string, unknown>) || null,
+          overrides: snapshotFromSaved(sourceRow.mapping_overrides),
           scriptText: normalizedScript,
           entryPoint: TRANSFORM_ENTRY_POINT,
           runOrder: deriveRunOrder(
-            (active.mapping_json as Record<string, unknown>) || null,
+            (sourceRow.mapping_json as Record<string, unknown>) || null,
           ),
           destName: (
-            active.destination_table_name || defaultTable
+            sourceRow.destination_table_name || defaultTable
           ).toUpperCase(),
           destSource:
-            (active.destination_name_source as DestinationNameSource) ||
+            (sourceRow.destination_name_source as DestinationNameSource) ||
             "DEFAULT",
         }
       : {
@@ -477,6 +493,7 @@ const TransformModal = ({
         };
     setBaseline(loadedBaseline);
     setScriptValidatedText(loadedBaseline.scriptText);
+    skipAutosaveUntilRef.current = Date.now() + 1500;
     setJsonErrors([]);
     setModalExpanded(false);
     setStep(0);
@@ -577,6 +594,7 @@ const TransformModal = ({
   }, [
     open,
     transformData?.active,
+    transformData?.draft,
     defaultTable,
     draftKey,
     tableItem.table,
@@ -1220,7 +1238,10 @@ const TransformModal = ({
   const localDestInvalid = useMemo(() => {
     if (!destName.trim()) return "Destination table name cannot be empty.";
     if (!isValidSnowflakeDestinationName(destName)) {
-      return "Destination table name is not a valid Snowflake identifier.";
+      // Same identifier rules for Snowflake and Unity Catalog (v1).
+      return isDatabricksConnector(destinationName ?? undefined)
+        ? "Destination table name is not a valid Unity Catalog identifier."
+        : "Destination table name is not a valid Snowflake identifier.";
     }
     if (collisionLabel) {
       const connector = validateResult?.destination?.collision?.connector_name;
@@ -1232,6 +1253,7 @@ const TransformModal = ({
   }, [
     collisionLabel,
     destName,
+    destinationName,
     validateResult?.destination?.collision?.connector_name,
   ]);
 
@@ -1413,33 +1435,6 @@ const TransformModal = ({
     [baseline, currentBaseline],
   );
 
-  const changeChips = useMemo(() => {
-    if (!baseline) return [];
-    return summarizeMappingChanges(
-      {
-        mappingJson: baseline.mappingJson,
-        overrides: baseline.overrides,
-        scriptText: baseline.scriptText,
-        destName: baseline.destName,
-        sapColumns,
-      },
-      {
-        mappingJson,
-        overrides: history.present,
-        scriptText,
-        destName,
-        sapColumns,
-      },
-    );
-  }, [
-    baseline,
-    destName,
-    history.present,
-    mappingJson,
-    sapColumns,
-    scriptText,
-  ]);
-
   const askLoadedRename = async (previous: string, next: string) => {
     const mode = await confirm({
       title: confirmCopy.renameDestination.title,
@@ -1453,7 +1448,71 @@ const TransformModal = ({
     return mode === "rename_existing" ? "rename_existing" : "create_new";
   };
 
-  const handleSave = async (
+  const buildPersistPayload = useCallback(
+    (forcedRenameMode?: "create_new" | "rename_existing") => {
+      let effectiveRename = forcedRenameMode || renameMode;
+      if (!effectiveRename && columnAddMode === "full_reload") {
+        effectiveRename = "create_new";
+      }
+      return {
+        mapping_json: mappingJson,
+        script_text: persistedScriptText(applyScript, scriptText),
+        entry_point: TRANSFORM_ENTRY_POINT,
+        run_order: effectiveRunOrder,
+        mapping_overrides: overridePayload(history.present),
+        destination_name_source: destSource,
+        destination_table_name: destName,
+        destination_rename_mode: effectiveRename,
+        confirm_use_existing_table: confirmUseExisting,
+      };
+    },
+    [
+      applyScript,
+      columnAddMode,
+      confirmUseExisting,
+      destName,
+      destSource,
+      effectiveRunOrder,
+      history.present,
+      mappingJson,
+      renameMode,
+      scriptText,
+    ],
+  );
+
+  const flushDraftAutosave = useCallback(async () => {
+    if (readOnly || !open) return;
+    if (Date.now() < skipAutosaveUntilRef.current) return;
+    if (!isDirty && !transformData?.draft) return;
+    try {
+      setDraftSaveLabel("Saving draft…");
+      await draftSaveMut.mutateAsync(buildPersistPayload());
+      setDraftSaveLabel("Draft saved");
+      setBaseline(currentBaseline);
+    } catch {
+      setDraftSaveLabel("Draft save failed");
+    }
+  }, [
+    buildPersistPayload,
+    currentBaseline,
+    draftSaveMut,
+    isDirty,
+    open,
+    readOnly,
+    transformData?.draft,
+  ]);
+
+  useEffect(() => {
+    if (!open || readOnly) return;
+    if (Date.now() < skipAutosaveUntilRef.current) return;
+    if (!isDirty) return;
+    const timer = window.setTimeout(() => {
+      void flushDraftAutosave();
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [flushDraftAutosave, isDirty, open, readOnly, currentBaseline]);
+
+  const handleValidateAndPublish = async (
     forcedRenameMode?: "create_new" | "rename_existing",
   ) => {
     let effectiveRename = forcedRenameMode || renameMode;
@@ -1472,58 +1531,6 @@ const TransformModal = ({
       effectiveRename = mode;
       setRenameMode(mode);
     }
-    try {
-      const saved = await saveMut.mutateAsync({
-        mapping_json: mappingJson,
-        script_text: persistedScriptText(applyScript, scriptText),
-        entry_point: TRANSFORM_ENTRY_POINT,
-        run_order: effectiveRunOrder,
-        mapping_overrides: overridePayload(history.present),
-        destination_name_source: destSource,
-        destination_table_name: destName,
-        destination_rename_mode: effectiveRename,
-        confirm_use_existing_table: confirmUseExisting,
-      });
-      sessionStorage.removeItem(draftKey);
-      setBaseline(currentBaseline);
-      toaster.success({ title: confirmCopy.saved(saved.version) });
-      onClose();
-    } catch (err) {
-      const data =
-        typeof err === "object" &&
-        err !== null &&
-        "response" in err &&
-        typeof (err as { response?: { data?: Record<string, unknown> } })
-          .response?.data === "object"
-          ? (err as { response: { data: Record<string, unknown> } }).response
-              .data
-          : null;
-      const message =
-        (typeof data?.message === "string" && data.message) ||
-        "Could not save transform.";
-      if (data?.requires_rename_confirmation) {
-        const previous =
-          previousSavedDest ||
-          String(data.previous_destination_table_name || "");
-        const mode = await askLoadedRename(previous, nextName);
-        if (!mode) return;
-        setRenameMode(mode);
-        await handleSave(mode);
-        return;
-      }
-      toaster.error({
-        title: message,
-        action: {
-          label: confirmCopy.retry,
-          onClick: () => {
-            void handleSave(effectiveRename ?? undefined);
-          },
-        },
-      });
-    }
-  };
-
-  const handleSaveClick = async () => {
     const tested = Boolean(
       dryRunResult &&
         dryRunResult.errors.length === 0 &&
@@ -1539,7 +1546,53 @@ const TransformModal = ({
       });
       if (!ok) return;
     }
-    await handleSave();
+    try {
+      const result = await validateMut.mutateAsync({
+        ...buildPersistPayload(effectiveRename ?? undefined),
+        publish: true,
+      });
+      setValidateResult(result);
+      setMarkedScriptText(persistedScriptText(applyScript, scriptText));
+      if (!result.valid) {
+        const first =
+          result.errors?.[0]?.message ||
+          result.publish_error ||
+          "Validation failed";
+        if (result.requires_rename_confirmation) {
+          const mode = await askLoadedRename(previousSavedDest, nextName);
+          if (!mode) return;
+          setRenameMode(mode);
+          await handleValidateAndPublish(mode);
+          return;
+        }
+        toaster.error({ title: first });
+        return;
+      }
+      if (result.published) {
+        sessionStorage.removeItem(draftKey);
+        setBaseline(currentBaseline);
+        setScriptValidatedText(persistedScriptText(applyScript, scriptText));
+        toaster.success({
+          title: confirmCopy.published(result.published.version),
+        });
+        onClose();
+        return;
+      }
+      toaster.error({
+        title:
+          result.publish_error || "Validate passed but publish did not run",
+      });
+    } catch {
+      toaster.error({
+        title: "Validate failed",
+        action: {
+          label: confirmCopy.retry,
+          onClick: () => {
+            void handleValidateAndPublish(effectiveRename ?? undefined);
+          },
+        },
+      });
+    }
   };
 
   const handleRemove = async () => {
@@ -1752,27 +1805,17 @@ const TransformModal = ({
       setModalExpanded(false);
       return;
     }
-    if (isDirty) {
+    if (isDirty && !readOnly) {
       closeGuard.current = true;
-      const discard = await confirm({
-        title: confirmCopy.discard.title,
-        description: confirmCopy.discard.description(parts.entityName),
-        details: changeChips,
-        cancelLabel: confirmCopy.discard.cancelLabel,
-        confirmLabel: confirmCopy.discard.confirmLabel,
-        tone: "danger",
-        icon: "warning",
-      });
+      await flushDraftAutosave();
       closeGuard.current = false;
-      if (!mountedRef.current || !discard) return;
-      sessionStorage.removeItem(draftKey);
-      onClose();
-      return;
+      if (!mountedRef.current) return;
     }
     onClose();
   };
 
   const hasActive = Boolean(transformData?.active?.is_active);
+  const hasServerDraft = Boolean(transformData?.draft);
   const shownError = destError || localDestInvalid;
 
   return (
@@ -1830,7 +1873,15 @@ const TransformModal = ({
                 {announce}
               </Box>
 
-              <Flex px={6} py={3} gap={2} flexShrink={0} borderBottomWidth={1}>
+              <Flex
+                px={6}
+                py={3}
+                gap={2}
+                flexShrink={0}
+                borderBottomWidth={1}
+                align="center"
+                flexWrap="wrap"
+              >
                 {STEPS.map((label, idx) => {
                   const hasIssue =
                     (idx === 0 &&
@@ -1851,6 +1902,27 @@ const TransformModal = ({
                     </Badge>
                   );
                 })}
+                <Flex ml="auto" gap={2} align="center">
+                  {/* IDE shows one status: Draft while editing unvalidated work, else Validated */}
+                  {hasServerDraft || isDirty ? (
+                    <Badge colorPalette="orange" variant="subtle">
+                      {confirmCopy.draftBadge}
+                    </Badge>
+                  ) : hasActive && publishedVersion !== null ? (
+                    <Badge colorPalette="green" variant="subtle">
+                      {confirmCopy.validatedBadge(publishedVersion)}
+                    </Badge>
+                  ) : (
+                    <Badge colorPalette="gray" variant="subtle">
+                      No validated version
+                    </Badge>
+                  )}
+                  {draftSaveLabel && (hasServerDraft || isDirty) && (
+                    <Text fontSize="xs" color="gray.500">
+                      {draftSaveLabel}
+                    </Text>
+                  )}
+                </Flex>
               </Flex>
 
               <Dialog.Body overflowY="auto" flex="1" px={6} py={4}>
@@ -2559,10 +2631,10 @@ const TransformModal = ({
                     <Button
                       colorPalette="brand"
                       disabled={destBlocksSave || readOnly}
-                      loading={saveMut.isPending}
-                      onClick={() => void handleSaveClick()}
+                      loading={validateMut.isPending}
+                      onClick={() => void handleValidateAndPublish()}
                     >
-                      Save and activate
+                      Validate
                     </Button>
                   )}
                 </Flex>

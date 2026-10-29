@@ -17,10 +17,11 @@ type PipelinePickerProps = {
   maxWidth?: string | number;
 };
 
-type PipelineListGroup = "running" | "active" | "paused";
+type PipelineListGroup = "running" | "queued" | "active" | "paused";
 
 const SECTION_LABELS: Record<PipelineListGroup, string> = {
   running: "Running now",
+  queued: "Queued",
   active: "Active",
   paused: "Paused",
 };
@@ -42,14 +43,16 @@ export const getPipelineListGroup = (
   pipeline: PipelineDetail,
 ): PipelineListGroup => {
   if (isPipelineRunning(pipeline)) return "running";
+  if (isPipelineQueued(pipeline)) return "queued";
   if (isPipelineFlowPaused(pipeline)) return "paused";
   return "active";
 };
 
 const GROUP_ORDER: Record<PipelineListGroup, number> = {
   running: 0,
-  active: 1,
-  paused: 2,
+  queued: 1,
+  active: 2,
+  paused: 3,
 };
 
 export const sortPipelinesForPicker = (
@@ -257,8 +260,16 @@ const PipelinePicker = ({
           fontWeight="normal"
           px={2.5}
           h="32px"
-          bg={selectedRunning ? "blue.50" : "white"}
-          borderColor={selectedRunning ? "blue.300" : "gray.200"}
+          bg={
+            selectedRunning ? "blue.50" : selectedQueued ? "purple.50" : "white"
+          }
+          borderColor={
+            selectedRunning
+              ? "blue.300"
+              : selectedQueued
+                ? "purple.300"
+                : "gray.200"
+          }
           borderRadius="md"
           color="gray.800"
           title={triggerTitle}
@@ -266,12 +277,28 @@ const PipelinePicker = ({
             selected ? `Selected pipeline: ${selected.name}` : "Select pipeline"
           }
           _hover={{
-            bg: selectedRunning ? "blue.100" : "gray.50",
-            borderColor: selectedRunning ? "blue.400" : "gray.300",
+            bg: selectedRunning
+              ? "blue.100"
+              : selectedQueued
+                ? "purple.100"
+                : "gray.50",
+            borderColor: selectedRunning
+              ? "blue.400"
+              : selectedQueued
+                ? "purple.400"
+                : "gray.300",
           }}
           _expanded={{
-            bg: selectedRunning ? "blue.100" : "gray.50",
-            borderColor: selectedRunning ? "blue.400" : "gray.400",
+            bg: selectedRunning
+              ? "blue.100"
+              : selectedQueued
+                ? "purple.100"
+                : "gray.50",
+            borderColor: selectedRunning
+              ? "blue.400"
+              : selectedQueued
+                ? "purple.400"
+                : "gray.400",
           }}
         >
           <Flex alignItems="center" gap={2} minW={0} flex="1">
@@ -344,7 +371,13 @@ const PipelinePicker = ({
                   <Text
                     fontSize="2xs"
                     fontWeight="semibold"
-                    color={section.key === "running" ? "blue.600" : "gray.500"}
+                    color={
+                      section.key === "running"
+                        ? "blue.600"
+                        : section.key === "queued"
+                          ? "purple.600"
+                          : "gray.500"
+                    }
                     textTransform="uppercase"
                     letterSpacing="0.06em"
                   >
@@ -355,6 +388,7 @@ const PipelinePicker = ({
                   const isSelected = p.id === selectedPipelineId;
                   const paused = isPipelineFlowPaused(p);
                   const running = isPipelineRunning(p);
+                  const queued = isPipelineQueued(p);
                   return (
                     <Menu.Item
                       key={p.id}
@@ -368,12 +402,20 @@ const PipelinePicker = ({
                         isSelected
                           ? running
                             ? "blue.50"
-                            : "gray.50"
+                            : queued
+                              ? "purple.50"
+                              : "gray.50"
                           : undefined
                       }
                       borderLeftWidth={isSelected ? "2px" : "0"}
                       borderLeftColor={isSelected ? "gray.700" : "transparent"}
-                      _highlighted={{ bg: running ? "blue.50" : "gray.50" }}
+                      _highlighted={{
+                        bg: running
+                          ? "blue.50"
+                          : queued
+                            ? "purple.50"
+                            : "gray.50",
+                      }}
                     >
                       <Flex
                         alignItems="center"

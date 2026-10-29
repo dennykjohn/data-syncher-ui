@@ -1,4 +1,4 @@
-# Build frontend image for datasyncher-batch-cluster (Vite mode batch → gcp.datasyncher.com).
+# Build frontend image for datasyncher-batch-cluster (Vite mode batch ? gcp.datasyncher.com).
 steps:
   - name: gcr.io/cloud-builders/docker
     args:
@@ -6,7 +6,7 @@ steps:
       - --build-arg
       - VITE_BUILD_MODE=batch
       - --build-arg
-      - CACHEBUST=20261014-migration-mapping-script-ddl
+      - CACHEBUST=20261028-pipeline-table-error-hover
       - -t
       - gcr.io/datasyncher-batch/datasyncher-frontend:batch
       - -f

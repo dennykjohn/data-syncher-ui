@@ -21,10 +21,13 @@ import {
 import {
   executionLogNodeBadge,
   pickDefaultNodeTab,
+  pipelineNodeStartupMessage,
   resolvePipelineNodeError,
   resolvePipelineRunMode,
   resolvePipelineRunStatus,
+  summarizePipelineTableErrors,
 } from "./pipelineRunHelpers";
+import { useQueryClient } from "@tanstack/react-query";
 
 type PipelineExecutionLogsPanelProps = {
   run: PipelineRunDetail;
@@ -42,11 +45,15 @@ const PipelineNodeExecutionTab = ({
   run: PipelineRunDetail;
   runMode: ReturnType<typeof resolvePipelineRunMode>;
 }) => {
-  const nodeError = resolvePipelineNodeError(run, node);
+  const queryClient = useQueryClient();
   const runStatus = resolvePipelineRunStatus(run);
+  const runTerminal = ["failed", "completed", "timeout"].includes(runStatus);
   const migrationSessionId = node.migration_session_id ?? null;
 
-  useMigrationStatusWS(migrationSessionId, node.connection_id);
+  useMigrationStatusWS(
+    runTerminal ? null : migrationSessionId,
+    node.connection_id,
+  );
 
   const { data: migrationStatus, isLoading } = useFetchConnectorActivityDetails(
     {
@@ -55,15 +62,34 @@ const PipelineNodeExecutionTab = ({
     },
   );
 
-  const progressTables = (migrationStatus?.tables ??
-    node.migration_status?.tables?.map((t) => ({
-      ...t,
-      start_time: null,
-      end_time: null,
-    })) ??
-    []) as Parameters<typeof MigrationProgressTable>[0]["tables"];
+  useEffect(() => {
+    if (!runTerminal || !migrationSessionId || !node.connection_id) return;
+    void queryClient.invalidateQueries({
+      queryKey: [
+        "connectorActivityDetails",
+        migrationSessionId,
+        node.connection_id,
+      ],
+    });
+  }, [runTerminal, migrationSessionId, node.connection_id, queryClient]);
 
-  const nodeBadge = executionLogNodeBadge(runMode, node);
+  const progressTables = useMemo(() => {
+    // Prefer live/refetched activity details (includes per-table start/end times).
+    if (migrationStatus?.tables?.length) {
+      return migrationStatus.tables;
+    }
+    return node.migration_status?.tables ?? [];
+  }, [migrationStatus?.tables, node.migration_status?.tables]) as Parameters<
+    typeof MigrationProgressTable
+  >[0]["tables"];
+
+  const nodeError =
+    summarizePipelineTableErrors(migrationStatus?.tables) ??
+    summarizePipelineTableErrors(node.migration_status?.tables) ??
+    resolvePipelineNodeError(run, node);
+
+  const startupMessage = pipelineNodeStartupMessage(run, node);
+  const nodeBadge = executionLogNodeBadge(runMode, node, run);
 
   return (
     <Flex direction="column" gap={2} h="100%" minH={0}>
@@ -75,6 +101,10 @@ const PipelineNodeExecutionTab = ({
             variant={nodeBadge.variant}
           >
             {nodeBadge.label}
+          </Badge>
+        ) : runMode === "published" && startupMessage ? (
+          <Badge colorPalette="blue" size="sm" variant="subtle">
+            starting
           </Badge>
         ) : runMode === "published" ? (
           <Badge colorPalette="gray" size="sm" variant="outline">
@@ -113,6 +143,7 @@ const PipelineNodeExecutionTab = ({
               migrationStatus?.progress_count_source ??
               node.migration_status?.progress_count_source
             }
+            nodeOrBatchErrorFallback={nodeError}
           />
         </Flex>
       ) : runMode === "published" ? (
@@ -120,11 +151,13 @@ const PipelineNodeExecutionTab = ({
           <Text fontSize="sm" color={nodeError ? "red.600" : "gray.500"}>
             {nodeError
               ? nodeError
-              : node.status === "pending" || node.status === "waiting"
-                ? runStatus === "failed" || runStatus === "timeout"
-                  ? "This task did not start before the flow failed."
-                  : "Waiting for this task to start…"
-                : "No table progress yet for this task."}
+              : startupMessage
+                ? startupMessage
+                : node.status === "pending" || node.status === "waiting"
+                  ? runStatus === "failed" || runStatus === "timeout"
+                    ? "This task did not start before the flow failed."
+                    : "Waiting for this task to start…"
+                  : "No table progress yet for this task."}
           </Text>
         </Flex>
       ) : (
@@ -248,7 +281,7 @@ const PipelineExecutionLogsPanel = ({
         >
           {nodes.map((node) => {
             const isActive = String(node.node_id) === activeNodeTab;
-            const nodeBadge = executionLogNodeBadge(runMode, node);
+            const nodeBadge = executionLogNodeBadge(runMode, node, run);
             return (
               <Box
                 key={node.node_id}

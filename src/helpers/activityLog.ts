@@ -72,6 +72,7 @@ export const isDetailedMigrationMessage = (
     lower.includes(" seconds") ||
     lower.includes("total rows") ||
     lower.includes("tables processed") ||
+    lower.includes("completed with warnings") ||
     (lower.includes("tables:") &&
       (lower.includes("completed") ||
         lower.includes("failed") ||

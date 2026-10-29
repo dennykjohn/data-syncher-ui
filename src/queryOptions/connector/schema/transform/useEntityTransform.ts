@@ -15,15 +15,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 export const transformQueryKey = (connectionId: number, tableName: string) =>
   ["entityTransform", connectionId, tableName] as const;
 
+export type EntityTransformGetResponse = {
+  active: EntityTransformDetail | null;
+  draft: EntityTransformDetail | null;
+  summary: Record<string, unknown>;
+  history: Array<Record<string, unknown>>;
+};
+
 export function useEntityTransform(connectionId: number, tableName: string) {
   return useQuery({
     queryKey: transformQueryKey(connectionId, tableName),
     queryFn: async () => {
-      const { data } = await AxiosInstance.get<{
-        active: EntityTransformDetail | null;
-        summary: Record<string, unknown>;
-        history: Array<Record<string, unknown>>;
-      }>(ServerRoutes.connector.entityTransform(connectionId, tableName));
+      const { data } = await AxiosInstance.get<EntityTransformGetResponse>(
+        ServerRoutes.connector.entityTransform(connectionId, tableName),
+      );
       return data;
     },
     enabled: Boolean(connectionId && tableName),
@@ -31,6 +36,7 @@ export function useEntityTransform(connectionId: number, tableName: string) {
 }
 
 export function useValidateTransform(connectionId: number, tableName: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: Record<string, unknown>) => {
       const { data } = await AxiosInstance.post<TransformValidateResponse>(
@@ -39,6 +45,16 @@ export function useValidateTransform(connectionId: number, tableName: string) {
         { timeout: TRANSFORM_VALIDATE_TIMEOUT_MS },
       );
       return data;
+    },
+    onSuccess: (data) => {
+      if (data.published || data.draft) {
+        queryClient.invalidateQueries({
+          queryKey: transformQueryKey(connectionId, tableName),
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["ConnectorTable", connectionId],
+        });
+      }
     },
   });
 }
@@ -56,13 +72,14 @@ export function useDryRunTransform(connectionId: number, tableName: string) {
   });
 }
 
-export function useSaveTransform(connectionId: number, tableName: string) {
+/** Autosave draft (never activates). */
+export function useSaveDraftTransform(connectionId: number, tableName: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: Record<string, unknown>) => {
       const { data } = await AxiosInstance.post<EntityTransformDetail>(
         ServerRoutes.connector.entityTransform(connectionId, tableName),
-        payload,
+        { ...payload, activate: false },
       );
       return data;
     },
@@ -70,11 +87,13 @@ export function useSaveTransform(connectionId: number, tableName: string) {
       queryClient.invalidateQueries({
         queryKey: transformQueryKey(connectionId, tableName),
       });
-      queryClient.invalidateQueries({
-        queryKey: ["ConnectorTable", connectionId],
-      });
     },
   });
+}
+
+/** @deprecated Prefer useSaveDraftTransform — save no longer activates by default. */
+export function useSaveTransform(connectionId: number, tableName: string) {
+  return useSaveDraftTransform(connectionId, tableName);
 }
 
 export function useDeactivateTransform(

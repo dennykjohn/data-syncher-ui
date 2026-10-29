@@ -29,6 +29,7 @@ import { computeRootNodeIds, getParentBatchName } from "./pipelineLayout";
 import {
   PLAN_FLOW_CAP_FALLBACK,
   isPlanFlowCapError,
+  pipelineHasPublishedRunnableGraph,
   resolvePipelineNodeError,
   unwrapPipelineRunApiError,
 } from "./pipelineRunHelpers";
@@ -97,8 +98,11 @@ const BatchOverviewPanel = ({
     return map;
   }, [runNode]);
 
+  const canRunPipeline =
+    pipeline.nodes.length > 0 && pipelineHasPublishedRunnableGraph(pipeline);
+
   const handleRunPipeline = async () => {
-    if (!pipeline.has_published_graph) {
+    if (!pipelineHasPublishedRunnableGraph(pipeline)) {
       toaster.error({
         title: "Validate before running",
         description:
@@ -288,14 +292,13 @@ const BatchOverviewPanel = ({
 
               <Button
                 size="sm"
-                colorPalette="brand"
+                colorPalette={canRunPipeline ? "brand" : "gray"}
+                variant={canRunPipeline ? "solid" : "outline"}
                 onClick={handleRunPipeline}
                 loading={runPipeline.isPending}
-                disabled={
-                  pipeline.nodes.length === 0 || !pipeline.has_published_graph
-                }
+                disabled={!canRunPipeline}
                 title={
-                  !pipeline.has_published_graph
+                  !canRunPipeline
                     ? "Validate the Draft flow before running"
                     : undefined
                 }

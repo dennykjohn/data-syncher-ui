@@ -29,6 +29,14 @@ describe("isTransientMigrationMessage", () => {
       ),
     ).toBe(true);
   });
+
+  it("recognizes partial completion with warnings", () => {
+    expect(
+      isDetailedMigrationMessage(
+        "Migration completed with warnings in 10.00 seconds. Total rows: 100. Tables: 3/4 successful, 1 failed.",
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("resolveJobLevelBannerMessage", () => {

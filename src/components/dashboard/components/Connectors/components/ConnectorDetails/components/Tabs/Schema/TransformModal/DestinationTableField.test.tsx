@@ -130,4 +130,14 @@ describe("DestinationTableField", () => {
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     expect(onCommitEdit).toHaveBeenCalled();
   });
+
+  it("labels Databricks destinations as Unity Catalog table name", () => {
+    renderField({ destinationConnectionName: "Databricks Warehouse" });
+    expect(screen.getByText("Unity Catalog table name")).toBeTruthy();
+  });
+
+  it("labels Snowflake destinations as Destination table in Snowflake", () => {
+    renderField({ destinationConnectionName: "Snowflake Prod" });
+    expect(screen.getByText("Destination table in Snowflake")).toBeTruthy();
+  });
 });

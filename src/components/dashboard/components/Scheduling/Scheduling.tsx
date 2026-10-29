@@ -112,6 +112,7 @@ import {
   PLAN_FLOW_CAP_FALLBACK,
   isLivePipelineRunStatus,
   isPlanFlowCapError,
+  pipelineHasPublishedRunnableGraph,
   resolvePipelineRunStatus,
   unwrapPipelineRunApiError,
 } from "./pipelineRunHelpers";
@@ -299,7 +300,7 @@ function runNodeVisual(
     runNode,
   );
   if (!runNode) {
-    // Node was not part of this run — keep it visible without a status badge.
+    // Node was not part of this run � keep it visible without a status badge.
     return {};
   }
   const tables = runNode.migration_status?.tables ?? [];
@@ -332,7 +333,7 @@ function pipelineToFlow(
     graphView?: CanvasGraphView;
     overlayRunStatus?: boolean;
     animateActiveEdges?: boolean;
-    /** True when a historic/selected run is pinned — never fall back to full draft. */
+    /** True when a historic/selected run is pinned � never fall back to full draft. */
     runSnapshotActive?: boolean;
     /** Click-to-highlight connected edges/nodes on the canvas. */
     connectionHighlight?: {
@@ -403,7 +404,7 @@ function pipelineToFlow(
   let batchNodes: PipelineNodeDto[] = [];
   if (isRunSnapshotView) {
     if (!pipelineRun) {
-      // Run selected but detail not loaded yet — keep canvas empty.
+      // Run selected but detail not loaded yet � keep canvas empty.
     } else {
       for (const runNode of pipelineRun.nodes) {
         const live = liveNodeById.get(runNode.node_id);
@@ -488,7 +489,7 @@ function pipelineToFlow(
   const baseEdges = isRunSnapshotView
     ? (() => {
         if (!pipelineRun) {
-          // Selected run still loading — do not use live draft edges.
+          // Selected run still loading � do not use live draft edges.
           return [];
         }
         const draftEdges = pipeline.edges.filter(
@@ -733,7 +734,7 @@ type PipelineCanvasProps = {
   selectedPipelineId: number | null;
   selectedNode: SelectedNode;
   pipelineRun: PipelineRunDetail | null | undefined;
-  /** Selected run view — never fall back to full draft while detail loads. */
+  /** Selected run view � never fall back to full draft while detail loads. */
   runSnapshotActive?: boolean;
   /** True while the selected run detail is fetching (switch run / first load). */
   runDetailLoading?: boolean;
@@ -792,7 +793,7 @@ const PipelineCanvas = ({
         onClearSelection();
       }
       try {
-        // Snapshot wiring BEFORE delete — server bridges only simple remaps.
+        // Snapshot wiring BEFORE delete � server bridges only simple remaps.
         const wiring = snapshotNodeDeleteForUndo(
           node.id,
           selectedPipeline.edges,
@@ -817,7 +818,7 @@ const PipelineCanvas = ({
           title: "Batch removed",
           description: bridged
             ? "Dependencies reconnected automatically."
-            : "Edges cleared — reconnect as needed (auto-link skipped for this topology).",
+            : "Edges cleared � reconnect as needed (auto-link skipped for this topology).",
         });
       } catch {
         toaster.error({ title: "Failed to remove batch from pipeline" });
@@ -849,9 +850,7 @@ const PipelineCanvas = ({
   // Edge pulse only while batches are executing (not while queued for a slot).
   const isRunLive =
     runLiveStatus === "running" || runLiveStatus === "in_progress";
-  const hasPublishedGraph = Boolean(
-    selectedPipeline?.has_published_graph && selectedPipeline?.published_graph,
-  );
+  const hasPublishedGraph = pipelineHasPublishedRunnableGraph(selectedPipeline);
   const draftMatchesPublished =
     hasPublishedGraph &&
     selectedPipeline?.canvas_changed_since_publish !== true;
@@ -1276,7 +1275,7 @@ const PipelineCanvas = ({
         >
           <Spinner size="lg" color="purple.500" borderWidth="3px" />
           <Text fontSize="sm" color="gray.700" fontWeight="medium">
-            Loading execution…
+            Loading execution�
           </Text>
         </Flex>
       )}
@@ -1750,7 +1749,7 @@ const Scheduling = () => {
   );
 
   useEffect(() => {
-    // No published graph, or draft matches published → stay on Draft (hide Published switch).
+    // No published graph, or draft matches published ? stay on Draft (hide Published switch).
     if (
       !selectedPipeline?.has_published_graph ||
       !selectedPipeline.published_graph ||
@@ -1787,7 +1786,7 @@ const Scheduling = () => {
       validationSnapshot.pipelineId === selectedPipelineId &&
       validationSnapshot.graphFingerprint !== graphFingerprint);
 
-  const hasPublishedGraph = selectedPipeline?.has_published_graph === true;
+  const hasPublishedGraph = pipelineHasPublishedRunnableGraph(selectedPipeline);
 
   /** Draft / Published label shown as a float inside the Flow canvas. */
   const flowCanvasMode: PipelineRunMode =
@@ -1833,7 +1832,7 @@ const Scheduling = () => {
   } = usePipelineRun(selectedPipelineId, activeRunId);
   const { data: pipelineRunsData } = usePipelineRuns(selectedPipelineId);
   const pipelineRuns = pipelineRunsData?.runs ?? [];
-  // Show spinner while the selected run's detail is missing / mismatched —
+  // Show spinner while the selected run's detail is missing / mismatched �
   // not on background refetches of the same run.
   const runDetailLoading =
     !draftCanvasMode &&
@@ -2016,7 +2015,7 @@ const Scheduling = () => {
 
   const handleRunStarted = useCallback((runId: number) => {
     setDraftCanvasMode(false);
-    // Pin until pipelineRuns includes this id — avoids snapping back to a stale
+    // Pin until pipelineRuns includes this id � avoids snapping back to a stale
     // failed "latest" row while the runs list refetches after Run now.
     setPinnedRunId(runId);
     setActiveRunId(runId);
@@ -2295,7 +2294,7 @@ const Scheduling = () => {
         description: result.message,
       });
     } catch (err: unknown) {
-      // api-client rejects with response.data (not AxiosError) — unwrap both shapes.
+      // api-client rejects with response.data (not AxiosError) � unwrap both shapes.
       const { data, status } = unwrapPipelineRunApiError(err);
       if (data?.errors?.length) {
         setValidationPanelDismissed(false);
@@ -2749,14 +2748,14 @@ const Scheduling = () => {
               <Input
                 size="sm"
                 mb={3}
-                placeholder="Search connections or batches…"
+                placeholder="Search connections or batches�"
                 value={connectionSearch}
                 onChange={(e) => setConnectionSearch(e.target.value)}
                 aria-label="Search connections or batches"
               />
               {connectionsLoading && (
                 <Text fontSize="sm" color="gray.500">
-                  Loading connections…
+                  Loading connections�
                 </Text>
               )}
               {connectionsError && (
@@ -2776,7 +2775,7 @@ const Scheduling = () => {
                 connections.length > 0 &&
                 filteredConnections.length === 0 && (
                   <Text fontSize="sm" color="gray.500" mb={3}>
-                    No connections or batches match “{connectionSearch.trim()}”.
+                    No connections or batches match �{connectionSearch.trim()}�.
                   </Text>
                 )}
               {!connectionsLoading &&
@@ -2804,7 +2803,7 @@ const Scheduling = () => {
                       mb={1}
                     >
                       <Text fontSize="xs" color="gray.500">
-                        {expanded ? "▼" : "▶"}
+                        {expanded ? "?" : "?"}
                       </Text>
                       <Text fontSize="sm" fontWeight="bold" flex="1" truncate>
                         {conn.connection_name}
@@ -2876,11 +2875,11 @@ const Scheduling = () => {
                                 {b.name}
                               </Text>
                               <Text fontSize="2xs" color="gray.500">
-                                {b.table_count} tables · {b.execution_order}
+                                {b.table_count} tables � {b.execution_order}
                                 {usedElsewhere && b.pipeline_name
-                                  ? ` · in ${b.pipeline_name}`
+                                  ? ` � in ${b.pipeline_name}`
                                   : usedHere
-                                    ? " · on this flow"
+                                    ? " � on this flow"
                                     : ""}
                               </Text>
                             </Box>
@@ -2909,7 +2908,7 @@ const Scheduling = () => {
           {pipelinesLoading ? (
             <Flex alignItems="center" justifyContent="center" h="100%">
               <Text color="gray.500" fontSize="sm">
-                Loading pipeline…
+                Loading pipeline�
               </Text>
             </Flex>
           ) : (
@@ -3084,9 +3083,14 @@ const Scheduling = () => {
                       <PipelineToolbarIcon
                         label="Run now"
                         tooltip={runDisabledReason ?? "Run published flow now"}
-                        colorPalette="brand"
-                        color="brand.600"
-                        _hover={{ bg: "brand.50", color: "brand.700" }}
+                        colorPalette={canRunPipeline ? "brand" : undefined}
+                        color={canRunPipeline ? "brand.600" : "gray.400"}
+                        _hover={
+                          canRunPipeline
+                            ? { bg: "brand.50", color: "brand.700" }
+                            : { bg: "gray.50", color: "gray.500" }
+                        }
+                        _disabled={{ opacity: 0.55, cursor: "not-allowed" }}
                         onClick={handleRunPipeline}
                         disabled={!selectedPipelineId || !canRunPipeline}
                         loading={runPipeline.isPending}
@@ -3161,7 +3165,7 @@ const Scheduling = () => {
                   >
                     <Spinner size="lg" color="purple.500" borderWidth="3px" />
                     <Text fontSize="sm" color="gray.600">
-                      Loading execution logs…
+                      Loading execution logs�
                     </Text>
                   </Flex>
                 ) : activePipelineRun ? (

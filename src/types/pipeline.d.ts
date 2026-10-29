@@ -174,6 +174,8 @@ export type PipelineRunNodeDetail = {
       table_name: string;
       status: string;
       status_icon?: string;
+      start_time?: string | null;
+      end_time?: string | null;
       record_count?: number;
       duration?: string | null;
       error_message?: string | null;

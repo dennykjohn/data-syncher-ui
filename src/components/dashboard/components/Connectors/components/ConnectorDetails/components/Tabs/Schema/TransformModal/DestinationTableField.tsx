@@ -4,6 +4,7 @@ import { Badge, Box, Button, Flex, Input, Text } from "@chakra-ui/react";
 
 import { FiGrid } from "react-icons/fi";
 
+import { isDatabricksConnector } from "@/components/dashboard/helpers/helpers";
 import { type DestinationNameSource } from "@/utils/snowflakeDestinationTableName";
 
 type DestinationTableFieldProps = {
@@ -57,6 +58,13 @@ const DestinationTableField = ({
 }: DestinationTableFieldProps) => {
   const [copied, setCopied] = useState(false);
   const prefix = destinationConnectionName?.trim();
+  const isDatabricks = isDatabricksConnector(
+    destinationConnectionName ?? undefined,
+  );
+  const destinationLabel = isDatabricks
+    ? "Unity Catalog table name"
+    : "Destination table in Snowflake";
+  const existingTableLabel = isDatabricks ? "Databricks" : "Snowflake";
   const subParts: string[] = [];
   if (jsonTableName) subParts.push(`JSON value: ${jsonTableName}`);
   if (
@@ -118,7 +126,7 @@ const DestinationTableField = ({
               textTransform="uppercase"
               color="gray.500"
             >
-              Destination table in Snowflake
+              {destinationLabel}
             </Text>
             <Flex gap={2} align="center" wrap="wrap" mt={1}>
               {prefix && (
@@ -207,9 +215,9 @@ const DestinationTableField = ({
           borderColor="orange.200"
         >
           <Text fontSize="xs" mb={2}>
-            A Snowflake table named {destinationTableName} already exists and
-            was not created by this mapping. Use the existing table or choose
-            another name.
+            A {existingTableLabel} table named {destinationTableName} already
+            exists and was not created by this mapping. Use the existing table
+            or choose another name.
           </Text>
           <Flex gap={2}>
             <Button
