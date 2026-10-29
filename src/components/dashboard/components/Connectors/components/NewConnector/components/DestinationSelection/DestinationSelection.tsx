@@ -18,7 +18,10 @@ const Destination = ({
   onDestinationSelect,
 }: {
   selectedDestination: string | null;
-  onDestinationSelect: (_destination: string) => void;
+  onDestinationSelect: (_destination: {
+    name: string;
+    dst_config_id: number;
+  }) => void;
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { data: destinationList, isLoading } =
@@ -46,7 +49,7 @@ const Destination = ({
       { destination: dst_config_id },
       {
         onSuccess: () => {
-          onDestinationSelect(name);
+          onDestinationSelect({ name, dst_config_id });
         },
       },
     );

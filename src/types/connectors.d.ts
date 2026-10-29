@@ -13,6 +13,7 @@ export interface CreateConnectionPayload {
   connection_name: string;
   destination_schema: string;
   form_data: Record<string, unknown>;
+  destination_config_id?: number;
 }
 
 export interface ConnectorConfigResponse {

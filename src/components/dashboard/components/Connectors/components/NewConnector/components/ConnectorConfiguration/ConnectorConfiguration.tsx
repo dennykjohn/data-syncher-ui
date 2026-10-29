@@ -134,6 +134,9 @@ const GenericConnectorConfiguration = ({
           connection_name: values.connection_name || "Unnamed Connector",
           destination_schema: destinationSchema,
           form_data: values,
+          ...(state?.destinationConfigId
+            ? { destination_config_id: state.destinationConfigId }
+            : {}),
         },
         {
           onSuccess: (response) => {

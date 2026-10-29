@@ -101,6 +101,7 @@ const S3ConnectorConfiguration = ({
     connection_name: string;
     destination_schema: string;
     form_data: Record<string, string>;
+    destination_config_id?: number;
   } | null>(null);
   // For edit mode: store the last submitted form payload so we can re-submit
   // it with custom_primary_key once the user finishes primary key selection.
@@ -306,40 +307,45 @@ const S3ConnectorConfiguration = ({
     );
 
     if (mode === "create") {
+      const createPayload: CreateConnectionPayload = {
+        connection_name: connectionName,
+        destination_schema: destinationSchema,
+        form_data: stringifiedValues,
+        ...(state?.destinationConfigId
+          ? { destination_config_id: state.destinationConfigId }
+          : {}),
+      };
+
       if (requiresPrimaryKeySelection) {
         setPendingFormData({
-          connection_name: connectionName,
-          destination_schema: destinationSchema,
+          connection_name: createPayload.connection_name,
+          destination_schema: createPayload.destination_schema,
           form_data: stringifiedValues,
+          ...(createPayload.destination_config_id
+            ? { destination_config_id: createPayload.destination_config_id }
+            : {}),
         });
         setShowPrimaryKeySelection(true);
         return;
       }
 
-      createConnection(
-        {
-          connection_name: connectionName,
-          destination_schema: destinationSchema,
-          form_data: stringifiedValues,
+      createConnection(createPayload, {
+        onSuccess: (response) => {
+          if (response.auth_url) {
+            window.location.href = response.auth_url;
+          } else {
+            toaster.success({
+              title:
+                response.message ||
+                `${displayName} Connector created successfully`,
+              description: `The ${displayName} connector has been created.`,
+            });
+            navigate(
+              `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
+            );
+          }
         },
-        {
-          onSuccess: (response) => {
-            if (response.auth_url) {
-              window.location.href = response.auth_url;
-            } else {
-              toaster.success({
-                title:
-                  response.message ||
-                  `${displayName} Connector created successfully`,
-                description: `The ${displayName} connector has been created.`,
-              });
-              navigate(
-                `${ClientRoutes.DASHBOARD}/${ClientRoutes.CONNECTORS.ROOT}`,
-              );
-            }
-          },
-        },
-      );
+      });
     } else {
       const editPayload = {
         connection_name: connectionName,
