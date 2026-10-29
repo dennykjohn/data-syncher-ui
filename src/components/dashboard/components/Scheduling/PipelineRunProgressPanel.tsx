@@ -233,9 +233,17 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
 
       {(displayStatus === "failed" || displayStatus === "timeout") &&
         run.error?.trim() && (
-          <Text fontSize="xs" color="red.600" mt={2}>
-            {run.error.trim()}
-          </Text>
+          <>
+            {overall.nodes_completed > 0 && overall.nodes_failed > 0 && (
+              <Text fontSize="xs" color="gray.600" mt={2}>
+                {overall.nodes_completed} of {overall.nodes_total} batch(es)
+                finished before the pipeline stopped.
+              </Text>
+            )}
+            <Text fontSize="xs" color="red.600" mt={2}>
+              {run.error.trim()}
+            </Text>
+          </>
         )}
     </Box>
   );
