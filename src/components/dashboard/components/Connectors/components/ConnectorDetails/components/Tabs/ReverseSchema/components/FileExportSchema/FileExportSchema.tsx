@@ -19,6 +19,7 @@ import { IoMdMail, IoMdOptions, IoMdPlay, IoMdSettings } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
 import { MdSearch } from "react-icons/md";
 import { PiKeyFill } from "react-icons/pi";
+import { TbTransform } from "react-icons/tb";
 
 import Pagination from "@/components/shared/Pagination";
 import { toaster } from "@/components/ui/toaster";
@@ -48,6 +49,7 @@ import { isPrimaryKey } from "../../utils/validation";
 import EmailGroupSelectionModal from "./EmailGroupSelectionModalNew";
 import { DEFAULT_EXCEL_OPTIONS, cleanRulePayload } from "./ExcelSettings";
 import FieldSelectionModal from "./FieldSelectionModal";
+import FileExportTransformModal from "./FileExportTransformModal";
 import TableExportSettingsModal from "./TableExportSettingsModal";
 import useUpdateSelectedFields from "./hooks/useUpdateSelectedFields";
 import useUpdateTableEmailGroups from "./hooks/useUpdateTableEmailGroups";
@@ -496,6 +498,19 @@ const SnowflakeFileExportSchema = ({
     ? exportConfig.destination.supports_notification_groups
     : !!connector.supports_notification_groups;
 
+  const isSnowflakeToSharePoint = useMemo(() => {
+    const src = (connector.source_name || "").toLowerCase();
+    const dst = (connector.destination_name || "").toLowerCase();
+    const configDstName = (exportConfig?.destination?.name || "").toLowerCase();
+    const isSharepoint =
+      dst.includes("sharepoint") || configDstName.includes("sharepoint");
+    return (!src || src === "snowflake") && isSharepoint;
+  }, [
+    connector.source_name,
+    connector.destination_name,
+    exportConfig?.destination?.name,
+  ]);
+
   const sourceTables = useMemo(
     () => reverseSchemaData?.source_tables || [],
     [reverseSchemaData?.source_tables],
@@ -522,6 +537,10 @@ const SnowflakeFileExportSchema = ({
   );
   const [fieldModalOpen, setFieldModalOpen] = useState(false);
   const [activeTableForFields, setActiveTableForFields] = useState<
+    string | null
+  >(null);
+  const [transformModalOpen, setTransformModalOpen] = useState(false);
+  const [activeTableForTransform, setActiveTableForTransform] = useState<
     string | null
   >(null);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
@@ -980,6 +999,13 @@ const SnowflakeFileExportSchema = ({
     return sourceTables.find((t) => t.table === activeTableForFields);
   }, [activeTableForFields, sourceTables]);
 
+  const activeTransformTableItem = useMemo(() => {
+    if (!activeTableForTransform) return null;
+    return (
+      sourceTables.find((t) => t.table === activeTableForTransform) || null
+    );
+  }, [activeTableForTransform, sourceTables]);
+
   const emailTableData = useMemo(() => {
     if (!activeTableForEmail) return null;
     return sourceTables.find((t) => t.table === activeTableForEmail);
@@ -1032,11 +1058,18 @@ const SnowflakeFileExportSchema = ({
                 Source Tables
               </Text>
             </Flex>
-            <Flex gap={6} alignItems="center">
+            <Flex gap={3.5} alignItems="center">
               {activeTableForCopy && (
                 <Flex justifyContent="center" minW="24px">
                   <Text fontSize="sm" fontWeight="semibold">
                     Paste
+                  </Text>
+                </Flex>
+              )}
+              {isSnowflakeToSharePoint && (
+                <Flex justifyContent="center" minW="40px">
+                  <Text fontSize="sm" fontWeight="semibold">
+                    Transform
                   </Text>
                 </Flex>
               )}
@@ -1147,9 +1180,26 @@ const SnowflakeFileExportSchema = ({
                                 {batchName}
                               </Text>
                             )}
+                            {item.transform_summary?.badge && (
+                              <Text
+                                as="span"
+                                fontSize="2xs"
+                                fontWeight="semibold"
+                                color="brand.700"
+                                bgColor="brand.100"
+                                px={1.5}
+                                py={0.5}
+                                borderRadius="sm"
+                                maxW="120px"
+                                truncate
+                                title={item.transform_summary.badge}
+                              >
+                                {item.transform_summary.badge}
+                              </Text>
+                            )}
                           </Flex>
                         </Box>
-                        <Flex gap={6} alignItems="center" justifySelf="end">
+                        <Flex gap={3.5} alignItems="center" justifySelf="end">
                           {activeTableForCopy && (
                             <Flex justifyContent="center" minW="24px">
                               {table === activeTableForCopy ? (
@@ -1196,6 +1246,55 @@ const SnowflakeFileExportSchema = ({
                               )}
                             </Flex>
                           )}
+                          {isSnowflakeToSharePoint &&
+                            (() => {
+                              const hasTransform = Boolean(
+                                item.transform_summary?.badge ||
+                                  (item as { is_transform_active?: boolean })
+                                    ?.is_transform_active,
+                              );
+                              return (
+                                <Flex justifyContent="center" minW="40px">
+                                  <Tooltip content="Transform">
+                                    <IconButton
+                                      size="xs"
+                                      variant={
+                                        hasTransform ? "subtle" : "ghost"
+                                      }
+                                      colorPalette="brand"
+                                      disabled={
+                                        !!activeTableForCopy || !isSelected
+                                      }
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveTableForTransform(table);
+                                        setTransformModalOpen(true);
+                                      }}
+                                      borderRadius="full"
+                                      height="22px"
+                                      width="22px"
+                                      minWidth="22px"
+                                      flexShrink={0}
+                                      fontSize="14px"
+                                      boxShadow="none"
+                                      bg="transparent"
+                                      color={
+                                        hasTransform ? "brand.600" : "gray.500"
+                                      }
+                                      borderColor="transparent"
+                                      _hover={{
+                                        bg: "brand.50",
+                                        color: "brand.600",
+                                      }}
+                                      transition="all 0.2s"
+                                      aria-label="Transform"
+                                    >
+                                      <TbTransform />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Flex>
+                              );
+                            })()}
                           {(() => {
                             return (
                               <Flex justifyContent="center" minW="40px">
@@ -1624,6 +1723,18 @@ const SnowflakeFileExportSchema = ({
         onSave={handleSaveFields}
         isSaving={isUpdatingFields}
       />
+
+      {transformModalOpen && activeTransformTableItem && (
+        <FileExportTransformModal
+          open={transformModalOpen}
+          onClose={() => {
+            setTransformModalOpen(false);
+            setActiveTableForTransform(null);
+          }}
+          connectionId={connector.connection_id}
+          tableItem={activeTransformTableItem}
+        />
+      )}
 
       <EmailGroupSelectionModal
         open={emailModalOpen}
