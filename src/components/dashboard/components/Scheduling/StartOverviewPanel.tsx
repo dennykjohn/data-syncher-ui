@@ -4,7 +4,10 @@ import { Box, Flex, IconButton, Tabs, Text } from "@chakra-ui/react";
 
 import { MdClose } from "react-icons/md";
 
-import { type PipelineDetail } from "@/types/pipeline";
+import {
+  type PipelineDetail,
+  type PipelineValidationResult,
+} from "@/types/pipeline";
 
 import BatchSchedulePanel from "./BatchSchedulePanel";
 import PipelineNotificationPanel from "./PipelineNotificationPanel";
@@ -16,9 +19,14 @@ import {
 type StartOverviewPanelProps = {
   pipeline: PipelineDetail;
   onClose: () => void;
+  onValidationResult?: (_result: PipelineValidationResult) => void;
 };
 
-const StartOverviewPanel = ({ pipeline, onClose }: StartOverviewPanelProps) => {
+const StartOverviewPanel = ({
+  pipeline,
+  onClose,
+  onValidationResult,
+}: StartOverviewPanelProps) => {
   const scheduleSummary = pipelineScheduleLabel(pipeline);
   const { nextSyncLabel } = startNodeScheduleLabels(pipeline);
   const pipelinePaused = pipeline.status === "paused";
@@ -92,6 +100,7 @@ const StartOverviewPanel = ({ pipeline, onClose }: StartOverviewPanelProps) => {
             pipeline={pipeline}
             disabled={pipelinePaused}
             embedded
+            onValidationResult={onValidationResult}
           />
         </Tabs.Content>
 
