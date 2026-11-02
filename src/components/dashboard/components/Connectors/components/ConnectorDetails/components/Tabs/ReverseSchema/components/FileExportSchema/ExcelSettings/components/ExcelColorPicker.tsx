@@ -171,10 +171,24 @@ export default function ExcelColorPicker({
 
   const handleCustomColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value.replace("#", ""));
-    setIsOpen(false);
   };
 
   const activeColorHex = getCssColor(value, "#FFFFFF");
+
+  const getValidPickerHex = (hex: string | undefined): string => {
+    if (!hex) return "#ffffff";
+    let clean = hex.trim().replace("#", "");
+    if (clean.length === 3) {
+      clean = clean
+        .split("")
+        .map((c) => c + c)
+        .join("");
+    }
+    if (/^[0-9A-Fa-f]{6}$/.test(clean)) {
+      return `#${clean.toLowerCase()}`;
+    }
+    return "#000000";
+  };
 
   return (
     <Box
@@ -182,6 +196,25 @@ export default function ExcelColorPicker({
       ref={containerRef}
       style={{ display: "inline-block" }}
     >
+      {/* Hidden native color input - persistently mounted so native picker never aborts during interaction */}
+      <input
+        ref={fileInputRef}
+        type="color"
+        value={getValidPickerHex(value)}
+        onChange={handleCustomColorChange}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: 0,
+          height: 0,
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+        tabIndex={-1}
+        aria-hidden="true"
+      />
       {/* Trigger: Color preview box */}
       <Box
         w={w}
@@ -417,19 +450,6 @@ export default function ExcelColorPicker({
               <Text fontSize="xs" fontWeight="medium" color="gray.700">
                 More Colors...
               </Text>
-              {/* Hidden native color input */}
-              <input
-                ref={fileInputRef}
-                type="color"
-                value={activeColorHex}
-                onChange={handleCustomColorChange}
-                style={{
-                  position: "absolute",
-                  visibility: "hidden",
-                  width: 0,
-                  height: 0,
-                }}
-              />
             </Flex>
           </VStack>
         </Box>

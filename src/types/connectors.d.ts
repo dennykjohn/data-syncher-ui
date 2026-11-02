@@ -184,7 +184,10 @@ export interface ExcelBodyStyle {
   banding_font_color?: string;
   banding_frequency?: number;
 }
-
+export interface ExcelSortColumn {
+  column_name: string;
+  direction: "asc" | "desc";
+}
 export interface ExcelOptions {
   sheet_name?: string;
   auto_filter?: boolean;
@@ -202,6 +205,7 @@ export interface ExcelOptions {
   hidden_columns?: string[];
   column_styles?: ExcelColumnStyle[];
   body_style?: ExcelBodyStyle;
+  sort_columns?: ExcelSortColumn[];
 }
 
 export interface ExcelDifferentialStyle {
@@ -216,11 +220,28 @@ export interface ExcelDifferentialStyle {
   wrap_text?: boolean;
 }
 
+export interface ExcelConditionItem {
+  id?: string;
+  logic?: "and" | "or" | "and_not" | "or_not";
+  column: string;
+  operator: string;
+  value: string;
+  value2?: string;
+}
+
 export interface ExcelConditionalFormat {
   type: string;
   range?: string;
   column_name?: string;
-  highlight_scope?: "cell" | "entire_row";
+  target_columns?: string[];
+  condition_column_name?: string;
+  conditions?: ExcelConditionItem[];
+  highlight_scope?:
+    | "cell"
+    | "entire_row"
+    | "entire_column"
+    | "selected_columns"
+    | string;
   formula?: string | string[];
   stop_if_true?: boolean;
   operator?: string;

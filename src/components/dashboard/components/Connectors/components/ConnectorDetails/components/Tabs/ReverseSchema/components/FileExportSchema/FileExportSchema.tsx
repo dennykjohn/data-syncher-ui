@@ -370,7 +370,7 @@ const normalizeTableSetting = (
     excel_conditional_formats:
       safeParseJson<ExcelConditionalFormat[]>(
         raw?.excel_conditional_formats,
-      )?.map(cleanRulePayload) || undefined,
+      )?.map((r) => cleanRulePayload(r)) || undefined,
   };
 };
 
@@ -410,7 +410,7 @@ const sanitizeTableExportSetting = (
       defaultSheetName || setting.output_file_name,
     );
     base.excel_conditional_formats =
-      setting.excel_conditional_formats?.map(cleanRulePayload) || [];
+      setting.excel_conditional_formats?.map((r) => cleanRulePayload(r)) || [];
   }
 
   return base;
@@ -582,6 +582,14 @@ const SnowflakeFileExportSchema = ({
       (t) => t.table === activeTableForSettings,
     );
     return tableData?.table_fields || {};
+  }, [activeTableForSettings, sourceTables]);
+
+  const activeTableSelectedFields = useMemo(() => {
+    if (!activeTableForSettings) return null;
+    const tableData = sourceTables.find(
+      (t) => t.table === activeTableForSettings,
+    );
+    return tableData?.selected_fields || null;
   }, [activeTableForSettings, sourceTables]);
 
   useEffect(() => {
@@ -1788,6 +1796,7 @@ const SnowflakeFileExportSchema = ({
           tableName={activeTableForSettings}
           settings={activeTableSettings}
           tableFields={activeTableFields}
+          selectedFields={activeTableSelectedFields}
           isSaving={isUpdatingSettings}
           supportedFormats={exportConfig?.destination?.supported_formats}
           onSave={(localSettings) => {

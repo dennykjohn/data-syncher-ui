@@ -49,6 +49,7 @@ interface TableExportSettingsModalProps {
   onSave: (_settings: TableExportSetting) => void;
   isSaving?: boolean;
   supportedFormats?: string[];
+  selectedFields?: string[] | null;
 }
 
 const FILENAME_DATE_FORMAT_OPTIONS: Array<{
@@ -93,6 +94,7 @@ const TableExportSettingsModal = ({
   onSave,
   isSaving = false,
   supportedFormats,
+  selectedFields,
 }: TableExportSettingsModalProps) => {
   const [prevOpen, setPrevOpen] = useState(open);
   const [localSettings, setLocalSettings] =
@@ -138,17 +140,23 @@ const TableExportSettingsModal = ({
     return `${outputFileName}_${timestamp}.${extension}`;
   })();
 
-  // Normalize tableFields for ExcelSettings component if needed.
-  // ExcelSettings expects Record<string, string>, but tableFields could be Record<string, string | { data_type: string }>
-  const normalizedTableFields = Object.entries(tableFields).reduce<
-    Record<string, string>
-  >((acc, [key, val]) => {
-    acc[key] = typeof val === "string" ? val : val?.data_type || "";
-    return acc;
-  }, {});
+  // Normalize tableFields for ExcelSettings component.
+  // If selectedFields are specified from "select and order fields", use only those in that exact order.
+  const normalizedTableFields = (() => {
+    const fieldsToUse =
+      selectedFields && selectedFields.length > 0
+        ? selectedFields.filter((f) => tableFields[f] !== undefined)
+        : Object.keys(tableFields);
+
+    return fieldsToUse.reduce<Record<string, string>>((acc, key) => {
+      const val = tableFields[key];
+      acc[key] = typeof val === "string" ? val : val?.data_type || "";
+      return acc;
+    }, {});
+  })();
 
   return (
-    <Dialog.Root lazyMount open={open} size="lg">
+    <Dialog.Root lazyMount open={open} size="xl">
       <Portal>
         <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
         <Dialog.Positioner>
@@ -157,10 +165,11 @@ const TableExportSettingsModal = ({
             boxShadow="2xl"
             bg="white"
             overflow="hidden"
-            maxH="90vh"
+            maxH="92vh"
+            height={localSettings.file_format === "excel" ? "85vh" : "auto"}
             display="flex"
             flexDirection="column"
-            maxW="600px"
+            maxW={localSettings.file_format === "excel" ? "1080px" : "1000px"}
             width="95%"
           >
             <Dialog.Header
@@ -254,48 +263,93 @@ const TableExportSettingsModal = ({
                   </Checkbox.Label>
                 </Checkbox.Root>
 
-                <Grid
-                  templateColumns={
-                    localSettings.add_utc_timestamp ? "1fr 1fr" : "1fr"
-                  }
-                  gap={2}
-                >
-                  {localSettings.add_utc_timestamp && (
-                    <Field.Root gap={0}>
-                      <Field.Label
-                        fontSize="xs"
-                        fontWeight="semibold"
-                        color="gray.600"
-                        mb={0.5}
-                      >
-                        Filename date format
-                      </Field.Label>
-                      <NativeSelect.Root size="xs">
-                        <NativeSelect.Field
-                          value={
-                            localSettings.filename_date_format ?? "current"
-                          }
-                          onChange={(e) =>
-                            updateLocalSetting({
-                              filename_date_format:
-                                e.target.value === "current"
-                                  ? null
-                                  : (e.target.value as FilenameDateFormat),
-                            })
-                          }
+                <Grid templateColumns="1fr 1fr" gap={2}>
+                  <Grid
+                    templateColumns={
+                      localSettings.add_utc_timestamp ? "1fr 1fr" : "1fr"
+                    }
+                    gap={2}
+                  >
+                    <Box>
+                      <Field.Root gap={0}>
+                        <Field.Label
+                          fontSize="xs"
+                          fontWeight="semibold"
+                          color="gray.600"
+                          mb={0.5}
                         >
-                          {FILENAME_DATE_FORMAT_OPTIONS.map(
-                            ({ label, value }) => (
-                              <option key={value} value={value}>
-                                {label}
+                          File Type
+                        </Field.Label>
+                        <NativeSelect.Root size="xs">
+                          <NativeSelect.Field
+                            value={localSettings.file_format}
+                            onChange={(e) =>
+                              updateLocalSetting({
+                                file_format: e.target.value as FileFormat,
+                              })
+                            }
+                          >
+                            {(supportedFormats && supportedFormats.length > 0
+                              ? supportedFormats
+                              : ["csv", "excel", "json", "parquet"]
+                            ).map((format) => (
+                              <option key={format} value={format}>
+                                {format === "csv"
+                                  ? "CSV"
+                                  : format === "excel"
+                                    ? "Excel"
+                                    : format === "json"
+                                      ? "JSON"
+                                      : format === "parquet"
+                                        ? "Parquet"
+                                        : format.toUpperCase()}
                               </option>
-                            ),
-                          )}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                      </NativeSelect.Root>
-                    </Field.Root>
-                  )}
+                            ))}
+                          </NativeSelect.Field>
+                          <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                      </Field.Root>
+                    </Box>
+
+                    {localSettings.add_utc_timestamp && (
+                      <Box>
+                        <Field.Root gap={0}>
+                          <Field.Label
+                            fontSize="xs"
+                            fontWeight="semibold"
+                            color="gray.600"
+                            mb={0.5}
+                          >
+                            Filename date format
+                          </Field.Label>
+                          <NativeSelect.Root size="xs">
+                            <NativeSelect.Field
+                              value={
+                                localSettings.filename_date_format ?? "current"
+                              }
+                              onChange={(e) =>
+                                updateLocalSetting({
+                                  filename_date_format:
+                                    e.target.value === "current"
+                                      ? null
+                                      : (e.target.value as FilenameDateFormat),
+                                })
+                              }
+                            >
+                              {FILENAME_DATE_FORMAT_OPTIONS.map(
+                                ({ label, value }) => (
+                                  <option key={value} value={value}>
+                                    {label}
+                                  </option>
+                                ),
+                              )}
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator />
+                          </NativeSelect.Root>
+                        </Field.Root>
+                      </Box>
+                    )}
+                  </Grid>
 
                   <Box>
                     <Text
@@ -321,45 +375,6 @@ const TableExportSettingsModal = ({
                     </Flex>
                   </Box>
                 </Grid>
-
-                <Box>
-                  <Text
-                    fontSize="xs"
-                    fontWeight="semibold"
-                    color="gray.600"
-                    mb={0.5}
-                  >
-                    File Type
-                  </Text>
-                  <NativeSelect.Root size="xs">
-                    <NativeSelect.Field
-                      value={localSettings.file_format}
-                      onChange={(e) =>
-                        updateLocalSetting({
-                          file_format: e.target.value as FileFormat,
-                        })
-                      }
-                    >
-                      {(supportedFormats && supportedFormats.length > 0
-                        ? supportedFormats
-                        : ["csv", "excel", "json", "parquet"]
-                      ).map((format) => (
-                        <option key={format} value={format}>
-                          {format === "csv"
-                            ? "CSV"
-                            : format === "excel"
-                              ? "Excel"
-                              : format === "json"
-                                ? "JSON"
-                                : format === "parquet"
-                                  ? "Parquet"
-                                  : format.toUpperCase()}
-                        </option>
-                      ))}
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                  </NativeSelect.Root>
-                </Box>
 
                 {localSettings.file_format === "csv" && (
                   <Flex gap={3}>
@@ -412,6 +427,7 @@ const TableExportSettingsModal = ({
                     excelSheetName={localSettings.excel_sheet_name}
                     conditionalFormats={localSettings.excel_conditional_formats}
                     tableFields={normalizedTableFields}
+                    selectedFields={selectedFields}
                     tableName={tableName}
                     onChange={(patch) => updateLocalSetting(patch)}
                   />
