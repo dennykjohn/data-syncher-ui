@@ -6,7 +6,7 @@ import {
 import {
   type ColumnDataType,
   generateMultipleConditionsFormula,
-} from "./components/MultipleConditionsRule";
+} from "../components/MultipleConditionsRule";
 
 export const getCssColor = (
   hex: string | undefined,

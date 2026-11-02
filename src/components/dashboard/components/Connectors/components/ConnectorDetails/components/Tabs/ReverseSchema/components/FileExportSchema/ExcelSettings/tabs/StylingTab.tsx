@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { Button, Flex, HStack, VStack } from "@chakra-ui/react";
 
-import { type StylingTabProps } from "../types";
+import { type StylingTabProps } from "../helpers";
 import BodyStyleSection from "./styling/BodyStyleSection";
 import ColumnHeadersStyleSection from "./styling/ColumnHeadersStyleSection";
 import SheetHeaderStyleSection from "./styling/SheetHeaderStyleSection";

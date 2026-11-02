@@ -2,7 +2,7 @@ import { Box, Button, Flex, Text, VStack } from "@chakra-ui/react";
 
 import { IoMdAdd } from "react-icons/io";
 
-import { type ConditionalFormattingTabProps } from "../types";
+import { type ConditionalFormattingTabProps } from "../helpers";
 import RuleCard from "./formatting/RuleCard";
 
 export default function ConditionalFormattingTab({

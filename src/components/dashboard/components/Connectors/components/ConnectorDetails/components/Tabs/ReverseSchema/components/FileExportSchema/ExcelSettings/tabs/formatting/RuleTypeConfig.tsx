@@ -11,16 +11,16 @@ import {
   VStack,
 } from "@chakra-ui/react";
 
+import ColorPicker from "@/components/shared/ColorPicker";
 import {
   type ExcelConditionItem,
   type ExcelConditionalFormat,
 } from "@/types/connectors";
 
-import ExcelColorPicker from "../../components/ExcelColorPicker";
 import MultipleConditionsRule, {
   type ColumnDataType,
 } from "../../components/MultipleConditionsRule";
-import { getValidationError, isOperatorAllowed } from "../../utils";
+import { getValidationError, isOperatorAllowed } from "../../helpers";
 
 interface RuleTypeConfigProps {
   rule: ExcelConditionalFormat;
@@ -584,7 +584,7 @@ export default function RuleTypeConfig({
               Min Color
             </Field.Label>
             <HStack gap={1}>
-              <ExcelColorPicker
+              <ColorPicker
                 value={rule.colors?.[0]}
                 onChange={(hex: string) => {
                   const list = [
@@ -619,7 +619,7 @@ export default function RuleTypeConfig({
               Mid Color
             </Field.Label>
             <HStack gap={1}>
-              <ExcelColorPicker
+              <ColorPicker
                 value={rule.colors?.[1]}
                 onChange={(hex: string) => {
                   const list = [
@@ -654,7 +654,7 @@ export default function RuleTypeConfig({
               Max Color
             </Field.Label>
             <HStack gap={1}>
-              <ExcelColorPicker
+              <ColorPicker
                 value={rule.colors?.[2]}
                 onChange={(hex: string) => {
                   const list = [
@@ -695,7 +695,7 @@ export default function RuleTypeConfig({
                 Bar Color
               </Field.Label>
               <HStack gap={1}>
-                <ExcelColorPicker
+                <ColorPicker
                   value={rule.color}
                   onChange={(hex: string) => onUpdateRule({ color: hex })}
                   w="14px"

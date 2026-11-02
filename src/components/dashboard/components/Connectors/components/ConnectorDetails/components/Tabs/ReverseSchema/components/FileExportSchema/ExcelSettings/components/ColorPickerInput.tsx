@@ -1,6 +1,6 @@
 import { Field, HStack, Input } from "@chakra-ui/react";
 
-import ExcelColorPicker from "./ExcelColorPicker";
+import ColorPicker from "@/components/shared/ColorPicker";
 
 interface ColorPickerInputProps {
   label: string;
@@ -34,7 +34,7 @@ export default function ColorPickerInput({
         {label}
       </Field.Label>
       <HStack gap={1}>
-        <ExcelColorPicker
+        <ColorPicker
           value={value}
           onChange={onChange}
           w="16px"

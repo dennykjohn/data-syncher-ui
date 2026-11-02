@@ -12,8 +12,11 @@ import {
 
 import ColorPickerInput from "../../components/ColorPickerInput";
 import ExcelFontSelector from "../../components/ExcelFontSelector";
-import { type ColumnHeadersStyleSectionProps } from "../../types";
-import { getCssAlignItems, getCssColor } from "../../utils";
+import {
+  type ColumnHeadersStyleSectionProps,
+  getCssAlignItems,
+  getCssColor,
+} from "../../helpers";
 
 interface ExtendedColumnHeaderProps extends ColumnHeadersStyleSectionProps {
   sheetName?: string;

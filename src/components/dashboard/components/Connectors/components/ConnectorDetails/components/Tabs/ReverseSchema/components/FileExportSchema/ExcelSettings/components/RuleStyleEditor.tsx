@@ -10,13 +10,13 @@ import {
   VStack,
 } from "@chakra-ui/react";
 
+import ColorPicker from "@/components/shared/ColorPicker";
 import {
   type ExcelConditionalFormat,
   type ExcelDifferentialStyle,
 } from "@/types/connectors";
 
-import { getCssColor } from "../utils";
-import ExcelColorPicker from "./ExcelColorPicker";
+import { getCssColor } from "../helpers";
 
 interface RuleStyleEditorProps {
   rule: ExcelConditionalFormat;
@@ -72,7 +72,7 @@ export default function RuleStyleEditor({
             Fill Color (HEX)
           </Field.Label>
           <HStack gap={1}>
-            <ExcelColorPicker
+            <ColorPicker
               value={ruleStyle.fill}
               onChange={(hex) => onUpdateRuleStyle({ fill: hex })}
               w="14px"
@@ -96,7 +96,7 @@ export default function RuleStyleEditor({
             Text Color (HEX)
           </Field.Label>
           <HStack gap={1}>
-            <ExcelColorPicker
+            <ColorPicker
               value={ruleStyle.font_color}
               onChange={(hex) => onUpdateRuleStyle({ font_color: hex })}
               w="14px"

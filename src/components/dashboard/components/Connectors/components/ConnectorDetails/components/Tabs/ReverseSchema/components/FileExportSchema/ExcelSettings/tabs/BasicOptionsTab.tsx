@@ -9,7 +9,7 @@ import {
 } from "@chakra-ui/react";
 
 import { MultiColumnSorting } from "../components/MultiColumnSorting";
-import { type BasicOptionsTabProps } from "../types";
+import { type BasicOptionsTabProps } from "../helpers";
 
 export default function BasicOptionsTab({
   options,

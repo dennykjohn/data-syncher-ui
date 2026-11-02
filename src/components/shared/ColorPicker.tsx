@@ -4,7 +4,7 @@ import { Box, Flex, Grid, Text, VStack } from "@chakra-ui/react";
 
 import { MdColorLens } from "react-icons/md";
 
-interface ExcelColorPickerProps {
+export interface ColorPickerProps {
   value: string | undefined;
   onChange: (_hex: string) => void;
   borderRadius?: string;
@@ -12,6 +12,8 @@ interface ExcelColorPickerProps {
   h?: string;
   allowNoFill?: boolean;
 }
+
+export type ExcelColorPickerProps = ColorPickerProps;
 
 // Shader helper function to calculate tints/shades
 const shadeColor = (color: string, percent: number): string => {
@@ -95,14 +97,14 @@ const getCssColor = (hex: string | undefined, defaultColor: string): string => {
   return clean;
 };
 
-export default function ExcelColorPicker({
+export default function ColorPicker({
   value,
   onChange,
   borderRadius = "sm",
   w = "20px",
   h = "20px",
   allowNoFill = false,
-}: ExcelColorPickerProps) {
+}: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isHighContrast, setIsHighContrast] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -457,3 +459,5 @@ export default function ExcelColorPicker({
     </Box>
   );
 }
+
+export { ColorPicker };

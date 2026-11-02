@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Box, Button, Input, NativeSelect } from "@chakra-ui/react";
 
-import { STANDARD_FONTS } from "../constants";
+import { STANDARD_FONTS } from "../helpers";
 
 interface ExcelFontSelectorProps {
   value: string | undefined;

@@ -46,7 +46,9 @@ import {
 import BatchGroupedPanel from "../../../Schema/Batches/BatchGroupedPanel";
 import { isConnectorTableMarkedSelected } from "../../../Schema/schemaSelection";
 import { isPrimaryKey } from "../../utils/validation";
-import EmailGroupSelectionModal from "./EmailGroupSelectionModalNew";
+import EmailGroupSelectionModal, {
+  type EmailCustomFieldsPayload,
+} from "./EmailGroupSelectionModalNew";
 import { DEFAULT_EXCEL_OPTIONS, cleanRulePayload } from "./ExcelSettings";
 import FieldSelectionModal from "./FieldSelectionModal";
 import FileExportTransformModal from "./FileExportTransformModal";
@@ -67,6 +69,7 @@ type TableExportSetting = {
   add_utc_timestamp: boolean;
   filename_date_format: FilenameDateFormat | null;
   notification_email_group_ids?: number[];
+  email_template_id?: number | string | null;
   email_custom_fields?: {
     subject?: string;
     subject_styles?: {
@@ -135,6 +138,7 @@ const DEFAULT_TABLE_SETTINGS: TableExportDefaults = {
   add_utc_timestamp: true,
   filename_date_format: null,
   notification_email_group_ids: [],
+  email_template_id: null,
 };
 
 const DESTINATION_FOLDER_FIELD_PRIORITY = [
@@ -232,6 +236,39 @@ const sanitizeExcelOptions = (
   return nextOpts;
 };
 
+const extractEmailTemplateId = (
+  raw?: Partial<ConnectorTable>,
+): number | string | null => {
+  if (!raw) return null;
+  if (
+    typeof raw.email_template_id === "number" ||
+    (typeof raw.email_template_id === "string" &&
+      raw.email_template_id.trim() !== "")
+  ) {
+    return raw.email_template_id;
+  }
+  if (
+    typeof raw.email_template === "number" ||
+    (typeof raw.email_template === "string" && raw.email_template.trim() !== "")
+  ) {
+    return raw.email_template;
+  }
+  if (
+    typeof raw.email_template === "object" &&
+    raw.email_template !== null &&
+    "id" in raw.email_template
+  ) {
+    const tmplId = (raw.email_template as { id?: number | string | null }).id;
+    if (
+      typeof tmplId === "number" ||
+      (typeof tmplId === "string" && tmplId.trim() !== "")
+    ) {
+      return tmplId;
+    }
+  }
+  return null;
+};
+
 const normalizeTableSetting = (
   tableName: string,
   raw?: Partial<ConnectorTable>,
@@ -266,6 +303,7 @@ const normalizeTableSetting = (
     )
       ? raw.notification_email_group_ids
       : [],
+    email_template_id: extractEmailTemplateId(raw),
     email_custom_fields: raw?.email_custom_fields
       ? {
           subject:
@@ -391,6 +429,7 @@ const sanitizeTableExportSetting = (
       ? {
           notification_email_group_ids:
             setting.notification_email_group_ids || [],
+          email_template_id: setting.email_template_id ?? null,
           email_custom_fields: setting.email_custom_fields || undefined,
         }
       : {}),
@@ -450,6 +489,7 @@ const getReusableTableDefaults = (
       raw?.filename_date_format,
     ),
     notification_email_group_ids: [],
+    email_template_id: null,
   };
 };
 
@@ -831,54 +871,26 @@ const SnowflakeFileExportSchema = ({
 
   const handleSaveEmailGroups = (
     selectedGroupIds: number[],
-    customFields?: {
-      subject?: string;
-      subject_styles?: {
-        bold?: boolean;
-        italic?: boolean;
-        color?: string;
-        font_family?: string;
-      } | null;
-      body_fields: string[];
-      greeting_name?: string;
-      greeting_styles?: {
-        bold?: boolean;
-        italic?: boolean;
-        color?: string;
-        font_family?: string;
-      } | null;
-      body_content?: string;
-      body_styles?: {
-        bold?: boolean;
-        italic?: boolean;
-        color?: string;
-        font_family?: string;
-      } | null;
-      team_name?: string;
-      team_styles?: {
-        bold?: boolean;
-        italic?: boolean;
-        color?: string;
-        font_family?: string;
-      } | null;
-      styles?: {
-        bold?: boolean;
-        italic?: boolean;
-        color?: string;
-        font_family?: string;
-      } | null;
-    },
+    customFields?: EmailCustomFieldsPayload,
+    emailTemplateId?: number | string | null,
   ) => {
     if (!activeTableForEmail) return;
+
+    if (!selectedGroupIds || selectedGroupIds.length === 0) {
+      toaster.error({ title: "Please select at least one email group" });
+      return;
+    }
+
     updateTableEmailGroups(
       {
         tableName: activeTableForEmail,
         notification_email_group_ids: selectedGroupIds,
+        email_template_id: emailTemplateId ?? null,
         email_custom_fields: customFields,
       },
       {
         onSuccess: () => {
-          toaster.success({ title: "Email groups updated" });
+          toaster.success({ title: "Email settings updated" });
           setTableExportSettings((prev) => ({
             ...prev,
             [activeTableForEmail]: {
@@ -889,6 +901,7 @@ const SnowflakeFileExportSchema = ({
                   exportConfig,
                 )),
               notification_email_group_ids: selectedGroupIds,
+              email_template_id: emailTemplateId ?? null,
               email_custom_fields: customFields,
             },
           }));
@@ -914,12 +927,14 @@ const SnowflakeFileExportSchema = ({
         sourceSettings.notification_email_group_ids || [];
       const sourceEmailCustomFields =
         sourceSettings.email_custom_fields || undefined;
+      const sourceEmailTemplateId = sourceSettings.email_template_id ?? null;
       targetTables.forEach((table) => {
         updatedSettings[table] = {
           ...(updatedSettings[table] ||
             normalizeTableSetting(table, undefined, exportConfig)),
           notification_email_group_ids: sourceEmailGroups,
           email_custom_fields: sourceEmailCustomFields,
+          email_template_id: sourceEmailTemplateId,
         };
       });
     } else {
@@ -1755,6 +1770,11 @@ const SnowflakeFileExportSchema = ({
               ?.notification_email_group_ids) ||
           []
         }
+        initialEmailTemplateId={
+          activeTableForEmail
+            ? tableExportSettings[activeTableForEmail]?.email_template_id
+            : undefined
+        }
         initialEmailCustomFields={
           activeTableForEmail
             ? tableExportSettings[activeTableForEmail]?.email_custom_fields
@@ -1780,9 +1800,9 @@ const SnowflakeFileExportSchema = ({
             ? tableExportSettings[activeTableForEmail]?.file_format
             : undefined
         }
-        connectionName={connector.source_title}
+        connectionName={connector.source_title || connector.display_name || ""}
         companyName={connector.company_name}
-        sourceDisplayName={connector.display_name}
+        sourceDisplayName={connector.display_name || connector.source_name}
         columnsCount={emailTableColumnsCount}
       />
 
@@ -1800,8 +1820,12 @@ const SnowflakeFileExportSchema = ({
           isSaving={isUpdatingSettings}
           supportedFormats={exportConfig?.destination?.supported_formats}
           onSave={(localSettings) => {
+            const currentTableSetting =
+              tableExportSettings[activeTableForSettings] ||
+              activeTableSettings;
             const normalizedSettings = sanitizeTableExportSetting(
               {
+                ...currentTableSetting,
                 ...localSettings,
                 output_file_name:
                   localSettings.output_file_name.trim() ||

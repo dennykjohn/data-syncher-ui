@@ -15,8 +15,11 @@ import { IoMdTrash } from "react-icons/io";
 import { MultiColumnSelect } from "../../components/MultiColumnSelect";
 import { getColumnDataType } from "../../components/MultipleConditionsRule";
 import RuleStyleEditor from "../../components/RuleStyleEditor";
-import { type RuleCardProps } from "../../types";
-import { isRuleTypeAllowed, normalizeRuleType } from "../../utils";
+import {
+  type RuleCardProps,
+  isRuleTypeAllowed,
+  normalizeRuleType,
+} from "../../helpers";
 import RuleTypeConfig from "./RuleTypeConfig";
 
 export default function RuleCard({

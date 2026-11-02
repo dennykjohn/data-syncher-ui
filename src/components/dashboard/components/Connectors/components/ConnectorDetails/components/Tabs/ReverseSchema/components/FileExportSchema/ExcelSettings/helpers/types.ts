@@ -6,7 +6,7 @@ import {
   type ExcelOptions,
 } from "@/types/connectors";
 
-import { type ColumnDataType } from "./components/MultipleConditionsRule";
+import { type ColumnDataType } from "../components/MultipleConditionsRule";
 
 export type { ColumnDataType };
 

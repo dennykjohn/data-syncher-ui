@@ -305,6 +305,8 @@ export type ConnectorTable = {
   partition_delta_by_date?: boolean | null;
   compression_method?: string | null;
   notification_email_group_ids?: number[] | null;
+  email_template_id?: number | string | null;
+  email_template?: number | string | { id?: number | string | null } | null;
   email_custom_fields?: {
     subject?: string;
     subject_styles?: {

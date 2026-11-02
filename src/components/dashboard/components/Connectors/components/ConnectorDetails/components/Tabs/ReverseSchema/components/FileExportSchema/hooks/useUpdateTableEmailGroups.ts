@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 type UpdateTableEmailGroupsPayload = {
   tableName: string;
   notification_email_group_ids: number[];
+  email_template_id?: number | string | null;
   email_custom_fields?: {
     subject?: string;
     subject_styles?: {
@@ -61,6 +62,7 @@ const updateTableEmailGroups = (
     ),
     {
       notification_email_group_ids: payload.notification_email_group_ids,
+      email_template_id: payload.email_template_id,
       email_custom_fields: payload.email_custom_fields,
     },
   );

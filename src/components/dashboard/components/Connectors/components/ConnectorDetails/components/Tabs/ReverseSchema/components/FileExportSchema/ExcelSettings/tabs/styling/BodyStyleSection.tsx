@@ -12,8 +12,7 @@ import {
 
 import ColorPickerInput from "../../components/ColorPickerInput";
 import ExcelFontSelector from "../../components/ExcelFontSelector";
-import { type BodyStyleSectionProps } from "../../types";
-import { getCssColor } from "../../utils";
+import { type BodyStyleSectionProps, getCssColor } from "../../helpers";
 
 interface ExtendedBodyStyleSectionProps extends BodyStyleSectionProps {
   onClearBanding: () => void;
