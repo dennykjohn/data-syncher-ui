@@ -77,6 +77,10 @@ const ServerRoutes = {
       `connection/${id}/tables/${encodeURIComponent(tableName)}/transform/validate/`,
     entityTransformDryRun: (id: number, tableName: string) =>
       `connection/${id}/tables/${encodeURIComponent(tableName)}/transform/dry-run/`,
+    sourceScriptValidatePublish: (id: number, tableName: string) =>
+      `connection/${id}/tables/${encodeURIComponent(tableName)}/source-script/validate/`,
+    sourceScriptDryRun: (id: number, tableName: string) =>
+      `connection/${id}/tables/${encodeURIComponent(tableName)}/source-script/dry-run/`,
     entityTransformActivate: (id: number, tableName: string, version: number) =>
       `connection/${id}/tables/${encodeURIComponent(tableName)}/transform/${version}/activate/`,
     fetchDestinationTableFields: (id: number, tableName: string) =>

@@ -538,19 +538,6 @@ const SnowflakeFileExportSchema = ({
     ? exportConfig.destination.supports_notification_groups
     : !!connector.supports_notification_groups;
 
-  const isSnowflakeToSharePoint = useMemo(() => {
-    const src = (connector.source_name || "").toLowerCase();
-    const dst = (connector.destination_name || "").toLowerCase();
-    const configDstName = (exportConfig?.destination?.name || "").toLowerCase();
-    const isSharepoint =
-      dst.includes("sharepoint") || configDstName.includes("sharepoint");
-    return (!src || src === "snowflake") && isSharepoint;
-  }, [
-    connector.source_name,
-    connector.destination_name,
-    exportConfig?.destination?.name,
-  ]);
-
   const sourceTables = useMemo(
     () => reverseSchemaData?.source_tables || [],
     [reverseSchemaData?.source_tables],
@@ -1074,6 +1061,7 @@ const SnowflakeFileExportSchema = ({
             justifyContent="space-between"
             alignItems="center"
             flexShrink={0}
+            pr={2}
           >
             <Flex gap={2} alignItems="center">
               {activeTableForCopy && <Box w="24px" />}
@@ -1083,37 +1071,35 @@ const SnowflakeFileExportSchema = ({
             </Flex>
             <Flex gap={3.5} alignItems="center">
               {activeTableForCopy && (
-                <Flex justifyContent="center" minW="24px">
+                <Flex justifyContent="center" w="36px" flexShrink={0}>
                   <Text fontSize="sm" fontWeight="semibold">
                     Paste
                   </Text>
                 </Flex>
               )}
-              {isSnowflakeToSharePoint && (
-                <Flex justifyContent="center" minW="40px">
-                  <Text fontSize="sm" fontWeight="semibold">
-                    Transform
-                  </Text>
-                </Flex>
-              )}
-              <Flex justifyContent="center" minW="40px">
+              <Flex justifyContent="center" w="60px" flexShrink={0}>
                 <Text fontSize="sm" fontWeight="semibold">
                   Fields
                 </Text>
               </Flex>
+              <Flex justifyContent="center" w="76px" flexShrink={0}>
+                <Text fontSize="sm" fontWeight="semibold">
+                  Transform
+                </Text>
+              </Flex>
+              <Flex justifyContent="center" w="66px" flexShrink={0}>
+                <Text fontSize="sm" fontWeight="semibold">
+                  Settings
+                </Text>
+              </Flex>
               {isEmailSupportedDestination && (
-                <Flex justifyContent="center" minW="40px">
+                <Flex justifyContent="center" w="50px" flexShrink={0}>
                   <Text fontSize="sm" fontWeight="semibold">
                     Email
                   </Text>
                 </Flex>
               )}
-              <Flex justifyContent="center" minW="40px">
-                <Text fontSize="sm" fontWeight="semibold">
-                  Settings
-                </Text>
-              </Flex>
-              <Flex justifyContent="center" minW="40px">
+              <Flex justifyContent="center" w="48px" flexShrink={0}>
                 <Text fontSize="sm" fontWeight="semibold">
                   Select
                 </Text>
@@ -1224,7 +1210,11 @@ const SnowflakeFileExportSchema = ({
                         </Box>
                         <Flex gap={3.5} alignItems="center" justifySelf="end">
                           {activeTableForCopy && (
-                            <Flex justifyContent="center" minW="24px">
+                            <Flex
+                              justifyContent="center"
+                              w="36px"
+                              flexShrink={0}
+                            >
                               {table === activeTableForCopy ? (
                                 <Flex
                                   w="16px"
@@ -1269,58 +1259,13 @@ const SnowflakeFileExportSchema = ({
                               )}
                             </Flex>
                           )}
-                          {isSnowflakeToSharePoint &&
-                            (() => {
-                              const hasTransform = Boolean(
-                                item.transform_summary?.badge ||
-                                  (item as { is_transform_active?: boolean })
-                                    ?.is_transform_active,
-                              );
-                              return (
-                                <Flex justifyContent="center" minW="40px">
-                                  <Tooltip content="Transform">
-                                    <IconButton
-                                      size="xs"
-                                      variant={
-                                        hasTransform ? "subtle" : "ghost"
-                                      }
-                                      colorPalette="brand"
-                                      disabled={
-                                        !!activeTableForCopy || !isSelected
-                                      }
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setActiveTableForTransform(table);
-                                        setTransformModalOpen(true);
-                                      }}
-                                      borderRadius="full"
-                                      height="22px"
-                                      width="22px"
-                                      minWidth="22px"
-                                      flexShrink={0}
-                                      fontSize="14px"
-                                      boxShadow="none"
-                                      bg="transparent"
-                                      color={
-                                        hasTransform ? "brand.600" : "gray.500"
-                                      }
-                                      borderColor="transparent"
-                                      _hover={{
-                                        bg: "brand.50",
-                                        color: "brand.600",
-                                      }}
-                                      transition="all 0.2s"
-                                      aria-label="Transform"
-                                    >
-                                      <TbTransform />
-                                    </IconButton>
-                                  </Tooltip>
-                                </Flex>
-                              );
-                            })()}
                           {(() => {
                             return (
-                              <Flex justifyContent="center" minW="40px">
+                              <Flex
+                                justifyContent="center"
+                                w="60px"
+                                flexShrink={0}
+                              >
                                 <Tooltip content="Select Export Fields">
                                   <IconButton
                                     size="xs"
@@ -1357,108 +1302,65 @@ const SnowflakeFileExportSchema = ({
                             );
                           })()}
 
-                          {isEmailSupportedDestination &&
-                            (() => {
-                              const isEmailConfigured = !!(
-                                (tableExportSettings?.[table]
-                                  ?.notification_email_group_ids?.length ?? 0) >
-                                  0 ||
-                                (item.notification_email_group_ids?.length ??
-                                  0) > 0 ||
-                                tableExportSettings?.[table]
-                                  ?.email_custom_fields?.subject ||
-                                tableExportSettings?.[table]
-                                  ?.email_custom_fields?.body_content ||
-                                (tableExportSettings?.[table]
-                                  ?.email_custom_fields?.body_fields?.length ??
-                                  0) > 0 ||
-                                item.email_custom_fields?.subject ||
-                                item.email_custom_fields?.body_content ||
-                                (item.email_custom_fields?.body_fields
-                                  ?.length ?? 0) > 0
-                              );
-                              return (
-                                <Flex justifyContent="center" minW="40px">
-                                  <Tooltip content="Email Notifications">
-                                    <Menu.Root
-                                      positioning={{ placement: "bottom-end" }}
-                                    >
-                                      <Menu.Trigger asChild>
-                                        <IconButton
-                                          size="xs"
-                                          variant="ghost"
-                                          colorPalette="brand"
-                                          disabled={
-                                            !!activeTableForCopy || !isSelected
-                                          }
-                                          onClick={(e) => e.stopPropagation()}
-                                          borderRadius="md"
-                                          height="22px"
-                                          px={1.5}
-                                          minWidth="34px"
-                                          flexShrink={0}
-                                          boxShadow="none"
-                                          bg="transparent"
-                                          color="gray.500"
-                                          borderColor="transparent"
-                                          _hover={{
-                                            bg: "brand.50",
-                                            color: "brand.600",
-                                          }}
-                                          transition="all 0.2s"
-                                        >
-                                          <Flex alignItems="center" gap={0.5}>
-                                            <IoMdMail />
-                                            <IoCaretDownSharp
-                                              style={{ fontSize: "8px" }}
-                                            />
-                                          </Flex>
-                                        </IconButton>
-                                      </Menu.Trigger>
-                                      <Portal>
-                                        <Menu.Positioner>
-                                          <Menu.Content>
-                                            <Menu.Item
-                                              value="edit-email"
-                                              cursor="pointer"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setActiveTableForEmail(table);
-                                                setEmailModalOpen(true);
-                                              }}
-                                            >
-                                              Edit
-                                            </Menu.Item>
-                                            <Menu.Item
-                                              value="copy-email"
-                                              cursor="pointer"
-                                              disabled={
-                                                selectedTables.length <= 1 ||
-                                                !isSelected ||
-                                                !isEmailConfigured
-                                              }
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setActiveTableForCopy(table);
-                                                setCopyType("email");
-                                                setSelectedCopyTargets([]);
-                                              }}
-                                            >
-                                              Copy
-                                            </Menu.Item>
-                                          </Menu.Content>
-                                        </Menu.Positioner>
-                                      </Portal>
-                                    </Menu.Root>
-                                  </Tooltip>
-                                </Flex>
-                              );
-                            })()}
+                          {(() => {
+                            const hasTransform = Boolean(
+                              item.transform_summary?.badge ||
+                                (item as { is_transform_active?: boolean })
+                                  ?.is_transform_active,
+                            );
+                            return (
+                              <Flex
+                                justifyContent="center"
+                                w="76px"
+                                flexShrink={0}
+                              >
+                                <Tooltip content="Transform">
+                                  <IconButton
+                                    size="xs"
+                                    variant={hasTransform ? "subtle" : "ghost"}
+                                    colorPalette="brand"
+                                    disabled={
+                                      !!activeTableForCopy || !isSelected
+                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTableForTransform(table);
+                                      setTransformModalOpen(true);
+                                    }}
+                                    borderRadius="full"
+                                    height="22px"
+                                    width="22px"
+                                    minWidth="22px"
+                                    flexShrink={0}
+                                    fontSize="14px"
+                                    boxShadow="none"
+                                    bg="transparent"
+                                    color={
+                                      hasTransform ? "brand.600" : "gray.500"
+                                    }
+                                    borderColor="transparent"
+                                    _hover={{
+                                      bg: "brand.50",
+                                      color: "brand.600",
+                                    }}
+                                    transition="all 0.2s"
+                                    aria-label="Transform"
+                                  >
+                                    <TbTransform />
+                                  </IconButton>
+                                </Tooltip>
+                              </Flex>
+                            );
+                          })()}
 
                           {(() => {
                             const hasError = !!targetFolderErrors[table];
                             return (
-                              <Flex justifyContent="center" minW="40px">
+                              <Flex
+                                justifyContent="center"
+                                w="66px"
+                                flexShrink={0}
+                              >
                                 <Tooltip
                                   content={
                                     hasError
@@ -1546,7 +1448,109 @@ const SnowflakeFileExportSchema = ({
                             );
                           })()}
 
-                          <Flex justifyContent="center" minW="40px">
+                          {isEmailSupportedDestination &&
+                            (() => {
+                              const isEmailConfigured = !!(
+                                (tableExportSettings?.[table]
+                                  ?.notification_email_group_ids?.length ?? 0) >
+                                  0 ||
+                                (item.notification_email_group_ids?.length ??
+                                  0) > 0 ||
+                                tableExportSettings?.[table]
+                                  ?.email_custom_fields?.subject ||
+                                tableExportSettings?.[table]
+                                  ?.email_custom_fields?.body_content ||
+                                (tableExportSettings?.[table]
+                                  ?.email_custom_fields?.body_fields?.length ??
+                                  0) > 0 ||
+                                item.email_custom_fields?.subject ||
+                                item.email_custom_fields?.body_content ||
+                                (item.email_custom_fields?.body_fields
+                                  ?.length ?? 0) > 0
+                              );
+                              return (
+                                <Flex
+                                  justifyContent="center"
+                                  w="50px"
+                                  flexShrink={0}
+                                >
+                                  <Tooltip content="Email Notifications">
+                                    <Menu.Root
+                                      positioning={{ placement: "bottom-end" }}
+                                    >
+                                      <Menu.Trigger asChild>
+                                        <IconButton
+                                          size="xs"
+                                          variant="ghost"
+                                          colorPalette="brand"
+                                          disabled={
+                                            !!activeTableForCopy || !isSelected
+                                          }
+                                          onClick={(e) => e.stopPropagation()}
+                                          borderRadius="md"
+                                          height="22px"
+                                          px={1.5}
+                                          minWidth="34px"
+                                          flexShrink={0}
+                                          boxShadow="none"
+                                          bg="transparent"
+                                          color="gray.500"
+                                          borderColor="transparent"
+                                          _hover={{
+                                            bg: "brand.50",
+                                            color: "brand.600",
+                                          }}
+                                          transition="all 0.2s"
+                                        >
+                                          <Flex alignItems="center" gap={0.5}>
+                                            <IoMdMail />
+                                            <IoCaretDownSharp
+                                              style={{ fontSize: "8px" }}
+                                            />
+                                          </Flex>
+                                        </IconButton>
+                                      </Menu.Trigger>
+                                      <Portal>
+                                        <Menu.Positioner>
+                                          <Menu.Content>
+                                            <Menu.Item
+                                              value="edit-email"
+                                              cursor="pointer"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActiveTableForEmail(table);
+                                                setEmailModalOpen(true);
+                                              }}
+                                            >
+                                              Edit
+                                            </Menu.Item>
+                                            <Menu.Item
+                                              value="copy-email"
+                                              cursor="pointer"
+                                              disabled={
+                                                selectedTables.length <= 1 ||
+                                                !isSelected ||
+                                                !isEmailConfigured
+                                              }
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActiveTableForCopy(table);
+                                                setCopyType("email");
+                                                setSelectedCopyTargets([]);
+                                              }}
+                                            >
+                                              Copy
+                                            </Menu.Item>
+                                          </Menu.Content>
+                                        </Menu.Positioner>
+                                      </Portal>
+                                    </Menu.Root>
+                                  </Tooltip>
+                                </Flex>
+                              );
+                            })()}
+
+                          <Flex justifyContent="center" w="48px" flexShrink={0}>
                             <Tooltip
                               content={
                                 batchName

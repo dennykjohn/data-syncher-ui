@@ -15,6 +15,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 
+import { toaster } from "@/components/ui/toaster";
 import {
   type ExcelConditionalFormat,
   type ExcelOptions,
@@ -22,7 +23,7 @@ import {
   type TableFieldInfo,
 } from "@/types/connectors";
 
-import ExcelSettings from "./ExcelSettings";
+import ExcelSettings, { validateConditionalFormatRules } from "./ExcelSettings";
 
 export type FileFormat = "csv" | "json" | "parquet" | "excel";
 
@@ -124,6 +125,19 @@ const TableExportSettingsModal = ({
   };
 
   const handleSave = () => {
+    if (localSettings.file_format === "excel") {
+      const errorMsg = validateConditionalFormatRules(
+        localSettings.excel_conditional_formats || [],
+        normalizedTableFields,
+      );
+      if (errorMsg) {
+        toaster.error({
+          title: "Incomplete Condition",
+          description: errorMsg,
+        });
+        return;
+      }
+    }
     onSave(localSettings);
   };
 

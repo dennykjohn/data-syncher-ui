@@ -1,12 +1,221 @@
 import {
+  type ExcelConditionItem,
   type ExcelConditionalFormat,
   type ExcelDifferentialStyle,
 } from "@/types/connectors";
 
 import {
-  type ColumnDataType,
-  generateMultipleConditionsFormula,
-} from "../components/MultipleConditionsRule";
+  type ConditionRuleItem,
+  type ConditionRuleNode,
+  conditionsToTree,
+  nodeToHumanSummary,
+} from "./groupModelUtils";
+import { type ColumnDataType } from "./types";
+
+export const getColumnDataType = (
+  typeStr: string | undefined,
+): ColumnDataType => {
+  if (!typeStr) return "text";
+  const lower = typeStr.toLowerCase();
+  if (
+    lower.includes("number") ||
+    lower.includes("int") ||
+    lower.includes("float") ||
+    lower.includes("double") ||
+    lower.includes("decimal") ||
+    lower.includes("numeric") ||
+    lower.includes("real")
+  ) {
+    return "numeric";
+  }
+  if (
+    lower.includes("date") ||
+    lower.includes("time") ||
+    lower.includes("timestamp")
+  ) {
+    return "datetime";
+  }
+  if (lower.includes("bool")) {
+    return "boolean";
+  }
+  return "text";
+};
+
+export const getValidationError = (
+  value: string | string[] | undefined,
+  colDataType: ColumnDataType,
+): string | null => {
+  if (value === undefined || value === null) return null;
+  const valStr = Array.isArray(value) ? value[0] : value;
+  if (!valStr || valStr.trim() === "") return null;
+  if (valStr.trim().startsWith("=")) return null;
+
+  if (colDataType === "numeric") {
+    const num = Number(valStr);
+    if (isNaN(num)) {
+      return "Value must be a number or a formula starting with '='";
+    }
+  }
+
+  if (colDataType === "datetime") {
+    const timestamp = Date.parse(valStr);
+    const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(valStr.trim());
+    if (isNaN(timestamp) && !isIsoDate) {
+      return "Value must be a valid date or a formula starting with '='";
+    }
+  }
+
+  return null;
+};
+
+export const getColumnLetter = (index: number): string => {
+  let letter = "";
+  let temp = index;
+  while (temp >= 0) {
+    letter = String.fromCharCode((temp % 26) + 65) + letter;
+    temp = Math.floor(temp / 26) - 1;
+  }
+  return letter;
+};
+
+const formatExcelClause = (
+  c: ConditionRuleItem,
+  colNames?: string[],
+  tableFields?: Record<string, string>,
+): string => {
+  const col = c.column ?? "";
+  if (!col) return "";
+  const colIndex = colNames ? colNames.indexOf(col) : -1;
+  const colRef = colIndex >= 0 ? `$${getColumnLetter(colIndex)}2` : `$${col}2`;
+  const val = (c.value ?? "").trim();
+  if (val.startsWith("=")) {
+    return `${colRef}=${val.slice(1)}`;
+  }
+
+  const rawType = tableFields ? tableFields[col] : undefined;
+  const dataType = getColumnDataType(rawType);
+  const isBool =
+    dataType === "boolean" ||
+    val.toUpperCase() === "TRUE" ||
+    val.toUpperCase() === "FALSE";
+  const isNum =
+    dataType === "numeric"
+      ? !isNaN(Number(val)) && val !== ""
+      : !isNaN(Number(val)) && val !== "" && !val.includes(" ");
+
+  const formattedVal = isBool
+    ? val.toUpperCase()
+    : isNum
+      ? val
+      : `"${val.replace(/"/g, '""')}"`;
+
+  let clause = "";
+  switch (c.operator) {
+    case "notEqual":
+      clause = `${colRef}<>${formattedVal}`;
+      break;
+    case "greaterThan":
+      clause = `${colRef}>${formattedVal}`;
+      break;
+    case "lessThan":
+      clause = `${colRef}<${formattedVal}`;
+      break;
+    case "greaterThanOrEqual":
+      clause = `${colRef}>=${formattedVal}`;
+      break;
+    case "lessThanOrEqual":
+      clause = `${colRef}<=${formattedVal}`;
+      break;
+    case "contains":
+      clause = `ISNUMBER(SEARCH(${formattedVal},${colRef}))`;
+      break;
+    case "notContains":
+      clause = `ISERROR(SEARCH(${formattedVal},${colRef}))`;
+      break;
+    case "beginsWith":
+      clause = `LEFT(${colRef},LEN(${formattedVal}))=${formattedVal}`;
+      break;
+    case "notBeginsWith":
+      clause = `LEFT(${colRef},LEN(${formattedVal}))<>${formattedVal}`;
+      break;
+    case "endsWith":
+      clause = `RIGHT(${colRef},LEN(${formattedVal}))=${formattedVal}`;
+      break;
+    case "notEndsWith":
+      clause = `RIGHT(${colRef},LEN(${formattedVal}))<>${formattedVal}`;
+      break;
+    case "isEmpty":
+      clause = `ISBLANK(${colRef})`;
+      break;
+    case "isNotEmpty":
+      clause = `NOT(ISBLANK(${colRef}))`;
+      break;
+    case "between": {
+      const val2 = (c.value2 ?? "").trim();
+      const isNum2 = !isNaN(Number(val2)) && val2 !== "";
+      const formattedVal2 = isNum2 ? val2 : `"${val2.replace(/"/g, '""')}"`;
+      clause = `AND(${colRef}>=${formattedVal},${colRef}<=${formattedVal2})`;
+      break;
+    }
+    case "notBetween": {
+      const val2 = (c.value2 ?? "").trim();
+      const isNum2 = !isNaN(Number(val2)) && val2 !== "";
+      const formattedVal2 = isNum2 ? val2 : `"${val2.replace(/"/g, '""')}"`;
+      clause = `OR(${colRef}<${formattedVal},${colRef}>${formattedVal2})`;
+      break;
+    }
+    case "equal":
+    default:
+      clause = `${colRef}=${formattedVal}`;
+      break;
+  }
+
+  return clause;
+};
+
+const formatNodeFormula = (
+  node: ConditionRuleNode,
+  colNames?: string[],
+  tableFields?: Record<string, string>,
+): string => {
+  if (node.type === "rule") {
+    return formatExcelClause(node, colNames, tableFields);
+  }
+  const parts = node.children
+    .map((child) => formatNodeFormula(child, colNames, tableFields))
+    .filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  const fn = node.conjunction.toUpperCase();
+  return `${fn}(${parts.join(",")})`;
+};
+
+// Generates valid Excel OpenXML Formula
+export const generateMultipleConditionsFormula = (
+  conditions: ExcelConditionItem[],
+  colNames?: string[],
+  tableFields?: Record<string, string>,
+): string => {
+  if (!conditions || conditions.length === 0) return "";
+  const valid = conditions.filter((c) => c.column);
+  if (valid.length === 0) return "";
+  const tree = conditionsToTree(valid);
+  const formulaBody = formatNodeFormula(tree, colNames, tableFields);
+  return formulaBody ? `=${formulaBody}` : "";
+};
+
+// Generates human-friendly preview directly from tree
+export const formatHumanSummary = (
+  conditions: ExcelConditionItem[],
+  _targetColumns?: string[],
+  _highlightScope?: string,
+  tableFields?: Record<string, string>,
+): string => {
+  const valid = (conditions || []).filter((c) => c.column);
+  if (valid.length === 0) return "";
+  const tree = conditionsToTree(valid);
+  return nodeToHumanSummary(tree, tableFields, true);
+};
 
 export const getCssColor = (
   hex: string | undefined,
@@ -76,30 +285,99 @@ export const isOperatorAllowed = (
   return true;
 };
 
-export const getValidationError = (
-  value: string | string[] | undefined,
-  colDataType: ColumnDataType,
+export const validateConditionalFormatRules = (
+  rules: ExcelConditionalFormat[],
+  tableFields?: Record<string, string>,
 ): string | null => {
-  if (value === undefined || value === null) return null;
-  const valStr = Array.isArray(value) ? value[0] : value;
-  if (!valStr || valStr.trim() === "") return null;
-  if (valStr.trim().startsWith("=")) return null;
+  for (let i = 0; i < rules.length; i++) {
+    const rule = rules[i];
+    const ruleNum = i + 1;
+    const typeNorm = normalizeRuleType(rule.type);
 
-  if (colDataType === "numeric") {
-    const num = Number(valStr);
-    if (isNaN(num)) {
-      return "Value must be a number or a formula starting with '='";
+    if (typeNorm === "multipleconditions") {
+      if (!rule.conditions || rule.conditions.length === 0) {
+        return `Rule #${ruleNum}: Please add at least one condition.`;
+      }
+      for (let j = 0; j < rule.conditions.length; j++) {
+        const c = rule.conditions[j];
+        if (!c.column || c.column.trim() === "") {
+          return `Rule #${ruleNum}: Please select a column for all conditions.`;
+        }
+        const op = c.operator || "equal";
+        if (op === "isEmpty" || op === "isNotEmpty") {
+          continue;
+        }
+        if (op === "between" || op === "notBetween") {
+          if (!c.value || c.value.trim() === "") {
+            return `Rule #${ruleNum}: Please enter a minimum value for "${c.column}".`;
+          }
+          if (!c.value2 || c.value2.trim() === "") {
+            return `Rule #${ruleNum}: Please enter a maximum value for "${c.column}".`;
+          }
+        } else {
+          if (
+            c.value === undefined ||
+            c.value === null ||
+            c.value.trim() === ""
+          ) {
+            return `Rule #${ruleNum}: Please enter a value for "${c.column}".`;
+          }
+        }
+        const colRawType = tableFields?.[c.column];
+        const colDataType = getColumnDataType(colRawType);
+        const err1 = getValidationError(c.value, colDataType);
+        if (err1) {
+          return `Rule #${ruleNum} ("${c.column}"): ${err1}`;
+        }
+        if (op === "between" || op === "notBetween") {
+          const err2 = getValidationError(c.value2, colDataType);
+          if (err2) {
+            return `Rule #${ruleNum} ("${c.column}"): ${err2}`;
+          }
+        }
+      }
+    } else if (typeNorm === "cellis") {
+      const col = rule.condition_column_name || rule.column_name;
+      if (!col || col.trim() === "") {
+        return `Rule #${ruleNum}: Please select a column to evaluate.`;
+      }
+      const op = rule.operator || "equal";
+      if (op === "between" || op === "notBetween") {
+        const val1 = Array.isArray(rule.formula)
+          ? rule.formula[0]
+          : rule.formula;
+        const val2 = Array.isArray(rule.formula) ? rule.formula[1] : undefined;
+        if (!val1 || val1.trim() === "") {
+          return `Rule #${ruleNum}: Please enter a minimum value for "${col}".`;
+        }
+        if (!val2 || val2.trim() === "") {
+          return `Rule #${ruleNum}: Please enter a maximum value for "${col}".`;
+        }
+      } else {
+        const val = Array.isArray(rule.formula)
+          ? rule.formula[0]
+          : rule.formula;
+        if (!val || val.trim() === "") {
+          return `Rule #${ruleNum}: Please enter a value for "${col}".`;
+        }
+      }
+    } else if (
+      ["containstext", "notcontainstext", "beginswith", "endswith"].includes(
+        typeNorm,
+      )
+    ) {
+      if (!rule.text || rule.text.trim() === "") {
+        return `Rule #${ruleNum}: Please enter text to match.`;
+      }
+    } else if (["formula", "expression"].includes(typeNorm)) {
+      const formulaVal = Array.isArray(rule.formula)
+        ? rule.formula[0]
+        : rule.formula;
+      if (!formulaVal || formulaVal.trim() === "") {
+        return `Rule #${ruleNum}: Please enter a custom formula.`;
+      }
     }
   }
-
-  if (colDataType === "datetime") {
-    const timestamp = Date.parse(valStr);
-    const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(valStr.trim());
-    if (isNaN(timestamp) && !isIsoDate) {
-      return "Value must be a valid date or a formula starting with '='";
-    }
-  }
-
   return null;
 };
 
@@ -297,6 +575,8 @@ export const cleanRulePayload = (
         operator: c.operator || "equal",
         value: c.value ?? "",
         ...(c.value2 !== undefined ? { value2: c.value2 } : {}),
+        ...(c.open_paren ? { open_paren: c.open_paren } : {}),
+        ...(c.close_paren ? { close_paren: c.close_paren } : {}),
       }));
       base.conditions = cleanedConds;
       const validForFormula = cleanedConds.filter((c) => c.column);

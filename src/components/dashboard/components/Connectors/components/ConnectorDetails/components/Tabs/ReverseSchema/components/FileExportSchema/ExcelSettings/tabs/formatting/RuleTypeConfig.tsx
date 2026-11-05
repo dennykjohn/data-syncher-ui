@@ -17,10 +17,12 @@ import {
   type ExcelConditionalFormat,
 } from "@/types/connectors";
 
-import MultipleConditionsRule, {
+import MultipleConditionsRule from "../../components/MultipleConditionsRule";
+import {
   type ColumnDataType,
-} from "../../components/MultipleConditionsRule";
-import { getValidationError, isOperatorAllowed } from "../../helpers";
+  getValidationError,
+  isOperatorAllowed,
+} from "../../helpers";
 
 interface RuleTypeConfigProps {
   rule: ExcelConditionalFormat;
@@ -157,6 +159,8 @@ export default function RuleTypeConfig({
 
   return (
     <Box
+      w="100%"
+      minW="0"
       {...(typeNorm === "multipleconditions"
         ? {
             p: 1.5,

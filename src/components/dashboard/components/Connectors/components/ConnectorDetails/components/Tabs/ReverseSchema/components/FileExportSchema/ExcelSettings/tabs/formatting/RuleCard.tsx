@@ -13,10 +13,10 @@ import {
 import { IoMdTrash } from "react-icons/io";
 
 import { MultiColumnSelect } from "../../components/MultiColumnSelect";
-import { getColumnDataType } from "../../components/MultipleConditionsRule";
 import RuleStyleEditor from "../../components/RuleStyleEditor";
 import {
   type RuleCardProps,
+  getColumnDataType,
   isRuleTypeAllowed,
   normalizeRuleType,
 } from "../../helpers";
@@ -63,8 +63,9 @@ export default function RuleCard({
           }
         >
           {isRuleTypeAllowed("cellis", colDataType) && (
-            <option value="cellis">Cell Value Is</option>
+            <option value="cellis">By Single Field</option>
           )}
+          <option value="multipleconditions">By Multiple Fields</option>
           {isRuleTypeAllowed("containstext", colDataType) && (
             <option value="containstext">Contains Text</option>
           )}
@@ -101,7 +102,6 @@ export default function RuleCard({
           {isRuleTypeAllowed("iconset", colDataType) && (
             <option value="iconset">Icon Set</option>
           )}
-          <option value="multipleconditions">Multiple Conditions</option>
         </NativeSelect.Field>
         <NativeSelect.Indicator />
       </NativeSelect.Root>
@@ -151,17 +151,15 @@ export default function RuleCard({
         </IconButton>
       </Flex>
 
-      {/* Columns Layout */}
       <Grid
-        templateColumns={
-          typeNorm === "multipleconditions"
-            ? { base: "1fr", lg: "1.4fr 1fr" }
-            : { base: "1fr", md: "1fr 1fr" }
-        }
+        templateColumns={{
+          base: "1fr",
+          md: "minmax(0, 1fr) minmax(0, 1fr)",
+        }}
         gap={3}
       >
         {/* Left: Criteria */}
-        <VStack align="stretch" gap={1.5}>
+        <VStack align="stretch" gap={1.5} minW="0" w="100%">
           {typeNorm === "multipleconditions" ? (
             <Grid templateColumns="1fr" gap={2} alignItems="end">
               {renderRuleTypeField()}
@@ -313,32 +311,34 @@ export default function RuleCard({
         </VStack>
 
         {/* Right: Style / Format to Apply */}
-        {!isStylingInternally ? (
-          <RuleStyleEditor
-            rule={rule}
-            ruleStyle={ruleStyle}
-            onUpdateRule={(patch) => onUpdateRule(index, patch)}
-            onUpdateRuleStyle={(patch) => onUpdateRuleStyle(index, patch)}
-          />
-        ) : (
-          <Flex
-            align="center"
-            justify="center"
-            h="100%"
-            pl={5}
-            borderLeft={{ base: "none", md: "1px solid" }}
-            borderColor="gray.200"
-          >
-            <Text
-              fontSize="xs"
-              color="gray.400"
-              fontStyle="italic"
-              textAlign="center"
+        <Box minW="0" w="100%">
+          {!isStylingInternally ? (
+            <RuleStyleEditor
+              rule={rule}
+              ruleStyle={ruleStyle}
+              onUpdateRule={(patch) => onUpdateRule(index, patch)}
+              onUpdateRuleStyle={(patch) => onUpdateRuleStyle(index, patch)}
+            />
+          ) : (
+            <Flex
+              align="center"
+              justify="center"
+              h="100%"
+              pl={5}
+              borderLeft={{ base: "none", md: "1px solid" }}
+              borderColor="gray.200"
             >
-              Formatting is managed internally by the selected visual scale.
-            </Text>
-          </Flex>
-        )}
+              <Text
+                fontSize="xs"
+                color="gray.400"
+                fontStyle="italic"
+                textAlign="center"
+              >
+                Formatting is managed internally by the selected visual scale.
+              </Text>
+            </Flex>
+          )}
+        </Box>
       </Grid>
     </Box>
   );

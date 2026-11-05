@@ -228,6 +228,8 @@ export interface ExcelConditionItem {
   operator: string;
   value: string;
   value2?: string;
+  open_paren?: string;
+  close_paren?: string;
 }
 
 export interface ExcelConditionalFormat {

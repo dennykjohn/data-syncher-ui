@@ -30,11 +30,12 @@ import {
 } from "@/constants/transform-limits";
 import usePermissions from "@/hooks/usePermissions";
 import {
+  transformQueryKey,
   useDeactivateTransform,
-  useDryRunTransform,
+  useDryRunSourceScript,
   useEntityTransform,
   useSaveDraftTransform,
-  useValidateTransform,
+  useValidatePublishSourceScript,
 } from "@/queryOptions/connector/schema/transform/useEntityTransform";
 import {
   type ConnectorTable,
@@ -127,14 +128,23 @@ const FileExportTransformModal = ({
     connectionId,
     tableItem.table,
   );
-  const validateMut = useValidateTransform(connectionId, tableItem.table);
-  const dryRunMut = useDryRunTransform(connectionId, tableItem.table);
+  // File exports use source-side Python only. Keep the generic entity
+  // transform hooks for the SAP mapping modal; these routes intentionally do
+  // not send mapping_json or mapping_overrides to the backend.
+  const publishMut = useValidatePublishSourceScript(
+    connectionId,
+    tableItem.table,
+  );
+  const dryRunMut = useDryRunSourceScript(connectionId, tableItem.table);
   const draftSaveMut = useSaveDraftTransform(connectionId, tableItem.table);
   const deactivateMut = useDeactivateTransform(connectionId, tableItem.table);
 
   const publishedVersion = transformData?.active?.version ?? null;
   const hasActive = Boolean(transformData?.active);
-  const hasServerDraft = Boolean(transformData?.draft);
+  const draftHasScript = Boolean(transformData?.draft?.script_text?.trim());
+  const activeHasScript = Boolean(transformData?.active?.script_text?.trim());
+  const hasServerDraft =
+    draftHasScript || (Boolean(transformData?.draft) && !activeHasScript);
   const draftKey = `transform-draft:${connectionId}:${tableItem.table}`;
   const loadedKeyRef = useRef("");
 
@@ -148,7 +158,14 @@ const FileExportTransformModal = ({
     if (loadedKeyRef.current === loadKey) return;
     loadedKeyRef.current = loadKey;
 
-    const sourceRow = transformData?.draft ?? transformData?.active ?? null;
+    const draftScript = transformData?.draft?.script_text?.trim();
+    const activeScript = transformData?.active?.script_text?.trim();
+    const sourceRow =
+      (draftScript
+        ? transformData?.draft
+        : activeScript
+          ? transformData?.active
+          : (transformData?.draft ?? transformData?.active)) ?? null;
     const normalizedScript = normalizeTransformScript(
       sourceRow?.script_text || "",
     );
@@ -188,7 +205,10 @@ const FileExportTransformModal = ({
         scriptText?: string;
         applyScript?: boolean;
       };
-      if (typeof parsed.scriptText === "string") {
+      if (
+        typeof parsed.scriptText === "string" &&
+        (parsed.scriptText.trim() || !normalizedScript.trim())
+      ) {
         setScriptText(parsed.scriptText);
       }
       if (typeof parsed.applyScript === "boolean") {
@@ -248,16 +268,36 @@ const FileExportTransformModal = ({
       Boolean(transformRootIssue));
 
   const scriptSchemaFolds = useMemo((): SchemaFold[] => {
-    const fields = Object.entries(tableItem.table_fields || {}).map(
-      ([colName, info]) => {
-        const rawType =
-          typeof info === "string" ? info : info?.data_type || "VARCHAR";
-        return {
-          name: colName,
-          dtype: coerceScriptSchemaDtype(rawType),
-        };
-      },
-    );
+    const tableFields = tableItem.table_fields || {};
+    const hasSelectedFields =
+      Array.isArray(tableItem.selected_fields) &&
+      tableItem.selected_fields.length > 0;
+
+    const fields = hasSelectedFields
+      ? (tableItem.selected_fields || []).map((colName) => {
+          const directMatch = tableFields[colName];
+          const caseInsensitiveKey = Object.keys(tableFields).find(
+            (k) => k.toLowerCase() === colName.toLowerCase(),
+          );
+          const info =
+            directMatch ??
+            (caseInsensitiveKey ? tableFields[caseInsensitiveKey] : undefined);
+          const rawType =
+            typeof info === "string" ? info : info?.data_type || "VARCHAR";
+          return {
+            name: colName,
+            dtype: coerceScriptSchemaDtype(rawType),
+          };
+        })
+      : Object.entries(tableFields).map(([colName, info]) => {
+          const rawType =
+            typeof info === "string" ? info : info?.data_type || "VARCHAR";
+          return {
+            name: colName,
+            dtype: coerceScriptSchemaDtype(rawType),
+          };
+        });
+
     return [
       {
         name: "__source_df",
@@ -268,12 +308,17 @@ const FileExportTransformModal = ({
         fields,
       },
     ];
-  }, [tableItem.table_fields]);
+  }, [tableItem.selected_fields, tableItem.table_fields]);
 
   const scriptExamples = useMemo(() => {
-    const colNames = Object.keys(tableItem.table_fields || {});
+    const tableFields = tableItem.table_fields || {};
+    const colNames =
+      Array.isArray(tableItem.selected_fields) &&
+      tableItem.selected_fields.length > 0
+        ? tableItem.selected_fields
+        : Object.keys(tableFields);
     return buildScriptExamples(colNames, colNames);
-  }, [tableItem.table_fields]);
+  }, [tableItem.selected_fields, tableItem.table_fields]);
 
   const editorScriptValidation = useMemo((): EditorValidation | null => {
     if (transformRootIssue) {
@@ -386,7 +431,7 @@ const FileExportTransformModal = ({
 
   const runValidate = useCallback(async () => {
     try {
-      const result = await validateMut.mutateAsync(buildPayload(false));
+      const result = await publishMut.mutateAsync(buildPayload(false));
       setValidateResult(result);
       setMarkedScriptText(persistedScriptText(applyScript, scriptText));
       return result;
@@ -406,7 +451,7 @@ const FileExportTransformModal = ({
       });
       throw new Error("validate failed");
     }
-  }, [applyScript, buildPayload, scriptText, validateMut]);
+  }, [applyScript, buildPayload, publishMut, scriptText]);
 
   useEffect(() => {
     runValidateRef.current = runValidate;
@@ -505,11 +550,10 @@ const FileExportTransformModal = ({
   const runDryRun = useCallback(async () => {
     try {
       const result = await dryRunMut.mutateAsync({
-        mapping_json: null,
-        mapping_overrides: EMPTY_OVERRIDES,
         script_text: persistedScriptText(applyScript, scriptText),
         entry_point: TRANSFORM_ENTRY_POINT,
-        run_order: RUN_ORDER_FILTER_SCRIPT_MAPPING,
+        selected_fields: tableItem.selected_fields ?? [],
+        sort_columns: [],
         sample_size: DEFAULT_DRY_RUN_ROWS,
       });
       setDryRunResult(result);
@@ -535,7 +579,7 @@ const FileExportTransformModal = ({
       });
       throw err;
     }
-  }, [applyScript, dryRunMut, scriptText]);
+  }, [applyScript, dryRunMut, scriptText, tableItem.selected_fields]);
 
   useEffect(() => {
     runDryRunRef.current = runDryRun;
@@ -544,7 +588,7 @@ const FileExportTransformModal = ({
   const flushDraftAutosave = useCallback(async () => {
     if (readOnly || !open) return;
     if (Date.now() < skipAutosaveUntilRef.current) return;
-    if (!isDirty && !transformData?.draft) return;
+    if (!isDirty) return;
     try {
       setDraftSaveLabel("Saving draft…");
       await draftSaveMut.mutateAsync(buildPayload(false));
@@ -561,7 +605,6 @@ const FileExportTransformModal = ({
     open,
     readOnly,
     scriptText,
-    transformData?.draft,
   ]);
 
   useEffect(() => {
@@ -619,7 +662,10 @@ const FileExportTransformModal = ({
     }
 
     try {
-      const result = await validateMut.mutateAsync(buildPayload(true));
+      // Publishing needs table/connection context, so use the scoped source
+      // endpoint. The stateless validator is intentionally used only by the
+      // editor's validate action and cannot publish a version.
+      const result = await publishMut.mutateAsync(buildPayload(true));
       setValidateResult(result);
       setMarkedScriptText(persistedScriptText(applyScript, scriptText));
       if (!result.valid) {
@@ -636,6 +682,9 @@ const FileExportTransformModal = ({
         setScriptValidatedText(persistedScriptText(applyScript, scriptText));
         toaster.success({
           title: confirmCopy.published(result.published.version),
+        });
+        queryClient.invalidateQueries({
+          queryKey: transformQueryKey(connectionId, tableItem.table),
         });
         queryClient.invalidateQueries({
           queryKey: ["ReverseSchema", connectionId],
@@ -904,7 +953,7 @@ const FileExportTransformModal = ({
                             !scriptBody.trim() ||
                             Boolean(transformRootIssue)
                           }
-                          validating={validateMut.isPending}
+                          validating={publishMut.isPending}
                           validation={editorScriptValidation}
                           diagnostics={editorDiagnostics}
                           readOnly={readOnly}
@@ -1174,7 +1223,7 @@ const FileExportTransformModal = ({
                     <Button
                       size="sm"
                       colorPalette="brand"
-                      loading={validateMut.isPending}
+                      loading={publishMut.isPending}
                       disabled={scriptBlocksNext}
                       onClick={async () => {
                         if (scriptBlocksNext) return;
@@ -1197,7 +1246,7 @@ const FileExportTransformModal = ({
                       size="sm"
                       colorPalette="brand"
                       disabled={readOnly || Boolean(transformRootIssue)}
-                      loading={validateMut.isPending}
+                      loading={publishMut.isPending}
                       onClick={() => void handleValidateAndPublish()}
                     >
                       Validate

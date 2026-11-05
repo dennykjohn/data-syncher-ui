@@ -6,9 +6,7 @@ import {
   type ExcelOptions,
 } from "@/types/connectors";
 
-import { type ColumnDataType } from "../components/MultipleConditionsRule";
-
-export type { ColumnDataType };
+export type ColumnDataType = "numeric" | "datetime" | "boolean" | "text";
 
 export interface ExcelSettingsProps {
   excelOptions: ExcelOptions | undefined;

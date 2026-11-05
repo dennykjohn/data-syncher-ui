@@ -72,6 +72,54 @@ export function useDryRunTransform(connectionId: number, tableName: string) {
   });
 }
 
+/** Validate and publish source-side Python without SAP mapping analysis. */
+export function useValidatePublishSourceScript(
+  connectionId: number,
+  tableName: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const { data } = await AxiosInstance.post<TransformValidateResponse>(
+        ServerRoutes.connector.sourceScriptValidatePublish(
+          connectionId,
+          tableName,
+        ),
+        payload,
+        { timeout: TRANSFORM_VALIDATE_TIMEOUT_MS },
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.published || data.draft) {
+        queryClient.invalidateQueries({
+          queryKey: transformQueryKey(connectionId, tableName),
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["ConnectorTable", connectionId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["ReverseSchema", connectionId],
+        });
+      }
+    },
+  });
+}
+
+/** Run the source-side Python script against a bounded Snowflake sample. */
+export function useDryRunSourceScript(connectionId: number, tableName: string) {
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const { data } = await AxiosInstance.post<TransformDryRunResponse>(
+        ServerRoutes.connector.sourceScriptDryRun(connectionId, tableName),
+        payload,
+        { timeout: TRANSFORM_DRY_RUN_TIMEOUT_MS },
+      );
+      return data;
+    },
+  });
+}
+
 /** Autosave draft (never activates). */
 export function useSaveDraftTransform(connectionId: number, tableName: string) {
   const queryClient = useQueryClient();

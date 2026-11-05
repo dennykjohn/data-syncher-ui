@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   Box,
@@ -13,56 +13,34 @@ import {
   VStack,
 } from "@chakra-ui/react";
 
-import { IoMdAdd, IoMdClose } from "react-icons/io";
-import {
-  MdFilterList,
-  MdKeyboardArrowDown,
-  MdKeyboardArrowUp,
-  MdSearch,
-} from "react-icons/md";
+import { IoMdAdd, IoMdClose, IoMdFolderOpen } from "react-icons/io";
+import { MdEdit, MdFilterList, MdInfoOutline, MdSearch } from "react-icons/md";
 
+import { Tooltip } from "@/components/ui/tooltip";
 import { type ExcelConditionItem } from "@/types/connectors";
 
-export type ColumnDataType = "numeric" | "datetime" | "boolean" | "text";
-
-export const getColumnDataType = (
-  typeStr: string | undefined,
-): ColumnDataType => {
-  if (!typeStr) return "text";
-  const lower = typeStr.toLowerCase();
-  if (
-    lower.includes("number") ||
-    lower.includes("int") ||
-    lower.includes("float") ||
-    lower.includes("double") ||
-    lower.includes("decimal") ||
-    lower.includes("numeric") ||
-    lower.includes("real")
-  ) {
-    return "numeric";
-  }
-  if (
-    lower.includes("date") ||
-    lower.includes("time") ||
-    lower.includes("timestamp")
-  ) {
-    return "datetime";
-  }
-  if (lower.includes("bool")) {
-    return "boolean";
-  }
-  return "text";
-};
-
-export const getColumnLetter = (index: number): string => {
-  let letter = "";
-  let temp = index;
-  while (temp >= 0) {
-    letter = String.fromCharCode((temp % 26) + 65) + letter;
-    temp = Math.floor(temp / 26) - 1;
-  }
-  return letter;
-};
+import { getColumnDataType, getValidationError } from "../helpers";
+import {
+  type ParseResult,
+  parseHumanCondition,
+} from "../helpers/conditionParser";
+import {
+  type ConditionRuleGroup,
+  type ConditionRuleItem,
+  type ConditionRuleNode,
+  addRuleToGroup,
+  cloneTree,
+  conditionsToTree,
+  createRule,
+  deleteNode,
+  findCommonParent,
+  findNodeAndParent,
+  groupSelectedNodes,
+  nodeToHumanSummary,
+  toggleGroupConjunction,
+  treeToConditions,
+  ungroupNode,
+} from "../helpers/groupModelUtils";
 
 interface MultipleConditionsRuleProps {
   conditions: ExcelConditionItem[] | undefined;
@@ -87,7 +65,7 @@ interface MultipleConditionsRuleProps {
   ) => void;
 }
 
-export const MULTIPLE_CONDITION_OPERATORS = [
+const MULTIPLE_CONDITION_OPERATORS = [
   { value: "equal", label: "= Equal to" },
   { value: "notEqual", label: "!= Not equal to" },
   { value: "greaterThan", label: "> Greater than" },
@@ -106,14 +84,14 @@ export const MULTIPLE_CONDITION_OPERATORS = [
   { value: "isNotEmpty", label: "Is not empty" },
 ];
 
-export const BOOLEAN_OPERATORS = [
+const BOOLEAN_OPERATORS = [
   { value: "equal", label: "= Equal to" },
   { value: "notEqual", label: "!= Not equal to" },
   { value: "isEmpty", label: "Is empty" },
   { value: "isNotEmpty", label: "Is not empty" },
 ];
 
-export const TEXT_OPERATORS = [
+const TEXT_OPERATORS = [
   { value: "equal", label: "= Equal to" },
   { value: "notEqual", label: "!= Not equal to" },
   { value: "contains", label: "Contains text" },
@@ -126,7 +104,7 @@ export const TEXT_OPERATORS = [
   { value: "isNotEmpty", label: "Is not empty" },
 ];
 
-export const NUMERIC_OPERATORS = [
+const NUMERIC_OPERATORS = [
   { value: "equal", label: "= Equal to" },
   { value: "notEqual", label: "!= Not equal to" },
   { value: "greaterThan", label: "> Greater than" },
@@ -139,7 +117,7 @@ export const NUMERIC_OPERATORS = [
   { value: "isNotEmpty", label: "Is not empty" },
 ];
 
-export const DATETIME_OPERATORS = [
+const DATETIME_OPERATORS = [
   { value: "equal", label: "= Equal to" },
   { value: "notEqual", label: "!= Not equal to" },
   { value: "greaterThan", label: "> After" },
@@ -152,7 +130,7 @@ export const DATETIME_OPERATORS = [
   { value: "isNotEmpty", label: "Is not empty" },
 ];
 
-export const getOperatorsForColumn = (
+const getOperatorsForColumn = (
   rawType: string | undefined,
 ): Array<{ value: string; label: string }> => {
   if (!rawType) return MULTIPLE_CONDITION_OPERATORS;
@@ -169,216 +147,6 @@ export const getOperatorsForColumn = (
     default:
       return MULTIPLE_CONDITION_OPERATORS;
   }
-};
-
-export const LOGIC_OPTIONS: Array<{
-  value: "and" | "or";
-  label: string;
-}> = [
-  { value: "and", label: "AND" },
-  { value: "or", label: "OR" },
-];
-
-// Helper to format a single Excel formula clause
-const formatExcelClause = (
-  c: ExcelConditionItem,
-  colNames?: string[],
-  tableFields?: Record<string, string>,
-): string => {
-  let colId = c.column;
-  if (colNames && colNames.length > 0) {
-    const idx = colNames.indexOf(c.column);
-    if (idx !== -1) {
-      colId = getColumnLetter(idx);
-    }
-  }
-  const colRef = `$${colId}2`;
-  const val = (c.value ?? "").trim();
-  const rawType = c.column ? tableFields?.[c.column] : undefined;
-  const dataType = getColumnDataType(rawType);
-  const isBool =
-    dataType === "boolean" ||
-    val.toUpperCase() === "TRUE" ||
-    val.toUpperCase() === "FALSE";
-  const isNum =
-    dataType === "numeric"
-      ? !isNaN(Number(val)) && val !== ""
-      : !isNaN(Number(val)) && val !== "" && !val.includes(" ");
-
-  const formattedVal = isBool
-    ? val.toUpperCase()
-    : isNum
-      ? val
-      : `"${val.replace(/"/g, '""')}"`;
-
-  let clause = "";
-  switch (c.operator) {
-    case "notEqual":
-      clause = `${colRef}<>${formattedVal}`;
-      break;
-    case "greaterThan":
-      clause = `${colRef}>${formattedVal}`;
-      break;
-    case "lessThan":
-      clause = `${colRef}<${formattedVal}`;
-      break;
-    case "greaterThanOrEqual":
-      clause = `${colRef}>=${formattedVal}`;
-      break;
-    case "lessThanOrEqual":
-      clause = `${colRef}<=${formattedVal}`;
-      break;
-    case "contains":
-      clause = `ISNUMBER(SEARCH(${formattedVal},${colRef}))`;
-      break;
-    case "notContains":
-      clause = `ISERROR(SEARCH(${formattedVal},${colRef}))`;
-      break;
-    case "beginsWith":
-      clause = `LEFT(${colRef},LEN(${formattedVal}))=${formattedVal}`;
-      break;
-    case "notBeginsWith":
-      clause = `LEFT(${colRef},LEN(${formattedVal}))<>${formattedVal}`;
-      break;
-    case "endsWith":
-      clause = `RIGHT(${colRef},LEN(${formattedVal}))=${formattedVal}`;
-      break;
-    case "notEndsWith":
-      clause = `RIGHT(${colRef},LEN(${formattedVal}))<>${formattedVal}`;
-      break;
-    case "isEmpty":
-      clause = `ISBLANK(${colRef})`;
-      break;
-    case "isNotEmpty":
-      clause = `NOT(ISBLANK(${colRef}))`;
-      break;
-    case "between": {
-      const val2 = (c.value2 ?? "").trim();
-      const isNum2 = !isNaN(Number(val2)) && val2 !== "";
-      const formattedVal2 = isNum2 ? val2 : `"${val2.replace(/"/g, '""')}"`;
-      clause = `AND(${colRef}>=${formattedVal},${colRef}<=${formattedVal2})`;
-      break;
-    }
-    case "notBetween": {
-      const val2 = (c.value2 ?? "").trim();
-      const isNum2 = !isNaN(Number(val2)) && val2 !== "";
-      const formattedVal2 = isNum2 ? val2 : `"${val2.replace(/"/g, '""')}"`;
-      clause = `OR(${colRef}<${formattedVal},${colRef}>${formattedVal2})`;
-      break;
-    }
-    case "equal":
-    default:
-      clause = `${colRef}=${formattedVal}`;
-      break;
-  }
-
-  if (c.logic === "and_not" || c.logic === "or_not") {
-    return `NOT(${clause})`;
-  }
-  return clause;
-};
-
-// Generates valid Excel OpenXML Formula
-export const generateMultipleConditionsFormula = (
-  conditions: ExcelConditionItem[],
-  colNames?: string[],
-  tableFields?: Record<string, string>,
-): string => {
-  if (!conditions || conditions.length === 0) return "";
-  const valid = conditions.filter((c) => c.column);
-  if (valid.length === 0) return "";
-  if (valid.length === 1)
-    return `=${formatExcelClause(valid[0], colNames, tableFields)}`;
-
-  // Group by OR segments: a series of ANDs forms a group, and OR separates groups
-  const orGroups: string[][] = [];
-  let currentAndGroup: string[] = [
-    formatExcelClause(valid[0], colNames, tableFields),
-  ];
-
-  for (let i = 1; i < valid.length; i++) {
-    const item = valid[i];
-    const clause = formatExcelClause(item, colNames, tableFields);
-    if (item.logic === "or" || item.logic === "or_not") {
-      orGroups.push(currentAndGroup);
-      currentAndGroup = [clause];
-    } else {
-      currentAndGroup.push(clause);
-    }
-  }
-  orGroups.push(currentAndGroup);
-
-  if (orGroups.length === 1) {
-    const ands = orGroups[0];
-    return ands.length === 1 ? `=${ands[0]}` : `=AND(${ands.join(",")})`;
-  }
-
-  const orParts = orGroups.map((group) => {
-    return group.length === 1 ? group[0] : `AND(${group.join(",")})`;
-  });
-
-  return `=OR(${orParts.join(",")})`;
-};
-
-// Generates human-friendly preview
-export const formatHumanSummary = (
-  conditions: ExcelConditionItem[],
-  targetColumns: string[],
-  highlightScope?: string,
-  tableFields?: Record<string, string>,
-): string => {
-  const valid = (conditions || []).filter((c) => c.column);
-  if (valid.length === 0) return "";
-
-  const condText = valid
-    .map((c, idx) => {
-      let prefix = "";
-      if (idx > 0) {
-        if (c.logic === "or") prefix = " OR ";
-        else if (c.logic === "and_not") prefix = " AND NOT ";
-        else if (c.logic === "or_not") prefix = " OR NOT ";
-        else prefix = " AND ";
-      }
-
-      const rawType = c.column ? tableFields?.[c.column] : undefined;
-      const dataType = getColumnDataType(rawType);
-      const isDatetime = dataType === "datetime";
-
-      if (c.operator === "isEmpty") return `${prefix}${c.column} is empty`;
-      if (c.operator === "isNotEmpty")
-        return `${prefix}${c.column} is not empty`;
-      if (c.operator === "between")
-        return `${prefix}${c.column} between ${c.value || "?"} and ${c.value2 || "?"}`;
-      if (c.operator === "notBetween")
-        return `${prefix}${c.column} not between ${c.value || "?"} and ${c.value2 || "?"}`;
-
-      let op = "=";
-      if (c.operator === "notEqual") op = "!=";
-      if (c.operator === "greaterThan") op = isDatetime ? "is after" : ">";
-      if (c.operator === "lessThan") op = isDatetime ? "is before" : "<";
-      if (c.operator === "greaterThanOrEqual")
-        op = isDatetime ? "is on or after" : ">=";
-      if (c.operator === "lessThanOrEqual")
-        op = isDatetime ? "is on or before" : "<=";
-      if (c.operator === "contains") op = "contains";
-      if (c.operator === "notContains") op = "does not contain";
-      if (c.operator === "beginsWith") op = "starts with";
-      if (c.operator === "notBeginsWith") op = "does not start with";
-      if (c.operator === "endsWith") op = "ends with";
-      if (c.operator === "notEndsWith") op = "does not end with";
-
-      return `${prefix}${c.column} ${op} "${c.value || ""}"`;
-    })
-    .join("");
-
-  const targetText =
-    highlightScope === "selected_columns" &&
-    targetColumns &&
-    targetColumns.length > 0
-      ? `[${targetColumns.join(", ")}]`
-      : "Entire Row";
-
-  return `If (${condText}) ➜ Highlight ${targetText}`;
 };
 
 // Searchable Field Selector Component
@@ -564,6 +332,291 @@ function SearchableFieldSelect({
   );
 }
 
+interface Model2ConditionRowProps {
+  rule: ConditionRuleItem;
+  isSelectionMode: boolean;
+  isSelected: boolean;
+  isSelectDisabled: boolean;
+  disabledReason?: string;
+  onToggleSelect: (_id: string) => void;
+  colNames: string[];
+  tableFields?: Record<string, string>;
+  onChange: (_patch: Partial<ConditionRuleItem>) => void;
+  onDelete: () => void;
+  showDelete: boolean;
+}
+
+function Model2ConditionRow({
+  rule,
+  isSelectionMode,
+  isSelected,
+  isSelectDisabled,
+  disabledReason,
+  onToggleSelect,
+  colNames,
+  tableFields,
+  onChange,
+  onDelete,
+  showDelete,
+}: Model2ConditionRowProps) {
+  const colRawType = rule.column ? tableFields?.[rule.column] : undefined;
+  const colDataType = getColumnDataType(colRawType);
+  const availableOperators = getOperatorsForColumn(colRawType);
+
+  const isBetween =
+    rule.operator === "between" || rule.operator === "notBetween";
+  const isEmptyOrNot = ["isEmpty", "isNotEmpty"].includes(rule.operator);
+
+  return (
+    <Flex
+      align="center"
+      gap={1.5}
+      p={1.5}
+      bg={isSelected ? "brand.50/40" : "white"}
+      borderRadius="md"
+      border="1px solid"
+      borderColor={isSelected ? "brand.300" : "gray.200"}
+      _hover={{ borderColor: isSelected ? "brand.400" : "gray.300" }}
+      transition="border-color 0.15s, background-color 0.15s"
+      width="100%"
+    >
+      {/* Checkbox (shown only in selection mode) */}
+      {isSelectionMode && (
+        <Flex
+          align="center"
+          justify="center"
+          w="26px"
+          minW="26px"
+          h="28px"
+          flexShrink={0}
+          title={isSelectDisabled ? disabledReason : undefined}
+        >
+          <Checkbox.Root
+            size="sm"
+            colorPalette="brand"
+            checked={isSelected}
+            disabled={isSelectDisabled}
+            onCheckedChange={() => onToggleSelect(rule.id)}
+          >
+            <Checkbox.HiddenInput />
+            <Checkbox.Control
+              cursor={isSelectDisabled ? "not-allowed" : "pointer"}
+            />
+          </Checkbox.Root>
+        </Flex>
+      )}
+
+      {/* Searchable Field Selector */}
+      <SearchableFieldSelect
+        value={rule.column}
+        colNames={colNames}
+        onChange={(selectedCol) => {
+          const nextRawType = selectedCol
+            ? tableFields?.[selectedCol]
+            : undefined;
+          const nextDataType = getColumnDataType(nextRawType);
+          const allowedOps = getOperatorsForColumn(nextRawType);
+          const isCurrentOpAllowed = allowedOps.some(
+            (op) => op.value === rule.operator,
+          );
+          const nextOp = isCurrentOpAllowed
+            ? rule.operator
+            : allowedOps[0]?.value || "equal";
+
+          let nextVal = rule.value;
+          if (
+            nextDataType === "boolean" &&
+            nextVal !== "TRUE" &&
+            nextVal !== "FALSE"
+          ) {
+            nextVal = "TRUE";
+          }
+
+          onChange({
+            column: selectedCol,
+            operator: nextOp,
+            value: nextVal,
+          });
+        }}
+      />
+
+      {/* Operator selector */}
+      <NativeSelect.Root size="xs" width="135px" minWidth="120px">
+        <NativeSelect.Field
+          bg="white"
+          fontSize="xs"
+          h="28px"
+          value={rule.operator}
+          onChange={(e) => onChange({ operator: e.target.value })}
+        >
+          {availableOperators.map((op) => (
+            <option key={op.value} value={op.value}>
+              {op.label}
+            </option>
+          ))}
+        </NativeSelect.Field>
+        <NativeSelect.Indicator />
+      </NativeSelect.Root>
+
+      {/* Value Input(s) */}
+      {isEmptyOrNot ? (
+        <Box
+          flex="1"
+          minWidth="70px"
+          h="28px"
+          bg="gray.50"
+          borderRadius="xs"
+          display="flex"
+          alignItems="center"
+          px={2}
+        >
+          <Text fontSize="xs" color="gray.400" fontStyle="italic">
+            (no value)
+          </Text>
+        </Box>
+      ) : colDataType === "boolean" ? (
+        <NativeSelect.Root size="xs" flex="1" minWidth="80px">
+          <NativeSelect.Field
+            bg="white"
+            fontSize="xs"
+            h="28px"
+            value={rule.value || "TRUE"}
+            onChange={(e) => onChange({ value: e.target.value })}
+          >
+            <option value="TRUE">True (TRUE)</option>
+            <option value="FALSE">False (FALSE)</option>
+          </NativeSelect.Field>
+          <NativeSelect.Indicator />
+        </NativeSelect.Root>
+      ) : isBetween ? (
+        <HStack gap={1} flex="1" minWidth="90px">
+          {(() => {
+            const isVal1Empty = !rule.value || rule.value.trim() === "";
+            const val1Err = !isVal1Empty
+              ? getValidationError(rule.value, colDataType)
+              : null;
+            const isVal1Invalid = isVal1Empty || !!val1Err;
+            return (
+              <Input
+                size="xs"
+                h="28px"
+                fontSize="xs"
+                placeholder="Min"
+                type={colDataType === "numeric" ? "number" : "text"}
+                step={colDataType === "numeric" ? "any" : undefined}
+                value={rule.value ?? ""}
+                onChange={(e) => onChange({ value: e.target.value })}
+                borderColor={isVal1Invalid ? "red.400" : undefined}
+                _hover={{
+                  borderColor: isVal1Invalid ? "red.500" : "gray.300",
+                }}
+                _focus={{
+                  borderColor: isVal1Invalid ? "red.500" : "brand.500",
+                  boxShadow: isVal1Invalid
+                    ? "0 0 0 1px var(--chakra-colors-red-500)"
+                    : undefined,
+                }}
+                title={
+                  val1Err ||
+                  (isVal1Empty ? "Minimum value is required" : undefined)
+                }
+              />
+            );
+          })()}
+          {(() => {
+            const isVal2Empty = !rule.value2 || rule.value2.trim() === "";
+            const val2Err = !isVal2Empty
+              ? getValidationError(rule.value2, colDataType)
+              : null;
+            const isVal2Invalid = isVal2Empty || !!val2Err;
+            return (
+              <Input
+                size="xs"
+                h="28px"
+                fontSize="xs"
+                placeholder="Max"
+                type={colDataType === "numeric" ? "number" : "text"}
+                step={colDataType === "numeric" ? "any" : undefined}
+                value={rule.value2 ?? ""}
+                onChange={(e) => onChange({ value2: e.target.value })}
+                borderColor={isVal2Invalid ? "red.400" : undefined}
+                _hover={{
+                  borderColor: isVal2Invalid ? "red.500" : "gray.300",
+                }}
+                _focus={{
+                  borderColor: isVal2Invalid ? "red.500" : "brand.500",
+                  boxShadow: isVal2Invalid
+                    ? "0 0 0 1px var(--chakra-colors-red-500)"
+                    : undefined,
+                }}
+                title={
+                  val2Err ||
+                  (isVal2Empty ? "Maximum value is required" : undefined)
+                }
+              />
+            );
+          })()}
+        </HStack>
+      ) : (
+        (() => {
+          const isValEmpty = !rule.value || rule.value.trim() === "";
+          const valErr = !isValEmpty
+            ? getValidationError(rule.value, colDataType)
+            : null;
+          const isInvalid = isValEmpty || !!valErr;
+          return (
+            <Input
+              size="xs"
+              flex="1"
+              minWidth="70px"
+              h="28px"
+              fontSize="xs"
+              placeholder={
+                colDataType === "numeric"
+                  ? "Number"
+                  : colDataType === "datetime"
+                    ? "YYYY-MM-DD"
+                    : "Value"
+              }
+              type={colDataType === "numeric" ? "number" : "text"}
+              step={colDataType === "numeric" ? "any" : undefined}
+              value={rule.value ?? ""}
+              onChange={(e) => onChange({ value: e.target.value })}
+              borderColor={isInvalid ? "red.400" : undefined}
+              _hover={{
+                borderColor: isInvalid ? "red.500" : "gray.300",
+              }}
+              _focus={{
+                borderColor: isInvalid ? "red.500" : "brand.500",
+                boxShadow: isInvalid
+                  ? "0 0 0 1px var(--chakra-colors-red-500)"
+                  : undefined,
+              }}
+              title={valErr || (isValEmpty ? "Value is required" : undefined)}
+            />
+          );
+        })()
+      )}
+
+      {/* Delete condition button */}
+      <IconButton
+        aria-label="Remove condition"
+        size="xs"
+        variant="ghost"
+        colorPalette="red"
+        onClick={onDelete}
+        disabled={!showDelete}
+        h="22px"
+        w="22px"
+        minW="22px"
+        title="Remove condition"
+      >
+        <IoMdClose fontSize="14px" />
+      </IconButton>
+    </Flex>
+  );
+}
+
 export default function MultipleConditionsRule({
   conditions = [],
   targetColumns = [],
@@ -577,6 +630,36 @@ export default function MultipleConditionsRule({
   const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);
   const [colSearchQuery, setColSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Model 2 Select & Group Tree State with focus stability guard
+  const [tree, setTree] = useState<ConditionRuleGroup>(() =>
+    conditionsToTree(conditions),
+  );
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const isInternalEditRef = useRef(false);
+
+  // Editable text preview expression state
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [editText, setEditText] = useState("");
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [parsedTree, setParsedTree] = useState<ConditionRuleGroup | null>(null);
+  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync external condition changes only when structure actually changes externally
+  useEffect(() => {
+    if (isInternalEditRef.current) {
+      isInternalEditRef.current = false;
+      return;
+    }
+    const currentSerialized = JSON.stringify(treeToConditions(tree));
+    const nextSerialized = JSON.stringify(conditions || []);
+    if (currentSerialized !== nextSerialized) {
+      setTree(conditionsToTree(conditions));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conditions]);
 
   // Click outside to close chosen columns dropdown
   useEffect(() => {
@@ -592,81 +675,100 @@ export default function MultipleConditionsRule({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Ensure there is at least one condition initialized without any default column selected
-  const safeConditions: ExcelConditionItem[] =
-    conditions && conditions.length > 0
-      ? conditions
-      : [
-          {
-            column: "",
-            operator: "equal",
-            value: "",
-          },
-        ];
-
-  useEffect(() => {
-    if (!conditions || conditions.length === 0) {
-      onUpdateConditions([
-        {
-          column: "",
-          operator: "equal",
-          value: "",
-        },
-      ]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleConditionChange = (
-    index: number,
-    patch: Partial<ExcelConditionItem>,
+  const handleRuleChange = (
+    ruleId: string,
+    patch: Partial<ConditionRuleItem>,
   ) => {
-    const next = [...safeConditions];
-    next[index] = { ...next[index], ...patch };
-    onUpdateConditions(next);
+    isInternalEditRef.current = true;
+    const nextTree = cloneTree(tree);
+    const loc = findNodeAndParent(nextTree, ruleId);
+    if (loc && loc.node.type === "rule") {
+      Object.assign(loc.node, patch);
+      setTree(nextTree);
+      onUpdateConditions(treeToConditions(nextTree));
+    }
+  };
+
+  const handleToggleSelect = (ruleId: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(ruleId)) {
+      next.delete(ruleId);
+    } else {
+      next.add(ruleId);
+    }
+    setSelectedIds(next);
+  };
+
+  const firstSelectedId = Array.from(selectedIds)[0];
+  const firstSelectedParentId = useMemo(() => {
+    if (!firstSelectedId) return null;
+    const loc = findNodeAndParent(tree, firstSelectedId);
+    return loc?.parent?.id ?? null;
+  }, [tree, firstSelectedId]);
+
+  const selectionValidation = useMemo(
+    () => findCommonParent(tree, Array.from(selectedIds)),
+    [tree, selectedIds],
+  );
+
+  const handleGroupSelected = () => {
+    if (!selectionValidation.valid) return;
+    isInternalEditRef.current = true;
+    const nextTree = groupSelectedNodes(tree, Array.from(selectedIds));
+    setTree(nextTree);
+    onUpdateConditions(treeToConditions(nextTree));
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleUngroup = (groupId: string) => {
+    isInternalEditRef.current = true;
+    const nextTree = ungroupNode(tree, groupId);
+    setTree(nextTree);
+    onUpdateConditions(treeToConditions(nextTree));
+  };
+
+  const handleToggleConjunction = (groupId: string) => {
+    isInternalEditRef.current = true;
+    const nextTree = toggleGroupConjunction(tree, groupId);
+    setTree(nextTree);
+    onUpdateConditions(treeToConditions(nextTree));
   };
 
   const handleAddCondition = () => {
-    const next: ExcelConditionItem[] = [
-      ...safeConditions,
-      {
-        logic: "and",
-        column: "",
-        operator: "equal",
-        value: "",
-      },
-    ];
-    onUpdateConditions(next);
+    isInternalEditRef.current = true;
+    const nextTree = cloneTree(tree);
+    nextTree.children.push(createRule());
+    setTree(nextTree);
+    onUpdateConditions(treeToConditions(nextTree));
   };
 
-  const handleRemoveCondition = (index: number) => {
-    if (safeConditions.length <= 1) {
-      onUpdateConditions([
-        {
-          column: "",
-          operator: "equal",
-          value: "",
-        },
-      ]);
-      return;
-    }
-    const next = safeConditions.filter((_, i) => i !== index);
-    if (next.length > 0 && next[0]?.logic) {
-      delete next[0].logic;
-    }
-    onUpdateConditions(next);
+  const handleAddRuleToGroup = (groupId: string) => {
+    isInternalEditRef.current = true;
+    const nextTree = addRuleToGroup(tree, groupId);
+    setTree(nextTree);
+    onUpdateConditions(treeToConditions(nextTree));
   };
 
-  const handleMoveCondition = (index: number, direction: "up" | "down") => {
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= safeConditions.length) return;
-    const next = [...safeConditions];
-    const temp = next[index];
-    next[index] = next[targetIndex];
-    next[targetIndex] = temp;
-    if (next[0]?.logic) delete next[0].logic;
-    if (next[1] && !next[1].logic) next[1].logic = "and";
-    onUpdateConditions(next);
+  const handleDeleteNode = (nodeId: string) => {
+    isInternalEditRef.current = true;
+    const nextTree = deleteNode(tree, nodeId);
+    setTree(nextTree);
+    onUpdateConditions(treeToConditions(nextTree));
+    if (selectedIds.has(nodeId)) {
+      const next = new Set(selectedIds);
+      next.delete(nodeId);
+      setSelectedIds(next);
+    }
+  };
+
+  const handleReset = () => {
+    isInternalEditRef.current = true;
+    const blankTree = conditionsToTree([]);
+    setTree(blankTree);
+    onUpdateConditions(treeToConditions(blankTree));
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
   };
 
   const handleToggleColumn = (col: string) => {
@@ -691,21 +793,387 @@ export default function MultipleConditionsRule({
     col.toLowerCase().includes(colSearchQuery.toLowerCase()),
   );
 
-  const summary = formatHumanSummary(
-    safeConditions,
-    targetColumns,
-    highlightScope,
-    tableFields,
+  const summary = useMemo(
+    () => nodeToHumanSummary(tree, tableFields, true),
+    [tree, tableFields],
   );
+
+  const handleStartTextEdit = () => {
+    setEditText(summary);
+    setParseError(null);
+    const result = parseHumanCondition(summary, colNames, tableFields);
+    setParseResult(result);
+    setParsedTree(result.tree);
+    setIsEditingText(true);
+  };
+
+  const handleTextChange = (newVal: string) => {
+    setEditText(newVal);
+    if (!newVal.trim()) {
+      setParseError("Condition expression cannot be empty");
+      setParsedTree(null);
+      setParseResult(null);
+      return;
+    }
+    const result = parseHumanCondition(newVal, colNames, tableFields);
+    setParseResult(result);
+    setParseError(result.error);
+    setParsedTree(result.tree);
+  };
+
+  const handleSelectSuggestedColumn = (colName: string) => {
+    let nextText = editText;
+    let newCursorPos = 0;
+
+    if (parseResult?.fieldRange) {
+      const { start, end } = parseResult.fieldRange;
+      const trailing = editText.slice(end);
+      const needsSpace = trailing.length === 0 || !/^[\s=!<>]/.test(trailing);
+      const inserted = needsSpace ? `${colName} ` : colName;
+      nextText = editText.slice(0, start) + inserted + trailing;
+      newCursorPos = start + inserted.length;
+    } else if (parseResult?.unknownField) {
+      const idx = editText.lastIndexOf(parseResult.unknownField);
+      if (idx !== -1) {
+        const trailing = editText.slice(idx + parseResult.unknownField.length);
+        const needsSpace = trailing.length === 0 || !/^[\s=!<>]/.test(trailing);
+        const inserted = needsSpace ? `${colName} ` : colName;
+        nextText = editText.slice(0, idx) + inserted + trailing;
+        newCursorPos = idx + inserted.length;
+      } else {
+        nextText = `${editText} ${colName} `.trim();
+        newCursorPos = nextText.length;
+      }
+    } else {
+      const inputEl = editInputRef.current;
+      if (inputEl) {
+        const start = inputEl.selectionStart ?? editText.length;
+        const end = inputEl.selectionEnd ?? editText.length;
+        const trailing = editText.slice(end);
+        const needsSpace = trailing.length === 0 || !/^[\s=!<>]/.test(trailing);
+        const inserted = needsSpace ? `${colName} ` : colName;
+        nextText = editText.slice(0, start) + inserted + trailing;
+        newCursorPos = start + inserted.length;
+      } else {
+        nextText = `${editText} ${colName} `.trim();
+        newCursorPos = nextText.length;
+      }
+    }
+
+    handleTextChange(nextText);
+
+    setTimeout(() => {
+      if (editInputRef.current) {
+        editInputRef.current.focus();
+        editInputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
+  const displaySuggestions = useMemo(() => {
+    // 1. If an unknown field is detected and we have suggestions for it:
+    if (
+      parseResult?.unknownField &&
+      parseResult?.suggestedColumns &&
+      parseResult.suggestedColumns.length > 0
+    ) {
+      return parseResult.suggestedColumns.slice(0, 8);
+    }
+
+    // 2. If the user is actively typing a word/token at the end of the input:
+    const trimmed = editText.trim();
+    if (!trimmed) {
+      return []; // Clean state: NO suggestions box when empty
+    }
+
+    const lastWordMatch = trimmed.match(/[a-zA-Z0-9_$.%-]+$/);
+    if (lastWordMatch) {
+      const lastWord = lastWordMatch[0].toLowerCase();
+      // Don't suggest if the word is already an exact column match or purely numeric/keyword
+      const isExactCol = colNames.some((c) => c.toLowerCase() === lastWord);
+      const isKeyword = [
+        "and",
+        "or",
+        "true",
+        "false",
+        "between",
+        "empty",
+        "null",
+      ].includes(lastWord);
+      const isNum = !isNaN(Number(lastWord));
+
+      if (!isExactCol && !isKeyword && !isNum && lastWord.length >= 1) {
+        const matched = colNames
+          .filter((c) => c.toLowerCase().includes(lastWord))
+          .sort((a, b) => {
+            const aStarts = a.toLowerCase().startsWith(lastWord);
+            const bStarts = b.toLowerCase().startsWith(lastWord);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            return a.localeCompare(b);
+          });
+        if (matched.length > 0) {
+          return matched.slice(0, 8);
+        }
+      }
+    }
+
+    return []; // Never show all columns as a generic fallback
+  }, [parseResult, editText, colNames]);
+
+  const handleApplyTextEdit = () => {
+    if (!parsedTree || parseError) return;
+    isInternalEditRef.current = true;
+    setTree(parsedTree);
+    onUpdateConditions(treeToConditions(parsedTree));
+    setIsEditingText(false);
+    setParseError(null);
+    setParseResult(null);
+  };
+
+  const handleCancelTextEdit = () => {
+    setIsEditingText(false);
+    setParseError(null);
+    setParsedTree(null);
+    setParseResult(null);
+  };
 
   const isScopeSelectedColumns = highlightScope === "selected_columns";
 
+  let totalRules = 0;
+  const countRules = (group: ConditionRuleGroup) => {
+    for (const child of group.children) {
+      if (child.type === "rule") totalRules++;
+      else countRules(child);
+    }
+  };
+  countRules(tree);
+
+  const renderNodeList = (
+    nodes: ConditionRuleNode[],
+    parentGroup: ConditionRuleGroup,
+    depth: number,
+  ): React.ReactNode => {
+    return (
+      <Box display="flex" flexDirection="column" gap={1.5} width="100%">
+        {nodes.map((node, idx) => {
+          const isFirstChild = idx === 0;
+
+          return (
+            <Box
+              key={node.id}
+              display="flex"
+              flexDirection="column"
+              gap={1.5}
+              width="100%"
+            >
+              {/* Inter-row conjunction divider between siblings */}
+              {!isFirstChild && (
+                <HStack
+                  gap={2}
+                  my={0.5}
+                  align="center"
+                  pl={isSelectionMode ? "32px" : "8px"}
+                >
+                  {parentGroup.id === "root" ? (
+                    <Button
+                      type="button"
+                      size="2xs"
+                      variant="outline"
+                      colorPalette={
+                        parentGroup.conjunction === "or" ? "purple" : "blue"
+                      }
+                      bg={
+                        parentGroup.conjunction === "or"
+                          ? "purple.50"
+                          : "blue.50"
+                      }
+                      borderColor={
+                        parentGroup.conjunction === "or"
+                          ? "purple.300"
+                          : "blue.300"
+                      }
+                      color={
+                        parentGroup.conjunction === "or"
+                          ? "purple.700"
+                          : "blue.700"
+                      }
+                      h="22px"
+                      px={2}
+                      fontSize="10px"
+                      fontWeight="bold"
+                      borderRadius="full"
+                      onClick={() => handleToggleConjunction(parentGroup.id)}
+                      title={`Click to switch between AND and OR (currently ${parentGroup.conjunction.toUpperCase()})`}
+                    >
+                      {parentGroup.conjunction.toUpperCase()} ▾
+                    </Button>
+                  ) : (
+                    <Box
+                      px={2}
+                      py={0.5}
+                      fontSize="10px"
+                      fontWeight="bold"
+                      borderRadius="full"
+                      bg={
+                        parentGroup.conjunction === "or"
+                          ? "purple.50"
+                          : "blue.50"
+                      }
+                      border="1px solid"
+                      borderColor={
+                        parentGroup.conjunction === "or"
+                          ? "purple.200"
+                          : "blue.200"
+                      }
+                      color={
+                        parentGroup.conjunction === "or"
+                          ? "purple.700"
+                          : "blue.700"
+                      }
+                    >
+                      {parentGroup.conjunction.toUpperCase()}
+                    </Box>
+                  )}
+                  <Box
+                    flex="1"
+                    borderBottom="1px dashed"
+                    borderColor="gray.200"
+                  />
+                </HStack>
+              )}
+
+              {/* Render rule item or nested group */}
+              {node.type === "rule" ? (
+                <Model2ConditionRow
+                  rule={node}
+                  isSelectionMode={isSelectionMode}
+                  isSelected={selectedIds.has(node.id)}
+                  isSelectDisabled={
+                    firstSelectedParentId !== null &&
+                    firstSelectedParentId !== parentGroup.id
+                  }
+                  disabledReason="Can only group items at the same level"
+                  onToggleSelect={handleToggleSelect}
+                  colNames={colNames}
+                  tableFields={tableFields}
+                  onChange={(patch) => handleRuleChange(node.id, patch)}
+                  onDelete={() => handleDeleteNode(node.id)}
+                  showDelete={totalRules > 1}
+                />
+              ) : (
+                <Box
+                  borderLeft="3px solid"
+                  borderColor={depth === 0 ? "blue.400" : "purple.400"}
+                  pl={3}
+                  my={1}
+                  py={1}
+                  bg="gray.50/40"
+                  borderRadius="sm"
+                >
+                  {/* Group Header */}
+                  <Flex justify="space-between" align="center" mb={1.5}>
+                    <HStack gap={1.5}>
+                      <Box
+                        px={2}
+                        py={0.5}
+                        borderRadius="full"
+                        bg={node.conjunction === "or" ? "purple.50" : "blue.50"}
+                        border="1px solid"
+                        borderColor={
+                          node.conjunction === "or" ? "purple.200" : "blue.200"
+                        }
+                        color={
+                          node.conjunction === "or" ? "purple.800" : "blue.800"
+                        }
+                        fontSize="11px"
+                        fontWeight="bold"
+                      >
+                        ( Group )
+                      </Box>
+                      <Button
+                        type="button"
+                        size="2xs"
+                        variant="outline"
+                        colorPalette={
+                          node.conjunction === "or" ? "purple" : "blue"
+                        }
+                        bg={node.conjunction === "or" ? "purple.50" : "blue.50"}
+                        h="20px"
+                        px={2}
+                        fontSize="10px"
+                        fontWeight="bold"
+                        borderRadius="full"
+                        onClick={() => handleToggleConjunction(node.id)}
+                        title="Toggle group match logic"
+                      >
+                        {node.conjunction.toUpperCase()} ▾
+                      </Button>
+                    </HStack>
+                    <HStack gap={1}>
+                      <Button
+                        type="button"
+                        size="2xs"
+                        variant="ghost"
+                        colorPalette="gray"
+                        fontSize="11px"
+                        h="22px"
+                        px={2}
+                        onClick={() => handleUngroup(node.id)}
+                        title="Ungroup conditions back to parent"
+                      >
+                        Ungroup
+                      </Button>
+                      <IconButton
+                        aria-label="Delete group"
+                        size="2xs"
+                        variant="ghost"
+                        colorPalette="red"
+                        h="22px"
+                        w="22px"
+                        minW="22px"
+                        onClick={() => handleDeleteNode(node.id)}
+                        title="Delete entire group"
+                      >
+                        <IoMdClose fontSize="14px" />
+                      </IconButton>
+                    </HStack>
+                  </Flex>
+
+                  {/* Group Children */}
+                  {renderNodeList(node.children, node, depth + 1)}
+
+                  {/* Add rule directly to group */}
+                  <Button
+                    type="button"
+                    size="2xs"
+                    variant="ghost"
+                    colorPalette="brand"
+                    fontSize="xs"
+                    h="22px"
+                    px={2}
+                    alignSelf="flex-start"
+                    mt={3}
+                    mb={1}
+                    onClick={() => handleAddRuleToGroup(node.id)}
+                  >
+                    <IoMdAdd /> Add rule to this group
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          );
+        })}
+      </Box>
+    );
+  };
+
   return (
-    <VStack align="stretch" gap={2.5} width="100%">
-      {/* 1. Conditions Section (Choose Conditions First) */}
+    <VStack align="stretch" gap={2.5} width="100%" minW="0">
+      {/* 1. Conditions Section (Model 2: Select & Group) */}
       <VStack align="stretch" gap={1.5}>
-        <Flex justify="space-between" align="center">
-          <HStack gap={1.5}>
+        <Flex justify="space-between" align="center" wrap="wrap" gap={2}>
+          <HStack gap={1.5} align="center">
             <Text fontSize="xs" fontWeight="bold" color="gray.700">
               Conditions
             </Text>
@@ -719,316 +1187,100 @@ export default function MultipleConditionsRule({
               bg="gray.100"
               color="gray.600"
             >
-              {safeConditions.length}
+              {totalRules}
             </Box>
           </HStack>
-          <HStack gap={1}>
-            {safeConditions.length > 2 && (
-              <Button
-                type="button"
-                size="2xs"
-                variant="ghost"
-                colorPalette="gray"
-                onClick={() =>
-                  onUpdateConditions([
-                    {
-                      column: "",
-                      operator: "equal",
-                      value: "",
-                    },
-                  ])
-                }
-                fontSize="xs"
-                h="22px"
-                px={2}
-              >
-                Clear All
-              </Button>
+
+          <HStack gap={1.5} align="center">
+            {!isSelectionMode ? (
+              <>
+                {totalRules >= 2 && (
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="outline"
+                    colorPalette="gray"
+                    onClick={() => {
+                      setIsSelectionMode(true);
+                      setSelectedIds(new Set());
+                    }}
+                    fontSize="xs"
+                    h="28px"
+                    px={2.5}
+                    title="Select conditions to group together"
+                  >
+                    <IoMdFolderOpen fontSize="14px" /> Group...
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  colorPalette="gray"
+                  onClick={handleReset}
+                  fontSize="xs"
+                  h="28px"
+                  px={2}
+                >
+                  Reset
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  colorPalette="brand"
+                  onClick={handleAddCondition}
+                  fontSize="xs"
+                  h="28px"
+                  px={2.5}
+                >
+                  <IoMdAdd /> Add condition
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  colorPalette="gray"
+                  onClick={() => {
+                    setIsSelectionMode(false);
+                    setSelectedIds(new Set());
+                  }}
+                  fontSize="xs"
+                  h="28px"
+                  px={2}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="solid"
+                  colorPalette="brand"
+                  onClick={handleGroupSelected}
+                  disabled={!selectionValidation.valid}
+                  fontSize="xs"
+                  h="28px"
+                  px={3}
+                  title={
+                    selectionValidation.valid
+                      ? "Group selected conditions"
+                      : selectionValidation.reason
+                  }
+                >
+                  <IoMdFolderOpen fontSize="14px" /> Group selected (
+                  {selectedIds.size})
+                </Button>
+              </>
             )}
-            <Button
-              type="button"
-              size="2xs"
-              variant="ghost"
-              colorPalette="brand"
-              onClick={handleAddCondition}
-              fontSize="xs"
-              h="22px"
-              px={2}
-            >
-              <IoMdAdd /> Add Condition
-            </Button>
           </HStack>
         </Flex>
 
-        {/* List of conditions */}
-        <Box display="flex" flexDirection="column" gap={1.5}>
-          {safeConditions.map((cond, idx) => {
-            const colRawType = cond.column
-              ? tableFields?.[cond.column]
-              : undefined;
-            const colDataType = getColumnDataType(colRawType);
-            const availableOperators = getOperatorsForColumn(colRawType);
-
-            const isBetween =
-              cond.operator === "between" || cond.operator === "notBetween";
-            const isEmptyOrNot = ["isEmpty", "isNotEmpty"].includes(
-              cond.operator,
-            );
-            const currentLogic = cond.logic || "and";
-
-            return (
-              <Flex
-                key={idx}
-                align="center"
-                gap={1.5}
-                p={1.5}
-                bg="white"
-                borderRadius="md"
-                border="1px solid"
-                borderColor="gray.200"
-                _hover={{ borderColor: "gray.300" }}
-              >
-                {/* Logic Connector: Row 1 shows sequence badge #1; Row 2+ shows sleek AND / OR selector */}
-                {idx === 0 ? (
-                  <Flex
-                    align="center"
-                    justify="center"
-                    w="64px"
-                    minW="64px"
-                    h="28px"
-                    borderRadius="xs"
-                    bg="gray.50"
-                    border="1px solid"
-                    borderColor="gray.200"
-                    color="gray.600"
-                    fontSize="xs"
-                    fontWeight="bold"
-                    flexShrink={0}
-                  >
-                    #1
-                  </Flex>
-                ) : (
-                  <NativeSelect.Root
-                    size="xs"
-                    width="64px"
-                    minWidth="64px"
-                    flexShrink={0}
-                  >
-                    <NativeSelect.Field
-                      bg="gray.50"
-                      fontSize="xs"
-                      fontWeight="bold"
-                      color={currentLogic === "or" ? "purple.700" : "brand.700"}
-                      h="28px"
-                      px={1.5}
-                      value={currentLogic === "or" ? "or" : "and"}
-                      onChange={(e) =>
-                        handleConditionChange(idx, {
-                          logic: e.target.value as "and" | "or",
-                        })
-                      }
-                    >
-                      <option value="and">AND</option>
-                      <option value="or">OR</option>
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                  </NativeSelect.Root>
-                )}
-
-                {/* Searchable Field Selector (Only user-selected & ordered fields) */}
-                <SearchableFieldSelect
-                  value={cond.column}
-                  colNames={colNames}
-                  onChange={(selectedCol) => {
-                    const nextRawType = selectedCol
-                      ? tableFields?.[selectedCol]
-                      : undefined;
-                    const nextDataType = getColumnDataType(nextRawType);
-                    const allowedOps = getOperatorsForColumn(nextRawType);
-                    const isCurrentOpAllowed = allowedOps.some(
-                      (op) => op.value === cond.operator,
-                    );
-                    const nextOp = isCurrentOpAllowed
-                      ? cond.operator
-                      : allowedOps[0]?.value || "equal";
-
-                    let nextVal = cond.value;
-                    if (
-                      nextDataType === "boolean" &&
-                      nextVal !== "TRUE" &&
-                      nextVal !== "FALSE"
-                    ) {
-                      nextVal = "TRUE";
-                    }
-
-                    handleConditionChange(idx, {
-                      column: selectedCol,
-                      operator: nextOp,
-                      value: nextVal,
-                    });
-                  }}
-                />
-
-                {/* Operator selector */}
-                <NativeSelect.Root size="xs" width="135px" minWidth="120px">
-                  <NativeSelect.Field
-                    bg="white"
-                    fontSize="xs"
-                    h="28px"
-                    value={cond.operator}
-                    onChange={(e) =>
-                      handleConditionChange(idx, {
-                        operator: e.target.value,
-                      })
-                    }
-                  >
-                    {availableOperators.map((op) => (
-                      <option key={op.value} value={op.value}>
-                        {op.label}
-                      </option>
-                    ))}
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
-
-                {/* Value Input(s) */}
-                {isEmptyOrNot ? (
-                  <Box
-                    flex="1"
-                    minWidth="70px"
-                    h="28px"
-                    bg="gray.50"
-                    borderRadius="xs"
-                    display="flex"
-                    alignItems="center"
-                    px={2}
-                  >
-                    <Text fontSize="xs" color="gray.400" fontStyle="italic">
-                      (no value)
-                    </Text>
-                  </Box>
-                ) : colDataType === "boolean" ? (
-                  <NativeSelect.Root size="xs" flex="1" minWidth="80px">
-                    <NativeSelect.Field
-                      bg="white"
-                      fontSize="xs"
-                      h="28px"
-                      value={cond.value || "TRUE"}
-                      onChange={(e) =>
-                        handleConditionChange(idx, { value: e.target.value })
-                      }
-                    >
-                      <option value="TRUE">True (TRUE)</option>
-                      <option value="FALSE">False (FALSE)</option>
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                  </NativeSelect.Root>
-                ) : isBetween ? (
-                  <HStack gap={1} flex="1" minWidth="90px">
-                    <Input
-                      size="xs"
-                      h="28px"
-                      fontSize="xs"
-                      placeholder="Min"
-                      type={colDataType === "numeric" ? "number" : "text"}
-                      step={colDataType === "numeric" ? "any" : undefined}
-                      value={cond.value ?? ""}
-                      onChange={(e) =>
-                        handleConditionChange(idx, {
-                          value: e.target.value,
-                        })
-                      }
-                    />
-                    <Input
-                      size="xs"
-                      h="28px"
-                      fontSize="xs"
-                      placeholder="Max"
-                      type={colDataType === "numeric" ? "number" : "text"}
-                      step={colDataType === "numeric" ? "any" : undefined}
-                      value={cond.value2 ?? ""}
-                      onChange={(e) =>
-                        handleConditionChange(idx, {
-                          value2: e.target.value,
-                        })
-                      }
-                    />
-                  </HStack>
-                ) : (
-                  <Input
-                    size="xs"
-                    flex="1"
-                    minWidth="70px"
-                    h="28px"
-                    fontSize="xs"
-                    placeholder={
-                      colDataType === "numeric"
-                        ? "Number"
-                        : colDataType === "datetime"
-                          ? "YYYY-MM-DD"
-                          : "Value"
-                    }
-                    type={colDataType === "numeric" ? "number" : "text"}
-                    step={colDataType === "numeric" ? "any" : undefined}
-                    value={cond.value ?? ""}
-                    onChange={(e) =>
-                      handleConditionChange(idx, { value: e.target.value })
-                    }
-                  />
-                )}
-
-                {/* Reorder Up / Down Buttons (Shown when 2 or more conditions exist) */}
-                {safeConditions.length > 1 && (
-                  <HStack gap={0.5} flexShrink={0}>
-                    <IconButton
-                      aria-label="Move condition up"
-                      size="2xs"
-                      variant="ghost"
-                      colorPalette="gray"
-                      disabled={idx === 0}
-                      onClick={() => handleMoveCondition(idx, "up")}
-                      h="22px"
-                      w="18px"
-                      minW="18px"
-                      title="Move condition up"
-                    >
-                      <MdKeyboardArrowUp fontSize="14px" />
-                    </IconButton>
-                    <IconButton
-                      aria-label="Move condition down"
-                      size="2xs"
-                      variant="ghost"
-                      colorPalette="gray"
-                      disabled={idx === safeConditions.length - 1}
-                      onClick={() => handleMoveCondition(idx, "down")}
-                      h="22px"
-                      w="18px"
-                      minW="18px"
-                      title="Move condition down"
-                    >
-                      <MdKeyboardArrowDown fontSize="14px" />
-                    </IconButton>
-                  </HStack>
-                )}
-
-                {/* Delete condition button */}
-                <IconButton
-                  aria-label="Remove condition"
-                  size="xs"
-                  variant="ghost"
-                  colorPalette="red"
-                  onClick={() => handleRemoveCondition(idx)}
-                  disabled={safeConditions.length <= 1}
-                  h="22px"
-                  w="22px"
-                  minW="22px"
-                  title="Remove condition"
-                >
-                  <IoMdClose fontSize="14px" />
-                </IconButton>
-              </Flex>
-            );
-          })}
+        {/* Tree of conditions and groups */}
+        <Box display="flex" flexDirection="column" gap={1.5} width="100%">
+          {renderNodeList(tree.children, tree, 0)}
         </Box>
       </VStack>
 
@@ -1258,25 +1510,247 @@ export default function MultipleConditionsRule({
         )}
       </Box>
 
-      {/* 3. Human Readable Summary (Only when valid conditions exist) */}
-      {summary && (
-        <Box
-          p={2}
-          bg="blue.50"
-          border="1px solid"
-          borderColor="blue.200"
-          borderRadius="md"
-        >
-          <Text
-            fontSize="xs"
-            color="blue.800"
-            fontWeight="medium"
-            lineHeight="short"
+      {/* 3. User Written / Editable Condition Expression */}
+      <Box
+        p={2}
+        w="100%"
+        minW="0"
+        bg={
+          isEditingText
+            ? parseError
+              ? "red.50/50"
+              : "green.50/50"
+            : "blue.50/60"
+        }
+        border="1px solid"
+        borderColor={
+          isEditingText ? (parseError ? "red.300" : "green.300") : "blue.200"
+        }
+        borderRadius="md"
+        transition="all 0.2s"
+      >
+        {!isEditingText ? (
+          <Flex
+            justify="space-between"
+            align="center"
+            gap={1.5}
+            w="100%"
+            minW="0"
           >
-            {summary}
-          </Text>
-        </Box>
-      )}
+            <HStack
+              gap={1.5}
+              align="center"
+              flex="1"
+              minW="0"
+              overflow="hidden"
+            >
+              <Text
+                as="span"
+                fontSize="xs"
+                fontWeight="bold"
+                color="blue.950"
+                whiteSpace="nowrap"
+                flexShrink={0}
+              >
+                Rule:
+              </Text>
+              <Box
+                flex="1"
+                minW="0"
+                overflowX="auto"
+                css={{
+                  "&::-webkit-scrollbar": { display: "none" },
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                }}
+              >
+                <Text
+                  fontSize="xs"
+                  color="blue.900"
+                  fontWeight="medium"
+                  lineHeight="normal"
+                  fontFamily="mono"
+                  whiteSpace="nowrap"
+                >
+                  {summary || "(No condition specified)"}
+                </Text>
+              </Box>
+            </HStack>
+
+            <Tooltip content="Edit expression as text">
+              <IconButton
+                aria-label="Edit expression"
+                size="2xs"
+                variant="ghost"
+                colorPalette="blue"
+                h="20px"
+                w="20px"
+                minW="20px"
+                borderRadius="sm"
+                flexShrink={0}
+                onClick={handleStartTextEdit}
+              >
+                <MdEdit fontSize="13px" />
+              </IconButton>
+            </Tooltip>
+          </Flex>
+        ) : (
+          <VStack align="stretch" gap={1.5}>
+            <Flex justify="space-between" align="center">
+              <HStack gap={1} align="center">
+                <Text fontSize="xs" fontWeight="bold" color="gray.700">
+                  Expression
+                </Text>
+                <Tooltip content="Supports =, !=, >, <, >=, <=, between, contains, starts with, ends with, is empty, and/or parentheses">
+                  <Box
+                    as="span"
+                    color="gray.400"
+                    cursor="help"
+                    fontSize="13px"
+                    display="inline-flex"
+                  >
+                    <MdInfoOutline />
+                  </Box>
+                </Tooltip>
+              </HStack>
+
+              <Box
+                fontSize="10px"
+                fontWeight="semibold"
+                color={parseError ? "red.700" : "green.700"}
+                bg={parseError ? "red.100" : "green.100"}
+                px={1.5}
+                py={0.2}
+                borderRadius="sm"
+                whiteSpace="nowrap"
+              >
+                {parseError ? "Invalid" : "✓ Valid"}
+              </Box>
+            </Flex>
+
+            <Input
+              ref={editInputRef}
+              size="xs"
+              h="28px"
+              fontSize="xs"
+              fontFamily="mono"
+              bg="white"
+              value={editText}
+              onChange={(e) => handleTextChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !parseError && parsedTree) {
+                  e.preventDefault();
+                  handleApplyTextEdit();
+                } else if (e.key === "Escape") {
+                  handleCancelTextEdit();
+                }
+              }}
+              borderColor={parseError ? "red.400" : "green.500"}
+              _focus={{
+                borderColor: parseError ? "red.500" : "green.600",
+                boxShadow: parseError
+                  ? "0 0 0 1px var(--chakra-colors-red-500)"
+                  : "0 0 0 1px var(--chakra-colors-green-500)",
+              }}
+              placeholder='e.g. (ORDER_ID = "1000" OR CUSTOMER_NAME = "Rahul") AND UNIT_PRICE > 500'
+              autoFocus
+            />
+
+            {parseError && (
+              <Text fontSize="2xs" color="red.600" fontWeight="medium">
+                ⚠ {parseError}
+              </Text>
+            )}
+
+            {displaySuggestions.length > 0 && (
+              <Box
+                p={1.5}
+                bg={parseResult?.unknownField ? "orange.50/80" : "gray.50"}
+                border="1px dashed"
+                borderColor={
+                  parseResult?.unknownField ? "orange.300" : "gray.200"
+                }
+                borderRadius="md"
+              >
+                <Flex justify="space-between" align="center" mb={1}>
+                  <Text
+                    fontSize="10px"
+                    fontWeight="semibold"
+                    color={
+                      parseResult?.unknownField ? "orange.800" : "gray.600"
+                    }
+                  >
+                    {parseResult?.unknownField
+                      ? `Matching columns for "${parseResult.unknownField}":`
+                      : "Matching columns:"}
+                  </Text>
+                  <Text fontSize="9px" color="gray.400">
+                    Click to auto-fill
+                  </Text>
+                </Flex>
+                <Flex wrap="wrap" gap={1} maxH="80px" overflowY="auto">
+                  {displaySuggestions.map((col) => {
+                    const isDirectMatch =
+                      parseResult?.unknownField &&
+                      col
+                        .toLowerCase()
+                        .includes(parseResult.unknownField.toLowerCase());
+                    return (
+                      <Button
+                        key={col}
+                        type="button"
+                        size="2xs"
+                        h="20px"
+                        px={2}
+                        fontSize="10px"
+                        fontWeight="medium"
+                        variant={isDirectMatch ? "solid" : "subtle"}
+                        colorPalette={isDirectMatch ? "brand" : "gray"}
+                        borderRadius="sm"
+                        cursor="pointer"
+                        _hover={{
+                          transform: "translateY(-1px)",
+                          boxShadow: "xs",
+                        }}
+                        transition="all 0.15s"
+                        onClick={() => handleSelectSuggestedColumn(col)}
+                      >
+                        + {col}
+                      </Button>
+                    );
+                  })}
+                </Flex>
+              </Box>
+            )}
+
+            <Flex justify="flex-end" gap={1.5} align="center">
+              <Button
+                type="button"
+                size="2xs"
+                variant="outline"
+                h="20px"
+                px={2}
+                fontSize="10px"
+                onClick={handleCancelTextEdit}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="2xs"
+                colorPalette="brand"
+                h="20px"
+                px={2.5}
+                fontSize="10px"
+                disabled={!!parseError || !parsedTree}
+                onClick={handleApplyTextEdit}
+              >
+                Apply
+              </Button>
+            </Flex>
+          </VStack>
+        )}
+      </Box>
     </VStack>
   );
 }

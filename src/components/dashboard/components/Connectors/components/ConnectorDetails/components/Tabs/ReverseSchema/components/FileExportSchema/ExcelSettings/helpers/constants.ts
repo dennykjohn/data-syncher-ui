@@ -51,7 +51,8 @@ export const STANDARD_FONTS = [
 ];
 
 export const CONDITIONAL_RULE_TYPES = [
-  { value: "cellis", label: "Cell Value" },
+  { value: "cellis", label: "By Single Field" },
+  { value: "multipleconditions", label: "By Multiple Fields" },
   { value: "containstext", label: "Text: Contains" },
   { value: "notcontainstext", label: "Text: Does Not Contain" },
   { value: "beginswith", label: "Text: Begins With" },
@@ -65,7 +66,6 @@ export const CONDITIONAL_RULE_TYPES = [
   { value: "databar", label: "Data Bar" },
   { value: "iconset", label: "Icon Set" },
   { value: "formula", label: "Custom Formula" },
-  { value: "multipleconditions", label: "Multiple Conditions" },
 ];
 
 export const TIME_PERIOD_OPTIONS = [

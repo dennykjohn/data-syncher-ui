@@ -11,15 +11,12 @@ import {
 } from "@/types/connectors";
 
 import {
-  type ColumnDataType,
-  getColumnDataType,
-} from "./components/MultipleConditionsRule";
-import {
   DEFAULT_EXCEL_OPTIONS,
   DEFAULT_HEADER_STYLE,
   DEFAULT_SHEET_HEADER_STYLE,
   type ExcelSettingsProps,
   cleanRulePayload,
+  getColumnDataType,
   isOperatorAllowed,
 } from "./helpers";
 import BasicOptionsTab from "./tabs/BasicOptionsTab";
@@ -29,8 +26,6 @@ import StylingTab from "./tabs/StylingTab";
 // Re-export constants, utilities, and types for full backward compatibility
 // eslint-disable-next-line react-refresh/only-export-components
 export * from "./helpers";
-// eslint-disable-next-line react-refresh/only-export-components
-export { getColumnDataType, type ColumnDataType };
 
 export default function ExcelSettings({
   excelOptions,
