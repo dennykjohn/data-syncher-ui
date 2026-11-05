@@ -13,10 +13,22 @@ import { connectorFormReducer, initialState } from "./reducer";
 const GDRIVE_RETURN_PATH_KEY = "gdrive_return_path";
 const GDRIVE_SOURCE_KEY = "gdrive_source";
 const GDRIVE_DESTINATION_KEY = "gdrive_destination";
+const GDRIVE_DESTINATION_CONFIG_ID_KEY = "gdrive_destination_config_id";
 
 const getSavedGoogleDriveDestination = () => {
   try {
     return sessionStorage.getItem(GDRIVE_DESTINATION_KEY) || null;
+  } catch {
+    return null;
+  }
+};
+
+const getSavedGoogleDriveDestinationConfigId = (): number | null => {
+  try {
+    const raw = sessionStorage.getItem(GDRIVE_DESTINATION_CONFIG_ID_KEY);
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   } catch {
     return null;
   }
@@ -51,9 +63,12 @@ const NewConnector = () => {
     );
   }, []);
 
-  // On OAuth return, restore the destination name from sessionStorage
+  // On OAuth return, restore the destination name/id from sessionStorage
   const initialDestination = isGoogleOAuthReturn
     ? getSavedGoogleDriveDestination()
+    : null;
+  const initialDestinationConfigId = isGoogleOAuthReturn
+    ? getSavedGoogleDriveDestinationConfigId()
     : null;
 
   // Restore or decode source from path or sessionStorage
@@ -71,6 +86,7 @@ const NewConnector = () => {
     ...initialState,
     currentStep: initialStep,
     destination: initialDestination,
+    destinationConfigId: initialDestinationConfigId,
     source: initialSource,
   });
 
@@ -117,10 +133,24 @@ const NewConnector = () => {
     handleNext();
   };
 
-  const handleDestinationSelect = (destinationParam: string) => {
+  const handleDestinationSelect = ({
+    name,
+    dst_config_id,
+  }: {
+    name: string;
+    dst_config_id: number;
+  }) => {
     // Save the destination before navigating away (needed for OAuth return)
-    sessionStorage.setItem(GDRIVE_DESTINATION_KEY, destinationParam);
-    dispatch({ type: "SET_DESTINATION", destination: destinationParam });
+    sessionStorage.setItem(GDRIVE_DESTINATION_KEY, name);
+    sessionStorage.setItem(
+      GDRIVE_DESTINATION_CONFIG_ID_KEY,
+      String(dst_config_id),
+    );
+    dispatch({
+      type: "SET_DESTINATION",
+      destination: name,
+      destinationConfigId: dst_config_id,
+    });
     handleNext();
   };
 

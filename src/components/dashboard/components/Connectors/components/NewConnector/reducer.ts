@@ -7,7 +7,11 @@ export type ConnectorFormAction =
   | { type: "PREVIOUS_STEP" }
   | { type: "SET_STEP"; step: number }
   | { type: "SET_SOURCE"; source: string }
-  | { type: "SET_DESTINATION"; destination: string }
+  | {
+      type: "SET_DESTINATION";
+      destination: string;
+      destinationConfigId: number;
+    }
   | { type: "UPDATE_CONFIGURATION"; field: string; value: string }
   | { type: "SET_CONFIGURATION"; configuration: Record<string, string> };
 
@@ -15,6 +19,7 @@ export const initialState: ConnectorFormState = {
   currentStep: 1,
   source: null,
   destination: null,
+  destinationConfigId: null,
   configuration: {},
 };
 
@@ -47,6 +52,7 @@ export const connectorFormReducer = (
       return {
         ...state,
         destination: action.destination,
+        destinationConfigId: action.destinationConfigId,
       };
     case "UPDATE_CONFIGURATION":
       return {

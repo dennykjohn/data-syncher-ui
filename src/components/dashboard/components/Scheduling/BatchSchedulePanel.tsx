@@ -3,8 +3,15 @@ import { useEffect, useState } from "react";
 import { Box, Button, Flex, Switch, Text } from "@chakra-ui/react";
 
 import { toaster } from "@/components/ui/toaster";
-import { usePatchPipeline } from "@/queryOptions/pipeline/usePipeline";
-import { type PipelineDetail } from "@/types/pipeline";
+import {
+  pipelinesQueryKey,
+  usePatchPipeline,
+  useValidatePipeline,
+} from "@/queryOptions/pipeline/usePipeline";
+import {
+  type PipelineDetail,
+  type PipelineValidationResult,
+} from "@/types/pipeline";
 
 import ScheduleEditor from "./ScheduleEditor";
 import {
@@ -14,20 +21,26 @@ import {
   toApiSchedule,
   weeklySelectionValid,
 } from "./scheduleOptions";
+import { useQueryClient } from "@tanstack/react-query";
 
 type BatchSchedulePanelProps = {
   pipeline: PipelineDetail;
   disabled?: boolean;
   embedded?: boolean;
+  onValidationResult?: (_result: PipelineValidationResult) => void;
 };
 
 const BatchSchedulePanel = ({
   pipeline,
   disabled = false,
   embedded = false,
+  onValidationResult,
 }: BatchSchedulePanelProps) => {
+  const queryClient = useQueryClient();
   const patchPipeline = usePatchPipeline(pipeline.id);
+  const validatePipeline = useValidatePipeline();
   const [isTogglingSchedulePause, setIsTogglingSchedulePause] = useState(false);
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleValue>(() =>
     fromPipelineSchedule(pipeline),
@@ -41,12 +54,30 @@ const BatchSchedulePanel = ({
     setScheduleDraft(fromPipelineSchedule(pipeline));
   }, [pipeline]);
 
+  const publishDraftForSchedule = async (): Promise<boolean> => {
+    const result = await validatePipeline.mutateAsync(pipeline.id);
+    onValidationResult?.(result);
+    if (!result.valid) {
+      toaster.error({
+        title: "Fix the draft flow before saving the schedule",
+        description: `${result.errors.length} issue${result.errors.length === 1 ? "" : "s"} found. See validation details on the Flow tab.`,
+      });
+      return false;
+    }
+    await queryClient.invalidateQueries({ queryKey: pipelinesQueryKey });
+    return true;
+  };
+
   const handleSaveSchedule = async () => {
     if (!weeklySelectionValid(scheduleDraft)) {
       toaster.error({ title: "Select at least one day for weekly schedule" });
       return;
     }
+    setIsSavingSchedule(true);
     try {
+      if (!(await publishDraftForSchedule())) {
+        return;
+      }
       const apiSchedule = toApiSchedule(scheduleDraft);
       await patchPipeline.mutateAsync({
         ...apiSchedule,
@@ -56,9 +87,14 @@ const BatchSchedulePanel = ({
             ? scheduleDraft.sync_end_date
             : null,
       });
-      toaster.success({ title: "Pipeline schedule saved" });
+      toaster.success({
+        title: "Pipeline schedule saved",
+        description: "Draft flow validated and published for scheduled runs.",
+      });
     } catch {
       toaster.error({ title: "Could not save schedule" });
+    } finally {
+      setIsSavingSchedule(false);
     }
   };
 
@@ -68,6 +104,9 @@ const BatchSchedulePanel = ({
 
     setIsTogglingSchedulePause(true);
     try {
+      if (!nextPaused && !(await publishDraftForSchedule())) {
+        return;
+      }
       await patchPipeline.mutateAsync({ schedule_paused: nextPaused });
       toaster.success({
         title: nextPaused ? "Schedule paused" : "Schedule resumed",
@@ -170,7 +209,11 @@ const BatchSchedulePanel = ({
         mt={embedded ? 3 : 4}
         w="full"
         onClick={handleSaveSchedule}
-        loading={patchPipeline.isPending && !isTogglingSchedulePause}
+        loading={
+          isSavingSchedule ||
+          validatePipeline.isPending ||
+          (patchPipeline.isPending && !isTogglingSchedulePause)
+        }
         disabled={disabled}
       >
         Save schedule

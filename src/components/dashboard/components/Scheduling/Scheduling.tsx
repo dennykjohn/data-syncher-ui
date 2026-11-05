@@ -2242,6 +2242,19 @@ const Scheduling = () => {
     }
   };
 
+  const handleScheduleValidationResult = useCallback(
+    (result: PipelineValidationResult) => {
+      if (!selectedPipelineId) return;
+      setValidationPanelDismissed(false);
+      setValidationSnapshot({
+        pipelineId: selectedPipelineId,
+        graphFingerprint,
+        result,
+      });
+    },
+    [selectedPipelineId, graphFingerprint],
+  );
+
   const handleResetPipeline = async () => {
     if (!selectedPipelineId) return;
     if (graphView !== "draft") {
@@ -3215,6 +3228,7 @@ const Scheduling = () => {
             <StartOverviewPanel
               pipeline={selectedPipeline}
               onClose={() => setSelectedNode(null)}
+              onValidationResult={handleScheduleValidationResult}
             />
           </Box>
         )}
