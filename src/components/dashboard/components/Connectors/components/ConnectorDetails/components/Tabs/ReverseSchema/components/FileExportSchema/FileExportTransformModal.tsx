@@ -154,69 +154,76 @@ const FileExportTransformModal = ({
       loadedKeyRef.current = "";
       return;
     }
-    const loadKey = `${tableItem.table}:a${transformData?.active?.version ?? "none"}:d${transformData?.draft?.version ?? "none"}`;
+    const loadKey = `${tableItem.table}:a${transformData?.active?.version ?? (transformData?.active ? "act" : "none")}:d${transformData?.draft?.version ?? (transformData?.draft ? "drf" : "none")}:${transformData?.draft?.script_sha256 ?? ""}`;
     if (loadedKeyRef.current === loadKey) return;
     loadedKeyRef.current = loadKey;
 
-    const draftScript = transformData?.draft?.script_text?.trim();
-    const activeScript = transformData?.active?.script_text?.trim();
+    const draftScript = transformData?.draft?.script_text?.trim() || "";
+    const activeScript = transformData?.active?.script_text?.trim() || "";
     const sourceRow =
       (draftScript
         ? transformData?.draft
         : activeScript
           ? transformData?.active
           : (transformData?.draft ?? transformData?.active)) ?? null;
-    const normalizedScript = normalizeTransformScript(
-      sourceRow?.script_text || "",
+    const serverScript =
+      sourceRow?.script_text?.trim() || draftScript || activeScript;
+
+    let sessionScript = "";
+    let sessionApply: boolean | undefined = undefined;
+    const stored = sessionStorage.getItem(draftKey);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as {
+          scriptText?: string;
+          applyScript?: boolean;
+        };
+        if (typeof parsed.scriptText === "string" && parsed.scriptText.trim()) {
+          sessionScript = parsed.scriptText.trim();
+        }
+        if (typeof parsed.applyScript === "boolean") {
+          sessionApply = parsed.applyScript;
+        }
+      } catch {
+        sessionStorage.removeItem(draftKey);
+      }
+    }
+
+    const rawScript = sessionScript || serverScript || "";
+    const normalizedScript = normalizeTransformScript(rawScript);
+    const hasSavedCode = Boolean(
+      rawScript ||
+        normalizedScript.trim() ||
+        unwrapTransformBody(normalizedScript).trim() ||
+        draftScript ||
+        activeScript,
     );
 
-    if (sourceRow) {
-      setScriptText(normalizedScript);
-      setApplyScript(Boolean(unwrapTransformBody(normalizedScript).trim()));
+    if (hasSavedCode) {
+      const scriptToSet = normalizedScript || rawScript;
+      setScriptText(scriptToSet);
+      setApplyScript(true);
       setScriptNameFromUpload(false);
-      setScriptFileMeta(
-        normalizedScript.trim()
-          ? {
-              fileName: `${tableItem.table.toLowerCase()}.py`,
-              size: new Blob([normalizedScript]).size,
-            }
-          : null,
-      );
+      setScriptFileMeta({
+        fileName: `${tableItem.table.toLowerCase()}.py`,
+        size: new Blob([scriptToSet]).size,
+      });
     } else {
       setScriptText("");
-      setApplyScript(false);
+      setApplyScript(sessionApply ?? false);
       setScriptNameFromUpload(false);
       setScriptFileMeta(null);
     }
 
-    setBaselineScriptText(normalizedScript);
-    setScriptValidatedText(normalizedScript);
+    const finalScript = hasSavedCode ? normalizedScript || rawScript : "";
+    setBaselineScriptText(finalScript);
+    setScriptValidatedText(finalScript);
     skipAutosaveUntilRef.current = Date.now() + 1500;
     setStep(0);
     setValidateResult(null);
     setMarkedScriptText(null);
     setDryRunResult(null);
     setModalExpanded(false);
-
-    const stored = sessionStorage.getItem(draftKey);
-    if (!stored) return;
-    try {
-      const parsed = JSON.parse(stored) as {
-        scriptText?: string;
-        applyScript?: boolean;
-      };
-      if (
-        typeof parsed.scriptText === "string" &&
-        (parsed.scriptText.trim() || !normalizedScript.trim())
-      ) {
-        setScriptText(parsed.scriptText);
-      }
-      if (typeof parsed.applyScript === "boolean") {
-        setApplyScript(parsed.applyScript);
-      }
-    } catch {
-      sessionStorage.removeItem(draftKey);
-    }
   }, [
     open,
     tableItem.table,

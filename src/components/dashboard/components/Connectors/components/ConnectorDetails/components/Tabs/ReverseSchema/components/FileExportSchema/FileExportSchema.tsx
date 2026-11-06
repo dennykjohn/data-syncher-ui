@@ -1115,7 +1115,14 @@ const SnowflakeFileExportSchema = ({
 
           {filteredSourcePanelTables.length > 0 && (
             <>
-              <Flex direction="column" gap={2}>
+              <Flex
+                direction="column"
+                gap={2}
+                flex="1"
+                minH={0}
+                overflowY="auto"
+                pr={1}
+              >
                 {paginatedSourceTables.map((item, index) => {
                   const { table, table_fields } = item;
                   const isEven = index % 2 === 0;
@@ -1637,6 +1644,8 @@ const SnowflakeFileExportSchema = ({
 
               {totalPages > 1 && (
                 <Box
+                  flexShrink={0}
+                  mt={2}
                   opacity={activeTableForCopy ? 0.5 : 1}
                   pointerEvents={activeTableForCopy ? "none" : "auto"}
                 >
