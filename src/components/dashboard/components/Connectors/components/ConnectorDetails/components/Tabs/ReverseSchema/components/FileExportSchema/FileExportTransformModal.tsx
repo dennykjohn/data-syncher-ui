@@ -48,7 +48,6 @@ import ExpandableCodeEditor, {
   type EditorValidation,
   type SchemaFold,
 } from "../../../Schema/TransformModal/ExpandableCodeEditor";
-import ExpandablePreviewTable from "../../../Schema/TransformModal/ExpandablePreviewTable";
 import ScriptFileChip from "../../../Schema/TransformModal/ScriptFileChip";
 import { confirmCopy } from "../../../Schema/TransformModal/confirmCopy";
 import { buildScriptExamples } from "../../../Schema/TransformModal/scriptExamples";
@@ -63,6 +62,7 @@ import {
   validateTransformRoot,
   wrapTransformBody,
 } from "../../../Schema/TransformModal/scriptScaffold";
+import FileExportPreviewTable from "./FileExportPreviewTable";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface FileExportTransformModalProps {
@@ -647,8 +647,8 @@ const FileExportTransformModal = ({
   const handleValidateAndPublish = async () => {
     const tested = Boolean(
       dryRunResult &&
-        dryRunResult.errors.length === 0 &&
-        dryRunResult.rows_out >= 0,
+        (dryRunResult.errors?.length ?? 0) === 0 &&
+        (dryRunResult.rows_out ?? 0) >= 0,
     );
     if (!tested) {
       const ok = await confirm({
@@ -741,6 +741,12 @@ const FileExportTransformModal = ({
     }
   };
 
+  const outputPreviewRows =
+    dryRunResult?.preview_rows ?? dryRunResult?.output_preview ?? [];
+  const inputPreviewRows = dryRunResult?.input_preview ?? [];
+  const outputColumns =
+    dryRunResult?.output_columns ?? dryRunResult?.columns_out ?? [];
+
   return (
     <>
       <Dialog.Root
@@ -758,9 +764,10 @@ const FileExportTransformModal = ({
           <Dialog.Positioner>
             <Dialog.Content
               borderRadius="xl"
-              maxW={modalExpanded ? "96vw" : "1060px"}
+              maxW={modalExpanded ? "95vw" : "1120px"}
               w="100%"
-              maxH={modalExpanded ? "94vh" : "90vh"}
+              h={modalExpanded ? "92vh" : "90vh"}
+              maxH={modalExpanded ? "92vh" : "90vh"}
               display="flex"
               flexDirection="column"
               boxShadow="2xl"
@@ -869,7 +876,14 @@ const FileExportTransformModal = ({
                 </Flex>
               </Flex>
 
-              <Dialog.Body overflowY="auto" flex="1" px={5} py={3}>
+              <Dialog.Body
+                overflowY="auto"
+                flex="1"
+                px={5}
+                py={3}
+                display="flex"
+                flexDirection="column"
+              >
                 {step === 0 && (
                   <VStack align="stretch" gap={2.5}>
                     {readOnly && (
@@ -995,7 +1009,7 @@ const FileExportTransformModal = ({
                 )}
 
                 {step === 1 && (
-                  <VStack align="stretch" gap={3}>
+                  <VStack align="stretch" gap={3} flex="1" minH={0}>
                     <Flex
                       align="center"
                       justify="space-between"
@@ -1019,23 +1033,28 @@ const FileExportTransformModal = ({
                               colorPalette="blue"
                               variant="subtle"
                             >
-                              In: {dryRunResult.rows_in}
+                              In: {dryRunResult.rows_in ?? 0}
                             </Badge>
                             <Badge
                               size="sm"
                               colorPalette="green"
                               variant="subtle"
                             >
-                              Out: {dryRunResult.rows_out}
+                              Out: {dryRunResult.rows_out ?? 0}
                             </Badge>
-                            <Badge
-                              size="sm"
-                              colorPalette="purple"
-                              variant="subtle"
-                            >
-                              Cols: {dryRunResult.columns_out.length}/
-                              {dryRunResult.expected_columns.length}
-                            </Badge>
+                            {outputColumns.length > 0 && (
+                              <Badge
+                                size="sm"
+                                colorPalette="purple"
+                                variant="subtle"
+                              >
+                                Cols: {outputColumns.length}
+                                {typeof dryRunResult.expected_columns
+                                  ?.length === "number"
+                                  ? `/${dryRunResult.expected_columns.length}`
+                                  : ""}
+                              </Badge>
+                            )}
                           </>
                         )}
                       </Flex>
@@ -1072,7 +1091,23 @@ const FileExportTransformModal = ({
 
                     {dryRunResult ? (
                       <>
-                        {dryRunResult.warnings.map((w) => (
+                        {dryRunResult.checklist &&
+                          dryRunResult.checklist.length > 0 && (
+                            <Flex gap={2} flexWrap="wrap">
+                              {dryRunResult.checklist.map((item) => (
+                                <Badge
+                                  key={item.id}
+                                  size="xs"
+                                  colorPalette={item.passed ? "green" : "red"}
+                                  variant="subtle"
+                                >
+                                  {item.passed ? "✓" : "✗"} {item.label}
+                                </Badge>
+                              ))}
+                            </Flex>
+                          )}
+
+                        {(dryRunResult.warnings ?? []).map((w) => (
                           <Text
                             key={w.message}
                             fontSize="xs"
@@ -1082,7 +1117,7 @@ const FileExportTransformModal = ({
                           </Text>
                         ))}
 
-                        {dryRunResult.errors.map((error) => {
+                        {(dryRunResult.errors ?? []).map((error) => {
                           const line = scriptErrorLine(
                             error.traceback,
                             error.line,
@@ -1120,33 +1155,30 @@ const FileExportTransformModal = ({
                           );
                         })}
 
-                        {(dryRunResult.input_preview?.length ?? 0) > 0 ? (
-                          <ExpandablePreviewTable
+                        {inputPreviewRows.length > 0 && (
+                          <FileExportPreviewTable
                             title="Input sample (Snowflake extract)"
-                            rows={dryRunResult.input_preview}
+                            rows={inputPreviewRows}
+                            maxH={
+                              outputPreviewRows.length > 0 ? "220px" : undefined
+                            }
+                            flex={outputPreviewRows.length > 0 ? undefined : 1}
                           />
-                        ) : (
-                          dryRunResult.rows_in > 0 && (
-                            <Text fontSize="xs" color="gray.600">
-                              No source columns were available for the input
-                              preview.
-                            </Text>
-                          )
                         )}
 
-                        {dryRunResult.output_preview?.length > 0 && (
-                          <ExpandablePreviewTable
+                        {outputPreviewRows.length > 0 && (
+                          <FileExportPreviewTable
                             title="Target preview (__target_df)"
-                            rows={dryRunResult.output_preview}
+                            rows={outputPreviewRows}
+                            flex={1}
                           />
                         )}
 
-                        {dryRunResult.rows_out > 0 &&
-                          (dryRunResult.output_preview?.length ?? 0) <
-                            dryRunResult.rows_out && (
+                        {(dryRunResult.rows_out ?? 0) > 0 &&
+                          outputPreviewRows.length > 0 &&
+                          outputPreviewRows.length < dryRunResult.rows_out && (
                             <Text fontSize="xs" color="gray.500">
-                              Preview shows first{" "}
-                              {dryRunResult.output_preview?.length ?? 0} of{" "}
+                              Preview shows first {outputPreviewRows.length} of{" "}
                               {dryRunResult.rows_out} output rows.
                             </Text>
                           )}

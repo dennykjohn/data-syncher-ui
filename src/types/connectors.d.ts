@@ -440,7 +440,13 @@ export type DestinationPreview = {
 
 export type TransformValidateResponse = {
   valid: boolean;
-  errors: Array<{ path: string; message: string }>;
+  errors: Array<{
+    path?: string;
+    message: string;
+    type?: string;
+    line?: number;
+    traceback?: string;
+  }>;
   warnings: Array<{ type: string; message: string }>;
   checklist: Array<{
     id: string;
@@ -450,9 +456,9 @@ export type TransformValidateResponse = {
     message?: string;
     all_errors?: Array<{ line?: number; message?: string }>;
   }>;
-  entry_points: string[];
-  counts: { mapped: number; not_selected: number; from_script: number };
-  mapping_table: MappingTableRow[];
+  entry_points?: string[];
+  counts?: { mapped: number; not_selected: number; from_script: number };
+  mapping_table?: MappingTableRow[];
   row_filter_config?: RowFilterConfig | null;
   destination?: DestinationPreview | null;
   draft?: EntityTransformDetail | null;
@@ -462,27 +468,40 @@ export type TransformValidateResponse = {
 };
 
 export type TransformDryRunResponse = {
+  valid?: boolean;
   rows_in: number;
   rows_out: number;
-  columns_out: string[];
-  expected_columns: string[];
-  warnings: Array<{ type: string; message: string }>;
-  errors: Array<{
+  columns_out?: string[];
+  output_columns?: string[];
+  input_columns?: string[];
+  expected_columns?: string[];
+  warnings?: Array<{ type: string; message: string }>;
+  errors?: Array<{
     type: string;
     message: string;
     line?: number;
     traceback?: string;
   }>;
-  schema_check: { passed: boolean; column_count: number };
-  counts: {
+  checklist?: Array<{
+    id: string;
+    label: string;
+    passed: boolean;
+    message?: string;
+    line?: number;
+  }>;
+  entry_points?: string[];
+  schema_check?: { passed: boolean; column_count: number };
+  counts?: {
     mapped: number;
     not_selected: number;
     from_script: number;
     status?: Record<string, number>;
   };
-  mapping_table: MappingTableRow[];
-  input_preview: Record<string, unknown>[];
-  output_preview: Record<string, unknown>[];
+  mapping_table?: MappingTableRow[];
+  input_preview?: Record<string, unknown>[];
+  output_preview?: Record<string, unknown>[];
+  preview_rows?: Record<string, unknown>[];
+  metadata?: Record<string, unknown>;
   row_filter_config?: RowFilterConfig | null;
 };
 

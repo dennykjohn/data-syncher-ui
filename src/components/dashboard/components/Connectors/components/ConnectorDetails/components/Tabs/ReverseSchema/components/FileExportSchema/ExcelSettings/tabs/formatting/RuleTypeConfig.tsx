@@ -22,6 +22,7 @@ import {
   type ColumnDataType,
   getValidationError,
   isOperatorAllowed,
+  stripFormulaQuotes,
 } from "../../helpers";
 
 interface RuleTypeConfigProps {
@@ -41,17 +42,21 @@ export default function RuleTypeConfig({
   tableFields,
   onUpdateRule,
 }: RuleTypeConfigProps) {
-  const minVal = Array.isArray(rule.formula)
-    ? (rule.formula[0] ?? "")
-    : (rule.formula ?? "");
+  const minVal = stripFormulaQuotes(
+    Array.isArray(rule.formula)
+      ? (rule.formula[0] ?? "")
+      : (rule.formula ?? ""),
+  );
   const minValErr = getValidationError(minVal, colDataType);
 
-  const maxVal = Array.isArray(rule.formula) ? (rule.formula[1] ?? "") : "";
+  const maxVal = stripFormulaQuotes(
+    Array.isArray(rule.formula) ? (rule.formula[1] ?? "") : "",
+  );
   const maxValErr = getValidationError(maxVal, colDataType);
 
   const singleVal = Array.isArray(rule.formula)
-    ? rule.formula.join(",")
-    : (rule.formula ?? "");
+    ? rule.formula.map(stripFormulaQuotes).join(",")
+    : stripFormulaQuotes(rule.formula ?? "");
   const singleValErr = getValidationError(singleVal, colDataType);
 
   const formulaExpr = Array.isArray(rule.formula)
@@ -274,11 +279,7 @@ export default function RuleTypeConfig({
                   size="xs"
                   h="28px"
                   bg="white"
-                  value={
-                    Array.isArray(rule.formula)
-                      ? (rule.formula[0] ?? "")
-                      : (rule.formula ?? "")
-                  }
+                  value={minVal}
                   onChange={(e) => {
                     const currentFormulas = Array.isArray(rule.formula)
                       ? [...rule.formula]
@@ -312,9 +313,7 @@ export default function RuleTypeConfig({
                   size="xs"
                   h="28px"
                   bg="white"
-                  value={
-                    Array.isArray(rule.formula) ? (rule.formula[1] ?? "") : ""
-                  }
+                  value={maxVal}
                   onChange={(e) => {
                     const currentFormulas = Array.isArray(rule.formula)
                       ? [...rule.formula]
@@ -353,18 +352,14 @@ export default function RuleTypeConfig({
                 size="xs"
                 h="28px"
                 bg="white"
-                value={
-                  Array.isArray(rule.formula)
-                    ? rule.formula.join(",")
-                    : (rule.formula ?? "")
-                }
+                value={singleVal}
                 onChange={(e) => {
                   const vals = e.target.value.split(",");
                   onUpdateRule({
                     formula: vals.length > 1 ? vals : e.target.value,
                   });
                 }}
-                placeholder='e.g. 10 or "Draft"'
+                placeholder="e.g. 10 or Keerthi Ramesh"
               />
               {singleValErr && (
                 <Text

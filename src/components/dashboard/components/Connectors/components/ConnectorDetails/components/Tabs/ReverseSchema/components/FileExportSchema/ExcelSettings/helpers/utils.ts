@@ -41,14 +41,71 @@ export const getColumnDataType = (
   return "text";
 };
 
+export const stripFormulaQuotes = (val?: string): string => {
+  if (!val) return "";
+  const trimmed = String(val).trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
+    return trimmed.slice(1, -1).replace(/""/g, '"');
+  }
+  return val;
+};
+
+export const formatCellIsFormulaValue = (
+  val: string,
+  colDataType?: ColumnDataType,
+): string => {
+  if (val === undefined || val === null) return "";
+  const trimmed = String(val).trim();
+  if (trimmed === "") return "";
+
+  // If it's an Excel formula starting with '=', keep as formula
+  if (trimmed.startsWith("=")) {
+    return trimmed;
+  }
+
+  // If it's a boolean
+  if (
+    colDataType === "boolean" ||
+    trimmed.toUpperCase() === "TRUE" ||
+    trimmed.toUpperCase() === "FALSE"
+  ) {
+    return trimmed.toUpperCase();
+  }
+
+  // If it's a valid number without spaces (e.g. 10, -5, 3.14)
+  const isNum =
+    colDataType === "numeric"
+      ? !isNaN(Number(trimmed))
+      : !isNaN(Number(trimmed)) && !trimmed.includes(" ");
+
+  if (isNum) {
+    return trimmed;
+  }
+
+  // If it is already quoted in double quotes (e.g. '"Keerthi Ramesh"')
+  if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
+    return trimmed;
+  }
+
+  // If it is quoted in single quotes (e.g. "'Keerthi Ramesh'") -> convert to double quotes
+  if (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2) {
+    const unquoted = trimmed.slice(1, -1);
+    return `"${unquoted.replace(/"/g, '""')}"`;
+  }
+
+  // Otherwise, it is a text string literal -> wrap in double quotes, escaping any inner quotes
+  return `"${trimmed.replace(/"/g, '""')}"`;
+};
+
 export const getValidationError = (
   value: string | string[] | undefined,
   colDataType: ColumnDataType,
 ): string | null => {
   if (value === undefined || value === null) return null;
-  const valStr = Array.isArray(value) ? value[0] : value;
-  if (!valStr || valStr.trim() === "") return null;
-  if (valStr.trim().startsWith("=")) return null;
+  const rawStr = Array.isArray(value) ? value[0] : value;
+  if (!rawStr || String(rawStr).trim() === "") return null;
+  const valStr = stripFormulaQuotes(String(rawStr).trim());
+  if (valStr.startsWith("=")) return null;
 
   if (colDataType === "numeric") {
     const num = Number(valStr);
@@ -59,7 +116,7 @@ export const getValidationError = (
 
   if (colDataType === "datetime") {
     const timestamp = Date.parse(valStr);
-    const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(valStr.trim());
+    const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(valStr);
     if (isNaN(timestamp) && !isIsoDate) {
       return "Value must be a valid date or a formula starting with '='";
     }
@@ -459,25 +516,42 @@ export const cleanRulePayload = (
   };
 
   switch (typeNorm) {
-    case "cellis":
+    case "cellis": {
       base.operator = rule.operator || "equal";
-      base.formula = Array.isArray(rule.formula)
-        ? rule.formula.filter((f) => f !== "")
-        : rule.formula
+      const evalCol = rule.condition_column_name || rule.column_name || "";
+      const rawType = safeTableFields ? safeTableFields[evalCol] : undefined;
+      const colDataType = getColumnDataType(rawType);
+      const rawFormulas = Array.isArray(rule.formula)
+        ? rule.formula.filter((f) => f !== "" && f !== undefined && f !== null)
+        : rule.formula !== undefined &&
+            rule.formula !== null &&
+            rule.formula !== ""
           ? [rule.formula]
           : [];
+      base.formula = rawFormulas.map((f) =>
+        formatCellIsFormulaValue(String(f), colDataType),
+      );
       base.style = cleanStyle(rule.style);
       break;
+    }
 
     case "formula":
-    case "expression":
-      base.formula = Array.isArray(rule.formula)
-        ? rule.formula.filter((f) => f !== "")
-        : rule.formula
+    case "expression": {
+      const rawFormulas = Array.isArray(rule.formula)
+        ? rule.formula.filter((f) => f !== "" && f !== undefined && f !== null)
+        : rule.formula !== undefined &&
+            rule.formula !== null &&
+            rule.formula !== ""
           ? [rule.formula]
           : [];
+      base.formula = rawFormulas.map((f) => {
+        const trimmed = String(f).trim();
+        if (!trimmed) return "";
+        return trimmed.startsWith("=") ? trimmed : `=${trimmed}`;
+      });
       base.style = cleanStyle(rule.style);
       break;
+    }
 
     case "containstext":
     case "notcontainstext":
