@@ -189,18 +189,24 @@ const FileExportTransformModal = ({
       }
     }
 
-    const rawScript = sessionScript || serverScript || "";
-    const normalizedScript = normalizeTransformScript(serverScript);
+    const initialServerScript = serverScript
+      ? validateTransformRoot(serverScript)
+        ? normalizeTransformScript(serverScript)
+        : serverScript
+      : "";
+    const initialSessionScript = sessionScript
+      ? validateTransformRoot(sessionScript)
+        ? normalizeTransformScript(sessionScript)
+        : sessionScript
+      : "";
+
+    const rawScript = initialSessionScript || initialServerScript || "";
     const hasSavedCode = Boolean(
-      rawScript ||
-        normalizedScript.trim() ||
-        unwrapTransformBody(normalizedScript).trim() ||
-        draftScript ||
-        activeScript,
+      rawScript.trim() || draftScript || activeScript,
     );
 
     if (hasSavedCode) {
-      const scriptToSet = sessionScript || normalizedScript || rawScript;
+      const scriptToSet = initialSessionScript || initialServerScript;
       setScriptText(scriptToSet);
       setApplyScript(true);
       setScriptNameFromUpload(false);
@@ -215,7 +221,9 @@ const FileExportTransformModal = ({
       setScriptFileMeta(null);
     }
 
-    const finalScript = hasSavedCode ? normalizedScript || rawScript : "";
+    const finalScript = hasSavedCode
+      ? initialSessionScript || initialServerScript
+      : "";
     setBaselineScriptText(finalScript);
     setScriptValidatedText(finalScript);
     skipAutosaveUntilRef.current = Date.now() + 1500;
@@ -252,19 +260,15 @@ const FileExportTransformModal = ({
   }, [applyScript, scriptText]);
 
   const scriptEdited = useMemo(() => {
-    if (!scriptBody.trim()) return false;
-    const current = normalizeTransformScript(
-      persistedScriptText(applyScript, scriptText),
-    );
-    const saved = normalizeTransformScript(scriptValidatedText);
+    if (!scriptText.trim()) return false;
+    const current = persistedScriptText(applyScript, scriptText).trim();
+    const saved = (scriptValidatedText || "").trim();
     return current !== saved;
-  }, [applyScript, scriptBody, scriptText, scriptValidatedText]);
+  }, [applyScript, scriptText, scriptValidatedText]);
 
   const isDirty = useMemo(() => {
-    const current = normalizeTransformScript(
-      persistedScriptText(applyScript, scriptText),
-    );
-    const baseline = normalizeTransformScript(baselineScriptText);
+    const current = persistedScriptText(applyScript, scriptText).trim();
+    const baseline = (baselineScriptText || "").trim();
     return current !== baseline;
   }, [applyScript, baselineScriptText, scriptText]);
 
