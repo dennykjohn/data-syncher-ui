@@ -154,7 +154,7 @@ const FileExportTransformModal = ({
       loadedKeyRef.current = "";
       return;
     }
-    const loadKey = `${tableItem.table}:a${transformData?.active?.version ?? (transformData?.active ? "act" : "none")}:d${transformData?.draft?.version ?? (transformData?.draft ? "drf" : "none")}:${transformData?.draft?.script_sha256 ?? ""}`;
+    const loadKey = `${tableItem.table}:a${transformData?.active?.version ?? "none"}:d${transformData?.draft?.version ?? "none"}`;
     if (loadedKeyRef.current === loadKey) return;
     loadedKeyRef.current = loadKey;
 
@@ -190,7 +190,7 @@ const FileExportTransformModal = ({
     }
 
     const rawScript = sessionScript || serverScript || "";
-    const normalizedScript = normalizeTransformScript(rawScript);
+    const normalizedScript = normalizeTransformScript(serverScript);
     const hasSavedCode = Boolean(
       rawScript ||
         normalizedScript.trim() ||
@@ -200,7 +200,7 @@ const FileExportTransformModal = ({
     );
 
     if (hasSavedCode) {
-      const scriptToSet = normalizedScript || rawScript;
+      const scriptToSet = sessionScript || normalizedScript || rawScript;
       setScriptText(scriptToSet);
       setApplyScript(true);
       setScriptNameFromUpload(false);
