@@ -30,6 +30,17 @@ import {
 export const pipelineConnectionsQueryKey = ["pipelineConnections"] as const;
 export const pipelinesQueryKey = ["pipelines"] as const;
 
+export function patchPipelineLatestRunStatusDirect(
+  queryClient: QueryClient,
+  pipelineId: number,
+  latest_run_status: PipelineDetail["latest_run_status"],
+) {
+  updatePipelineInCache(queryClient, pipelineId, (pipeline) => ({
+    ...pipeline,
+    latest_run_status,
+  }));
+}
+
 function updatePipelineInCache(
   queryClient: QueryClient,
   pipelineId: number,
