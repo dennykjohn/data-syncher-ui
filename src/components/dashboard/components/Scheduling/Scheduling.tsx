@@ -40,6 +40,8 @@ import { useSearchParams } from "react-router";
 
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import useAuth from "@/context/Auth/useAuth";
+import useCompanyPipelineStatusWS from "@/hooks/useCompanyPipelineStatusWS";
 import {
   pipelineRunsQueryKey,
   pipelinesQueryKey,
@@ -1445,6 +1447,10 @@ const validationResultFromError = (err: unknown): PipelineValidationResult => {
 };
 
 const Scheduling = () => {
+  const { authState } = useAuth();
+  const cmpId = authState.user?.company?.cmp_id ?? null;
+  useCompanyPipelineStatusWS(cmpId);
+
   const [newPipelineDialogOpen, setNewPipelineDialogOpen] = useState(false);
   const [newPipelineName, setNewPipelineName] = useState("");
   const [renamePipelineDialogOpen, setRenamePipelineDialogOpen] =
