@@ -235,11 +235,12 @@ export const formatHumanSummary = (
   _targetColumns?: string[],
   _highlightScope?: string,
   tableFields?: Record<string, string>,
+  columnLabels?: Record<string, string>,
 ): string => {
   const valid = (conditions || []).filter((c) => c.column);
   if (valid.length === 0) return "";
   const tree = conditionsToTree(valid);
-  return nodeToHumanSummary(tree, tableFields, true);
+  return nodeToHumanSummary(tree, tableFields, true, columnLabels);
 };
 
 export const getCssColor = (
@@ -498,9 +499,22 @@ export const cleanRulePayload = (
             rule.formula !== ""
           ? [rule.formula]
           : [];
-      base.formula = rawFormulas.map((f) =>
-        formatCellIsFormulaValue(String(f), colDataType),
-      );
+
+      const isFormulaScope =
+        base.highlight_scope === "entire_row" ||
+        base.highlight_scope === "entire_column" ||
+        Boolean(rule.condition_column_name);
+
+      base.formula = rawFormulas.map((f) => {
+        const valStr = String(f).trim();
+        if (isFormulaScope) {
+          // For row/column formula scope, backend's _build_entire_row_formula translates
+          // this into an Excel formula ($G2="...") and adds quotes itself.
+          // Sending bare unquoted text prevents double-quoting ($G2="""CUST006""").
+          return stripFormulaQuotes(valStr);
+        }
+        return formatCellIsFormulaValue(valStr, colDataType);
+      });
       base.style = cleanStyle(rule.style);
       break;
     }

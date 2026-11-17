@@ -285,6 +285,7 @@ const ReverseSchema = () => {
           isDisabled={totalDisabledState}
           tableToBatchName={tableToBatchName}
           onSelectionChange={handleFileExportSelectionChange}
+          pendingUnassignedTables={pendingUnassignedTables}
         />
       ) : (
         <>

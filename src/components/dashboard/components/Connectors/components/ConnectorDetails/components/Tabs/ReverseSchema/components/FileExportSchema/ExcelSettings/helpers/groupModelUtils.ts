@@ -570,12 +570,15 @@ export const nodeToHumanSummary = (
   node: ConditionRuleNode,
   tableFields?: Record<string, string>,
   isRoot = true,
+  columnLabels?: Record<string, string>,
 ): string => {
   if (node.type === "rule") {
     if (!node.column) return "";
 
-    if (node.operator === "isEmpty") return `${node.column} is empty`;
-    if (node.operator === "isNotEmpty") return `${node.column} is not empty`;
+    const displayCol = columnLabels?.[node.column] || node.column;
+
+    if (node.operator === "isEmpty") return `${displayCol} is empty`;
+    if (node.operator === "isNotEmpty") return `${displayCol} is not empty`;
     if (node.operator === "between") {
       const v1 = node.value
         ? formatRuleValueForSummary(node.value, node.column, tableFields)
@@ -583,7 +586,7 @@ export const nodeToHumanSummary = (
       const v2 = node.value2
         ? formatRuleValueForSummary(node.value2, node.column, tableFields)
         : "?";
-      return `${node.column} between ${v1} and ${v2}`;
+      return `${displayCol} between ${v1} and ${v2}`;
     }
     if (node.operator === "notBetween") {
       const v1 = node.value
@@ -592,7 +595,7 @@ export const nodeToHumanSummary = (
       const v2 = node.value2
         ? formatRuleValueForSummary(node.value2, node.column, tableFields)
         : "?";
-      return `${node.column} not between ${v1} and ${v2}`;
+      return `${displayCol} not between ${v1} and ${v2}`;
     }
 
     let op = "=";
@@ -613,11 +616,11 @@ export const nodeToHumanSummary = (
       node.column,
       tableFields,
     );
-    return `${node.column} ${op} ${formattedVal}`;
+    return `${displayCol} ${op} ${formattedVal}`;
   }
 
   const parts = node.children
-    .map((c) => nodeToHumanSummary(c, tableFields, false))
+    .map((c) => nodeToHumanSummary(c, tableFields, false, columnLabels))
     .filter(Boolean);
 
   if (parts.length === 0) return "";

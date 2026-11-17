@@ -39,6 +39,7 @@ import {
 } from "@/queryOptions/connector/schema/transform/useEntityTransform";
 import {
   type ConnectorTable,
+  type TargetFieldMeta,
   type TransformDryRunResponse,
   type TransformValidateResponse,
 } from "@/types/connectors";
@@ -70,6 +71,10 @@ interface FileExportTransformModalProps {
   onClose: () => void;
   connectionId: number;
   tableItem: ConnectorTable;
+  onTargetFieldsChange?: (
+    _tableName: string,
+    _targetFields: Record<string, TargetFieldMeta>,
+  ) => void;
 }
 
 const STEPS = ["Script", "Review and test"];
@@ -87,6 +92,7 @@ const FileExportTransformModal = ({
   onClose,
   connectionId,
   tableItem,
+  onTargetFieldsChange,
 }: FileExportTransformModalProps) => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
@@ -104,6 +110,9 @@ const FileExportTransformModal = ({
     useState<TransformValidateResponse | null>(null);
   const [dryRunResult, setDryRunResult] =
     useState<TransformDryRunResponse | null>(null);
+  const [targetFields, setTargetFields] = useState<
+    Record<string, TargetFieldMeta>
+  >({});
   const [draftSaveLabel, setDraftSaveLabel] = useState<string | null>(null);
   const [baselineScriptText, setBaselineScriptText] = useState("");
 
@@ -158,16 +167,14 @@ const FileExportTransformModal = ({
     if (loadedKeyRef.current === loadKey) return;
     loadedKeyRef.current = loadKey;
 
-    const draftScript = transformData?.draft?.script_text?.trim() || "";
-    const activeScript = transformData?.active?.script_text?.trim() || "";
-    const sourceRow =
-      (draftScript
-        ? transformData?.draft
-        : activeScript
-          ? transformData?.active
-          : (transformData?.draft ?? transformData?.active)) ?? null;
-    const serverScript =
-      sourceRow?.script_text?.trim() || draftScript || activeScript;
+    // Prefer open server draft so autosaved edits reload; else published active.
+    const sourceRow = transformData?.draft ?? transformData?.active ?? null;
+    const serverScript = sourceRow?.script_text?.trim() || "";
+    const normalizedScript = serverScript
+      ? validateTransformRoot(serverScript)
+        ? normalizeTransformScript(serverScript)
+        : serverScript
+      : "";
 
     let sessionScript = "";
     let sessionApply: boolean | undefined = undefined;
@@ -189,43 +196,45 @@ const FileExportTransformModal = ({
       }
     }
 
-    const initialServerScript = serverScript
-      ? validateTransformRoot(serverScript)
-        ? normalizeTransformScript(serverScript)
-        : serverScript
-      : "";
-    const initialSessionScript = sessionScript
+    const normalizedSessionScript = sessionScript
       ? validateTransformRoot(sessionScript)
         ? normalizeTransformScript(sessionScript)
         : sessionScript
       : "";
 
-    const rawScript = initialSessionScript || initialServerScript || "";
-    const hasSavedCode = Boolean(
-      rawScript.trim() || draftScript || activeScript,
-    );
+    const scriptToSet = normalizedSessionScript || normalizedScript;
+    const hasScriptBody = Boolean(unwrapTransformBody(scriptToSet).trim());
 
-    if (hasSavedCode) {
-      const scriptToSet = initialSessionScript || initialServerScript;
+    if (scriptToSet.trim() || sourceRow) {
       setScriptText(scriptToSet);
-      setApplyScript(true);
+      setApplyScript(
+        normalizedSessionScript.trim()
+          ? (sessionApply ?? hasScriptBody)
+          : hasScriptBody,
+      );
       setScriptNameFromUpload(false);
-      setScriptFileMeta({
-        fileName: `${tableItem.table.toLowerCase()}.py`,
-        size: new Blob([scriptToSet]).size,
-      });
+      setScriptFileMeta(
+        scriptToSet.trim()
+          ? {
+              fileName: `${tableItem.table.toLowerCase()}.py`,
+              size: new Blob([scriptToSet]).size,
+            }
+          : null,
+      );
+      setBaselineScriptText(scriptToSet);
+      setScriptValidatedText(scriptToSet);
+      const initialTargetFields =
+        sourceRow?.target_fields || tableItem.target_fields || {};
+      setTargetFields(initialTargetFields);
     } else {
       setScriptText("");
       setApplyScript(sessionApply ?? false);
       setScriptNameFromUpload(false);
       setScriptFileMeta(null);
+      setBaselineScriptText("");
+      setScriptValidatedText("");
+      setTargetFields(tableItem.target_fields || {});
     }
-
-    const finalScript = hasSavedCode
-      ? initialSessionScript || initialServerScript
-      : "";
-    setBaselineScriptText(finalScript);
-    setScriptValidatedText(finalScript);
     skipAutosaveUntilRef.current = Date.now() + 1500;
     setStep(0);
     setValidateResult(null);
@@ -235,6 +244,7 @@ const FileExportTransformModal = ({
   }, [
     open,
     tableItem.table,
+    tableItem.target_fields,
     transformData?.active,
     transformData?.draft,
     draftKey,
@@ -309,6 +319,17 @@ const FileExportTransformModal = ({
           };
         });
 
+    const targetFoldFields =
+      targetFields && Object.keys(targetFields).length > 0
+        ? Object.entries(targetFields).map(([colName, meta]) => {
+            const rawType = meta?.data_type || "object";
+            return {
+              name: colName,
+              dtype: coerceScriptSchemaDtype(rawType),
+            };
+          })
+        : fields;
+
     return [
       {
         name: "__source_df",
@@ -316,10 +337,10 @@ const FileExportTransformModal = ({
       },
       {
         name: "__target_df",
-        fields,
+        fields: targetFoldFields,
       },
     ];
-  }, [tableItem.selected_fields, tableItem.table_fields]);
+  }, [tableItem.selected_fields, tableItem.table_fields, targetFields]);
 
   const scriptExamples = useMemo(() => {
     const tableFields = tableItem.table_fields || {};
@@ -435,15 +456,26 @@ const FileExportTransformModal = ({
       entry_point: TRANSFORM_ENTRY_POINT,
       run_order: RUN_ORDER_FILTER_SCRIPT_MAPPING,
       destination_table_name: tableItem.table,
+      target_fields: dryRunResult?.target_fields || targetFields || {},
       publish,
     }),
-    [applyScript, scriptText, tableItem.table],
+    [
+      applyScript,
+      dryRunResult?.target_fields,
+      scriptText,
+      tableItem.table,
+      targetFields,
+    ],
   );
 
   const runValidate = useCallback(async () => {
     try {
       const result = await publishMut.mutateAsync(buildPayload(false));
       setValidateResult(result);
+      if (result.target_fields) {
+        setTargetFields(result.target_fields);
+        onTargetFieldsChange?.(tableItem.table, result.target_fields);
+      }
       setMarkedScriptText(persistedScriptText(applyScript, scriptText));
       return result;
     } catch {
@@ -462,7 +494,14 @@ const FileExportTransformModal = ({
       });
       throw new Error("validate failed");
     }
-  }, [applyScript, buildPayload, publishMut, scriptText]);
+  }, [
+    applyScript,
+    buildPayload,
+    onTargetFieldsChange,
+    publishMut,
+    scriptText,
+    tableItem.table,
+  ]);
 
   useEffect(() => {
     runValidateRef.current = runValidate;
@@ -476,6 +515,7 @@ const FileExportTransformModal = ({
       setMarkedScriptText(current);
       if (result.valid) {
         setScriptValidatedText(current);
+        setBaselineScriptText(current);
         toaster.success({ title: "Script validated" });
       } else {
         const first =
@@ -530,13 +570,16 @@ const FileExportTransformModal = ({
       icon: "warning",
     });
     if (!ok) return;
+
     setScriptText("");
     setScriptFileMeta(null);
     setScriptNameFromUpload(false);
     setScriptValidatedText("");
     setApplyScript(false);
     setDryRunResult(null);
-  }, []);
+    setTargetFields({});
+    onTargetFieldsChange?.(tableItem.table, {});
+  }, [onTargetFieldsChange, tableItem.table]);
 
   const handleApplyScriptChange = useCallback(
     async (checked: boolean) => {
@@ -568,6 +611,10 @@ const FileExportTransformModal = ({
         sample_size: DEFAULT_DRY_RUN_ROWS,
       });
       setDryRunResult(result);
+      if (result.target_fields) {
+        setTargetFields(result.target_fields);
+        onTargetFieldsChange?.(tableItem.table, result.target_fields);
+      }
       return result;
     } catch (err) {
       setDryRunResult(null);
@@ -590,7 +637,14 @@ const FileExportTransformModal = ({
       });
       throw err;
     }
-  }, [applyScript, dryRunMut, scriptText, tableItem.selected_fields]);
+  }, [
+    applyScript,
+    dryRunMut,
+    onTargetFieldsChange,
+    scriptText,
+    tableItem.selected_fields,
+    tableItem.table,
+  ]);
 
   useEffect(() => {
     runDryRunRef.current = runDryRun;
@@ -630,6 +684,11 @@ const FileExportTransformModal = ({
 
   useEffect(() => {
     if (!open) return;
+    const keepSession = isDirty || dryRunResult !== null || step > 0;
+    if (!keepSession) {
+      sessionStorage.removeItem(draftKey);
+      return;
+    }
     sessionStorage.setItem(
       draftKey,
       JSON.stringify({
@@ -637,7 +696,7 @@ const FileExportTransformModal = ({
         applyScript,
       }),
     );
-  }, [applyScript, draftKey, open, scriptText]);
+  }, [applyScript, draftKey, dryRunResult, isDirty, open, scriptText, step]);
 
   const requestClose = async () => {
     if (closeGuard.current) return;
@@ -661,7 +720,7 @@ const FileExportTransformModal = ({
         (dryRunResult.errors?.length ?? 0) === 0 &&
         (dryRunResult.rows_out ?? 0) >= 0,
     );
-    if (!tested) {
+    if (!tested && applyScript && scriptBody.trim()) {
       const ok = await confirm({
         title: confirmCopy.saveWithoutTest.title,
         description: confirmCopy.saveWithoutTest.description,
@@ -678,6 +737,10 @@ const FileExportTransformModal = ({
       // editor's validate action and cannot publish a version.
       const result = await publishMut.mutateAsync(buildPayload(true));
       setValidateResult(result);
+      if (result.target_fields) {
+        setTargetFields(result.target_fields);
+        onTargetFieldsChange?.(tableItem.table, result.target_fields);
+      }
       setMarkedScriptText(persistedScriptText(applyScript, scriptText));
       if (!result.valid) {
         const first =
@@ -735,8 +798,12 @@ const FileExportTransformModal = ({
       sessionStorage.removeItem(draftKey);
       toaster.success({ title: "Transform removed" });
       queryClient.invalidateQueries({
+        queryKey: transformQueryKey(connectionId, tableItem.table),
+      });
+      queryClient.invalidateQueries({
         queryKey: ["ReverseSchema", connectionId],
       });
+      onTargetFieldsChange?.(tableItem.table, {});
       onClose();
     } catch {
       toaster.error({

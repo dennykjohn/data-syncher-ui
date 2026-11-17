@@ -54,6 +54,7 @@ interface MultipleConditionsRuleProps {
     | string;
   colNames: string[];
   tableFields?: Record<string, string>;
+  columnLabels?: Record<string, string>;
   onUpdateConditions: (_newConditions: ExcelConditionItem[]) => void;
   onUpdateTargetColumns: (_columns: string[]) => void;
   onUpdateHighlightScope: (
@@ -154,10 +155,12 @@ const getOperatorsForColumn = (
 function SearchableFieldSelect({
   value,
   colNames = [],
+  columnLabels,
   onChange,
 }: {
   value: string;
   colNames: string[];
+  columnLabels?: Record<string, string>;
   onChange: (_col: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -179,9 +182,11 @@ function SearchableFieldSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  const filtered = (colNames || []).filter((c) =>
-    c.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = (colNames || []).filter((c) => {
+    const label = columnLabels?.[c] || "";
+    const q = search.toLowerCase();
+    return c.toLowerCase().includes(q) || label.toLowerCase().includes(q);
+  });
 
   return (
     <Box position="relative" ref={popoverRef} flex="1.3" minWidth="135px">
@@ -201,7 +206,7 @@ function SearchableFieldSelect({
         _hover={{ borderColor: "gray.300", bg: "gray.50" }}
       >
         <Text fontSize="xs" color={value ? "gray.800" : "gray.400"} truncate>
-          {value || "-- Select Field --"}
+          {columnLabels?.[value] || value || "-- Select Field --"}
         </Text>
         <Text fontSize="9px" color="gray.400" ml={1}>
           {isOpen ? "▲" : "▼"}
@@ -313,7 +318,7 @@ function SearchableFieldSelect({
                   truncate
                   lineHeight="normal"
                 >
-                  {c}
+                  {columnLabels?.[c] || c}
                 </Text>
               </Box>
             ))}
@@ -342,6 +347,7 @@ interface Model2ConditionRowProps {
   onToggleSelect: (_id: string) => void;
   colNames: string[];
   tableFields?: Record<string, string>;
+  columnLabels?: Record<string, string>;
   onChange: (_patch: Partial<ConditionRuleItem>) => void;
   onDelete: () => void;
   showDelete: boolean;
@@ -356,6 +362,7 @@ function Model2ConditionRow({
   onToggleSelect,
   colNames,
   tableFields,
+  columnLabels,
   onChange,
   onDelete,
   showDelete,
@@ -411,6 +418,7 @@ function Model2ConditionRow({
       <SearchableFieldSelect
         value={rule.column}
         colNames={colNames}
+        columnLabels={columnLabels}
         onChange={(selectedCol) => {
           const nextRawType = selectedCol
             ? tableFields?.[selectedCol]
@@ -624,6 +632,7 @@ export default function MultipleConditionsRule({
   highlightScope = "entire_row",
   colNames,
   tableFields = {},
+  columnLabels,
   onUpdateConditions,
   onUpdateTargetColumns,
   onUpdateHighlightScope,
@@ -799,19 +808,26 @@ export default function MultipleConditionsRule({
     onUpdateTargetColumns([]);
   };
 
-  const filteredCols = colNames.filter((col) =>
-    col.toLowerCase().includes(colSearchQuery.toLowerCase()),
-  );
+  const filteredCols = colNames.filter((col) => {
+    const label = columnLabels?.[col] || "";
+    const q = colSearchQuery.toLowerCase();
+    return col.toLowerCase().includes(q) || label.toLowerCase().includes(q);
+  });
 
   const summary = useMemo(
-    () => nodeToHumanSummary(tree, tableFields, true),
-    [tree, tableFields],
+    () => nodeToHumanSummary(tree, tableFields, true, columnLabels),
+    [tree, tableFields, columnLabels],
   );
 
   const handleStartTextEdit = () => {
     setEditText(summary);
     setParseError(null);
-    const result = parseHumanCondition(summary, colNames, tableFields);
+    const result = parseHumanCondition(
+      summary,
+      colNames,
+      tableFields,
+      columnLabels,
+    );
     setParseResult(result);
     setParsedTree(result.tree);
     setIsEditingText(true);
@@ -825,7 +841,12 @@ export default function MultipleConditionsRule({
       setParseResult(null);
       return;
     }
-    const result = parseHumanCondition(newVal, colNames, tableFields);
+    const result = parseHumanCondition(
+      newVal,
+      colNames,
+      tableFields,
+      columnLabels,
+    );
     setParseResult(result);
     setParseError(result.error);
     setParsedTree(result.tree);
@@ -900,7 +921,10 @@ export default function MultipleConditionsRule({
     if (lastWordMatch) {
       const lastWord = lastWordMatch[0].toLowerCase();
       // Don't suggest if the word is already an exact column match or purely numeric/keyword
-      const isExactCol = colNames.some((c) => c.toLowerCase() === lastWord);
+      const isExactCol = colNames.some((c) => {
+        const label = columnLabels?.[c] || c;
+        return c.toLowerCase() === lastWord || label.toLowerCase() === lastWord;
+      });
       const isKeyword = [
         "and",
         "or",
@@ -913,15 +937,23 @@ export default function MultipleConditionsRule({
       const isNum = !isNaN(Number(lastWord));
 
       if (!isExactCol && !isKeyword && !isNum && lastWord.length >= 1) {
-        const matched = colNames
-          .filter((c) => c.toLowerCase().includes(lastWord))
-          .sort((a, b) => {
-            const aStarts = a.toLowerCase().startsWith(lastWord);
-            const bStarts = b.toLowerCase().startsWith(lastWord);
-            if (aStarts && !bStarts) return -1;
-            if (!aStarts && bStarts) return 1;
-            return a.localeCompare(b);
-          });
+        const suggestionsList: string[] = [];
+        for (const c of colNames) {
+          const label = columnLabels?.[c] || c;
+          if (
+            label.toLowerCase().includes(lastWord) ||
+            c.toLowerCase().includes(lastWord)
+          ) {
+            suggestionsList.push(label);
+          }
+        }
+        const matched = Array.from(new Set(suggestionsList)).sort((a, b) => {
+          const aStarts = a.toLowerCase().startsWith(lastWord);
+          const bStarts = b.toLowerCase().startsWith(lastWord);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+          return a.localeCompare(b);
+        });
         if (matched.length > 0) {
           return matched.slice(0, 8);
         }
@@ -929,7 +961,7 @@ export default function MultipleConditionsRule({
     }
 
     return []; // Never show all columns as a generic fallback
-  }, [parseResult, editText, colNames]);
+  }, [parseResult, editText, colNames, columnLabels]);
 
   const handleApplyTextEdit = () => {
     if (!parsedTree || parseError) return;
@@ -1074,6 +1106,7 @@ export default function MultipleConditionsRule({
                   onToggleSelect={handleToggleSelect}
                   colNames={colNames}
                   tableFields={tableFields}
+                  columnLabels={columnLabels}
                   onChange={(patch) => handleRuleChange(node.id, patch)}
                   onDelete={() => handleDeleteNode(node.id)}
                   showDelete={totalRules > 1}
@@ -1437,7 +1470,9 @@ export default function MultipleConditionsRule({
                 >
                   {targetColumns.length === 0
                     ? "Select columns to highlight..."
-                    : `${targetColumns.length} Selected: ${targetColumns.join(", ")}`}
+                    : `${targetColumns.length} Selected: ${targetColumns
+                        .map((col) => columnLabels?.[col] || col)
+                        .join(", ")}`}
                 </Text>
               </HStack>
               <Text fontSize="9px" color="gray.400">
@@ -1539,7 +1574,7 @@ export default function MultipleConditionsRule({
                           userSelect="none"
                           lineHeight="normal"
                         >
-                          {col}
+                          {columnLabels?.[col] || col}
                         </Text>
                       </Flex>
                     );

@@ -4,6 +4,7 @@ import {
   type ExcelDifferentialStyle,
   type ExcelHeaderStyle,
   type ExcelOptions,
+  type TargetFieldMeta,
 } from "@/types/connectors";
 
 export type ColumnDataType = "numeric" | "datetime" | "boolean" | "text";
@@ -43,6 +44,9 @@ export const stripFormulaQuotes = (val?: string): string => {
   if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
     return trimmed.slice(1, -1).replace(/""/g, '"');
   }
+  if (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2) {
+    return trimmed.slice(1, -1).replace(/''/g, "'");
+  }
   return val;
 };
 
@@ -53,6 +57,7 @@ export interface ExcelSettingsProps {
   tableFields: Record<string, string>;
   selectedFields?: string[] | null;
   tableName: string;
+  targetFields?: Record<string, TargetFieldMeta> | null;
   onChange: (_patch: {
     excel_sheet_name?: string;
     excel_options?: ExcelOptions;
@@ -101,6 +106,7 @@ export interface ConditionalFormattingTabProps {
   rules: ExcelConditionalFormat[];
   colNames: string[];
   tableFields: Record<string, string>;
+  targetFields?: Record<string, TargetFieldMeta> | null;
   onAddRule: () => void;
   onUpdateRule: (
     _index: number,
@@ -119,6 +125,7 @@ export interface RuleCardProps {
   totalRules: number;
   colNames: string[];
   tableFields: Record<string, string>;
+  targetFields?: Record<string, TargetFieldMeta> | null;
   onUpdateRule: (
     _index: number,
     _patch: Partial<ExcelConditionalFormat>,

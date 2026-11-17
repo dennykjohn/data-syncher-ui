@@ -22,6 +22,7 @@ interface MultiColumnSelectProps {
   selectedColumns: string[];
   onChange: (_selected: string[]) => void;
   placeholder?: string;
+  columnLabels?: Record<string, string>;
 }
 
 export const MultiColumnSelect = ({
@@ -29,6 +30,7 @@ export const MultiColumnSelect = ({
   selectedColumns,
   onChange,
   placeholder = "-- Select Target Column(s) --",
+  columnLabels,
 }: MultiColumnSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -66,8 +68,12 @@ export const MultiColumnSelect = ({
   const filteredColumns = useMemo(() => {
     if (!search.trim()) return allColumns;
     const lower = search.toLowerCase();
-    return allColumns.filter((c) => c.toLowerCase().includes(lower));
-  }, [allColumns, search]);
+    return allColumns.filter(
+      (c) =>
+        c.toLowerCase().includes(lower) ||
+        (columnLabels?.[c] || "").toLowerCase().includes(lower),
+    );
+  }, [allColumns, search, columnLabels]);
 
   return (
     <Box position="relative" ref={popoverRef} width="100%">
@@ -109,7 +115,7 @@ export const MultiColumnSelect = ({
                 border="1px solid"
                 borderColor="brand.200"
               >
-                {col}
+                {columnLabels?.[col] || col}
               </Box>
             ))
           ) : (
@@ -228,7 +234,7 @@ export const MultiColumnSelect = ({
                       color="gray.700"
                       fontWeight={isSelected ? "semibold" : "normal"}
                     >
-                      {col}
+                      {columnLabels?.[col] || col}
                     </Text>
                   </Flex>
                 );

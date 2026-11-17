@@ -24,7 +24,15 @@ import { TbTransform } from "react-icons/tb";
 import Pagination from "@/components/shared/Pagination";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import ServerRoutes from "@/constants/server-routes";
+import AxiosInstance from "@/lib/axios/api-client";
 import { type ReverseSchemaResponse } from "@/queryOptions/connector/reverseSchema/useFetchReverseSchema";
+import {
+  type EntityTransformGetResponse,
+  transformQueryKey,
+  useEntityTransform,
+} from "@/queryOptions/connector/schema/transform/useEntityTransform";
+import { batchesQueryKey } from "@/queryOptions/connector/schema/useBatches";
 import { usePagination } from "@/queryOptions/connector/schema/usePagination";
 import useUpdateSelectedTables from "@/queryOptions/connector/schema/useUpdateSelectedTables";
 import { useFetchDestinationById } from "@/queryOptions/destination/useFetchDestinationById";
@@ -40,6 +48,7 @@ import {
   type ExcelConditionalFormat,
   type ExcelOptions,
   type FilenameDateFormat,
+  type TargetFieldMeta,
   type UnassignedTable,
 } from "@/types/connectors";
 
@@ -53,10 +62,11 @@ import { DEFAULT_EXCEL_OPTIONS, cleanRulePayload } from "./ExcelSettings";
 import FieldSelectionModal from "./FieldSelectionModal";
 import FileExportTransformModal from "./FileExportTransformModal";
 import TableExportSettingsModal from "./TableExportSettingsModal";
+import { computeSelectedTargetFields } from "./helpers/targetFieldUtils";
 import useUpdateSelectedFields from "./hooks/useUpdateSelectedFields";
 import useUpdateTableEmailGroups from "./hooks/useUpdateTableEmailGroups";
 import useUpdateTableExportSettings from "./hooks/useUpdateTableExportSettings";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 
 type FileFormat = "csv" | "json" | "parquet" | "excel";
 
@@ -461,6 +471,131 @@ const hasApiTableExportSettings = (raw?: Partial<ConnectorTable>) =>
     (raw.target_folder !== null && raw.target_folder !== undefined) ||
     (raw.file_format !== null && raw.file_format !== undefined));
 
+const isTableExportSettingsCustomized = (
+  table: string,
+  raw?: ConnectorTable,
+  localSetting?: TableExportSetting,
+  defaultFormat = "csv",
+): boolean => {
+  if (localSetting) {
+    if (
+      localSetting.output_file_name &&
+      localSetting.output_file_name.trim() !== table
+    ) {
+      return true;
+    }
+    if (
+      localSetting.target_folder &&
+      localSetting.target_folder.trim() !== ""
+    ) {
+      return true;
+    }
+    if (
+      localSetting.file_format &&
+      localSetting.file_format !== defaultFormat
+    ) {
+      return true;
+    }
+    if (localSetting.filename_date_format) {
+      return true;
+    }
+    if (localSetting.add_utc_timestamp === false) {
+      return true;
+    }
+    if (
+      localSetting.file_format === "csv" &&
+      ((localSetting.csv_delimiter && localSetting.csv_delimiter !== ",") ||
+        (localSetting.csv_quote_char && localSetting.csv_quote_char !== '"'))
+    ) {
+      return true;
+    }
+    if (
+      localSetting.excel_conditional_formats &&
+      localSetting.excel_conditional_formats.length > 0
+    ) {
+      return true;
+    }
+    if (
+      localSetting.excel_sheet_name &&
+      localSetting.excel_sheet_name !== table &&
+      localSetting.excel_sheet_name !== "Sheet1"
+    ) {
+      return true;
+    }
+    if (localSetting.excel_options) {
+      const opts = localSetting.excel_options;
+      if (
+        opts.sheet_header_enabled ||
+        opts.header_style?.fill ||
+        opts.header_style?.font_color ||
+        opts.sheet_header_style?.fill ||
+        opts.body_style?.font_color ||
+        opts.body_style?.fill ||
+        opts.body_style?.fill_color ||
+        opts.body_style?.banding_fill ||
+        opts.body_style?.banding_fill_color
+      ) {
+        return true;
+      }
+    }
+  }
+
+  if (raw) {
+    if (raw.output_file_name && raw.output_file_name.trim() !== table) {
+      return true;
+    }
+    if (raw.target_folder && raw.target_folder.trim() !== "") {
+      return true;
+    }
+    if (raw.file_format && raw.file_format !== defaultFormat) {
+      return true;
+    }
+    if (raw.filename_date_format) {
+      return true;
+    }
+    if (raw.add_utc_timestamp === false) {
+      return true;
+    }
+    if (
+      (raw.csv_delimiter && raw.csv_delimiter !== ",") ||
+      (raw.csv_quote_char && raw.csv_quote_char !== '"')
+    ) {
+      return true;
+    }
+    const condFormats = safeParseJson<ExcelConditionalFormat[]>(
+      raw.excel_conditional_formats,
+    );
+    if (condFormats && condFormats.length > 0) {
+      return true;
+    }
+    if (
+      raw.excel_sheet_name &&
+      raw.excel_sheet_name !== table &&
+      raw.excel_sheet_name !== "Sheet1"
+    ) {
+      return true;
+    }
+    const excelOpts = safeParseJson<ExcelOptions>(raw.excel_options);
+    if (excelOpts) {
+      if (
+        excelOpts.sheet_header_enabled ||
+        excelOpts.header_style?.fill ||
+        excelOpts.header_style?.font_color ||
+        excelOpts.sheet_header_style?.fill ||
+        excelOpts.body_style?.font_color ||
+        excelOpts.body_style?.fill ||
+        excelOpts.body_style?.fill_color ||
+        excelOpts.body_style?.banding_fill ||
+        excelOpts.body_style?.banding_fill_color
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 const getReusableTableDefaults = (
   raw?: Partial<TableExportSetting>,
   exportConfig?: ExportConfigResponse,
@@ -547,6 +682,9 @@ const SnowflakeFileExportSchema = ({
   const [tableExportSettings, setTableExportSettings] = useState<
     Record<string, TableExportSetting>
   >({});
+  const [localTargetFields, setLocalTargetFields] = useState<
+    Record<string, Record<string, TargetFieldMeta>>
+  >({});
   const [isSelectionDirty, setIsSelectionDirty] = useState(false);
   const [sourceSearch, setSourceSearch] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -603,6 +741,52 @@ const SnowflakeFileExportSchema = ({
     );
   }, [activeTableForSettings, tableExportSettings, exportConfig]);
 
+  const activeModalTableName =
+    activeTableForFields ||
+    activeTableForSettings ||
+    activeTableForTransform ||
+    "";
+  const { data: activeModalTransformData } = useEntityTransform(
+    connector.connection_id,
+    activeModalTableName,
+  );
+
+  const effectiveModalTargetFields = useMemo(() => {
+    if (!activeModalTableName) return null;
+    if (
+      localTargetFields[activeModalTableName] &&
+      Object.keys(localTargetFields[activeModalTableName]).length > 0
+    ) {
+      return localTargetFields[activeModalTableName];
+    }
+    const draftTf = activeModalTransformData?.draft?.target_fields;
+    if (draftTf && Object.keys(draftTf).length > 0) {
+      return draftTf;
+    }
+    const activeTf = activeModalTransformData?.active?.target_fields;
+    if (activeTf && Object.keys(activeTf).length > 0) {
+      return activeTf;
+    }
+    const tableData = sourceTables.find(
+      (t) => t.table === activeModalTableName,
+    );
+    return tableData?.target_fields || null;
+  }, [
+    activeModalTableName,
+    localTargetFields,
+    activeModalTransformData,
+    sourceTables,
+  ]);
+
+  const effectiveModalScriptText = useMemo(() => {
+    if (!activeModalTableName) return null;
+    const raw =
+      activeModalTransformData?.draft?.script_text ??
+      activeModalTransformData?.active?.script_text ??
+      null;
+    return raw && raw.trim() ? raw : null;
+  }, [activeModalTableName, activeModalTransformData]);
+
   const activeTableFields = useMemo(() => {
     if (!activeTableForSettings) return {};
     const tableData = sourceTables.find(
@@ -618,6 +802,25 @@ const SnowflakeFileExportSchema = ({
     );
     return tableData?.selected_fields || null;
   }, [activeTableForSettings, sourceTables]);
+
+  const activeTableTargetFields = useMemo(() => {
+    if (!activeTableForSettings) return null;
+    return (
+      (activeModalTableName === activeTableForSettings
+        ? effectiveModalTargetFields
+        : null) ||
+      localTargetFields[activeTableForSettings] ||
+      sourceTables.find((t) => t.table === activeTableForSettings)
+        ?.target_fields ||
+      null
+    );
+  }, [
+    activeTableForSettings,
+    activeModalTableName,
+    effectiveModalTargetFields,
+    localTargetFields,
+    sourceTables,
+  ]);
 
   useEffect(() => {
     if (isSelectionDirty || isSavingSelection) return;
@@ -724,6 +927,39 @@ const SnowflakeFileExportSchema = ({
     jumpToPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceSearch]);
+
+  const pageTableNames = useMemo(
+    () => paginatedSourceTables.map((t) => t.table),
+    [paginatedSourceTables],
+  );
+
+  const transformQueryResults = useQueries({
+    queries: pageTableNames.map((tableName) => ({
+      queryKey: transformQueryKey(connector.connection_id, tableName),
+      queryFn: async () => {
+        const { data } = await AxiosInstance.get<EntityTransformGetResponse>(
+          ServerRoutes.connector.entityTransform(
+            connector.connection_id,
+            tableName,
+          ),
+        );
+        return data;
+      },
+      enabled: Boolean(connector.connection_id && tableName),
+      staleTime: 60_000,
+    })),
+  });
+
+  const pageTransformsByTable = useMemo(() => {
+    const map = new Map<string, EntityTransformGetResponse>();
+    pageTableNames.forEach((name, idx) => {
+      const res = transformQueryResults[idx]?.data;
+      if (res) {
+        map.set(name, res);
+      }
+    });
+    return map;
+  }, [pageTableNames, transformQueryResults]);
 
   const toggleTableSelection = (tableName: string) => {
     setSelectedTables((prev) => {
@@ -835,6 +1071,9 @@ const SnowflakeFileExportSchema = ({
           queryClient.invalidateQueries({
             queryKey: ["ReverseSchema", connector.connection_id],
           });
+          queryClient.invalidateQueries({
+            queryKey: batchesQueryKey(connector.connection_id),
+          });
         },
       },
     );
@@ -850,6 +1089,9 @@ const SnowflakeFileExportSchema = ({
           setFieldModalOpen(false);
           queryClient.invalidateQueries({
             queryKey: ["ReverseSchema", connector.connection_id],
+          });
+          queryClient.invalidateQueries({
+            queryKey: batchesQueryKey(connector.connection_id),
           });
         },
       },
@@ -895,6 +1137,9 @@ const SnowflakeFileExportSchema = ({
           setEmailModalOpen(false);
           queryClient.invalidateQueries({
             queryKey: ["ReverseSchema", connector.connection_id],
+          });
+          queryClient.invalidateQueries({
+            queryKey: batchesQueryKey(connector.connection_id),
           });
         },
       },
@@ -999,6 +1244,9 @@ const SnowflakeFileExportSchema = ({
           queryClient.invalidateQueries({
             queryKey: ["ReverseSchema", connector.connection_id],
           });
+          queryClient.invalidateQueries({
+            queryKey: batchesQueryKey(connector.connection_id),
+          });
         },
       },
     );
@@ -1006,8 +1254,27 @@ const SnowflakeFileExportSchema = ({
 
   const activeTableData = useMemo(() => {
     if (!activeTableForFields) return null;
-    return sourceTables.find((t) => t.table === activeTableForFields);
-  }, [activeTableForFields, sourceTables]);
+    const tableData = sourceTables.find(
+      (t) => t.table === activeTableForFields,
+    );
+    if (!tableData) return null;
+    return {
+      ...tableData,
+      target_fields:
+        (activeModalTableName === activeTableForFields
+          ? effectiveModalTargetFields
+          : null) ||
+        localTargetFields[activeTableForFields] ||
+        tableData.target_fields ||
+        null,
+    };
+  }, [
+    activeTableForFields,
+    activeModalTableName,
+    effectiveModalTargetFields,
+    localTargetFields,
+    sourceTables,
+  ]);
 
   const activeTransformTableItem = useMemo(() => {
     if (!activeTableForTransform) return null;
@@ -1023,9 +1290,12 @@ const SnowflakeFileExportSchema = ({
 
   const emailTableColumnsCount = useMemo(() => {
     if (!emailTableData) return undefined;
-    return emailTableData.selected_fields
-      ? emailTableData.selected_fields.length
-      : Object.keys(emailTableData.table_fields || {}).length;
+    const selectedTargets = computeSelectedTargetFields(
+      emailTableData.selected_fields,
+      emailTableData.target_fields,
+      emailTableData.table_fields,
+    );
+    return selectedTargets.length;
   }, [emailTableData]);
 
   return (
@@ -1196,23 +1466,38 @@ const SnowflakeFileExportSchema = ({
                                 {batchName}
                               </Text>
                             )}
-                            {item.transform_summary?.badge && (
-                              <Text
-                                as="span"
-                                fontSize="2xs"
-                                fontWeight="semibold"
-                                color="brand.700"
-                                bgColor="brand.100"
-                                px={1.5}
-                                py={0.5}
-                                borderRadius="sm"
-                                maxW="120px"
-                                truncate
-                                title={item.transform_summary.badge}
-                              >
-                                {item.transform_summary.badge}
-                              </Text>
-                            )}
+                            {(() => {
+                              const transformDetail =
+                                pageTransformsByTable.get(table);
+                              const activeTransform = transformDetail?.active
+                                ?.is_active
+                                ? transformDetail.active
+                                : null;
+                              const badge =
+                                item.transform_summary?.badge ||
+                                activeTransform?.badge ||
+                                (activeTransform?.version
+                                  ? `Script v${activeTransform.version}`
+                                  : null);
+                              if (!badge) return null;
+                              return (
+                                <Text
+                                  as="span"
+                                  fontSize="2xs"
+                                  fontWeight="semibold"
+                                  color="brand.700"
+                                  bgColor="brand.100"
+                                  px={1.5}
+                                  py={0.5}
+                                  borderRadius="sm"
+                                  maxW="120px"
+                                  truncate
+                                  title={badge}
+                                >
+                                  {badge}
+                                </Text>
+                              );
+                            })()}
                           </Flex>
                         </Box>
                         <Flex gap={3.5} alignItems="center" justifySelf="end">
@@ -1267,17 +1552,41 @@ const SnowflakeFileExportSchema = ({
                             </Flex>
                           )}
                           {(() => {
+                            const defaultFieldNames = Object.keys(
+                              item.table_fields || {},
+                            );
+                            const hasFieldsCustomized = Boolean(
+                              item.selected_fields &&
+                                item.selected_fields.length > 0 &&
+                                (defaultFieldNames.length === 0
+                                  ? false
+                                  : item.selected_fields.length !==
+                                      defaultFieldNames.length ||
+                                    item.selected_fields.some(
+                                      (f, idx) => f !== defaultFieldNames[idx],
+                                    )),
+                            );
                             return (
                               <Flex
                                 justifyContent="center"
                                 w="60px"
                                 flexShrink={0}
                               >
-                                <Tooltip content="Select Export Fields">
+                                <Tooltip
+                                  content={
+                                    hasFieldsCustomized
+                                      ? `Select Export Fields (${item.selected_fields?.length} fields selected)`
+                                      : "Select Export Fields"
+                                  }
+                                >
                                   <IconButton
                                     size="xs"
-                                    variant="ghost"
-                                    colorPalette="brand"
+                                    variant={
+                                      hasFieldsCustomized ? "subtle" : "ghost"
+                                    }
+                                    colorPalette={
+                                      hasFieldsCustomized ? "brand" : "gray"
+                                    }
                                     disabled={
                                       !!activeTableForCopy || !isSelected
                                     }
@@ -1293,14 +1602,25 @@ const SnowflakeFileExportSchema = ({
                                     flexShrink={0}
                                     fontSize="14px"
                                     boxShadow="none"
-                                    bg="transparent"
-                                    color="gray.500"
+                                    bg={
+                                      hasFieldsCustomized
+                                        ? "brand.50"
+                                        : "transparent"
+                                    }
+                                    color={
+                                      hasFieldsCustomized
+                                        ? "brand.600"
+                                        : "gray.500"
+                                    }
                                     borderColor="transparent"
                                     _hover={{
-                                      bg: "brand.50",
+                                      bg: hasFieldsCustomized
+                                        ? "brand.100"
+                                        : "brand.50",
                                       color: "brand.600",
                                     }}
                                     transition="all 0.2s"
+                                    aria-label="Select Export Fields"
                                   >
                                     <IoMdOptions />
                                   </IconButton>
@@ -1310,22 +1630,57 @@ const SnowflakeFileExportSchema = ({
                           })()}
 
                           {(() => {
-                            const hasTransform = Boolean(
-                              item.transform_summary?.badge ||
-                                (item as { is_transform_active?: boolean })
-                                  ?.is_transform_active,
+                            const transformDetail =
+                              pageTransformsByTable.get(table);
+                            const activeTransform = transformDetail?.active
+                              ?.is_active
+                              ? transformDetail.active
+                              : null;
+                            const hasActiveScript = Boolean(
+                              activeTransform &&
+                                (transformDetail?.summary?.has_script ||
+                                  Boolean(activeTransform.script_text?.trim())),
                             );
+                            const hasTransform = Boolean(
+                              hasActiveScript ||
+                                item.transform_summary?.badge ||
+                                item.transform_summary?.has_script ||
+                                item.transform_summary?.has_mapping ||
+                                item.transform_summary?.is_active ||
+                                (item as { is_transform_active?: boolean })
+                                  ?.is_transform_active ||
+                                (item.target_fields &&
+                                  Object.keys(item.target_fields).length > 0) ||
+                                (localTargetFields[table] &&
+                                  Object.keys(localTargetFields[table]).length >
+                                    0),
+                            );
+                            const badge =
+                              activeTransform?.badge ||
+                              (activeTransform?.version
+                                ? `Script v${activeTransform.version}`
+                                : null) ||
+                              item.transform_summary?.badge ||
+                              "Active";
                             return (
                               <Flex
                                 justifyContent="center"
                                 w="76px"
                                 flexShrink={0}
                               >
-                                <Tooltip content="Transform">
+                                <Tooltip
+                                  content={
+                                    hasTransform
+                                      ? `Transform (${badge})`
+                                      : "Transform"
+                                  }
+                                >
                                   <IconButton
                                     size="xs"
                                     variant={hasTransform ? "subtle" : "ghost"}
-                                    colorPalette="brand"
+                                    colorPalette={
+                                      hasTransform ? "brand" : "gray"
+                                    }
                                     disabled={
                                       !!activeTableForCopy || !isSelected
                                     }
@@ -1341,13 +1696,17 @@ const SnowflakeFileExportSchema = ({
                                     flexShrink={0}
                                     fontSize="14px"
                                     boxShadow="none"
-                                    bg="transparent"
+                                    bg={
+                                      hasTransform ? "brand.50" : "transparent"
+                                    }
                                     color={
                                       hasTransform ? "brand.600" : "gray.500"
                                     }
                                     borderColor="transparent"
                                     _hover={{
-                                      bg: "brand.50",
+                                      bg: hasTransform
+                                        ? "brand.100"
+                                        : "brand.50",
                                       color: "brand.600",
                                     }}
                                     transition="all 0.2s"
@@ -1362,6 +1721,14 @@ const SnowflakeFileExportSchema = ({
 
                           {(() => {
                             const hasError = !!targetFolderErrors[table];
+                            const hasSettingsCustomized =
+                              isTableExportSettingsCustomized(
+                                table,
+                                item,
+                                tableExportSettings?.[table],
+                                exportConfig?.destination?.default_format ||
+                                  "csv",
+                              );
                             return (
                               <Flex
                                 justifyContent="center"
@@ -1372,7 +1739,9 @@ const SnowflakeFileExportSchema = ({
                                   content={
                                     hasError
                                       ? targetFolderErrors[table]
-                                      : "Export Settings"
+                                      : hasSettingsCustomized
+                                        ? "Export Settings (Configured)"
+                                        : "Export Settings"
                                   }
                                 >
                                   <Menu.Root
@@ -1381,9 +1750,17 @@ const SnowflakeFileExportSchema = ({
                                     <Menu.Trigger asChild>
                                       <IconButton
                                         size="xs"
-                                        variant="ghost"
+                                        variant={
+                                          hasError || hasSettingsCustomized
+                                            ? "subtle"
+                                            : "ghost"
+                                        }
                                         colorPalette={
-                                          hasError ? "red" : "brand"
+                                          hasError
+                                            ? "red"
+                                            : hasSettingsCustomized
+                                              ? "brand"
+                                              : "gray"
                                         }
                                         disabled={
                                           !!activeTableForCopy || !isSelected
@@ -1395,18 +1772,33 @@ const SnowflakeFileExportSchema = ({
                                         minWidth="34px"
                                         flexShrink={0}
                                         boxShadow="none"
-                                        bg="transparent"
+                                        bg={
+                                          hasError
+                                            ? "red.50"
+                                            : hasSettingsCustomized
+                                              ? "brand.50"
+                                              : "transparent"
+                                        }
                                         borderColor="transparent"
                                         color={
-                                          hasError ? "red.500" : "gray.500"
+                                          hasError
+                                            ? "red.500"
+                                            : hasSettingsCustomized
+                                              ? "brand.600"
+                                              : "gray.500"
                                         }
                                         _hover={{
-                                          bg: hasError ? "red.50" : "brand.50",
+                                          bg: hasError
+                                            ? "red.100"
+                                            : hasSettingsCustomized
+                                              ? "brand.100"
+                                              : "brand.50",
                                           color: hasError
                                             ? "red.600"
                                             : "brand.600",
                                         }}
                                         transition="all 0.2s"
+                                        aria-label="Export Settings"
                                       >
                                         <Flex alignItems="center" gap={0.5}>
                                           <IoMdSettings />
@@ -1457,23 +1849,26 @@ const SnowflakeFileExportSchema = ({
 
                           {isEmailSupportedDestination &&
                             (() => {
-                              const isEmailConfigured = !!(
+                              const isEmailConfigured = Boolean(
                                 (tableExportSettings?.[table]
                                   ?.notification_email_group_ids?.length ?? 0) >
                                   0 ||
-                                (item.notification_email_group_ids?.length ??
-                                  0) > 0 ||
-                                tableExportSettings?.[table]
-                                  ?.email_custom_fields?.subject ||
-                                tableExportSettings?.[table]
-                                  ?.email_custom_fields?.body_content ||
-                                (tableExportSettings?.[table]
-                                  ?.email_custom_fields?.body_fields?.length ??
-                                  0) > 0 ||
-                                item.email_custom_fields?.subject ||
-                                item.email_custom_fields?.body_content ||
-                                (item.email_custom_fields?.body_fields
-                                  ?.length ?? 0) > 0
+                                  (item.notification_email_group_ids?.length ??
+                                    0) > 0 ||
+                                  tableExportSettings?.[table]
+                                    ?.email_template_id ||
+                                  item.email_template_id ||
+                                  tableExportSettings?.[table]
+                                    ?.email_custom_fields?.subject ||
+                                  tableExportSettings?.[table]
+                                    ?.email_custom_fields?.body_content ||
+                                  (tableExportSettings?.[table]
+                                    ?.email_custom_fields?.body_fields
+                                    ?.length ?? 0) > 0 ||
+                                  item.email_custom_fields?.subject ||
+                                  item.email_custom_fields?.body_content ||
+                                  (item.email_custom_fields?.body_fields
+                                    ?.length ?? 0) > 0,
                               );
                               return (
                                 <Flex
@@ -1481,15 +1876,27 @@ const SnowflakeFileExportSchema = ({
                                   w="50px"
                                   flexShrink={0}
                                 >
-                                  <Tooltip content="Email Notifications">
+                                  <Tooltip
+                                    content={
+                                      isEmailConfigured
+                                        ? "Email Notifications (Configured)"
+                                        : "Email Notifications"
+                                    }
+                                  >
                                     <Menu.Root
                                       positioning={{ placement: "bottom-end" }}
                                     >
                                       <Menu.Trigger asChild>
                                         <IconButton
                                           size="xs"
-                                          variant="ghost"
-                                          colorPalette="brand"
+                                          variant={
+                                            isEmailConfigured
+                                              ? "subtle"
+                                              : "ghost"
+                                          }
+                                          colorPalette={
+                                            isEmailConfigured ? "brand" : "gray"
+                                          }
                                           disabled={
                                             !!activeTableForCopy || !isSelected
                                           }
@@ -1500,14 +1907,25 @@ const SnowflakeFileExportSchema = ({
                                           minWidth="34px"
                                           flexShrink={0}
                                           boxShadow="none"
-                                          bg="transparent"
-                                          color="gray.500"
+                                          bg={
+                                            isEmailConfigured
+                                              ? "brand.50"
+                                              : "transparent"
+                                          }
                                           borderColor="transparent"
+                                          color={
+                                            isEmailConfigured
+                                              ? "brand.600"
+                                              : "gray.500"
+                                          }
                                           _hover={{
-                                            bg: "brand.50",
+                                            bg: isEmailConfigured
+                                              ? "brand.100"
+                                              : "brand.50",
                                             color: "brand.600",
                                           }}
                                           transition="all 0.2s"
+                                          aria-label="Email Notifications"
                                         >
                                           <Flex alignItems="center" gap={0.5}>
                                             <IoMdMail />
@@ -1756,6 +2174,15 @@ const SnowflakeFileExportSchema = ({
         tableName={activeTableForFields || ""}
         tableFields={activeTableData?.table_fields || {}}
         initialSelectedFields={activeTableData?.selected_fields}
+        targetFields={activeTableData?.target_fields || null}
+        excelConditionalFormats={
+          activeTableData?.excel_conditional_formats ||
+          (activeTableForFields
+            ? tableExportSettings[activeTableForFields]
+                ?.excel_conditional_formats
+            : null)
+        }
+        scriptText={effectiveModalScriptText}
         onSave={handleSaveFields}
         isSaving={isUpdatingFields}
       />
@@ -1769,6 +2196,9 @@ const SnowflakeFileExportSchema = ({
           }}
           connectionId={connector.connection_id}
           tableItem={activeTransformTableItem}
+          onTargetFieldsChange={(tbl, tFields) => {
+            setLocalTargetFields((prev) => ({ ...prev, [tbl]: tFields }));
+          }}
         />
       )}
 
@@ -1829,6 +2259,7 @@ const SnowflakeFileExportSchema = ({
           tableName={activeTableForSettings}
           settings={activeTableSettings}
           tableFields={activeTableFields}
+          targetFields={activeTableTargetFields}
           selectedFields={activeTableSelectedFields}
           isSaving={isUpdatingSettings}
           supportedFormats={exportConfig?.destination?.supported_formats}

@@ -9,6 +9,7 @@ export default function ConditionalFormattingTab({
   rules,
   colNames,
   tableFields,
+  targetFields,
   onAddRule,
   onUpdateRule,
   onUpdateRuleStyle,
@@ -53,6 +54,7 @@ export default function ConditionalFormattingTab({
               totalRules={rules.length}
               colNames={colNames}
               tableFields={tableFields}
+              targetFields={targetFields}
               onUpdateRule={onUpdateRule}
               onUpdateRuleStyle={onUpdateRuleStyle}
               onDeleteRule={onDeleteRule}
