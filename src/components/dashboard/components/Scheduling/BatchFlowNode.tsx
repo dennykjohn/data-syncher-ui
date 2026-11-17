@@ -155,11 +155,14 @@ const BatchFlowNode = ({ id, data }: NodeProps) => {
                           ? "gray"
                           : nodeData.runStatus === "skipped"
                             ? "orange"
-                            : "blue"
+                            : nodeData.runStatus === "revoked"
+                              ? "gray"
+                              : "blue"
                   }
                   variant={
                     nodeData.runStatus === "waiting" ||
-                    nodeData.runStatus === "skipped"
+                    nodeData.runStatus === "skipped" ||
+                    nodeData.runStatus === "revoked"
                       ? "outline"
                       : "subtle"
                   }

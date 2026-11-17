@@ -30,6 +30,7 @@ const IMAGE_MAP = {
   sftp: SFTPIllustration,
   googledrive: GoogleDriveIllustration,
   azuredatalakestorage: AzureDataLakeStorageIllustration,
+  datalake: AzureDataLakeStorageIllustration,
 
   // Destinations
   salesforce: SalesForceIllustration,

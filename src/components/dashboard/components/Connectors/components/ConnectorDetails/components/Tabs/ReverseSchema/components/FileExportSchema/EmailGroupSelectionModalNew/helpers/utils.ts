@@ -70,6 +70,7 @@ export const renderTemplateText = (
   connectionName?: string,
   companyName?: string,
   sourceDisplayName?: string,
+  columnsCount?: number,
 ): string => {
   if (!template) return "";
   const destTitle = getDestinationTitle(destinationName || "");
@@ -78,6 +79,7 @@ export const renderTemplateText = (
     (destinationName ? `${destinationName} Connection` : "Source Connection");
   const comp = companyName || "Datasyncher";
   const source = sourceDisplayName || "Source Data";
+  const columns = columnsCount !== undefined ? String(columnsCount) : "";
 
   return template
     .replace(/\{table\}/g, tableName || "Table")
@@ -87,7 +89,8 @@ export const renderTemplateText = (
     .replace(/\{connection\}/g, conn)
     .replace(/\{company\}/g, comp)
     .replace(/\{source\}/g, source)
-    .replace(/\{service\}/g, source);
+    .replace(/\{service\}/g, source)
+    .replace(/\{columns\}/g, columns);
 };
 
 export const renderSubject = (

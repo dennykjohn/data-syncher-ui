@@ -1,6 +1,8 @@
 import {
-  PIPELINE_RUN_LIVE_REFETCH_MS,
+  PIPELINE_RUN_QUEUED_REFETCH_MS,
+  isApiThrottleError,
   isLivePipelineRunStatus,
+  latestRunStatusForPicker,
   pipelineRunRefetchInterval,
   resolvePipelineRunStatus,
 } from "@/components/dashboard/components/Scheduling/pipelineRunHelpers";
@@ -28,7 +30,58 @@ import {
 } from "@tanstack/react-query";
 
 export const pipelineConnectionsQueryKey = ["pipelineConnections"] as const;
+
+function isQueryThrottled(query: { state: { error: unknown } }): boolean {
+  return isApiThrottleError(query.state.error);
+}
 export const pipelinesQueryKey = ["pipelines"] as const;
+
+type PipelineRunStatusSource = Pick<
+  PipelineRunDetail,
+  "status" | "overall" | "waiting_for_flow_slot"
+>;
+
+function applyLatestRunStatusToPipelinesCache(
+  queryClient: QueryClient,
+  pipelineId: number,
+  latest_run_status: PipelineDetail["latest_run_status"],
+) {
+  queryClient.setQueryData<PipelineDetail[]>(pipelinesQueryKey, (old) => {
+    if (!old?.length) return old;
+    let changed = false;
+    const pipelines = old.map((p) => {
+      if (p.id !== pipelineId) return p;
+      if (p.latest_run_status === latest_run_status) return p;
+      changed = true;
+      return { ...p, latest_run_status };
+    });
+    return changed ? pipelines : old;
+  });
+}
+
+export function patchPipelineLatestRunStatusInCache(
+  queryClient: QueryClient,
+  pipelineId: number,
+  run: PipelineRunStatusSource,
+) {
+  applyLatestRunStatusToPipelinesCache(
+    queryClient,
+    pipelineId,
+    latestRunStatusForPicker(run),
+  );
+}
+
+export function patchPipelineLatestRunStatusDirect(
+  queryClient: QueryClient,
+  pipelineId: number,
+  latest_run_status: PipelineDetail["latest_run_status"],
+) {
+  applyLatestRunStatusToPipelinesCache(
+    queryClient,
+    pipelineId,
+    latest_run_status,
+  );
+}
 
 function updatePipelineInCache(
   queryClient: QueryClient,
@@ -105,12 +158,17 @@ export function usePipelines() {
       return data.pipelines ?? [];
     },
     staleTime: 15 * 1000,
-    refetchInterval: (query) =>
-      query.state.data?.some((p) =>
-        isLivePipelineRunStatus(p.latest_run_status),
-      )
-        ? PIPELINE_RUN_LIVE_REFETCH_MS
-        : false,
+    // Company pipeline WS patches badges; slow poll is fallback only.
+    refetchInterval: (query) => {
+      if (isQueryThrottled(query)) return false;
+      const pipelines = query.state.data;
+      if (
+        pipelines?.some((p) => isLivePipelineRunStatus(p.latest_run_status))
+      ) {
+        return 60_000;
+      }
+      return 120_000;
+    },
   });
 }
 
@@ -294,6 +352,37 @@ export function useDeletePipelineEdge(pipelineId: number) {
   });
 }
 
+export function useRevokePipelineRun() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ["revokePipelineRun"],
+    mutationFn: async ({
+      pipelineId,
+      runId,
+    }: {
+      pipelineId: number;
+      runId: number;
+    }) => {
+      const { data } = await AxiosInstance.post<{
+        status: string;
+        run_id: number;
+        run?: PipelineRunSummary;
+      }>(ServerRoutes.pipeline.revokeRun(pipelineId, runId), {});
+      return { ...data, pipelineId, runId };
+    },
+    onSuccess: async (_data, { pipelineId, runId }) => {
+      await queryClient.invalidateQueries({
+        queryKey: pipelineRunQueryKey(pipelineId, runId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: pipelineRunsQueryKey(pipelineId),
+      });
+      await queryClient.invalidateQueries({ queryKey: pipelinesQueryKey });
+    },
+  });
+}
+
 export function useRunPipeline() {
   const queryClient = useQueryClient();
 
@@ -365,12 +454,18 @@ export function usePipelineRuns(pipelineId: number | null) {
     enabled: !!pipelineId,
     // Must poll while queued too — otherwise the run picker stays stuck on
     // "queued" after the worker has already started (no pipeline-run WebSocket).
-    refetchInterval: (query) =>
-      query.state.data?.runs.some((run) =>
-        isLivePipelineRunStatus(resolvePipelineRunStatus(run)),
-      )
-        ? PIPELINE_RUN_LIVE_REFETCH_MS
-        : false,
+    refetchInterval: (query) => {
+      if (isQueryThrottled(query)) return false;
+      const runs = query.state.data?.runs ?? [];
+      let interval: number | false = false;
+      for (const run of runs) {
+        const ms = pipelineRunRefetchInterval(resolvePipelineRunStatus(run));
+        if (ms && (interval === false || ms < interval)) {
+          interval = ms;
+        }
+      }
+      return interval;
+    },
     staleTime: 15 * 1000,
   });
 }
@@ -385,12 +480,14 @@ export function pipelineRunQueryKey(
 export function usePipelineRun(
   pipelineId: number | null,
   runId: number | null,
+  _options?: { wsConnected?: boolean },
 ) {
   return useQuery<PipelineRunDetail>({
     queryKey: pipelineRunQueryKey(pipelineId ?? 0, runId),
     queryFn: () => fetchPipelineRun(pipelineId!, runId!),
     enabled: !!pipelineId && !!runId,
     refetchInterval: (query) => {
+      if (isQueryThrottled(query)) return false;
       const status = query.state.data
         ? resolvePipelineRunStatus(query.state.data)
         : undefined;
@@ -403,7 +500,7 @@ export function usePipelineRun(
         ["failed", "completed", "timeout"].includes(status) &&
         Date.now() - query.state.dataUpdatedAt < 20_000
       ) {
-        return PIPELINE_RUN_LIVE_REFETCH_MS;
+        return PIPELINE_RUN_QUEUED_REFETCH_MS;
       }
       return false;
     },
