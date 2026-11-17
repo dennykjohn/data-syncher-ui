@@ -5,6 +5,7 @@ import {
   type ExcelOptions,
 } from "@/types/connectors";
 
+import { batchesQueryKey } from "./useBatches";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 type UpdateSelectedTablesPayload = {
@@ -96,6 +97,9 @@ const useUpdateSelectedTables = ({ connectorId }: { connectorId: number }) => {
       });
       await queryClient.refetchQueries({
         queryKey: ["ReverseSchema", connectorId],
+      });
+      await queryClient.refetchQueries({
+        queryKey: batchesQueryKey(connectorId),
       });
 
       queryClient.invalidateQueries({

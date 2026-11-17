@@ -31,6 +31,7 @@ interface RuleTypeConfigProps {
   colDataType: ColumnDataType;
   colNames: string[];
   tableFields: Record<string, string>;
+  columnLabels?: Record<string, string>;
   onUpdateRule: (_patch: Partial<ExcelConditionalFormat>) => void;
 }
 
@@ -40,6 +41,7 @@ export default function RuleTypeConfig({
   colDataType,
   colNames,
   tableFields,
+  columnLabels,
   onUpdateRule,
 }: RuleTypeConfigProps) {
   const minVal = stripFormulaQuotes(
@@ -183,6 +185,7 @@ export default function RuleTypeConfig({
           highlightScope={rule.highlight_scope}
           colNames={colNames}
           tableFields={tableFields}
+          columnLabels={columnLabels}
           onUpdateConditions={(newConditions: ExcelConditionItem[]) =>
             onUpdateRule({
               conditions: newConditions,

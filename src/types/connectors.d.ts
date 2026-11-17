@@ -286,6 +286,15 @@ export interface TableFieldInfo {
   [key: string]: unknown;
 }
 
+export interface TargetFieldMeta {
+  data_type?: string;
+  source_name?: string | null;
+  generated?: boolean;
+  ordinal_position?: number;
+  is_primary_key?: boolean;
+  [key: string]: unknown;
+}
+
 export type ConnectorTable = {
   table: string;
   selected: boolean;
@@ -293,6 +302,7 @@ export type ConnectorTable = {
   is_delta: boolean;
   service_name?: string | null;
   table_fields: Record<string, TableFieldInfo | string>;
+  target_fields?: Record<string, TargetFieldMeta> | null;
   /** Present when listing tables from connection API / SourceTableSelection sync metadata */
   last_synced?: string | null;
   selected_fields?: string[] | null;
@@ -417,6 +427,7 @@ export type EntityTransformDetail = {
   created_at: string | null;
   badge: string | null;
   save_meta?: Record<string, unknown>;
+  target_fields?: Record<string, TargetFieldMeta> | null;
 };
 
 export type DestinationPreview = {
@@ -465,6 +476,7 @@ export type TransformValidateResponse = {
   published?: EntityTransformDetail | null;
   publish_error?: string;
   requires_rename_confirmation?: boolean;
+  target_fields?: Record<string, TargetFieldMeta>;
 };
 
 export type TransformDryRunResponse = {
@@ -473,6 +485,7 @@ export type TransformDryRunResponse = {
   rows_out: number;
   columns_out?: string[];
   output_columns?: string[];
+  target_fields?: Record<string, TargetFieldMeta>;
   input_columns?: string[];
   expected_columns?: string[];
   warnings?: Array<{ type: string; message: string }>;

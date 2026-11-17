@@ -10,6 +10,7 @@ import {
   type ExcelOptions,
 } from "@/types/connectors";
 
+import { isGeneratedColumn } from "../helpers/targetFieldUtils";
 import {
   DEFAULT_EXCEL_OPTIONS,
   DEFAULT_HEADER_STYLE,
@@ -34,6 +35,7 @@ export default function ExcelSettings({
   tableFields,
   selectedFields,
   tableName,
+  targetFields,
   onChange,
 }: ExcelSettingsProps) {
   const [activeTab, setActiveTab] = useState<
@@ -46,19 +48,31 @@ export default function ExcelSettings({
     options.sheet_header_style || DEFAULT_SHEET_HEADER_STYLE;
 
   const colNames = useMemo(() => {
+    let baseCols: string[] = [];
     if (selectedFields && selectedFields.length > 0) {
       const tableKeys = Object.keys(tableFields || {});
-      if (tableKeys.length === 0) return selectedFields;
-      const valid = selectedFields.filter(
-        (col) =>
-          tableFields[col] !== undefined ||
-          tableKeys.some((k) => k.toLowerCase() === col.toLowerCase()),
-      );
-      if (valid.length > 0) return valid;
-      return selectedFields;
+      if (tableKeys.length === 0) {
+        baseCols = selectedFields;
+      } else {
+        const valid = selectedFields.filter(
+          (col) =>
+            tableFields[col] !== undefined ||
+            tableKeys.some((k) => k.toLowerCase() === col.toLowerCase()),
+        );
+        baseCols = valid.length > 0 ? valid : selectedFields;
+      }
+    } else {
+      baseCols = Object.keys(tableFields || {});
     }
-    return Object.keys(tableFields || {});
-  }, [selectedFields, tableFields]);
+
+    if (targetFields) {
+      const generatedCols = Object.entries(targetFields)
+        .filter(([, meta]) => isGeneratedColumn(meta))
+        .map(([col]) => col);
+      return Array.from(new Set([...baseCols, ...generatedCols]));
+    }
+    return baseCols;
+  }, [selectedFields, tableFields, targetFields]);
 
   const rules = conditionalFormats || [];
 
@@ -432,6 +446,7 @@ export default function ExcelSettings({
           rules={rules}
           colNames={colNames}
           tableFields={tableFields}
+          targetFields={targetFields}
           onAddRule={handleAddRule}
           onUpdateRule={handleUpdateRule}
           onUpdateRuleStyle={handleUpdateRuleStyle}

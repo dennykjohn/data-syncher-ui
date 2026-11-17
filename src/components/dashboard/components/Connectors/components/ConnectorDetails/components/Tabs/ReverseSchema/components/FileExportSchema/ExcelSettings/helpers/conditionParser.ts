@@ -43,13 +43,21 @@ interface Token {
 function tokenize(
   input: string,
   colNames: string[] = [],
+  columnLabels?: Record<string, string>,
 ): { tokens: Token[]; error: string | null } {
   const tokens: Token[] = [];
   let i = 0;
   const len = input.length;
 
+  const allKnown = [
+    ...colNames,
+    ...(columnLabels ? Object.values(columnLabels) : []),
+    ...(columnLabels ? Object.keys(columnLabels) : []),
+  ];
   // Sort known column names by length descending so longer matching columns match first
-  const sortedCols = [...colNames].sort((a, b) => b.length - a.length);
+  const sortedCols = Array.from(new Set(allKnown.filter(Boolean))).sort(
+    (a, b) => b.length - a.length,
+  );
 
   const skipWhitespace = () => {
     while (i < len && /\s/.test(input[i])) {
@@ -395,6 +403,7 @@ export function parseHumanCondition(
   rawText: string,
   colNames: string[] = [],
   tableFields?: Record<string, string>,
+  columnLabels?: Record<string, string>,
 ): ParseResult {
   const text = rawText.trim();
   if (!text) {
@@ -405,7 +414,7 @@ export function parseHumanCondition(
   }
 
   // 1. Tokenize
-  const { tokens, error: tokenError } = tokenize(text, colNames);
+  const { tokens, error: tokenError } = tokenize(text, colNames, columnLabels);
   if (tokenError) {
     return { tree: null, error: tokenError };
   }
@@ -427,12 +436,28 @@ export function parseHumanCondition(
 
   // Helper to validate column name
   const resolveColumn = (name: string): string => {
-    if (!colNames || colNames.length === 0) return name;
-    const exact = colNames.find((c) => c === name);
+    if (!name) return "";
+    const cleanName = name.replace(/^[[`]|[\s\]`]+$/g, "");
+    const lower = cleanName.toLowerCase();
+
+    // 1. Check if name matches any target display label in columnLabels (e.g. QTY -> QUANTITY)
+    if (columnLabels) {
+      for (const [srcCol, targetLabel] of Object.entries(columnLabels)) {
+        if (targetLabel.toLowerCase() === lower) {
+          return srcCol;
+        }
+      }
+      for (const srcCol of Object.keys(columnLabels)) {
+        if (srcCol.toLowerCase() === lower) {
+          return srcCol;
+        }
+      }
+    }
+
+    if (!colNames || colNames.length === 0) return cleanName;
+    const exact = colNames.find((c) => c === cleanName);
     if (exact) return exact;
-    const caseMatch = colNames.find(
-      (c) => c.toLowerCase() === name.toLowerCase(),
-    );
+    const caseMatch = colNames.find((c) => c.toLowerCase() === lower);
     if (caseMatch) return caseMatch;
     return "";
   };
@@ -548,15 +573,23 @@ export function parseHumanCondition(
     const resolvedCol = resolveColumn(rawCol);
     if (!resolvedCol && colNames && colNames.length > 0) {
       const search = rawCol.toLowerCase();
-      const suggestions = colNames
-        .filter((c) => c.toLowerCase().includes(search))
-        .sort((a, b) => {
-          const aStarts = a.toLowerCase().startsWith(search);
-          const bStarts = b.toLowerCase().startsWith(search);
-          if (aStarts && !bStarts) return -1;
-          if (!aStarts && bStarts) return 1;
-          return a.localeCompare(b);
-        });
+      const suggestionsList: string[] = [];
+      for (const c of colNames) {
+        const label = columnLabels?.[c] || c;
+        if (
+          label.toLowerCase().includes(search) ||
+          c.toLowerCase().includes(search)
+        ) {
+          suggestionsList.push(label);
+        }
+      }
+      const suggestions = Array.from(new Set(suggestionsList)).sort((a, b) => {
+        const aStarts = a.toLowerCase().startsWith(search);
+        const bStarts = b.toLowerCase().startsWith(search);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        return a.localeCompare(b);
+      });
 
       return {
         node: null,
@@ -739,15 +772,23 @@ export function parseHumanCondition(
 
     if (trailing.type === "IDENTIFIER" && colNames && colNames.length > 0) {
       const search = trailing.value.toLowerCase();
-      const suggestions = colNames
-        .filter((c) => c.toLowerCase().includes(search))
-        .sort((a, b) => {
-          const aStarts = a.toLowerCase().startsWith(search);
-          const bStarts = b.toLowerCase().startsWith(search);
-          if (aStarts && !bStarts) return -1;
-          if (!aStarts && bStarts) return 1;
-          return a.localeCompare(b);
-        });
+      const suggestionsList: string[] = [];
+      for (const c of colNames) {
+        const label = columnLabels?.[c] || c;
+        if (
+          label.toLowerCase().includes(search) ||
+          c.toLowerCase().includes(search)
+        ) {
+          suggestionsList.push(label);
+        }
+      }
+      const suggestions = Array.from(new Set(suggestionsList)).sort((a, b) => {
+        const aStarts = a.toLowerCase().startsWith(search);
+        const bStarts = b.toLowerCase().startsWith(search);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        return a.localeCompare(b);
+      });
       unknownField = trailing.value;
       fieldRange = { start: trailing.start, end: trailing.end };
       suggestedColumns = suggestions.slice(0, 8);

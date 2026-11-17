@@ -6,6 +6,7 @@ import {
 import AxiosInstance from "@/lib/axios/api-client";
 import {
   type EntityTransformDetail,
+  type ReverseSchemaResponse,
   type TransformDryRunResponse,
   type TransformValidateResponse,
 } from "@/types/connectors";
@@ -91,17 +92,32 @@ export function useValidatePublishSourceScript(
       return data;
     },
     onSuccess: (data) => {
-      if (data.published || data.draft) {
-        queryClient.invalidateQueries({
-          queryKey: transformQueryKey(connectionId, tableName),
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["ConnectorTable", connectionId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["ReverseSchema", connectionId],
-        });
+      if (data.target_fields) {
+        queryClient.setQueryData<ReverseSchemaResponse>(
+          ["ReverseSchema", connectionId],
+          (old) => {
+            if (!old?.source_tables) return old;
+            return {
+              ...old,
+              source_tables: old.source_tables.map((item) =>
+                item.table === tableName
+                  ? { ...item, target_fields: data.target_fields }
+                  : item,
+              ),
+            };
+          },
+        );
       }
+      queryClient.invalidateQueries({
+        queryKey: transformQueryKey(connectionId, tableName),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["ConnectorTable", connectionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["ReverseSchema", connectionId],
+        refetchType: "none",
+      });
     },
   });
 }

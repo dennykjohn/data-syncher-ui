@@ -76,6 +76,9 @@ export function useCreateBatch(connectionId: number) {
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectionId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["ReverseSchema", connectionId],
+      });
     },
   });
 }
@@ -101,6 +104,12 @@ export function useUpdateBatch(connectionId: number) {
         queryKey: batchesQueryKey(connectionId),
       });
       queryClient.invalidateQueries({
+        queryKey: ["ConnectorTable", connectionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["ReverseSchema", connectionId],
+      });
+      queryClient.invalidateQueries({
         queryKey: pipelinesQueryKey,
       });
     },
@@ -122,6 +131,9 @@ export function useDeleteBatch(connectionId: number) {
       });
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["ReverseSchema", connectionId],
       });
     },
   });
@@ -149,6 +161,9 @@ export function useAddTablesToBatch(connectionId: number) {
       });
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["ReverseSchema", connectionId],
       });
     },
   });
@@ -179,6 +194,9 @@ export function useRemoveTableFromBatch(connectionId: number) {
       });
       queryClient.invalidateQueries({
         queryKey: ["ConnectorTable", connectionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["ReverseSchema", connectionId],
       });
     },
   });

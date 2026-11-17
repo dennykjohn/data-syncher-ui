@@ -21,6 +21,7 @@ import {
   type ExcelOptions,
   type FilenameDateFormat,
   type TableFieldInfo,
+  type TargetFieldMeta,
 } from "@/types/connectors";
 
 import ExcelSettings, { validateConditionalFormatRules } from "./ExcelSettings";
@@ -47,6 +48,7 @@ interface TableExportSettingsModalProps {
   tableName: string;
   settings: TableExportSetting;
   tableFields: Record<string, string | TableFieldInfo>;
+  targetFields?: Record<string, TargetFieldMeta> | null;
   onSave: (_settings: TableExportSetting) => void;
   isSaving?: boolean;
   supportedFormats?: string[];
@@ -92,6 +94,7 @@ const TableExportSettingsModal = ({
   tableName,
   settings,
   tableFields,
+  targetFields,
   onSave,
   isSaving = false,
   supportedFormats,
@@ -441,6 +444,7 @@ const TableExportSettingsModal = ({
                     excelSheetName={localSettings.excel_sheet_name}
                     conditionalFormats={localSettings.excel_conditional_formats}
                     tableFields={normalizedTableFields}
+                    targetFields={targetFields}
                     selectedFields={selectedFields}
                     tableName={tableName}
                     onChange={(patch) => updateLocalSetting(patch)}
