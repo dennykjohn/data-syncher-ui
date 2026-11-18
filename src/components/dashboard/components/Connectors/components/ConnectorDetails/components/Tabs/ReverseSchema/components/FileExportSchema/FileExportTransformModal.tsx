@@ -64,6 +64,7 @@ import {
   wrapTransformBody,
 } from "../../../Schema/TransformModal/scriptScaffold";
 import FileExportPreviewTable from "./FileExportPreviewTable";
+import { isGeneratedColumn } from "./helpers/targetFieldUtils";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface FileExportTransformModalProps {
@@ -287,16 +288,85 @@ const FileExportTransformModal = ({
           };
         });
 
-    const targetFoldFields =
-      targetFields && Object.keys(targetFields).length > 0
-        ? Object.entries(targetFields).map(([colName, meta]) => {
-            const rawType = meta?.data_type || "object";
-            return {
-              name: colName,
-              dtype: coerceScriptSchemaDtype(rawType),
-            };
-          })
-        : fields;
+    let targetFoldFields: { name: string; dtype: string }[];
+
+    const dryRunCols =
+      dryRunResult && !dryRunResult.errors?.length
+        ? (dryRunResult.output_columns ?? dryRunResult.columns_out)
+        : undefined;
+
+    if (Array.isArray(dryRunCols) && dryRunCols.length > 0) {
+      targetFoldFields = dryRunCols.map((colName) => {
+        const meta =
+          dryRunResult?.target_fields?.[colName] ?? targetFields?.[colName];
+        const rawType =
+          meta?.data_type ||
+          (tableFields[colName]
+            ? typeof tableFields[colName] === "string"
+              ? tableFields[colName]
+              : (tableFields[colName] as { data_type?: string })?.data_type
+            : undefined) ||
+          "object";
+        return {
+          name: colName,
+          dtype: coerceScriptSchemaDtype(rawType),
+        };
+      });
+    } else if (
+      applyScript &&
+      targetFields &&
+      Object.keys(targetFields).length > 0
+    ) {
+      const sourceToTarget: Record<
+        string,
+        { targetName: string; rawType: string }
+      > = {};
+      for (const [targetName, meta] of Object.entries(targetFields)) {
+        if (meta?.source_name) {
+          sourceToTarget[meta.source_name.toLowerCase()] = {
+            targetName,
+            rawType: meta.data_type || "object",
+          };
+        }
+      }
+
+      const mappedSourceFields: { name: string; dtype: string }[] = [];
+      const addedTargetNames = new Set<string>();
+
+      for (const srcField of fields) {
+        const renameMatch = sourceToTarget[srcField.name.toLowerCase()];
+        if (renameMatch) {
+          mappedSourceFields.push({
+            name: renameMatch.targetName,
+            dtype: coerceScriptSchemaDtype(renameMatch.rawType),
+          });
+          addedTargetNames.add(renameMatch.targetName);
+        } else {
+          const directMeta = targetFields[srcField.name];
+          const rawType = directMeta?.data_type || srcField.dtype;
+          mappedSourceFields.push({
+            name: srcField.name,
+            dtype: coerceScriptSchemaDtype(rawType),
+          });
+          addedTargetNames.add(srcField.name);
+        }
+      }
+
+      const generatedFields: { name: string; dtype: string }[] = [];
+      for (const [colName, meta] of Object.entries(targetFields)) {
+        if (isGeneratedColumn(meta) && !addedTargetNames.has(colName)) {
+          generatedFields.push({
+            name: colName,
+            dtype: coerceScriptSchemaDtype(meta?.data_type || "object"),
+          });
+          addedTargetNames.add(colName);
+        }
+      }
+
+      targetFoldFields = [...mappedSourceFields, ...generatedFields];
+    } else {
+      targetFoldFields = fields;
+    }
 
     return [
       {
@@ -308,7 +378,13 @@ const FileExportTransformModal = ({
         fields: targetFoldFields,
       },
     ];
-  }, [tableItem.selected_fields, tableItem.table_fields, targetFields]);
+  }, [
+    applyScript,
+    dryRunResult,
+    tableItem.selected_fields,
+    tableItem.table_fields,
+    targetFields,
+  ]);
 
   const scriptExamples = useMemo(() => {
     const tableFields = tableItem.table_fields || {};
