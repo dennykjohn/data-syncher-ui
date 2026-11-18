@@ -76,14 +76,25 @@ const PipelineNodeExecutionTab = ({
   }, [runTerminal, migrationSessionId, node.connection_id, queryClient]);
 
   const progressTables = useMemo(() => {
+    const nodeStatus = String(node.status || "").toLowerCase();
+    const usePipelineCoercedStatus =
+      runStatus === "revoked" &&
+      nodeStatus === "revoked" &&
+      (node.migration_status?.tables?.length ?? 0) > 0;
+    if (usePipelineCoercedStatus) {
+      return node.migration_status!.tables!;
+    }
     // Prefer live/refetched activity details (includes per-table start/end times).
     if (migrationStatus?.tables?.length) {
       return migrationStatus.tables;
     }
     return node.migration_status?.tables ?? [];
-  }, [migrationStatus?.tables, node.migration_status?.tables]) as Parameters<
-    typeof MigrationProgressTable
-  >[0]["tables"];
+  }, [
+    migrationStatus?.tables,
+    node.migration_status?.tables,
+    node.status,
+    runStatus,
+  ]) as Parameters<typeof MigrationProgressTable>[0]["tables"];
 
   const nodeError =
     summarizePipelineTableErrors(migrationStatus?.tables) ??
