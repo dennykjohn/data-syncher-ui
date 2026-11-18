@@ -1,3 +1,14 @@
+function isRevokeStopMessage(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("flow revoked") ||
+    m.includes("task revoked") ||
+    m.includes("signal 15") ||
+    (m.includes("terminated") && m.includes("revok")) ||
+    m.includes("job worker was not started")
+  );
+}
+
 export const getUiState = (
   uiState: string | undefined | null,
   status: string | undefined | null,
@@ -5,6 +16,10 @@ export const getUiState = (
 ): string => {
   const lowerStatus = (status || "").toLowerCase();
   const lowerMessage = (message || "").toLowerCase();
+
+  if (isRevokeStopMessage(lowerMessage)) {
+    return "revoked";
+  }
 
   const hasInitiated =
     lowerMessage.includes("initiated") ||
