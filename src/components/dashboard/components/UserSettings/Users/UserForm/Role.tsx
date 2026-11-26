@@ -38,7 +38,7 @@ const RoleDropdown = ({
         required
       >
         <Select.HiddenSelect />
-        <Select.Label>Account role</Select.Label>
+        <Select.Label>Account Role</Select.Label>
         <Select.Control>
           <Select.Trigger>
             <Select.ValueText placeholder="Select role" />

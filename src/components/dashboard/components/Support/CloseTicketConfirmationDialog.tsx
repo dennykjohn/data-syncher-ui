@@ -24,7 +24,7 @@ const CloseTicketConfirmationDialog = ({
         <Dialog.Positioner>
           <Dialog.Content>
             <Dialog.Header>
-              <Dialog.Title>Close confirmation</Dialog.Title>
+              <Dialog.Title>Close Confirmation</Dialog.Title>
             </Dialog.Header>
             <Dialog.Body>Do you want to close the ticket?</Dialog.Body>
             <Dialog.Footer>

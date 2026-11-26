@@ -79,7 +79,7 @@ const SourceTableRow = ({
       direction={isExpanded ? "column" : "row"}
       padding={2}
       borderRadius={4}
-      title="Drag onto a destination table to create a mapping"
+      title="Drag Onto A Destination Table To Create A Mapping"
       style={{
         cursor: isDragging ? "grabbing" : "grab",
         userSelect: "none",

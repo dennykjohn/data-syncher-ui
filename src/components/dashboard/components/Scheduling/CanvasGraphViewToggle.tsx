@@ -36,12 +36,12 @@ const CanvasGraphViewToggle = ({
         alignItems="center"
       >
         <Tooltip
-          content="Draft canvas"
+          content="Draft Canvas"
           positioning={{ placement: "left" }}
           showArrow
         >
           <IconButton
-            aria-label="Draft canvas"
+            aria-label="Draft Canvas"
             size="xs"
             variant={value === "draft" ? "solid" : "ghost"}
             colorPalette="orange"
@@ -65,7 +65,7 @@ const CanvasGraphViewToggle = ({
           showArrow
         >
           <IconButton
-            aria-label="Published flow"
+            aria-label="Published Flow"
             size="xs"
             variant={value === "published" ? "solid" : "ghost"}
             colorPalette="green"

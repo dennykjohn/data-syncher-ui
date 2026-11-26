@@ -64,7 +64,7 @@ export function TableFailureTooltip({
               p={1}
               borderRadius="md"
               transition="all 0.2s"
-              title="Copy error message"
+              title="Copy Error Message"
               color="white"
             >
               <LuCopy size={16} />

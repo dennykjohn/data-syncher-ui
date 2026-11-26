@@ -16,7 +16,7 @@ const Pagination = ({
   return (
     <Flex gap={4} alignItems="center" justifyContent="center" mt={4}>
       <IconButton
-        aria-label="Previous page"
+        aria-label="Previous Page"
         variant="ghost"
         size="sm"
         disabled={currentPage === 1}
@@ -30,7 +30,7 @@ const Pagination = ({
       </Text>
 
       <IconButton
-        aria-label="Next page"
+        aria-label="Next Page"
         variant="ghost"
         size="sm"
         disabled={currentPage === totalPages}

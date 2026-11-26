@@ -2250,7 +2250,7 @@ const TransformModal = ({
                         checked={applyScript}
                         disabled={readOnly}
                         colorPalette="brand"
-                        aria-label="Apply routine"
+                        aria-label="Apply Routine"
                         onCheckedChange={({ checked }) => {
                           handleApplyScriptChange(checked);
                         }}
@@ -2443,12 +2443,12 @@ const TransformModal = ({
                         })}
                         {(dryRunResult.input_preview?.length ?? 0) > 0 ? (
                           <ExpandablePreviewTable
-                            title="Input sample (__source_df)"
+                            title="Input Sample (__source_df)"
                             rows={dryRunResult.input_preview ?? []}
                           />
                         ) : (dryRunResult.source_preview?.length ?? 0) > 0 ? (
                           <ExpandablePreviewTable
-                            title="Input sample (raw SAP)"
+                            title="Input Sample (raw SAP)"
                             rows={dryRunResult.source_preview ?? []}
                           />
                         ) : (
@@ -2462,7 +2462,7 @@ const TransformModal = ({
                         )}
                         {(targetPreviewRows.length ?? 0) > 0 ? (
                           <ExpandablePreviewTable
-                            title="Target preview (__target_df)"
+                            title="Target Preview (__target_df)"
                             rows={targetPreviewRows}
                             columnCount={targetPreviewExpectedColumns.length}
                           />

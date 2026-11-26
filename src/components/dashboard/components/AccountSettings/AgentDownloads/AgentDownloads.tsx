@@ -58,7 +58,7 @@ const AgentDownloads: React.FC = () => {
           { label: "Account Settings" },
           { label: "Agent Downloads" },
         ]}
-        title="Agent downloads"
+        title="Agent Downloads"
         subtitle="Download the Datasyncher agent to route connections through your own network."
       />
 

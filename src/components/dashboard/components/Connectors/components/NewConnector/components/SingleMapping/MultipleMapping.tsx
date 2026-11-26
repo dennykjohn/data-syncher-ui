@@ -606,7 +606,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
           <Dialog.Positioner>
             <Dialog.Content maxW="500px">
               <Dialog.Header>
-                <Dialog.Title>Confirm removal</Dialog.Title>
+                <Dialog.Title>Confirm Removal</Dialog.Title>
               </Dialog.Header>
               <Dialog.Body>
                 <VStack align="stretch" gap={3}>
@@ -653,7 +653,7 @@ const MultipleMapping: React.FC<MultipleMappingProps> = ({
                   </Button>
                 </Dialog.ActionTrigger>
                 <Button colorPalette="brand" onClick={handleConfirmSave}>
-                  Confirm removal
+                  Confirm Removal
                 </Button>
               </Dialog.Footer>
               <Dialog.CloseTrigger asChild>

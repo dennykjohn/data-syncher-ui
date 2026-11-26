@@ -101,7 +101,7 @@ export const EmailToolbar: React.FC<EmailToolbarProps> = ({
             w="18px"
             minW="18px"
             disabled={isSubject}
-            aria-label="Bold text"
+            aria-label="Bold Text"
           >
             <LuBold size={9.5} />
           </IconButton>
@@ -116,7 +116,7 @@ export const EmailToolbar: React.FC<EmailToolbarProps> = ({
             w="18px"
             minW="18px"
             disabled={isSubject}
-            aria-label="Italic text"
+            aria-label="Italic Text"
           >
             <LuItalic size={9.5} />
           </IconButton>
@@ -470,7 +470,7 @@ export const EmailToolbar: React.FC<EmailToolbarProps> = ({
                 {selectedTemplate.name}
               </Text>
               <IconButton
-                aria-label="Clear selected template"
+                aria-label="Clear Selected Template"
                 size="xs"
                 variant="ghost"
                 h="12px"
@@ -483,7 +483,7 @@ export const EmailToolbar: React.FC<EmailToolbarProps> = ({
                   color: "purple.900",
                   bg: "purple.100",
                 }}
-                title="Reset to default template"
+                title="Reset To Default Template"
               >
                 <LuX size={9} />
               </IconButton>

@@ -203,7 +203,7 @@ const Register = () => {
 
             {/* First name */}
             <Field.Root required invalid={!!errors.firstName}>
-              <Field.Label>First name</Field.Label>
+              <Field.Label>First Name</Field.Label>
               <Input
                 placeholder="Enter your first name"
                 value={form.firstName}
@@ -215,7 +215,7 @@ const Register = () => {
 
             {/* Last name */}
             <Field.Root required invalid={!!errors.lastName}>
-              <Field.Label>Last name</Field.Label>
+              <Field.Label>Last Name</Field.Label>
               <Input
                 placeholder="Enter your last name"
                 value={form.lastName}
@@ -227,7 +227,7 @@ const Register = () => {
 
             {/* Email */}
             <Field.Root required invalid={!!errors.email}>
-              <Field.Label>Email address</Field.Label>
+              <Field.Label>Email Address</Field.Label>
               <Input
                 type="email"
                 placeholder="Share your email address"

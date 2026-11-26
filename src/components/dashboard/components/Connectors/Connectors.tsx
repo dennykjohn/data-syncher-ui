@@ -94,7 +94,7 @@ const columns: Column<ConnectorTableItem>[] = [
     ),
   },
   {
-    header: "Last sync",
+    header: "Last Sync",
     accessor: "last_synced_new",
     render: (_, { last_synced_new }) => {
       const d = new Date(last_synced_new as string | number);
@@ -103,7 +103,7 @@ const columns: Column<ConnectorTableItem>[] = [
     },
   },
   {
-    header: "Migration status",
+    header: "Migration Status",
     accessor: "migration_status",
     textAlign: "center",
     width: "80px",
@@ -111,7 +111,7 @@ const columns: Column<ConnectorTableItem>[] = [
       return (
         <HStack gap={2} w="100%" justify="center">
           {migration_status === "S" && (
-            <Tooltip content="Sync in progress" showArrow>
+            <Tooltip content="Sync In Progress" showArrow>
               <LoadingSpinner
                 size="sm"
                 containerProps={{ h: "16px", w: "16px" }}
@@ -143,7 +143,7 @@ const columns: Column<ConnectorTableItem>[] = [
   },
 
   {
-    header: "Connection status",
+    header: "Connection Status",
     accessor: "status",
     textAlign: "center",
     width: "120px",

@@ -123,7 +123,7 @@ const NewBatchModal = ({
         <Dialog.Positioner>
           <Dialog.Content>
             <Dialog.Header>
-              <Dialog.Title>Create new batch</Dialog.Title>
+              <Dialog.Title>Create New Batch</Dialog.Title>
             </Dialog.Header>
             <Dialog.Body>
               <Flex direction="column" gap={4}>

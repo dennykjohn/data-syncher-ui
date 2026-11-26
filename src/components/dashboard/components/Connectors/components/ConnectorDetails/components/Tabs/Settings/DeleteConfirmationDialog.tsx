@@ -26,7 +26,7 @@ const DeleteConfirmationDialog = ({
         <Dialog.Positioner>
           <Dialog.Content>
             <Dialog.Header>
-              <Dialog.Title>Delete confirmation</Dialog.Title>
+              <Dialog.Title>Delete Confirmation</Dialog.Title>
             </Dialog.Header>
             <Dialog.Body>
               Are you sure you want to delete this connection?

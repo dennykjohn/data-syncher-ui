@@ -261,7 +261,7 @@ const UserForm = ({ mode }: { mode: "edit" | "add" }) => {
         breadcrumbs={
           mode === "add" ? BreadcrumbsForNewUser : BreadcrumbsForEditUser
         }
-        title={mode === "add" ? `Add member` : `Edit member`}
+        title={mode === "add" ? `Add Member` : `Edit Member`}
       />
       <chakra.form
         onSubmit={onSubmit}

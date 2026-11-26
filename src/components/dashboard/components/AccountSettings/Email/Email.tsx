@@ -142,7 +142,7 @@ const DataLoadTab = () => {
         <Switch.Control>
           <Switch.Thumb />
         </Switch.Control>
-        <Switch.Label>Enable communication support</Switch.Label>
+        <Switch.Label>Enable Communication Support</Switch.Label>
       </Switch.Root>
       <Button
         variant="solid"
@@ -333,7 +333,7 @@ const NotificationsTab = () => {
       render: (_, row) => (
         <HStack gap={2} justifyContent="center" w="100%">
           <IconButton
-            aria-label="Edit group"
+            aria-label="Edit Group"
             variant="ghost"
             colorPalette="gray"
             size="sm"
@@ -345,7 +345,7 @@ const NotificationsTab = () => {
             <LuPencil />
           </IconButton>
           <IconButton
-            aria-label="Delete group"
+            aria-label="Delete Group"
             variant="ghost"
             colorPalette="red"
             size="sm"
@@ -498,7 +498,7 @@ const NotificationsTab = () => {
           <Dialog.Positioner>
             <Dialog.Content>
               <Dialog.Header>
-                <Dialog.Title>Delete confirmation</Dialog.Title>
+                <Dialog.Title>Delete Confirmation</Dialog.Title>
               </Dialog.Header>
               <Dialog.Body>
                 Are you sure you want to delete this email group? This action

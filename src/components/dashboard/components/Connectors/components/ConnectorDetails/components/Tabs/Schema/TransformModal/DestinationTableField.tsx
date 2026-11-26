@@ -138,7 +138,7 @@ const DestinationTableField = ({
                 <Flex gap={2} align="center" wrap="wrap">
                   <Input
                     size="sm"
-                    aria-label="Destination table name"
+                    aria-label="Destination Table Name"
                     value={editValue}
                     onChange={(e) => onEditChange(e.target.value)}
                     onKeyDown={(e) => {
@@ -177,7 +177,7 @@ const DestinationTableField = ({
               <Button
                 size="xs"
                 variant="ghost"
-                aria-label={copied ? "Copied" : "Copy destination table name"}
+                aria-label={copied ? "Copied" : "Copy Destination Table Name"}
                 onClick={() => void copyName()}
               >
                 {copied ? "Copied" : "Copy"}

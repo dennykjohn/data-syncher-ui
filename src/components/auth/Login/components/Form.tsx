@@ -268,7 +268,7 @@ export default function Form() {
             >
               <Checkbox.HiddenInput name="rememberMe" />
               <Checkbox.Control />
-              <Checkbox.Label>Remember me</Checkbox.Label>
+              <Checkbox.Label>Remember Me</Checkbox.Label>
             </Checkbox.Root>
             <Link to={`${ClientRoutes.AUTH}/${ClientRoutes.FORGOT_PASSWORD}`}>
               <Span color="brand.500" fontSize="14px">

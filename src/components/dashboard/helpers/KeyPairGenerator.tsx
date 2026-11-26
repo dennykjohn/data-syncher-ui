@@ -347,7 +347,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
                     mb={2}
                   >
                     <Field.Label>Private Key (PEM format)</Field.Label>
-                    <Tooltip content="Copy private key">
+                    <Tooltip content="Copy Private Key">
                       <Button
                         size="xs"
                         variant="ghost"
@@ -390,7 +390,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
                         X.509 Certificate (upload to Connected App)
                       </Field.Label>
                       <Flex gap={1}>
-                        <Tooltip content="Download certificate (.crt)">
+                        <Tooltip content="Download Certificate (.crt)">
                           <Button
                             size="xs"
                             variant="ghost"
@@ -404,7 +404,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
                             <MdDownload size={14} />
                           </Button>
                         </Tooltip>
-                        <Tooltip content="Copy certificate">
+                        <Tooltip content="Copy Certificate">
                           <Button
                             size="xs"
                             variant="ghost"
@@ -439,7 +439,7 @@ const KeyPairGenerator: React.FC<KeyPairGeneratorProps> = ({
                       mb={2}
                     >
                       <Field.Label>Public Key (PEM format)</Field.Label>
-                      <Tooltip content="Copy public key">
+                      <Tooltip content="Copy Public Key">
                         <Button
                           size="xs"
                           variant="ghost"

@@ -158,7 +158,7 @@ const PipelineNotificationPanel = ({
       </VStack>
 
       <Field.Root mb={3}>
-        <Field.Label fontSize="xs">Additional email addresses</Field.Label>
+        <Field.Label fontSize="xs">Additional Email Addresses</Field.Label>
         <Input
           size="sm"
           value={directEmailsInput}

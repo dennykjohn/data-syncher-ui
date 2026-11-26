@@ -235,7 +235,7 @@ const BatchGroupedPanel = ({
               )}
               {isMappingFlow && onUnmapSource && (
                 <IconButton
-                  aria-label={`Remove mapping for ${t.table_name}`}
+                  aria-label={`Remove Mapping For ${t.table_name}`}
                   size="xs"
                   variant="ghost"
                   colorPalette="red"

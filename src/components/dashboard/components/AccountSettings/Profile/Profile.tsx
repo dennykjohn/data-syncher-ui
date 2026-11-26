@@ -264,7 +264,7 @@ const PaymentMethodForm = ({
   return (
     <Box>
       <Field.Root mb={3}>
-        <Field.Label fontSize="xs">Card holder name</Field.Label>
+        <Field.Label fontSize="xs">Card Holder Name</Field.Label>
         <Box
           borderWidth="1px"
           borderColor={{ _light: "gray.200", _dark: "gray.700" }}
@@ -396,7 +396,7 @@ const AddressForm = ({
   return (
     <SimpleGrid columns={{ base: 1, md: 2 }} gap={1}>
       <Field.Root w="100%">
-        <Field.Label fontSize="xs">Company name</Field.Label>
+        <Field.Label fontSize="xs">Company Name</Field.Label>
         <Input
           size="sm"
           placeholder="Enter company name"
@@ -422,7 +422,7 @@ const AddressForm = ({
         />
       </Field.Root>
       <Field.Root gridColumn={{ base: "auto", md: "span 2" }} w="100%">
-        <Field.Label fontSize="xs">Address line 1</Field.Label>
+        <Field.Label fontSize="xs">Address Line 1</Field.Label>
         <Textarea
           size="sm"
           rows={1}
@@ -437,7 +437,7 @@ const AddressForm = ({
         />
       </Field.Root>
       <Field.Root gridColumn={{ base: "auto", md: "span 2" }} w="100%">
-        <Field.Label fontSize="xs">Address line 2</Field.Label>
+        <Field.Label fontSize="xs">Address Line 2</Field.Label>
         <Textarea
           size="sm"
           rows={1}
@@ -465,7 +465,7 @@ const AddressForm = ({
         />
       </Field.Root>
       <Field.Root w="100%">
-        <Field.Label fontSize="xs">Zip code</Field.Label>
+        <Field.Label fontSize="xs">Zip Code</Field.Label>
         <Input
           size="sm"
           placeholder="Enter zip code"
@@ -951,18 +951,18 @@ const AccountProfile = () => {
       <SimpleGrid columns={{ base: 1, lg: 2 }} gap={3}>
         <SectionCard title="Company Details">
           <SimpleGrid columns={{ base: 1, md: 2 }} gap={2}>
-            <ReadOnlyField label="Company name" value={companyName} />
+            <ReadOnlyField label="Company Name" value={companyName} />
             <ReadOnlyField
-              label="Account created date"
+              label="Account Created Date"
               value={formatDateTime(createdAt)}
             />
-            <ReadOnlyField label="Created by" value={createdBy} />
-            <ReadOnlyField label="Account status" value={accountStatus} />
+            <ReadOnlyField label="Created By" value={createdBy} />
+            <ReadOnlyField label="Account Status" value={accountStatus} />
             <ReadOnlyField
-              label="Valid from"
+              label="Valid From"
               value={formatDateTime(validFrom)}
             />
-            <ReadOnlyField label="Valid to" value={formatDateTime(validTo)} />
+            <ReadOnlyField label="Valid To" value={formatDateTime(validTo)} />
           </SimpleGrid>
         </SectionCard>
 
@@ -970,12 +970,12 @@ const AccountProfile = () => {
           <SimpleGrid columns={{ base: 1, md: 2 }} gap={2}>
             <ReadOnlyField label="Plan" value={planName} />
             <ReadOnlyField
-              label="Plan type"
+              label="Plan Type"
               value={isTrial === null ? "—" : isTrial ? "Trial" : "Paid"}
             />
             {isTrial ? (
               <ReadOnlyField
-                label="Trial days remaining"
+                label="Trial Days Remaining"
                 value={`${trialDays ?? 0} days`}
               />
             ) : null}
@@ -1033,7 +1033,7 @@ const AccountProfile = () => {
                 >
                   <Checkbox.HiddenInput />
                   <Checkbox.Control />
-                  <Checkbox.Label>Same as billing address</Checkbox.Label>
+                  <Checkbox.Label>Same As Billing Address</Checkbox.Label>
                 </Checkbox.Root>
               </Flex>
               <AddressForm
@@ -1084,24 +1084,24 @@ const AccountProfile = () => {
             <>
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={2} mb={3}>
                 <ReadOnlyField
-                  label="Card holder name"
+                  label="Card Holder Name"
                   value={billingDetails.cardHolder}
                 />
                 <ReadOnlyField
-                  label="Card number"
+                  label="Card Number"
                   value={billingDetails.cardNumber}
                 />
                 <ReadOnlyField
-                  label="Card brand"
+                  label="Card Brand"
                   value={billingDetails.cardBrand}
                 />
                 <ReadOnlyField
-                  label="Card expiry"
+                  label="Card Expiry"
                   value={billingDetails.cardExpiry}
                 />
                 {billingDetails.nextBillingDate ? (
                   <ReadOnlyField
-                    label="Next billing date"
+                    label="Next Billing Date"
                     value={formatDateTime(billingDetails.nextBillingDate)}
                   />
                 ) : null}

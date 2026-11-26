@@ -45,7 +45,7 @@ const Source = ({
           },
           { label: "Configure" },
         ]}
-        title="Select source type"
+        title="Select Source Type"
         subtitle="Select your source type you want to create your connectors from"
       />
       <Flex

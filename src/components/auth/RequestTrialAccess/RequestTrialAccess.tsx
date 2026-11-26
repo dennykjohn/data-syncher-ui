@@ -247,7 +247,7 @@ const RequestTrialAccess = () => {
           </Fieldset.Root>
 
           <Field.Root required invalid={!!errors.firstName}>
-            <Field.Label>First name</Field.Label>
+            <Field.Label>First Name</Field.Label>
             <Input
               placeholder="Enter your first name"
               value={form.firstName}
@@ -258,7 +258,7 @@ const RequestTrialAccess = () => {
           </Field.Root>
 
           <Field.Root required invalid={!!errors.lastName}>
-            <Field.Label>Last name</Field.Label>
+            <Field.Label>Last Name</Field.Label>
             <Input
               placeholder="Enter your last name"
               value={form.lastName}
@@ -269,7 +269,7 @@ const RequestTrialAccess = () => {
           </Field.Root>
 
           <Field.Root required invalid={!!errors.email}>
-            <Field.Label>Email address</Field.Label>
+            <Field.Label>Email Address</Field.Label>
             <Input
               type="email"
               placeholder="Share your email address"
@@ -281,7 +281,7 @@ const RequestTrialAccess = () => {
           </Field.Root>
 
           <Field.Root invalid={!!errors.phoneNumber}>
-            <Field.Label>Phone number</Field.Label>
+            <Field.Label>Phone Number</Field.Label>
             <Input
               type="tel"
               inputMode="tel"

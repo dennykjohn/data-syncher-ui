@@ -162,7 +162,7 @@ const BatchOverviewPanel = ({
           {batch?.name ?? "Batch"}
         </Text>
         <IconButton
-          aria-label="Close panel"
+          aria-label="Close Panel"
           size="xs"
           variant="ghost"
           onClick={onClose}

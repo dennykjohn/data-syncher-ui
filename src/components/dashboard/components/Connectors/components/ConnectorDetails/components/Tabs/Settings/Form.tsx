@@ -91,7 +91,7 @@ const Form = (props: Connector) => {
         </Field.Root>
 
         <Field.Root maxW="sm" disabled={!canEdit} invalid={!!chunkCountError}>
-          <Field.Label>Transfer packet size</Field.Label>
+          <Field.Label>Transfer Packet Size</Field.Label>
           <NumberInput.Root
             disabled={!canEdit}
             min={minChunkCount}

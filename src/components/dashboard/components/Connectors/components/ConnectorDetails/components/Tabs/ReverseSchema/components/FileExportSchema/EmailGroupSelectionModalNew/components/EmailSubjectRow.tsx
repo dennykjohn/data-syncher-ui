@@ -95,7 +95,7 @@ export const EmailSubjectRow: React.FC<EmailSubjectRowProps> = ({
               h="20px"
             />
             <IconButton
-              aria-label="Save subject"
+              aria-label="Save Subject"
               size="xs"
               variant="ghost"
               colorPalette="green"
@@ -107,7 +107,7 @@ export const EmailSubjectRow: React.FC<EmailSubjectRowProps> = ({
               <LuCheck size={12} />
             </IconButton>
             <IconButton
-              aria-label="Cancel editing"
+              aria-label="Cancel Editing"
               size="xs"
               variant="ghost"
               colorPalette="red"
@@ -151,7 +151,7 @@ export const EmailSubjectRow: React.FC<EmailSubjectRowProps> = ({
             e.stopPropagation();
             onStartEditing();
           }}
-          title="Click to edit subject line template"
+          title="Click To Edit Subject Line Template"
         >
           <Text
             fontSize="xs"
@@ -182,7 +182,7 @@ export const EmailSubjectRow: React.FC<EmailSubjectRowProps> = ({
             )}
           </Text>
           <IconButton
-            aria-label="Edit subject"
+            aria-label="Edit Subject"
             size="xs"
             variant="ghost"
             colorPalette="brand"

@@ -130,7 +130,7 @@ export const MultiColumnSorting = ({
               </NativeSelect.Root>
 
               <IconButton
-                aria-label="Remove sort rule"
+                aria-label="Remove Sort Rule"
                 size="xs"
                 variant="ghost"
                 colorPalette="red"

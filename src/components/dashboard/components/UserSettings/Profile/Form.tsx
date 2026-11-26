@@ -29,7 +29,7 @@ const ProfileForm = ({
         <Fieldset.Content>
           {/* First name */}
           <Field.Root required>
-            <Field.Label>First name</Field.Label>
+            <Field.Label>First Name</Field.Label>
             <Input
               placeholder="Enter your first name"
               value={initialData.firstName}
@@ -39,7 +39,7 @@ const ProfileForm = ({
           </Field.Root>
           {/* Last name */}
           <Field.Root required>
-            <Field.Label>Last name</Field.Label>
+            <Field.Label>Last Name</Field.Label>
             <Input
               placeholder="Enter your last name"
               value={initialData.lastName}
@@ -59,7 +59,7 @@ const ProfileForm = ({
           </Field.Root>
           {/* Company name */}
           <Field.Root required>
-            <Field.Label>Company name</Field.Label>
+            <Field.Label>Company Name</Field.Label>
             <Input
               placeholder="Enter your company name"
               value={initialData.cmp_name}
@@ -69,7 +69,7 @@ const ProfileForm = ({
           </Field.Root>
           {/* Valid from */}
           <Field.Root required>
-            <Field.Label>Valid from</Field.Label>
+            <Field.Label>Valid From</Field.Label>
             <Input
               type="date"
               placeholder="Enter your valid from date"
@@ -80,7 +80,7 @@ const ProfileForm = ({
           </Field.Root>
           {/* Valid to */}
           <Field.Root required>
-            <Field.Label>Valid to</Field.Label>
+            <Field.Label>Valid To</Field.Label>
             <Input
               type="date"
               placeholder="Enter your valid to date"

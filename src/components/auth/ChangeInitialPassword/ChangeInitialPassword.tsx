@@ -35,8 +35,8 @@ const ChangeInitialPassword = () => {
     <PasswordResetForm
       uid={uid}
       token={token}
-      title="Change your temporary password"
-      submitLabel="Change password"
+      title="Change Your Temporary Password"
+      submitLabel="Change Password"
       onSuccess={handleSuccess}
     />
   );

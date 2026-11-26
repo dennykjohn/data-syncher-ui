@@ -20,7 +20,7 @@ const GoogleDriveFolderConfirmDialog = ({
         <Dialog.Positioner>
           <Dialog.Content>
             <Dialog.Header>
-              <Dialog.Title>Create Google Drive folder?</Dialog.Title>
+              <Dialog.Title>Create Google Drive Folder?</Dialog.Title>
             </Dialog.Header>
             <Dialog.Body>
               The folder{" "}

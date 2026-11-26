@@ -210,7 +210,7 @@ const TableRow = ({
         <Flex gap={6} alignItems="center" justifySelf="end">
           <Flex justifyContent="center" minW="40px">
             {item.is_delta && (
-              <TbDelta color="#2563EB" size={18} title="Delta table" />
+              <TbDelta color="#2563EB" size={18} title="Delta Table" />
             )}
           </Flex>
 

@@ -687,7 +687,7 @@ const FieldSelectionModal = ({
 
                         <Flex gap={1} alignItems="center">
                           <IconButton
-                            aria-label="Move to Top"
+                            aria-label="Move To Top"
                             size="xs"
                             variant="subtle"
                             disabled={isAtTop || hasSelectedGenerated}
@@ -714,7 +714,7 @@ const FieldSelectionModal = ({
                             <MdKeyboardArrowDown />
                           </IconButton>
                           <IconButton
-                            aria-label="Move to Bottom"
+                            aria-label="Move To Bottom"
                             size="xs"
                             variant="subtle"
                             disabled={isAtBottom || hasSelectedGenerated}

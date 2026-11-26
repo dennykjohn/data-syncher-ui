@@ -75,7 +75,7 @@ const FlowStatusDot = ({ paused }: { paused: boolean }) => (
     borderRadius="full"
     flexShrink={0}
     bg={paused ? "orange.500" : "green.600"}
-    title={paused ? "Flow paused" : "Flow active"}
+    title={paused ? "Flow Paused" : "Flow Active"}
   />
 );
 
@@ -125,7 +125,7 @@ const RunningLiveBadge = ({ compact = false }: { compact?: boolean }) => (
     borderWidth="1px"
     borderColor="blue.200"
     flexShrink={0}
-    title="Flow execution in progress"
+    title="Flow Execution In Progress"
   >
     <PulsingLiveDot />
     <Text
@@ -152,7 +152,7 @@ const QueuedBadge = ({ compact = false }: { compact?: boolean }) => (
     borderWidth="1px"
     borderColor="purple.200"
     flexShrink={0}
-    title="Waiting for a free flow slot on this plan"
+    title="Waiting For A Free Flow Slot On This Plan"
   >
     <Box
       as="span"
@@ -183,7 +183,7 @@ const FlowStatusLabel = ({ paused }: { paused: boolean }) => (
     w="48px"
     textAlign="right"
     letterSpacing="0.02em"
-    title={paused ? "Flow paused" : "Flow active"}
+    title={paused ? "Flow Paused" : "Flow Active"}
   >
     {paused ? "Paused" : "Active"}
   </Text>

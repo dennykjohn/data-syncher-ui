@@ -825,7 +825,7 @@ const FilterConditionEditor = ({
               }}
             >
               {condition.column === "" && (
-                <option value="">Select operator</option>
+                <option value="">Select Operator</option>
               )}
               {operators.map((op) => (
                 <option key={op.value} value={op.value}>
@@ -900,7 +900,7 @@ const FilterConditionEditor = ({
                   value={condition.value}
                   onChange={(e) => onChange({ value: e.target.value })}
                 >
-                  <option value="">Select boolean value</option>
+                  <option value="">Select Boolean Value</option>
                   <option value="true">True</option>
                   <option value="false">False</option>
                 </LabeledSelect>
@@ -1711,7 +1711,7 @@ const RowFilterModal = ({
                             size="xs"
                             variant="ghost"
                             colorPalette="red"
-                            aria-label="Delete condition"
+                            aria-label="Delete Condition"
                             onClick={() => handleRemoveCondition(index)}
                             disabled={isInitialSyncDone}
                           >

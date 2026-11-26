@@ -61,7 +61,7 @@ const TimezoneSelect = ({
         disabled={disabled}
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
-        aria-label="Search time zones"
+        aria-label="Search Time Zones"
       />
       {query ? (
         <Text fontSize="2xs" color="gray.500" mb={1.5}>
@@ -98,20 +98,20 @@ const TimezoneSelect = ({
           ) : (
             <>
               {showLocalGroup && (
-                <optgroup label="Local time zone">
+                <optgroup label="Local Time Zone">
                   <option value={localTimezone}>
                     {formatTimezoneLabel(localTimezone)} (local)
                   </option>
                 </optgroup>
               )}
               {showSelectedGroup && (
-                <optgroup label="Current selection">
+                <optgroup label="Current Selection">
                   <option value={selected}>
                     {formatTimezoneLabel(selected)}
                   </option>
                 </optgroup>
               )}
-              <optgroup label="Standard time zones">
+              <optgroup label="Standard Time Zones">
                 {STANDARD_TIMEZONES.map((tz) => (
                   <option key={tz.iana} value={tz.iana}>
                     {formatTimezoneLabel(tz.iana, tz.name)}

@@ -1080,8 +1080,8 @@ const ConnectorDocsHelperPanel = ({
           Setup Guide
         </Text>
         <Button
-          aria-label="Copy docs link"
-          title="Copy docs link"
+          aria-label="Copy Docs Link"
+          title="Copy Docs Link"
           size="xs"
           variant="ghost"
           onClick={handleCopyDocsLink}

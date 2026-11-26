@@ -140,9 +140,9 @@ const FileExportPreviewTable = ({
                 <FiMinimize2 /> Collapse
               </Button>
             ) : (
-              <Tooltip content="Expand preview">
+              <Tooltip content="Expand Preview">
                 <IconButton
-                  aria-label="Expand preview"
+                  aria-label="Expand Preview"
                   size="xs"
                   variant="ghost"
                   onClick={() => setExpanded(true)}

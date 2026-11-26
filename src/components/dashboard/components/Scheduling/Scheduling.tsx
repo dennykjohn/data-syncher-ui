@@ -2599,12 +2599,12 @@ const Scheduling = () => {
               onSelect={selectPipeline}
               onPipelineHover={handlePipelinePrefetch}
             />
-            <Tooltip content="Rename pipeline" openDelay={200} showArrow>
+            <Tooltip content="Rename Pipeline" openDelay={200} showArrow>
               <Box as="span" display="inline-flex" flexShrink={0}>
                 <IconButton
                   size="sm"
                   variant="outline"
-                  aria-label="Rename pipeline"
+                  aria-label="Rename Pipeline"
                   onClick={openRenamePipelineDialog}
                   disabled={!selectedPipelineId || patchPipeline.isPending}
                 >
@@ -2635,7 +2635,7 @@ const Scheduling = () => {
           <Dialog.Positioner>
             <Dialog.Content maxW="md">
               <Dialog.Header>
-                <Dialog.Title>Delete pipeline?</Dialog.Title>
+                <Dialog.Title>Delete Pipeline?</Dialog.Title>
               </Dialog.Header>
               <Dialog.Body>
                 <Text fontSize="sm" color="gray.700">
@@ -2677,7 +2677,7 @@ const Scheduling = () => {
           <Dialog.Positioner>
             <Dialog.Content maxW="md">
               <Dialog.Header>
-                <Dialog.Title>New pipeline</Dialog.Title>
+                <Dialog.Title>New Pipeline</Dialog.Title>
               </Dialog.Header>
               <Dialog.Body>
                 <Text fontSize="sm" color="gray.600" mb={2}>
@@ -2728,7 +2728,7 @@ const Scheduling = () => {
           <Dialog.Positioner>
             <Dialog.Content maxW="md">
               <Dialog.Header>
-                <Dialog.Title>Rename pipeline</Dialog.Title>
+                <Dialog.Title>Rename Pipeline</Dialog.Title>
               </Dialog.Header>
               <Dialog.Body>
                 <Text fontSize="sm" color="gray.600" mb={2}>
@@ -2812,9 +2812,9 @@ const Scheduling = () => {
               pt={1}
               gap={3}
             >
-              <Tooltip content="Show connections & batches" showArrow>
+              <Tooltip content="Show Connections & Batches" showArrow>
                 <IconButton
-                  aria-label="Expand connections and batches panel"
+                  aria-label="Expand Connections And Batches Panel"
                   size="xs"
                   variant="ghost"
                   colorPalette="gray"
@@ -2848,9 +2848,9 @@ const Scheduling = () => {
                 <Text fontSize="sm" fontWeight="semibold">
                   Connections &amp; batches
                 </Text>
-                <Tooltip content="Hide panel" showArrow>
+                <Tooltip content="Hide Panel" showArrow>
                   <IconButton
-                    aria-label="Collapse connections and batches panel"
+                    aria-label="Collapse Connections And Batches Panel"
                     size="xs"
                     variant="ghost"
                     colorPalette="gray"
@@ -2870,7 +2870,7 @@ const Scheduling = () => {
                 placeholder="Search connections or batches"
                 value={connectionSearch}
                 onChange={(e) => setConnectionSearch(e.target.value)}
-                aria-label="Search connections or batches"
+                aria-label="Search Connections Or Batches"
               />
               {connectionsLoading && (
                 <Text fontSize="sm" color="gray.500">
@@ -3077,7 +3077,7 @@ const Scheduling = () => {
                       Flow
                     </Tabs.Trigger>
                     <Tabs.Trigger value="logs" fontSize="sm" py={2} px={3}>
-                      Execution logs
+                      Execution LogsP
                     </Tabs.Trigger>
                   </Tabs.List>
                 </Flex>
@@ -3119,7 +3119,7 @@ const Scheduling = () => {
                 >
                   {canRevokeActiveRun ? (
                     <PipelineToolbarIcon
-                      label="Revoke flow"
+                      label="Revoke Flow"
                       colorPalette="red"
                       _hover={{ bg: "red.50", color: "red.600" }}
                       onClick={() => void handleRevokePipelineRun()}
@@ -3131,7 +3131,7 @@ const Scheduling = () => {
                   ) : null}
                   {!draftCanvasMode && activeRunId !== null && (
                     <PipelineToolbarIcon
-                      label="Edit canvas"
+                      label="Edit Canvas"
                       tooltip="Leave run view and edit the draft flow"
                       onClick={handleEditCanvas}
                       flexShrink={0}
@@ -3223,7 +3223,7 @@ const Scheduling = () => {
                         <MdRestore />
                       </PipelineToolbarIcon>
                       <PipelineToolbarIcon
-                        label="Run now"
+                        label="Run Now"
                         tooltip={runDisabledReason ?? "Run published flow now"}
                         colorPalette={canRunPipeline ? "brand" : undefined}
                         color={canRunPipeline ? "brand.600" : "gray.400"}

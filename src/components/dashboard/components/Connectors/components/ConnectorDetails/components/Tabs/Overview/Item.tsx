@@ -147,7 +147,7 @@ const Item = ({
                 size="sm"
                 borderRadius="md"
                 cursor="pointer"
-                title="Open pipeline execution logs"
+                title="Open Pipeline Execution Logs"
                 onClick={openPipelineExecutionLogs}
                 _hover={{ bg: "purple.50" }}
               >

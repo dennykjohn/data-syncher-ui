@@ -232,16 +232,16 @@ export default function RuleTypeConfig({
                 onChange={(e) => onUpdateRule({ operator: e.target.value })}
               >
                 {isOperatorAllowed("equal", colDataType) && (
-                  <option value="equal">Equal to</option>
+                  <option value="equal">Equal To</option>
                 )}
                 {isOperatorAllowed("notEqual", colDataType) && (
-                  <option value="notEqual">Not equal to</option>
+                  <option value="notEqual">Not Equal To</option>
                 )}
                 {isOperatorAllowed("greaterThan", colDataType) && (
-                  <option value="greaterThan">Greater than</option>
+                  <option value="greaterThan">Greater Than</option>
                 )}
                 {isOperatorAllowed("lessThan", colDataType) && (
-                  <option value="lessThan">Less than</option>
+                  <option value="lessThan">Less Than</option>
                 )}
                 {isOperatorAllowed("greaterThanOrEqual", colDataType) && (
                   <option value="greaterThanOrEqual">
@@ -249,13 +249,13 @@ export default function RuleTypeConfig({
                   </option>
                 )}
                 {isOperatorAllowed("lessThanOrEqual", colDataType) && (
-                  <option value="lessThanOrEqual">Less than or equal to</option>
+                  <option value="lessThanOrEqual">Less Than Or Equal To</option>
                 )}
                 {isOperatorAllowed("between", colDataType) && (
                   <option value="between">Between</option>
                 )}
                 {isOperatorAllowed("notBetween", colDataType) && (
-                  <option value="notBetween">Not between</option>
+                  <option value="notBetween">Not Between</option>
                 )}
               </NativeSelect.Field>
               <NativeSelect.Indicator />

@@ -609,7 +609,7 @@ function Model2ConditionRow({
 
       {/* Delete condition button */}
       <IconButton
-        aria-label="Remove condition"
+        aria-label="Remove Condition"
         size="xs"
         variant="ghost"
         colorPalette="red"
@@ -618,7 +618,7 @@ function Model2ConditionRow({
         h="22px"
         w="22px"
         minW="22px"
-        title="Remove condition"
+        title="Remove Condition"
       >
         <IoMdClose fontSize="14px" />
       </IconButton>
@@ -1177,12 +1177,12 @@ export default function MultipleConditionsRule({
                         h="22px"
                         px={2}
                         onClick={() => handleUngroup(node.id)}
-                        title="Ungroup conditions back to parent"
+                        title="Ungroup Conditions Back To Parent"
                       >
                         Ungroup
                       </Button>
                       <IconButton
-                        aria-label="Delete group"
+                        aria-label="Delete Group"
                         size="2xs"
                         variant="ghost"
                         colorPalette="red"
@@ -1190,7 +1190,7 @@ export default function MultipleConditionsRule({
                         w="22px"
                         minW="22px"
                         onClick={() => handleDeleteNode(node.id)}
-                        title="Delete entire group"
+                        title="Delete Entire Group"
                       >
                         <IoMdClose fontSize="14px" />
                       </IconButton>
@@ -1666,9 +1666,9 @@ export default function MultipleConditionsRule({
               </Box>
             </HStack>
 
-            <Tooltip content="Edit expression as text">
+            <Tooltip content="Edit Expression As Text">
               <IconButton
-                aria-label="Edit expression"
+                aria-label="Edit Expression"
                 size="2xs"
                 variant="ghost"
                 colorPalette="blue"

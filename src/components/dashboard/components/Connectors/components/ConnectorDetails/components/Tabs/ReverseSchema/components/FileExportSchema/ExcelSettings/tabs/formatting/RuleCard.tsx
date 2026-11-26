@@ -237,7 +237,7 @@ export default function RuleCard({
           Rule #{index + 1}
         </Text>
         <IconButton
-          aria-label="Delete rule"
+          aria-label="Delete Rule"
           size="xs"
           variant="ghost"
           colorPalette="red"

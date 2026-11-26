@@ -6,7 +6,7 @@ const BreadcrumbsForNewDestination = [
     route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
   },
   {
-    label: "Add destination",
+    label: "Add Destination",
     route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}/${ClientRoutes.DESTINATION.ADD}`,
   },
 
@@ -18,7 +18,7 @@ const BreadcrumbsForEditDestination = [
     label: "Destinations",
     route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
   },
-  { label: "Edit destination" },
+  { label: "Edit Destination" },
 ];
 
 export { BreadcrumbsForNewDestination, BreadcrumbsForEditDestination };

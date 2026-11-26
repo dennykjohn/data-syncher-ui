@@ -2,14 +2,14 @@ import { type BodyFieldOption } from "./types";
 
 export const BODY_FIELDS_OPTIONS: BodyFieldOption[] = [
   { id: "service", label: "Service name" },
-  { id: "connection", label: "Connection name" },
-  { id: "company", label: "Company name" },
-  { id: "table", label: "Table name" },
+  { id: "connection", label: "Connection Name" },
+  { id: "company", label: "Company Name" },
+  { id: "table", label: "Table Name" },
   { id: "file", label: "File" },
   { id: "rows", label: "Rows Exported" },
   { id: "columns", label: "Columns Exported" },
   { id: "path", label: "Destination Path" },
-  { id: "timestamp", label: "Completed timestamp" },
+  { id: "timestamp", label: "Completed Timestamp" },
 ];
 
 export const DEFAULT_BODY_FIELDS: string[] = [];

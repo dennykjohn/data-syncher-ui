@@ -61,7 +61,7 @@ const StartOverviewPanel = ({
           </Text>
         </Box>
         <IconButton
-          aria-label="Close panel"
+          aria-label="Close Panel"
           size="xs"
           variant="ghost"
           onClick={onClose}

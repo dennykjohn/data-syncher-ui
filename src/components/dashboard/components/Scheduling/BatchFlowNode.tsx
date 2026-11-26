@@ -108,7 +108,7 @@ const BatchFlowNode = ({ id, data }: NodeProps) => {
               </Box>
               {nodeData.onDelete && (
                 <IconButton
-                  aria-label="Remove batch from pipeline"
+                  aria-label="Remove Batch From Pipeline"
                   size="2xs"
                   variant="ghost"
                   colorPalette="gray"

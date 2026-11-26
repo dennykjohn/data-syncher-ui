@@ -202,7 +202,7 @@ export const EmailCanvasPreview: React.FC<EmailCanvasPreviewProps> = ({
                 h="22px"
               />
               <IconButton
-                aria-label="Save greeting"
+                aria-label="Save Greeting"
                 size="xs"
                 variant="ghost"
                 colorPalette="green"
@@ -214,7 +214,7 @@ export const EmailCanvasPreview: React.FC<EmailCanvasPreviewProps> = ({
                 <LuCheck size={11} />
               </IconButton>
               <IconButton
-                aria-label="Cancel greeting"
+                aria-label="Cancel Greeting"
                 size="xs"
                 variant="ghost"
                 colorPalette="red"
@@ -256,7 +256,7 @@ export const EmailCanvasPreview: React.FC<EmailCanvasPreviewProps> = ({
                   e.stopPropagation();
                   onStartEditingGreeting();
                 }}
-                title="Click to edit greeting"
+                title="Click To Edit Greeting"
               >
                 {greetingName || (
                   <span
@@ -394,7 +394,7 @@ export const EmailCanvasPreview: React.FC<EmailCanvasPreviewProps> = ({
                 onStartEditingBody();
               }}
               position="relative"
-              title="Click to edit email body message template"
+              title="Click To Edit Email Body Message Template"
             >
               <Text
                 fontFamily={bodyStyles.fontFamily}
@@ -675,7 +675,7 @@ export const EmailCanvasPreview: React.FC<EmailCanvasPreviewProps> = ({
               />
               <Flex direction="column" gap={1}>
                 <IconButton
-                  aria-label="Save team"
+                  aria-label="Save Team"
                   size="xs"
                   variant="ghost"
                   colorPalette="green"
@@ -687,7 +687,7 @@ export const EmailCanvasPreview: React.FC<EmailCanvasPreviewProps> = ({
                   <LuCheck size={11} />
                 </IconButton>
                 <IconButton
-                  aria-label="Cancel team"
+                  aria-label="Cancel Team"
                   size="xs"
                   variant="ghost"
                   colorPalette="red"
@@ -725,7 +725,7 @@ export const EmailCanvasPreview: React.FC<EmailCanvasPreviewProps> = ({
                 e.stopPropagation();
                 onStartEditingTeam();
               }}
-              title="Click to edit signature team name"
+              title="Click To Edit Signature Team Name"
             >
               <Text
                 fontFamily={teamStyles.fontFamily}

@@ -227,7 +227,7 @@ const BillingInfoTab = () => {
             p={0}
             onClick={() => row.id && handleDownload(row.id)}
             disabled={!row.id}
-            aria-label="Download invoice"
+            aria-label="Download Invoice"
             title="Download"
           >
             <FiDownload size={18} color="gray.600" />
@@ -352,7 +352,7 @@ const BillingInfoTab = () => {
             transition="all 0.2s"
             onClick={() => setDetailsTab("billing_details")}
           >
-            Billing details
+            Billing Details
           </Box>
         </Flex>
 

@@ -107,9 +107,9 @@ const VirtualMappingTable = ({
             <FiMinimize2 /> Collapse
           </Button>
         ) : (
-          <Tooltip content="Expand mapping table">
+          <Tooltip content="Expand Mapping Table">
             <IconButton
-              aria-label="Expand mapping table"
+              aria-label="Expand Mapping Table"
               size="xs"
               variant="ghost"
               onClick={() => setExpanded(true)}
@@ -138,11 +138,11 @@ const VirtualMappingTable = ({
           zIndex={1}
           gap={2}
         >
-          <Box flex="1.2">SAP column</Box>
+          <Box flex="1.2">SAP Column</Box>
           <Box w="40px" textAlign="center">
             →
           </Box>
-          <Box flex="1.2">Mapped column</Box>
+          <Box flex="1.2">Mapped Column</Box>
           <Box w="90px">Type</Box>
           <Box w="110px">Status</Box>
         </Flex>

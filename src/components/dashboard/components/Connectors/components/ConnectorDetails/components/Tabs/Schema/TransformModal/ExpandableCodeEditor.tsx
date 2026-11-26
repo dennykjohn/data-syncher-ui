@@ -303,7 +303,7 @@ const ExpandableCodeEditor = ({
           </Button>
         ))}
         <Flex ml="auto" align="center" gap={1}>
-          <Tooltip content={expanded ? "Collapse editor" : "Expand editor"}>
+          <Tooltip content={expanded ? "Collapse Editor" : "Expand Editor"}>
             <IconButton
               aria-label={expanded ? "Collapse" : "Expand"}
               size="xs"

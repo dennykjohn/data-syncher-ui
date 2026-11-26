@@ -212,7 +212,7 @@ const ColumnList = ({
               </Text>
             )}
             {isFilterable && (
-              <Tooltip content="Filterable column">
+              <Tooltip content="Filterable Column">
                 <Box
                   display="inline-flex"
                   alignItems="center"
@@ -327,7 +327,7 @@ const EntityAccordion = ({
             </Text>
             {destinationTableName && (
               <Tooltip
-                content={`Snowflake destination: ${destinationTableName}`}
+                content={`Snowflake Destination: ${destinationTableName}`}
               >
                 <Text fontSize="xs" color="gray.500" truncate>
                   {destinationTableName}
@@ -361,7 +361,7 @@ const EntityAccordion = ({
                   <TbTransform />
                 </IconButton>
               </Tooltip>
-              <Tooltip content="Row filter">
+              <Tooltip content="Row Filter">
                 <IconButton
                   size="xs"
                   variant={hasRowFilter ? "subtle" : "ghost"}
@@ -371,12 +371,12 @@ const EntityAccordion = ({
                     e.stopPropagation();
                     onOpenRowFilter(tableItem.table);
                   }}
-                  aria-label="Row filter"
+                  aria-label="Row Filter"
                 >
                   <LuFilter size={16} strokeWidth={2} />
                 </IconButton>
               </Tooltip>
-              <Tooltip content="Target settings">
+              <Tooltip content="Target Settings">
                 <IconButton
                   size="xs"
                   variant="ghost"
@@ -386,7 +386,7 @@ const EntityAccordion = ({
                     e.stopPropagation();
                     onOpenSettings(tableItem.table);
                   }}
-                  aria-label="Target settings"
+                  aria-label="Target Settings"
                 >
                   <IoMdSettings />
                 </IconButton>
@@ -395,7 +395,7 @@ const EntityAccordion = ({
           )}
           <Flex justify="center" minW="40px">
             {tableItem.is_delta && (
-              <TbDelta color="#2563EB" size={18} title="Delta table" />
+              <TbDelta color="#2563EB" size={18} title="Delta Table" />
             )}
           </Flex>
           <Flex justify="center" minW="40px">

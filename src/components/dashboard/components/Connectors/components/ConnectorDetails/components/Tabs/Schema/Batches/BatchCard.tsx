@@ -201,7 +201,7 @@ const BatchCard = ({
 
         <Menu.Root>
           <Menu.Trigger asChild>
-            <IconButton aria-label="Batch actions" size="xs" variant="ghost">
+            <IconButton aria-label="Batch Actions" size="xs" variant="ghost">
               <FiMoreVertical />
             </IconButton>
           </Menu.Trigger>

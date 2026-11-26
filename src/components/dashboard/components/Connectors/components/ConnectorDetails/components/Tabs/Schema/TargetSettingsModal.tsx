@@ -338,7 +338,7 @@ const TargetSettingsModal = ({
                   )}
 
                   <LabeledField
-                    label="Load method"
+                    label="Load Method"
                     extra={
                       isSnowflake && formattedFirstSync ? (
                         <Text
@@ -382,7 +382,7 @@ const TargetSettingsModal = ({
                       </NativeSelect.Root>
 
                       {isLoadMethodLocked && (
-                        <Tooltip content="Clear table data and unlock settings">
+                        <Tooltip content="Clear Table Data And Unlock Settings">
                           <IconButton
                             size="xs"
                             colorPalette="red"
@@ -398,7 +398,7 @@ const TargetSettingsModal = ({
                               bg: "red.50",
                               color: "red.700",
                             }}
-                            aria-label="Clear table data"
+                            aria-label="Clear Table Data"
                           >
                             <IoMdTrash />
                           </IconButton>
@@ -420,7 +420,7 @@ const TargetSettingsModal = ({
                     <>
                       {showPartitionCheckbox && (
                         <LockableCheckbox
-                          label="Partition Delta by Date"
+                          label="Partition Delta By Date"
                           checked={!!localSettings.partition_delta_by_date}
                           locked={isLoadMethodLocked}
                           dimWhenLocked
@@ -459,7 +459,7 @@ const TargetSettingsModal = ({
                         />
                       </LabeledField>
 
-                      <LabeledField label="File type">
+                      <LabeledField label="File Type">
                         <NativeSelect.Root size="sm" disabled>
                           <NativeSelect.Field
                             {...{ disabled: true }}
@@ -471,7 +471,7 @@ const TargetSettingsModal = ({
                         </NativeSelect.Root>
                       </LabeledField>
 
-                      <LabeledField label="Compression method">
+                      <LabeledField label="Compression Method">
                         <NativeSelect.Root
                           size="sm"
                           disabled={isLoadMethodLocked}

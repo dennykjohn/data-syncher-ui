@@ -159,7 +159,7 @@ const BatchPickerModal = ({
                     onClick={() => setIsCreateOpen(true)}
                   >
                     <GoPlus />
-                    Create new batch
+                    Create New Batch
                   </Button>
                 </Flex>
               </Dialog.Body>

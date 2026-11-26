@@ -87,7 +87,7 @@ const PipelineRunPicker = ({
           color="gray.800"
           _hover={{ bg: "gray.50", borderColor: "gray.300" }}
           _expanded={{ bg: "gray.50", borderColor: "gray.400" }}
-          aria-label="Select pipeline run"
+          aria-label="Select Pipeline Run"
         >
           <Text
             truncate

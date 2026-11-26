@@ -15,9 +15,9 @@ const NewDestination = () => {
             label: "Destinations",
             route: `${ClientRoutes.DASHBOARD}/${ClientRoutes.DESTINATION.ROOT}`,
           },
-          { label: "Add destination" },
+          { label: "Add Destination" },
         ]}
-        title="Add destination"
+        title="Add Destination"
         subtitle="A destination is a data warehouse that store all your data"
       />
       <DestinationList />

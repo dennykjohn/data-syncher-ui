@@ -172,7 +172,7 @@ const BatchSchedulePanel = ({
               }
               disabled={isTogglingSchedulePause}
               colorPalette="brand"
-              aria-label="Toggle automatic schedule"
+              aria-label="Toggle Automatic Schedule"
             >
               <Switch.HiddenInput />
               <Switch.Control />

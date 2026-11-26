@@ -420,7 +420,7 @@ export const EmailTemplatesTab = () => {
       render: (_val, row) => (
         <HStack gap={1}>
           <IconButton
-            aria-label="Edit template"
+            aria-label="Edit Template"
             size="xs"
             variant="ghost"
             colorPalette="brand"
@@ -431,7 +431,7 @@ export const EmailTemplatesTab = () => {
           {deletingId === row.id ? (
             <HStack gap={1}>
               <IconButton
-                aria-label="Confirm delete"
+                aria-label="Confirm Delete"
                 size="xs"
                 variant="solid"
                 colorPalette="red"
@@ -440,7 +440,7 @@ export const EmailTemplatesTab = () => {
                 <LuCheck size={12} />
               </IconButton>
               <IconButton
-                aria-label="Cancel delete"
+                aria-label="Cancel Delete"
                 size="xs"
                 variant="ghost"
                 onClick={() => setDeletingId(null)}
@@ -450,7 +450,7 @@ export const EmailTemplatesTab = () => {
             </HStack>
           ) : (
             <IconButton
-              aria-label="Delete template"
+              aria-label="Delete Template"
               size="xs"
               variant="ghost"
               colorPalette="red"
@@ -867,7 +867,7 @@ export const EmailTemplatesTab = () => {
                             />
                           </Box>
                           <IconButton
-                            aria-label="Remove callout box"
+                            aria-label="Remove Callout Box"
                             size="xs"
                             variant="ghost"
                             colorPalette="red"
@@ -875,7 +875,7 @@ export const EmailTemplatesTab = () => {
                             w="20px"
                             minW="20px"
                             onClick={() => setShowCalloutBox(false)}
-                            title="Remove callout box"
+                            title="Remove Callout Box"
                           >
                             <LuTrash2 size={13} />
                           </IconButton>

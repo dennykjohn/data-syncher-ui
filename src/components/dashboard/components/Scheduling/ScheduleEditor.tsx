@@ -391,7 +391,7 @@ const ScheduleEditor = ({
                     <RadioGroup.Item value="on_date">
                       <RadioGroup.ItemHiddenInput />
                       <RadioGroup.ItemIndicator />
-                      <RadioGroup.ItemText>On date</RadioGroup.ItemText>
+                      <RadioGroup.ItemText>On Date</RadioGroup.ItemText>
                     </RadioGroup.Item>
                   </Flex>
                 </RadioGroup.Root>
@@ -421,7 +421,7 @@ const ScheduleEditor = ({
                           end_mode: "never",
                         })
                       }
-                      aria-label="Clear end date"
+                      aria-label="Clear End Date"
                     >
                       <LuTrash2 />
                     </Button>

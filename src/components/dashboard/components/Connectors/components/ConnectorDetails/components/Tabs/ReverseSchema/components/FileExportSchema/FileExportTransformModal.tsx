@@ -884,7 +884,7 @@ const FileExportTransformModal = ({
                   </IconButton>
                   <CloseButton
                     size="sm"
-                    aria-label="Close dialog"
+                    aria-label="Close Dialog"
                     onClick={() => void requestClose()}
                     color="gray.600"
                     _hover={{ bg: "gray.200", color: "gray.800" }}
@@ -996,7 +996,7 @@ const FileExportTransformModal = ({
                         disabled={readOnly}
                         colorPalette="brand"
                         size="sm"
-                        aria-label="Apply routine"
+                        aria-label="Apply Routine"
                         onCheckedChange={({ checked }) => {
                           void handleApplyScriptChange(checked);
                         }}
@@ -1231,7 +1231,7 @@ const FileExportTransformModal = ({
 
                         {inputPreviewRows.length > 0 && (
                           <FileExportPreviewTable
-                            title="Input sample (Snowflake extract)"
+                            title="Input Sample (Snowflake Extract)"
                             rows={inputPreviewRows}
                             maxH={
                               outputPreviewRows.length > 0 ? "220px" : undefined
@@ -1242,7 +1242,7 @@ const FileExportTransformModal = ({
 
                         {outputPreviewRows.length > 0 && (
                           <FileExportPreviewTable
-                            title="Target preview (__target_df)"
+                            title="Target Preview (__target_df)"
                             rows={outputPreviewRows}
                             flex={1}
                           />

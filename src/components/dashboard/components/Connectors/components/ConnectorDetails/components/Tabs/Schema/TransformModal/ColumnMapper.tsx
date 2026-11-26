@@ -780,9 +780,9 @@ const ColumnMapper = ({
               disabled={readOnly}
             >
               <NativeSelect.Field
-                aria-label={`Source column for ${row.target}`}
+                aria-label={`Source Column For ${row.target}`}
                 value={row.source || ""}
-                title={row.source || "Choose source column"}
+                title={row.source || "Choose Source Column"}
                 onClick={(event) => event.stopPropagation()}
                 onChange={(event) => {
                   if (event.target.value)
@@ -797,14 +797,14 @@ const ColumnMapper = ({
                 <option value="">none</option>
                 {hasJson ? (
                   <>
-                    <optgroup label="From file">
+                    <optgroup label="From File">
                       {fileColumns.map((column) => (
                         <option key={column.name} value={column.name}>
                           {column.name}
                         </option>
                       ))}
                     </optgroup>
-                    <optgroup label="Not in file">
+                    <optgroup label="Not In File">
                       {extraColumns.map((column) => (
                         <option key={column.name} value={column.name}>
                           {column.name}
@@ -876,8 +876,8 @@ const ColumnMapper = ({
           </Flex>
           <Flex flex="1" minW={0} align="center" gap={2}>
             {row.targetLocked ? (
-              <Tooltip content="Defined by the mapping JSON">
-                <Box color="gray.500" aria-label="Defined by the mapping JSON">
+              <Tooltip content="Defined By The Mapping JSON">
+                <Box color="gray.500" aria-label="Defined By The Mapping JSON">
                   <FiLock size={12} />
                 </Box>
               </Tooltip>
@@ -966,7 +966,7 @@ const ColumnMapper = ({
             </Badge>
           )}
           {!readOnly && (
-            <Tooltip content="Remove from mapping">
+            <Tooltip content="Remove From Mapping">
               <IconButton
                 aria-label={`Remove ${row.target} from mapping`}
                 size="xs"
@@ -1187,7 +1187,7 @@ const ColumnMapper = ({
             overflowX="hidden"
             css={thinScroll}
             role="listbox"
-            aria-label="Mapped columns"
+            aria-label="Mapped Columns"
           >
             <Box
               h={`${targetVirtualizer.getTotalSize()}px`}
