@@ -3077,7 +3077,7 @@ const Scheduling = () => {
                       Flow
                     </Tabs.Trigger>
                     <Tabs.Trigger value="logs" fontSize="sm" py={2} px={3}>
-                      Execution LogsP
+                      Execution Logs
                     </Tabs.Trigger>
                   </Tabs.List>
                 </Flex>
