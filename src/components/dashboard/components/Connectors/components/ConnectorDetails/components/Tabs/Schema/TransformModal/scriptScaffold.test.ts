@@ -246,20 +246,35 @@ describe("script examples", () => {
   it("uses mapping field names in the filter and transform samples", () => {
     const [filter, transform] = buildScriptExamples(
       ["BELNR", "DMBTR"],
-      ["BELNR"],
+      ["BELNR", "DMBTR"],
     );
     expect(filter.code).toContain('__source_df["BELNR"]');
-    expect(filter.code).toContain('== "IN01"');
+    expect(filter.code).toContain("_keep =");
+    expect(filter.code).toContain("iloc[0]");
+    expect(filter.code).toContain('if "BELNR" in __source_df.columns');
+    expect(filter.code).not.toContain('== "IN01"');
     expect(filter.code).not.toContain(".isin(");
     expect(transform.code).toContain('__target_df["BELNR"]');
     expect(transform.code).toContain('__source_df["DMBTR"]');
+    expect(transform.code).toContain('if "DMBTR" in __source_df.columns');
     expect(transform.code).toContain("pd.to_numeric");
+  });
+
+  it("with mapping present, prefers target-frame columns and skips source-only DMSOL", () => {
+    const [, transform] = buildScriptExamples(
+      ["DMSOL", "BELNR", "DMBTR"],
+      ["BELNR", "DMBTR"],
+      { mappingPresent: true },
+    );
+    expect(transform.code).toContain('__source_df["DMBTR"]');
+    expect(transform.code).not.toContain("DMSOL");
+    expect(transform.code).toContain('if "DMBTR" in __source_df.columns');
   });
 
   it("falls back to BUKRS and DMBTR when the mapping has no fields", () => {
     const [filter, transform] = buildScriptExamples([], []);
     expect(filter.code).toContain('__source_df["BUKRS"]');
-    expect(filter.code).toContain('== "IN01"');
+    expect(filter.code).toContain("_keep =");
     expect(transform.code).toContain('__target_df["DMBTR"]');
   });
 });

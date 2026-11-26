@@ -48,6 +48,8 @@ export interface ConnectorTableItem {
   created_by_name?: string | null;
   updated_by_name?: string | null;
   modified_by_name?: string | null;
+  uses_lake_spark?: boolean;
+  lake_compute?: "datasyncher_spark" | "customer_databricks" | null;
 }
 
 export interface Connector {
@@ -88,6 +90,8 @@ export interface Connector {
   updated_by_name?: string | null;
   modified_by_name?: string | null;
   is_file_based?: boolean;
+  uses_lake_spark?: boolean;
+  lake_compute?: "datasyncher_spark" | "customer_databricks" | null;
   supports_notification_groups?: boolean;
   root_folder?: string | null;
   display_name?: string;
@@ -147,6 +151,8 @@ export type ConnectorSettingsApiResponse = {
   updated_by_name?: string | null;
   modified_by_name?: string | null;
   is_file_based?: boolean;
+  uses_lake_spark?: boolean;
+  lake_compute?: "datasyncher_spark" | "customer_databricks" | null;
   supports_notification_groups?: boolean;
 };
 

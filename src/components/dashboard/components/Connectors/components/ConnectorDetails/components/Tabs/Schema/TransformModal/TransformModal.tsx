@@ -9,8 +9,8 @@ import {
   Flex,
   IconButton,
   Input,
-  Link,
   Portal,
+  Skeleton,
   Switch,
   Text,
   VStack,
@@ -38,14 +38,16 @@ import {
 } from "@/constants/transform-limits";
 import usePermissions from "@/hooks/usePermissions";
 import {
-  useDeactivateTransform,
   useDryRunTransform,
   useEntityTransform,
+  useEntityTransformVersion,
   useSaveDraftTransform,
   useValidateTransform,
 } from "@/queryOptions/connector/schema/transform/useEntityTransform";
+import useFetchTableFields from "@/queryOptions/connector/schema/useFetchTableFields";
 import {
   type ConnectorTable,
+  type ConnectorTablesResponse,
   type MappingTableRow,
   type TransformDryRunResponse,
   type TransformValidateResponse,
@@ -68,7 +70,8 @@ import ExpandableCodeEditor, {
 } from "./ExpandableCodeEditor";
 import ExpandablePreviewTable from "./ExpandablePreviewTable";
 import JsonFileChip from "./JsonFileChip";
-import ScriptFileChip from "./ScriptFileChip";
+import TransformStatusBar from "./TransformStatusBar";
+import VersionDetailDialog from "./VersionDetailDialog";
 import VirtualMappingTable from "./VirtualMappingTable";
 import { confirmCopy } from "./confirmCopy";
 import {
@@ -109,6 +112,7 @@ import {
   undoHistory,
   validateMappingJsonStructure,
 } from "./mappingState";
+import { sapColumnsFromFields, sapColumnsFromTable } from "./sapTableFields";
 import { buildScriptExamples } from "./scriptExamples";
 import {
   TRANSFORM_ENTRY_POINT,
@@ -123,6 +127,7 @@ import {
   validateTransformRoot,
   wrapTransformBody,
 } from "./scriptScaffold";
+import { useQueryClient } from "@tanstack/react-query";
 
 type FilterChip =
   | "all"
@@ -142,7 +147,6 @@ interface TransformModalProps {
 }
 
 const STEPS = ["Column mapping", "Script", "Review and test"];
-const pendingDraftRestores = new Set<string>();
 
 const emptyOverrides = (): OverrideSnapshot => snapshotOf(emptyDraft());
 
@@ -184,33 +188,6 @@ const snapshotFromSaved = (raw: unknown): OverrideSnapshot => {
       ? value.targetOrder.map(String)
       : [],
   };
-};
-
-const flagIsKey = (value: unknown) => {
-  if (value === true || value === 1) return true;
-  if (typeof value === "string") {
-    const text = value.trim().toUpperCase();
-    return text === "X" || text === "Y" || text === "TRUE" || text === "1";
-  }
-  return false;
-};
-
-const sapColumnsFromTable = (tableItem: ConnectorTable): SapColumn[] => {
-  const fields = tableItem.table_fields || {};
-  return Object.entries(fields).map(([name, info]) => {
-    const meta = typeof info === "string" ? { data_type: info } : info || {};
-    return {
-      name,
-      type: String(meta.data_type || meta.edm_type || ""),
-      length: Number(meta.max_length || 0) || undefined,
-      decimals: Number(meta.precision || 0) || undefined,
-      isKey:
-        flagIsKey(meta.isKey) ||
-        flagIsKey(meta.is_key) ||
-        flagIsKey(meta.key) ||
-        flagIsKey(meta.key_flag),
-    };
-  });
 };
 
 const jsonFieldTypes = (
@@ -288,6 +265,7 @@ const TransformModal = ({
   destinationName,
   occupiedDestinations,
 }: TransformModalProps) => {
+  const rqClient = useQueryClient();
   const parts = entityParts(tableItem);
   const defaultDisplay = defaultDestinationDisplayName(
     parts.serviceName,
@@ -383,9 +361,18 @@ const TransformModal = ({
   const validateMut = useValidateTransform(connectionId, tableItem.table);
   const dryRunMut = useDryRunTransform(connectionId, tableItem.table);
   const draftSaveMut = useSaveDraftTransform(connectionId, tableItem.table);
-  const deactivateMut = useDeactivateTransform(connectionId, tableItem.table);
   const [draftSaveLabel, setDraftSaveLabel] = useState<string | null>(null);
+  const [viewingVersion, setViewingVersion] = useState<number | null>(null);
   const skipAutosaveUntilRef = useRef(0);
+  const isDirtyRef = useRef(false);
+  /** Bypass dirty guard after discard/deactivate so Applied state can reload. */
+  const forceServerReloadRef = useRef(false);
+  const versionDetailQuery = useEntityTransformVersion(
+    connectionId,
+    tableItem.table,
+    viewingVersion,
+    viewingVersion !== null && viewingVersion !== undefined,
+  );
 
   const previousSavedDest = (
     transformData?.active?.destination_table_name || ""
@@ -397,17 +384,41 @@ const TransformModal = ({
   );
   const publishedVersion = transformData?.active?.version ?? null;
 
-  const draftKey = `transform-draft:${connectionId}:${tableItem.table}`;
+  const legacyLocalDraftKey = `transform-draft:${connectionId}:${tableItem.table}`;
   const loadedKeyRef = useRef("");
+  /** Script hidden when Apply routine is toggled off; restored on toggle on. */
+  const stashedScriptRef = useRef("");
+
+  useEffect(() => {
+    if (!open) return;
+    try {
+      sessionStorage.removeItem(legacyLocalDraftKey);
+    } catch {
+      /* sessionStorage may be unavailable */
+    }
+  }, [open, legacyLocalDraftKey]);
 
   useEffect(() => {
     if (!open) {
       loadedKeyRef.current = "";
+      setViewingVersion(null);
       return;
     }
     const loadKey = `${tableItem.table}:a${transformData?.active?.version ?? "none"}:d${transformData?.draft?.version ?? "none"}`;
     if (loadedKeyRef.current === loadKey) return;
+    // Draft upsert/autosave invalidation must not wipe in-progress section edits
+    // (e.g. Remove JSON only / Remove script only).
+    if (
+      loadedKeyRef.current &&
+      isDirtyRef.current &&
+      !forceServerReloadRef.current
+    ) {
+      loadedKeyRef.current = loadKey;
+      return;
+    }
+    forceServerReloadRef.current = false;
     loadedKeyRef.current = loadKey;
+    stashedScriptRef.current = "";
     // Prefer open server draft so autosaved edits reload; else published active.
     const sourceRow = transformData?.draft ?? transformData?.active ?? null;
     const normalizedScript = normalizeTransformScript(
@@ -465,12 +476,14 @@ const TransformModal = ({
       setJsonFileMeta(null);
       setScriptFileMeta(null);
     }
+    const routineOn = Boolean(unwrapTransformBody(normalizedScript).trim());
     const loadedBaseline: MappingBaseline = sourceRow
       ? {
           mappingJson:
             (sourceRow.mapping_json as Record<string, unknown>) || null,
           overrides: snapshotFromSaved(sourceRow.mapping_overrides),
           scriptText: normalizedScript,
+          applyScript: routineOn,
           entryPoint: TRANSFORM_ENTRY_POINT,
           runOrder: deriveRunOrder(
             (sourceRow.mapping_json as Record<string, unknown>) || null,
@@ -486,6 +499,7 @@ const TransformModal = ({
           mappingJson: null,
           overrides: emptyOverrides(),
           scriptText: "",
+          applyScript: false,
           entryPoint: TRANSFORM_ENTRY_POINT,
           runOrder: deriveRunOrder(null),
           destName: defaultTable,
@@ -506,104 +520,59 @@ const TransformModal = ({
     setConfirmUseExisting(false);
     setRenameMode(null);
     setColumnAddMode(null);
-    const stored = sessionStorage.getItem(draftKey);
-    if (!stored) return;
-    let parsed: {
-      mappingJson?: Record<string, unknown> | null;
-      overrides?: OverrideSnapshot;
-      scriptText?: string;
-      destName?: string;
-      destSource?: DestinationNameSource;
-      fileName?: string;
-      fileSize?: number;
-      scriptFileName?: string;
-      scriptFileSize?: number;
-      step?: number;
-      applyScript?: boolean;
-      dryRunResult?: TransformDryRunResponse | null;
-      scriptValidatedText?: string;
-      scriptNameFromUpload?: boolean;
-    };
-    try {
-      parsed = JSON.parse(stored) as typeof parsed;
-    } catch {
-      sessionStorage.removeItem(draftKey);
-      return;
-    }
-    const token = loadKey;
-    if (pendingDraftRestores.has(token)) return;
-    pendingDraftRestores.add(token);
-    void (async () => {
-      try {
-        const restore = await confirm({
-          title: confirmCopy.restoreDraft.title,
-          description: confirmCopy.restoreDraft.description,
-          cancelLabel: confirmCopy.restoreDraft.cancelLabel,
-          confirmLabel: confirmCopy.restoreDraft.confirmLabel,
-          icon: "info",
-        });
-        if (loadedKeyRef.current !== token) return;
-        if (!restore) {
-          sessionStorage.removeItem(draftKey);
-          return;
-        }
-        if (parsed.mappingJson) setMappingJson(parsed.mappingJson);
-        if (parsed.overrides) setHistory(createHistory(parsed.overrides));
-        if (typeof parsed.scriptText === "string") {
-          const restored = validateTransformRoot(parsed.scriptText)
-            ? normalizeTransformScript(parsed.scriptText)
-            : parsed.scriptText;
-          setScriptText(restored);
-          setEntryPoint(TRANSFORM_ENTRY_POINT);
-          if (typeof parsed.applyScript === "boolean") {
-            setApplyScript(parsed.applyScript);
-          } else {
-            setApplyScript(Boolean(unwrapTransformBody(restored).trim()));
-          }
-        } else if (typeof parsed.applyScript === "boolean") {
-          setApplyScript(parsed.applyScript);
-        }
-        if (typeof parsed.step === "number") {
-          setStep(Math.min(2, Math.max(0, parsed.step)));
-        }
-        if (parsed.dryRunResult && typeof parsed.dryRunResult === "object") {
-          setDryRunResult(parsed.dryRunResult);
-        }
-        if (typeof parsed.scriptValidatedText === "string") {
-          setScriptValidatedText(parsed.scriptValidatedText);
-        }
-        setScriptNameFromUpload(Boolean(parsed.scriptNameFromUpload));
-        if (parsed.destName) setDestName(parsed.destName);
-        if (parsed.destSource) setDestSource(parsed.destSource);
-        if (parsed.fileName) {
-          setJsonFileMeta({
-            fileName: parsed.fileName,
-            size: parsed.fileSize || 0,
-          });
-        }
-        if (parsed.scriptFileName) {
-          setScriptFileMeta({
-            fileName: parsed.scriptFileName,
-            size: parsed.scriptFileSize || 0,
-          });
-        }
-      } finally {
-        pendingDraftRestores.delete(token);
-      }
-    })();
   }, [
     open,
     transformData?.active,
     transformData?.draft,
     defaultTable,
-    draftKey,
     tableItem.table,
     parts.entityName,
+  ]);
+
+  const hasInlineTableFields =
+    Object.keys(tableItem.table_fields || {}).length > 0;
+  const { data: fetchedFields, isLoading: sapFieldsLoading } =
+    useFetchTableFields(
+      connectionId,
+      tableItem.table,
+      open && !hasInlineTableFields,
+    );
+
+  useEffect(() => {
+    if (!open || !fetchedFields?.table_fields || hasInlineTableFields) return;
+    rqClient.setQueryData<ConnectorTablesResponse>(
+      ["ConnectorTable", connectionId],
+      (old) => {
+        if (!old?.tables) return old;
+        return {
+          ...old,
+          tables: old.tables.map((t) =>
+            t.table === tableItem.table
+              ? { ...t, table_fields: fetchedFields.table_fields }
+              : t,
+          ),
+        };
+      },
+    );
+  }, [
+    connectionId,
+    fetchedFields?.table_fields,
+    hasInlineTableFields,
+    open,
+    rqClient,
+    tableItem.table,
   ]);
 
   const sapColumns = useMemo(() => {
     const fromTable = sapColumnsFromTable(tableItem);
     if (fromTable.length > 0) return fromTable;
+    if (fetchedFields?.table_fields) {
+      const fromFetch = sapColumnsFromFields(
+        fetchedFields.table_fields,
+        fetchedFields.primary_keys,
+      );
+      if (fromFetch.length > 0) return fromFetch;
+    }
     const source = mappingJson?.source;
     if (!source || typeof source !== "object") return fromTable;
     const fields = (source as { fields?: unknown }).fields;
@@ -629,7 +598,10 @@ const TransformModal = ({
         type: String(field.datatype || ""),
         length: Number(field.length || 0) || undefined,
       }));
-  }, [mappingJson, tableItem]);
+  }, [fetchedFields, mappingJson, tableItem]);
+
+  const sapSchemaLoading =
+    sapFieldsLoading && sapColumns.length === 0 && !hasInlineTableFields;
   const draft = useMemo(
     () => ({
       json: mappingJson
@@ -656,6 +628,33 @@ const TransformModal = ({
     ...historyRef.current.present,
   });
   const effectiveRows = useMemo(() => selectEffectiveMappings(draft), [draft]);
+  const mappedTargetNames = useMemo(
+    () =>
+      effectiveRows
+        .map((row) => row.target?.trim())
+        .filter((name): name is string => Boolean(name)),
+    [effectiveRows],
+  );
+  const targetPreviewExpectedColumns = useMemo(() => {
+    if (dryRunResult?.expected_columns?.length) {
+      return dryRunResult.expected_columns;
+    }
+    return mappedTargetNames;
+  }, [dryRunResult?.expected_columns, mappedTargetNames]);
+  const targetPreviewRows = useMemo(() => {
+    const rows = dryRunResult?.output_preview ?? [];
+    const expected = targetPreviewExpectedColumns;
+    if (!rows.length || !expected.length) return rows;
+    return rows.map((row) => {
+      const out: Record<string, unknown> = {};
+      for (const col of expected) {
+        out[col] = Object.prototype.hasOwnProperty.call(row, col)
+          ? row[col]
+          : null;
+      }
+      return out;
+    });
+  }, [dryRunResult?.output_preview, targetPreviewExpectedColumns]);
   const removedRows = useMemo(() => selectRemovedMappings(draft), [draft]);
   const counts = useMemo(
     () => mappingCounters(effectiveRows, sapColumns, removedRows),
@@ -664,6 +663,10 @@ const TransformModal = ({
   const mappingTable = useMemo(
     () => toTableRows(effectiveRows, sapColumns, mappingJson),
     [effectiveRows, mappingJson, sapColumns],
+  );
+  const removedMappingTable = useMemo(
+    () => toTableRows(removedRows, sapColumns, mappingJson),
+    [mappingJson, removedRows, sapColumns],
   );
   const scriptSchemaFolds = useMemo(() => {
     const rows = effectiveRows.map((row) => ({
@@ -695,8 +698,9 @@ const TransformModal = ({
       buildScriptExamples(
         scriptSchemaFolds[0]?.fields.map((field) => field.name) ?? [],
         scriptSchemaFolds[1]?.fields.map((field) => field.name) ?? [],
+        { mappingPresent: Boolean(mappingJson) },
       ),
-    [scriptSchemaFolds],
+    [mappingJson, scriptSchemaFolds],
   );
   const filterSummary = rowFilterSummary(mappingJson);
   const entityMismatch =
@@ -1085,95 +1089,38 @@ const TransformModal = ({
     setDryRunResult(null);
   }, []);
 
-  const handlePickScriptFile = useCallback(
-    async (file: File) => {
-      let text = "";
-      try {
-        text = await file.text();
-      } catch {
-        toaster.error({
-          title: "Failed to read file",
-          action: {
-            label: confirmCopy.retry,
-            onClick: () => {
-              void file.text().then((value) => {
-                setScriptText(normalizeTransformScript(value));
-                setEntryPoint(TRANSFORM_ENTRY_POINT);
-              });
-            },
-          },
-        });
-        return;
-      }
-      const wrapped = normalizeTransformScript(text);
-      if (
-        new Blob([wrapped]).size > MAX_SCRIPT_BYTES ||
-        wrapped.split("\n").length > MAX_SCRIPT_LINES
-      ) {
-        toaster.error({
-          title: `Script exceeds ${MAX_SCRIPT_LINES} lines or ${MAX_SCRIPT_BYTES / 1024} KB`,
-        });
-        return;
-      }
-      if ((baseline?.scriptText ?? "") !== scriptText) {
-        const ok = await confirm({
-          title: confirmCopy.replaceScript.title,
-          description: confirmCopy.replaceScript.description,
-          cancelLabel: confirmCopy.replaceScript.cancelLabel,
-          confirmLabel: confirmCopy.replaceScript.confirmLabel,
-          tone: "danger",
-          icon: "warning",
-        });
-        if (!ok) return;
-      }
-      setScriptText(wrapped);
-      setApplyScript(true);
-      setEntryPoint(TRANSFORM_ENTRY_POINT);
-      setScriptNameFromUpload(true);
-      setScriptFileMeta({ fileName: file.name, size: file.size });
-      setScriptValidatedText("");
-      setDryRunResult(null);
-    },
-    [baseline?.scriptText, scriptText],
-  );
-
-  const handleRemoveScript = useCallback(async () => {
-    const ok = await confirm({
-      title: confirmCopy.removeScript.title,
-      description: confirmCopy.removeScript.description,
-      cancelLabel: confirmCopy.removeScript.cancelLabel,
-      confirmLabel: confirmCopy.removeScript.confirmLabel,
-      tone: "danger",
-      icon: "warning",
-    });
-    if (!ok) return;
-    setScriptText("");
-    setScriptFileMeta(null);
-    setScriptNameFromUpload(false);
-    setScriptValidatedText("");
-    setApplyScript(false);
-    setEntryPoint(TRANSFORM_ENTRY_POINT);
-  }, []);
-
   const handleApplyScriptChange = useCallback(
-    async (checked: boolean) => {
+    (checked: boolean) => {
       if (checked) {
         setApplyScript(true);
-        if (!scriptTextRef.current.trim()) {
-          const seeded = wrapTransformBody("");
-          scriptTextRef.current = seeded;
-          setScriptText(seeded);
+        if (!unwrapTransformBody(scriptTextRef.current).trim()) {
+          let restored = "";
+          if (stashedScriptRef.current.trim()) {
+            restored = stashedScriptRef.current;
+          } else {
+            const activeScript = normalizeTransformScript(
+              transformData?.active?.script_text || "",
+            );
+            if (unwrapTransformBody(activeScript).trim()) {
+              restored = activeScript;
+            } else {
+              restored = wrapTransformBody("");
+            }
+          }
+          scriptTextRef.current = restored;
+          setScriptText(restored);
           setEntryPoint(TRANSFORM_ENTRY_POINT);
         }
         return;
       }
-      if (unwrapTransformBody(scriptText).trim() || scriptFileMeta) {
-        await handleRemoveScript();
-        return;
+      if (unwrapTransformBody(scriptText).trim()) {
+        stashedScriptRef.current = scriptText;
       }
       setApplyScript(false);
+      setScriptValidatedText("");
+      setDryRunResult(null);
     },
-    [handleRemoveScript, scriptFileMeta, scriptText],
+    [transformData?.active?.script_text],
   );
 
   useEffect(() => {
@@ -1189,6 +1136,8 @@ const TransformModal = ({
           entry_point: TRANSFORM_ENTRY_POINT,
           destination_name_source: destSourceRef.current,
           destination_table_name: destNameRef.current,
+          // Preview only — do not create a Draft that hides Applied versions.
+          persist_draft: false,
         });
         if (cancelled) return;
         setValidateResult(result);
@@ -1299,7 +1248,6 @@ const TransformModal = ({
       : scriptText.trim()
         ? defaultScriptName
         : null;
-  const scriptChipSize = scriptFileMeta?.size ?? scriptBytes;
   const transformRootIssue = useMemo(() => {
     if (!applyScript || !scriptText.trim()) return null;
     return validateTransformRoot(scriptText);
@@ -1438,12 +1386,14 @@ const TransformModal = ({
       mappingJson,
       overrides: history.present,
       scriptText,
+      applyScript,
       entryPoint,
       runOrder: effectiveRunOrder,
       destName,
       destSource,
     }),
     [
+      applyScript,
       mappingJson,
       history.present,
       scriptText,
@@ -1458,6 +1408,7 @@ const TransformModal = ({
     () => (baseline ? isMappingDirty(baseline, currentBaseline) : false),
     [baseline, currentBaseline],
   );
+  isDirtyRef.current = isDirty;
 
   const askLoadedRename = async (previous: string, next: string) => {
     const mode = await confirm({
@@ -1511,7 +1462,7 @@ const TransformModal = ({
     try {
       setDraftSaveLabel("Saving draft…");
       await draftSaveMut.mutateAsync(buildPersistPayload());
-      setDraftSaveLabel("Draft saved");
+      setDraftSaveLabel(confirmCopy.draftSavedLabel);
       setBaseline(currentBaseline);
     } catch {
       setDraftSaveLabel("Draft save failed");
@@ -1593,7 +1544,6 @@ const TransformModal = ({
         return;
       }
       if (result.published) {
-        sessionStorage.removeItem(draftKey);
         setBaseline(currentBaseline);
         setScriptValidatedText(persistedScriptText(applyScript, scriptText));
         toaster.success({
@@ -1618,34 +1568,8 @@ const TransformModal = ({
     }
   };
 
-  const handleRemove = async () => {
-    const ok = await confirm({
-      title: confirmCopy.removeMapping.title,
-      description: confirmCopy.removeMapping.description,
-      cancelLabel: confirmCopy.removeMapping.cancelLabel,
-      confirmLabel: confirmCopy.removeMapping.confirmLabel,
-      tone: "danger",
-      icon: "danger",
-    });
-    if (!ok) return;
-    try {
-      await deactivateMut.mutateAsync();
-      toaster.success({ title: "Transform removed" });
-      onClose();
-    } catch {
-      toaster.error({
-        title: "Could not remove mapping",
-        action: {
-          label: confirmCopy.retry,
-          onClick: () => {
-            void handleRemove();
-          },
-        },
-      });
-    }
-  };
-
   const handleReset = async () => {
+    if (!mappingJson) return;
     const impact = resetToJsonImpact(draft);
     const ok = await confirm({
       title: confirmCopy.reset.title,
@@ -1664,33 +1588,20 @@ const TransformModal = ({
 
   const removeMappingJson = async () => {
     if (readOnly) return;
-    const currentOverrides = historyRef.current.present;
-    let nextOverrides = emptyOverrides();
-    if (hasManualOverrides(currentOverrides)) {
-      const choice = await confirm({
-        title: confirmCopy.replaceJson.title,
-        description: confirmCopy.replaceJson.description,
-        cancelLabel: confirmCopy.replaceJson.cancelLabel,
-        confirmLabel: confirmCopy.replaceJson.confirmLabel,
-        icon: "warning",
-        alternate: {
-          label: confirmCopy.replaceJson.alternateLabel,
-          tone: "danger",
-        },
-      });
-      if (choice === "cancel") return;
-      if (choice === "confirm") {
-        nextOverrides = keepApplicableOverrides(
-          currentOverrides,
-          {},
-          sapColumns,
-        );
-      }
-    }
+    const ok = await confirm({
+      title: confirmCopy.removeMappingJson.title,
+      description: confirmCopy.removeMappingJson.description,
+      cancelLabel: confirmCopy.removeMappingJson.cancelLabel,
+      confirmLabel: confirmCopy.removeMappingJson.confirmLabel,
+      tone: "danger",
+      icon: "warning",
+    });
+    if (!ok) return;
+    // Clear mapping JSON / overrides / destination only — leave the script alone.
     setMappingJson(null);
     setJsonFileMeta(null);
     setJsonErrors([]);
-    commitOverrides(nextOverrides);
+    commitOverrides(emptyOverrides());
     applyResolved(null, "DEFAULT");
   };
 
@@ -1745,54 +1656,6 @@ const TransformModal = ({
     window.addEventListener("beforeunload", onUnload);
     return () => window.removeEventListener("beforeunload", onUnload);
   }, [open, isDirty]);
-
-  useEffect(() => {
-    if (!open || !baseline) return;
-    const keepSession = isDirty || dryRunResult !== null || step > 0;
-    if (!keepSession) {
-      sessionStorage.removeItem(draftKey);
-      return;
-    }
-    sessionStorage.setItem(
-      draftKey,
-      JSON.stringify({
-        mappingJson,
-        overrides: history.present,
-        scriptText,
-        destName,
-        destSource,
-        fileName: jsonFileMeta?.fileName,
-        fileSize: jsonFileMeta?.size,
-        scriptFileName: scriptChipName,
-        scriptFileSize: scriptChipSize,
-        step,
-        applyScript,
-        dryRunResult,
-        scriptValidatedText,
-        scriptNameFromUpload,
-        runOrder: effectiveRunOrder,
-      }),
-    );
-  }, [
-    open,
-    baseline,
-    isDirty,
-    draftKey,
-    mappingJson,
-    history.present,
-    scriptText,
-    destName,
-    destSource,
-    jsonFileMeta,
-    scriptChipName,
-    scriptChipSize,
-    step,
-    applyScript,
-    dryRunResult,
-    scriptValidatedText,
-    scriptNameFromUpload,
-    effectiveRunOrder,
-  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -1873,7 +1736,7 @@ const TransformModal = ({
                   color="brand.800"
                   fontSize="lg"
                 >
-                  Mapping and transform: {modalTitle}
+                  Mapping & Transformation: {modalTitle}
                 </Dialog.Title>
                 <Flex gap={1}>
                   <CloseButton
@@ -1925,27 +1788,15 @@ const TransformModal = ({
                     </Badge>
                   );
                 })}
-                <Flex ml="auto" gap={2} align="center">
-                  {/* IDE shows one status: Draft while editing unvalidated work, else Validated */}
-                  {hasServerDraft || isDirty ? (
-                    <Badge colorPalette="orange" variant="subtle">
-                      {confirmCopy.draftBadge}
-                    </Badge>
-                  ) : hasActive && publishedVersion !== null ? (
-                    <Badge colorPalette="green" variant="subtle">
-                      {confirmCopy.validatedBadge(publishedVersion)}
-                    </Badge>
-                  ) : (
-                    <Badge colorPalette="gray" variant="subtle">
-                      No validated version
-                    </Badge>
-                  )}
-                  {draftSaveLabel && (hasServerDraft || isDirty) && (
-                    <Text fontSize="xs" color="gray.500">
-                      {draftSaveLabel}
-                    </Text>
-                  )}
-                </Flex>
+                <TransformStatusBar
+                  hasServerDraft={hasServerDraft}
+                  isDirty={isDirty}
+                  hasActive={hasActive}
+                  publishedVersion={publishedVersion}
+                  draftSaveLabel={draftSaveLabel}
+                  history={transformData?.history ?? []}
+                  onSelectVersion={(version) => setViewingVersion(version)}
+                />
               </Flex>
 
               <Dialog.Body overflowY="auto" flex="1" px={6} py={4}>
@@ -2123,6 +1974,26 @@ const TransformModal = ({
                       <IconButton
                         size="xs"
                         variant="ghost"
+                        aria-label={
+                          modalExpanded
+                            ? "Collapse mapping dialog"
+                            : "Expand mapping dialog"
+                        }
+                        onClick={() => setModalExpanded((value) => !value)}
+                      >
+                        {modalExpanded ? <FiMinimize2 /> : <FiMaximize2 />}
+                      </IconButton>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        disabled={readOnly || !mappingJson}
+                        onClick={() => void handleReset()}
+                      >
+                        Reset to JSON
+                      </Button>
+                      <IconButton
+                        size="xs"
+                        variant="ghost"
                         aria-label="Undo"
                         disabled={readOnly || history.past.length === 0}
                         onClick={() => {
@@ -2142,39 +2013,39 @@ const TransformModal = ({
                       >
                         <FiRotateCw />
                       </IconButton>
-                      <Button
-                        size="xs"
-                        variant="ghost"
-                        disabled={readOnly}
-                        onClick={() => void handleReset()}
-                      >
-                        Reset to JSON
-                      </Button>
-                      <IconButton
-                        size="xs"
-                        variant="ghost"
-                        aria-label={
-                          modalExpanded
-                            ? "Collapse mapping dialog"
-                            : "Expand mapping dialog"
-                        }
-                        onClick={() => setModalExpanded((value) => !value)}
-                      >
-                        {modalExpanded ? <FiMinimize2 /> : <FiMaximize2 />}
-                      </IconButton>
                     </Flex>
 
-                    {!mappingJson && sapColumns.length === 0 && (
-                      <Text fontSize="sm" color="gray.500">
-                        Using same names as SAP. Add a mapping JSON or turn on
-                        Apply routine on the Script step to customise.
-                      </Text>
+                    {sapSchemaLoading && (
+                      <VStack align="stretch" gap={2} py={2}>
+                        <Skeleton height="32px" />
+                        <Skeleton height="280px" />
+                      </VStack>
                     )}
 
-                    {viewMode === "mapper" ? (
+                    {!sapSchemaLoading &&
+                      !mappingJson &&
+                      sapColumns.length === 0 && (
+                        <Text fontSize="sm" color="gray.500">
+                          Could not load SAP columns. Expand the entity in the
+                          schema tree or refresh, then reopen mapping.
+                        </Text>
+                      )}
+
+                    {!sapSchemaLoading &&
+                      !mappingJson &&
+                      sapColumns.length > 0 && (
+                        <Text fontSize="sm" color="gray.500">
+                          No mapping JSON — columns load from the SAP extract
+                          (same names by default). Upload JSON or use Script to
+                          customise.
+                        </Text>
+                      )}
+
+                    {sapSchemaLoading ? null : viewMode === "mapper" ? (
                       <Box
                         h={modalExpanded ? "min(62vh, 560px)" : "420px"}
                         flexShrink={0}
+                        overflow="hidden"
                       >
                         <ColumnMapper
                           rows={effectiveRows}
@@ -2334,6 +2205,8 @@ const TransformModal = ({
                       mappingTable.length > 0 && (
                         <VirtualMappingTable
                           rows={mappingTable}
+                          removedRows={removedMappingTable}
+                          sapColumns={sapColumns}
                           search={search}
                           filter={filter}
                         />
@@ -2379,7 +2252,7 @@ const TransformModal = ({
                         colorPalette="brand"
                         aria-label="Apply routine"
                         onCheckedChange={({ checked }) => {
-                          void handleApplyScriptChange(checked);
+                          handleApplyScriptChange(checked);
                         }}
                       >
                         <Switch.HiddenInput />
@@ -2388,19 +2261,6 @@ const TransformModal = ({
                     </Flex>
                     {applyScript && (
                       <>
-                        <ScriptFileChip
-                          fileName={scriptChipName}
-                          size={scriptChipSize}
-                          lineCount={scriptLines}
-                          edited={scriptEdited}
-                          disabled={readOnly}
-                          onFile={(file) => {
-                            void handlePickScriptFile(file);
-                          }}
-                          onRemove={() => {
-                            void handleRemoveScript();
-                          }}
-                        />
                         <ExpandableCodeEditor
                           value={scriptText}
                           fileName={scriptChipName || defaultScriptName}
@@ -2543,7 +2403,8 @@ const TransformModal = ({
                           Rows in: {dryRunResult.rows_in} · Rows out:{" "}
                           {dryRunResult.rows_out} · Columns:{" "}
                           {dryRunResult.columns_out?.length ?? 0} /{" "}
-                          {dryRunResult.expected_columns?.length ?? 0}
+                          {dryRunResult.expected_columns?.length ??
+                            mappedTargetNames.length}
                         </Text>
                         {(dryRunResult.warnings ?? []).map((w) => (
                           <Text
@@ -2580,18 +2441,15 @@ const TransformModal = ({
                             </Text>
                           );
                         })}
-                        {(
-                          dryRunResult.source_preview ??
-                          dryRunResult.input_preview ??
-                          []
-                        ).length > 0 ? (
+                        {(dryRunResult.input_preview?.length ?? 0) > 0 ? (
                           <ExpandablePreviewTable
                             title="Input sample (__source_df)"
-                            rows={
-                              dryRunResult.source_preview ??
-                              dryRunResult.input_preview ??
-                              []
-                            }
+                            rows={dryRunResult.input_preview ?? []}
+                          />
+                        ) : (dryRunResult.source_preview?.length ?? 0) > 0 ? (
+                          <ExpandablePreviewTable
+                            title="Input sample (raw SAP)"
+                            rows={dryRunResult.source_preview ?? []}
                           />
                         ) : (
                           dryRunResult.rows_in > 0 && (
@@ -2602,11 +2460,21 @@ const TransformModal = ({
                             </Text>
                           )
                         )}
-                        {(dryRunResult.output_preview?.length ?? 0) > 0 && (
+                        {(targetPreviewRows.length ?? 0) > 0 ? (
                           <ExpandablePreviewTable
                             title="Target preview (__target_df)"
-                            rows={dryRunResult.output_preview ?? []}
+                            rows={targetPreviewRows}
+                            columnCount={targetPreviewExpectedColumns.length}
                           />
+                        ) : (
+                          <Text fontSize="xs" color="gray.600">
+                            {dryRunResult.errors?.length
+                              ? "No target preview — the script or mapping failed (see errors above)."
+                              : dryRunResult.rows_in > 0 &&
+                                  dryRunResult.rows_out === 0
+                                ? "Target preview (__target_df) is empty: the script filtered out every sample row. Adjust the filter value or use .isin([...])."
+                                : "No target preview rows returned."}
+                          </Text>
                         )}
                         {dryRunResult.rows_out > 0 &&
                           (dryRunResult.output_preview?.length ?? 0) <
@@ -2626,15 +2494,8 @@ const TransformModal = ({
               <Dialog.Footer
                 bg="gray.50"
                 flexShrink={0}
-                justifyContent="space-between"
+                justifyContent="flex-end"
               >
-                <Flex gap={2} align="center">
-                  {hasActive && (
-                    <Link color="red.500" fontSize="sm" onClick={handleRemove}>
-                      Remove mapping
-                    </Link>
-                  )}
-                </Flex>
                 <Flex gap={2}>
                   {step > 0 && (
                     <Button
@@ -2700,6 +2561,13 @@ const TransformModal = ({
           </Dialog.Positioner>
         </Portal>
       </Dialog.Root>
+      <VersionDetailDialog
+        open={viewingVersion !== null && viewingVersion !== undefined}
+        onClose={() => setViewingVersion(null)}
+        detail={versionDetailQuery.data}
+        isLoading={versionDetailQuery.isFetching}
+        activeVersion={publishedVersion}
+      />
       <ConfirmHost />
     </>
   );

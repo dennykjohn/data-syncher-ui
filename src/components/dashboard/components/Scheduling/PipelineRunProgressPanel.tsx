@@ -94,7 +94,9 @@ const PipelineRunProgressPanel = ({ run }: PipelineRunProgressPanelProps) => {
   const statusColor = pipelineStatusColor(displayStatus);
   const isQueued = displayStatus === "queued";
   const isRunning =
-    displayStatus === "running" || displayStatus === "in_progress";
+    displayStatus === "running" ||
+    displayStatus === "in_progress" ||
+    displayStatus === "revoking";
   const isActive = isRunning || isQueued;
 
   const activeNodeIds = run.current_node_ids?.length

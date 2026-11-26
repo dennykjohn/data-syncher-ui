@@ -124,6 +124,9 @@ const Actions = ({
   ]);
 
   const createTooltipProps = (isButtonLoading: boolean) => {
+    if (onUpdateSchemaClick) {
+      return { content: "", disabled: true };
+    }
     const isDisabled =
       (shouldShowDisabledState || isAnyOperationInProgress) && !isButtonLoading;
     return {
@@ -138,16 +141,17 @@ const Actions = ({
 
   const renderUpdateSchemaButton = () => {
     if (disable_update_schema) return null;
+    const isAddNewService = Boolean(onUpdateSchemaClick);
+    const schemaActionBlocked =
+      (shouldShowDisabledState || isAnyOperationInProgress) &&
+      !isUpdateSchemaFlowInProgress;
     return (
       <Tooltip {...createTooltipProps(isUpdateSchemaFlowInProgress)}>
         <Button
           variant="outline"
           colorPalette="brand"
-          loading={isUpdateSchemaFlowInProgress}
-          disabled={
-            (shouldShowDisabledState || isAnyOperationInProgress) &&
-            !isUpdateSchemaFlowInProgress
-          }
+          loading={!isAddNewService && isUpdateSchemaFlowInProgress}
+          disabled={!isAddNewService && schemaActionBlocked}
           onClick={() => {
             if (onUpdateSchemaClick) {
               onUpdateSchemaClick();

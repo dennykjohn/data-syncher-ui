@@ -141,6 +141,7 @@ export type PipelineRunStatus =
   | "running"
   | "completed"
   | "failed"
+  | "revoking"
   | "revoked"
   | "deleted";
 
@@ -212,6 +213,8 @@ export type PipelineRunDetail = {
   error?: string | null;
   /** True while Celery waits for a free concurrent-flow slot (plan cap). */
   waiting_for_flow_slot?: boolean;
+  /** Set when the user revoked the run; run may still read ``failed`` in DB during races. */
+  revoked_at?: string | null;
 };
 
 export type PipelineRunSummary = {
@@ -223,6 +226,7 @@ export type PipelineRunSummary = {
   finished_at: string | null;
   overall: PipelineRunOverall;
   error?: string | null;
+  revoked_at?: string | null;
 };
 
 export type PipelineValidationLevel = {

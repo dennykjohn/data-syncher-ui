@@ -14,11 +14,32 @@ export const confirmCopy = {
     confirmLabel: "Reset mapping",
   },
   removeMapping: {
-    title: "Remove this mapping?",
-    description:
-      "The entity will load all columns with SAP names again. Saved versions are kept.",
+    title: "Remove this transform?",
+    description: {
+      draftAndActive: (version: number) =>
+        `Deletes your draft and stops using applied v${version}. Saved versions are kept.`,
+      activeOnly: (version: number) =>
+        `Stops using applied v${version}. Saved versions are kept.`,
+      draftOnly: "Deletes your draft.",
+      fallback:
+        "The applied mapping stops being used for loads. Saved versions are kept.",
+    },
     cancelLabel: "Cancel",
-    confirmLabel: "Remove mapping",
+    confirmLabel: "Remove transform",
+  },
+  removeMappingJson: {
+    title: "Remove mapping JSON?",
+    description:
+      "Clears the column mapping JSON only. Your Python routine is kept.",
+    cancelLabel: "Cancel",
+    confirmLabel: "Remove JSON",
+  },
+  discardDraft: {
+    title: "Discard draft?",
+    description: (version: number) =>
+      `Discard your unsaved changes? Applied v${version} stays active.`,
+    cancelLabel: "Cancel",
+    confirmLabel: "Discard draft",
   },
   replaceJson: {
     title: "Replace the mapping JSON?",
@@ -42,7 +63,8 @@ export const confirmCopy = {
   },
   removeScript: {
     title: "Remove the script?",
-    description: "The transformation body will be cleared.",
+    description:
+      "Clears the Python routine only. Your column mapping JSON is kept.",
     cancelLabel: "Cancel",
     confirmLabel: "Remove script",
   },
@@ -85,18 +107,26 @@ export const confirmCopy = {
     cancelLabel: "Go back",
     confirmLabel: "Apply",
   },
-  restoreDraft: {
-    title: "Restore local draft?",
-    description:
-      "A draft of this mapping is saved in this browser (in addition to any server draft).",
-    cancelLabel: "Discard local draft",
-    confirmLabel: "Restore draft",
-  },
-  saved: (version: number) => `Draft saved (version ${version})`,
   published: (version: number) => `Applied (v${version})`,
   validated: (version: number) => `Applied v${version}`,
   draftBadge: "Draft",
   validatedBadge: (version: number) => `Applied v${version}`,
+  draftSavedLabel: "Draft saved",
+  versionViewer: {
+    readOnly: "Read-only",
+    viewingNote: (activeVersion: number) =>
+      `Viewing only. Loads still use v${activeVersion}.`,
+    closeLabel: "Close",
+    activeTag: "Active",
+    mappingHeading: "Mapping JSON",
+    scriptHeading: "Python script",
+    noScript: "No Python script on this version.",
+    noMapping: "No mapping JSON on this version.",
+    mappingSummary: (mapped: number, destination: string | null) =>
+      destination
+        ? `${mapped} mapped columns · ${destination}`
+        : `${mapped} mapped columns`,
+  },
   applyFailed: "Apply failed",
   applyIncomplete:
     "Checks passed but the transform was not activated for loads.",
@@ -106,3 +136,38 @@ export const confirmCopy = {
   scriptSavedAndValidated: "Script validated",
   retry: "Retry",
 };
+
+export type TransformBadgeKind = "draft" | "applied" | "none";
+
+/** Draft badge whenever there is an open draft or unsaved local edits. */
+export function showDraftBadge(opts: {
+  hasServerDraft: boolean;
+  isDirty: boolean;
+}): boolean {
+  return opts.hasServerDraft || opts.isDirty;
+}
+
+/** Applied badge + version history whenever a published version is active. */
+export function showAppliedBadge(opts: {
+  hasActive: boolean;
+  publishedVersion: number | null;
+}): boolean {
+  return opts.hasActive && opts.publishedVersion !== null;
+}
+
+/**
+ * Exclusive badge kind for compact UIs. Prefer showDraftBadge + showAppliedBadge
+ * in the schema transform header so Applied versions stay visible while drafting.
+ */
+export function transformBadgeKind(opts: {
+  hasServerDraft: boolean;
+  isDirty: boolean;
+  hasActive: boolean;
+  publishedVersion: number | null;
+}): TransformBadgeKind {
+  if (showDraftBadge(opts) && !showAppliedBadge(opts)) return "draft";
+  if (showAppliedBadge(opts) && !showDraftBadge(opts)) return "applied";
+  if (showDraftBadge(opts)) return "draft";
+  if (showAppliedBadge(opts)) return "applied";
+  return "none";
+}

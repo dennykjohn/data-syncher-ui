@@ -6,7 +6,7 @@ steps:
       - --build-arg
       - VITE_BUILD_MODE=batch
       - --build-arg
-      - CACHEBUST=20261117-script-ui-merge
+      - CACHEBUST=20261123-mapping-transformation-title
       - -t
       - gcr.io/datasyncher-batch/datasyncher-frontend:batch
       - -f

@@ -11,11 +11,14 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 interface ExpandablePreviewTableProps {
   title: string;
   rows: Record<string, unknown>[];
+  /** When set, used for the header column count (e.g. full mapped target width). */
+  columnCount?: number;
 }
 
 const ExpandablePreviewTable = ({
   title,
   rows,
+  columnCount,
 }: ExpandablePreviewTableProps) => {
   const parentRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -31,6 +34,11 @@ const ExpandablePreviewTable = ({
     if (!q) return columns;
     return columns.filter((c) => c.toLowerCase().includes(q));
   }, [columns, search]);
+
+  const headerColumnCount =
+    columnCount !== null && columnCount !== undefined
+      ? columnCount
+      : visibleColumns.length;
 
   const columnWidths = useMemo(() => {
     const map: Record<string, number> = {};
@@ -106,7 +114,7 @@ const ExpandablePreviewTable = ({
           gap={2}
         >
           <Text fontSize="sm" fontWeight="semibold">
-            {title} ({rows.length} rows · {visibleColumns.length} columns)
+            {title} ({rows.length} rows · {headerColumnCount} columns)
           </Text>
           <Flex gap={2} align="center">
             <Input

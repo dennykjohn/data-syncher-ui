@@ -81,6 +81,8 @@ const ServerRoutes = {
       `connection/${id}/tables/${encodeURIComponent(tableName)}/source-script/validate/`,
     sourceScriptDryRun: (id: number, tableName: string) =>
       `connection/${id}/tables/${encodeURIComponent(tableName)}/source-script/dry-run/`,
+    entityTransformVersion: (id: number, tableName: string, version: number) =>
+      `connection/${id}/tables/${encodeURIComponent(tableName)}/transform/${version}/`,
     entityTransformActivate: (id: number, tableName: string, version: number) =>
       `connection/${id}/tables/${encodeURIComponent(tableName)}/transform/${version}/activate/`,
     fetchDestinationTableFields: (id: number, tableName: string) =>

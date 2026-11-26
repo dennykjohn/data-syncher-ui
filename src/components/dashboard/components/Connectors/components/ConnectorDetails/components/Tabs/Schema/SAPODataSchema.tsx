@@ -20,13 +20,9 @@ import {
 } from "@chakra-ui/react";
 
 import { GoPlus } from "react-icons/go";
-import {
-  IoMdFunnel,
-  IoMdOptions,
-  IoMdPlay,
-  IoMdSettings,
-} from "react-icons/io";
+import { IoMdPlay, IoMdSettings } from "react-icons/io";
 import { IoCaretDownSharp } from "react-icons/io5";
+import { LuFilter } from "react-icons/lu";
 import { MdSearch } from "react-icons/md";
 import { TbDelta, TbTransform } from "react-icons/tb";
 
@@ -222,7 +218,7 @@ const ColumnList = ({
                   alignItems="center"
                   color="brand.600"
                 >
-                  <IoMdFunnel size={14} />
+                  <LuFilter size={14} strokeWidth={2} />
                 </Box>
               </Tooltip>
             )}
@@ -349,7 +345,7 @@ const EntityAccordion = ({
         <Flex gap={2} alignItems="center" mr={2}>
           {showEntityActions && (
             <>
-              <Tooltip content="Mapping and transform">
+              <Tooltip content="Mapping & Transformation">
                 <IconButton
                   size="xs"
                   variant={hasTransform ? "subtle" : "ghost"}
@@ -360,37 +356,41 @@ const EntityAccordion = ({
                     e.stopPropagation();
                     onOpenTransform(tableItem.table);
                   }}
-                  aria-label="Mapping and transform"
+                  aria-label="Mapping & Transformation"
                 >
                   <TbTransform />
                 </IconButton>
               </Tooltip>
-              <IconButton
-                size="xs"
-                variant={hasRowFilter ? "subtle" : "ghost"}
-                colorPalette="brand"
-                disabled={isLocked}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenRowFilter(tableItem.table);
-                }}
-                aria-label="Row filter"
-              >
-                <IoMdOptions />
-              </IconButton>
-              <IconButton
-                size="xs"
-                variant="ghost"
-                colorPalette="brand"
-                disabled={isLocked}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenSettings(tableItem.table);
-                }}
-                aria-label="Target settings"
-              >
-                <IoMdSettings />
-              </IconButton>
+              <Tooltip content="Row filter">
+                <IconButton
+                  size="xs"
+                  variant={hasRowFilter ? "subtle" : "ghost"}
+                  colorPalette="brand"
+                  disabled={isLocked}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenRowFilter(tableItem.table);
+                  }}
+                  aria-label="Row filter"
+                >
+                  <LuFilter size={16} strokeWidth={2} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip content="Target settings">
+                <IconButton
+                  size="xs"
+                  variant="ghost"
+                  colorPalette="brand"
+                  disabled={isLocked}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenSettings(tableItem.table);
+                  }}
+                  aria-label="Target settings"
+                >
+                  <IoMdSettings />
+                </IconButton>
+              </Tooltip>
             </>
           )}
           <Flex justify="center" minW="40px">
@@ -1246,16 +1246,29 @@ const SAPODataSchema = () => {
                     }}
                     style={{ width: "100%" }}
                   >
-                    <InputGroup startElement={<MdSearch size={20} />} w="100%">
-                      <Input
-                        placeholder="Search by service name"
-                        size="md"
-                        value={newServiceSearchQuery}
-                        onChange={(e) =>
-                          setNewServiceSearchQuery(e.target.value)
-                        }
-                      />
-                    </InputGroup>
+                    <Flex gap={2} w="100%" align="center">
+                      <InputGroup
+                        startElement={<MdSearch size={20} />}
+                        flex="1"
+                      >
+                        <Input
+                          placeholder="Search by service name"
+                          size="md"
+                          value={newServiceSearchQuery}
+                          onChange={(e) =>
+                            setNewServiceSearchQuery(e.target.value)
+                          }
+                        />
+                      </InputGroup>
+                      <Button
+                        type="submit"
+                        colorPalette="brand"
+                        loading={isSearchLoading}
+                        disabled={!newServiceSearchQuery.trim()}
+                      >
+                        Search
+                      </Button>
+                    </Flex>
                   </form>
 
                   <Box
@@ -1279,7 +1292,13 @@ const SAPODataSchema = () => {
                     {isSearchLoading ? (
                       <LoadingSpinner />
                     ) : searchError ? (
-                      <Text color="gray.500" fontSize="sm" textAlign="center">
+                      <Text
+                        color="red.600"
+                        fontSize="sm"
+                        textAlign="center"
+                        px={4}
+                        lineHeight="tall"
+                      >
                         {searchError}
                       </Text>
                     ) : !searchedService ? (

@@ -8,7 +8,6 @@ import {
   Dialog,
   Flex,
   IconButton,
-  Link,
   Portal,
   Switch,
   Text,
@@ -31,7 +30,6 @@ import {
 import usePermissions from "@/hooks/usePermissions";
 import {
   transformQueryKey,
-  useDeactivateTransform,
   useDryRunSourceScript,
   useEntityTransform,
   useSaveDraftTransform,
@@ -147,7 +145,6 @@ const FileExportTransformModal = ({
   );
   const dryRunMut = useDryRunSourceScript(connectionId, tableItem.table);
   const draftSaveMut = useSaveDraftTransform(connectionId, tableItem.table);
-  const deactivateMut = useDeactivateTransform(connectionId, tableItem.table);
 
   const publishedVersion = transformData?.active?.version ?? null;
   const hasActive = Boolean(transformData?.active);
@@ -155,8 +152,17 @@ const FileExportTransformModal = ({
   const activeHasScript = Boolean(transformData?.active?.script_text?.trim());
   const hasServerDraft =
     draftHasScript || (Boolean(transformData?.draft) && !activeHasScript);
-  const draftKey = `transform-draft:${connectionId}:${tableItem.table}`;
+  const legacyLocalDraftKey = `transform-draft:${connectionId}:${tableItem.table}`;
   const loadedKeyRef = useRef("");
+
+  useEffect(() => {
+    if (!open) return;
+    try {
+      sessionStorage.removeItem(legacyLocalDraftKey);
+    } catch {
+      /* sessionStorage may be unavailable */
+    }
+  }, [open, legacyLocalDraftKey]);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -726,22 +732,6 @@ const FileExportTransformModal = ({
     return () => window.clearTimeout(timer);
   }, [flushDraftAutosave, isDirty, open, readOnly]);
 
-  useEffect(() => {
-    if (!open) return;
-    const keepSession = isDirty || dryRunResult !== null || step > 0;
-    if (!keepSession) {
-      sessionStorage.removeItem(draftKey);
-      return;
-    }
-    sessionStorage.setItem(
-      draftKey,
-      JSON.stringify({
-        scriptText,
-        applyScript,
-      }),
-    );
-  }, [applyScript, draftKey, dryRunResult, isDirty, open, scriptText, step]);
-
   const requestClose = async () => {
     if (closeGuard.current) return;
     if (isDirty) {
@@ -754,7 +744,6 @@ const FileExportTransformModal = ({
       });
       if (!choice) return;
     }
-    sessionStorage.removeItem(draftKey);
     onClose();
   };
 
@@ -795,7 +784,6 @@ const FileExportTransformModal = ({
         return;
       }
       if (result.published) {
-        sessionStorage.removeItem(draftKey);
         setBaselineScriptText(persistedScriptText(applyScript, scriptText));
         setScriptValidatedText(persistedScriptText(applyScript, scriptText));
         toaster.success({
@@ -821,42 +809,6 @@ const FileExportTransformModal = ({
           label: confirmCopy.retry,
           onClick: () => {
             void handleValidateAndPublish();
-          },
-        },
-      });
-    }
-  };
-
-  const handleRemove = async () => {
-    const ok = await confirm({
-      title: "Remove transform",
-      description:
-        "Are you sure you want to remove the transformation for this table? Extracted rows will be exported directly without routine processing.",
-      cancelLabel: "Keep transform",
-      confirmLabel: "Remove transform",
-      tone: "danger",
-      icon: "danger",
-    });
-    if (!ok) return;
-    try {
-      await deactivateMut.mutateAsync();
-      sessionStorage.removeItem(draftKey);
-      toaster.success({ title: "Transform removed" });
-      queryClient.invalidateQueries({
-        queryKey: transformQueryKey(connectionId, tableItem.table),
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["ReverseSchema", connectionId],
-      });
-      onTargetFieldsChange?.(tableItem.table, {});
-      onClose();
-    } catch {
-      toaster.error({
-        title: "Could not remove transform",
-        action: {
-          label: confirmCopy.retry,
-          onClick: () => {
-            void handleRemove();
           },
         },
       });
@@ -1344,19 +1296,7 @@ const FileExportTransformModal = ({
                 flexShrink={0}
                 justifyContent="space-between"
               >
-                <Flex gap={2} align="center">
-                  {hasActive && (
-                    <Link
-                      color="red.500"
-                      fontSize="xs"
-                      onClick={() => void handleRemove()}
-                      cursor="pointer"
-                    >
-                      Remove transform
-                    </Link>
-                  )}
-                </Flex>
-                <Flex gap={2}>
+                <Flex gap={2} ml="auto">
                   {step > 0 && (
                     <Button
                       size="sm"

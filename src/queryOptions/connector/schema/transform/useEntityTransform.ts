@@ -16,11 +16,21 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 export const transformQueryKey = (connectionId: number, tableName: string) =>
   ["entityTransform", connectionId, tableName] as const;
 
+export type EntityTransformHistoryItem = {
+  id: number;
+  version: number;
+  is_active: boolean;
+  status: string;
+  created_at: string | null;
+  script_sha256?: string;
+  entry_point?: string;
+};
+
 export type EntityTransformGetResponse = {
   active: EntityTransformDetail | null;
   draft: EntityTransformDetail | null;
   summary: Record<string, unknown>;
-  history: Array<Record<string, unknown>>;
+  history: EntityTransformHistoryItem[];
 };
 
 export function useEntityTransform(connectionId: number, tableName: string) {
@@ -180,5 +190,61 @@ export function useDeactivateTransform(
         queryKey: ["ConnectorTable", connectionId],
       });
     },
+  });
+}
+
+/** Delete the open draft only; leave the applied version untouched. */
+export function useDiscardDraftTransform(
+  connectionId: number,
+  tableName: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await AxiosInstance.delete(
+        `${ServerRoutes.connector.entityTransform(connectionId, tableName)}?draft_only=true`,
+      );
+      return data as { draft_discarded: boolean; deactivated: boolean };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: transformQueryKey(connectionId, tableName),
+      });
+    },
+  });
+}
+
+export const transformVersionQueryKey = (
+  connectionId: number,
+  tableName: string,
+  version: number,
+) => ["entityTransformVersion", connectionId, tableName, version] as const;
+
+/** Read-only fetch of one transform version (never activates). */
+export function useEntityTransformVersion(
+  connectionId: number,
+  tableName: string,
+  version: number | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: transformVersionQueryKey(connectionId, tableName, version ?? 0),
+    queryFn: async () => {
+      const { data } = await AxiosInstance.get<EntityTransformDetail>(
+        ServerRoutes.connector.entityTransformVersion(
+          connectionId,
+          tableName,
+          version as number,
+        ),
+      );
+      return data;
+    },
+    enabled: Boolean(
+      connectionId &&
+        tableName &&
+        version !== null &&
+        version !== undefined &&
+        enabled,
+    ),
   });
 }

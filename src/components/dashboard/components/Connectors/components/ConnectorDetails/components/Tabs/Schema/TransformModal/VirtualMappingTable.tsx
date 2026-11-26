@@ -7,19 +7,20 @@ import { FiMaximize2, FiMinimize2 } from "react-icons/fi";
 import { Tooltip } from "@/components/ui/tooltip";
 import { type MappingTableRow } from "@/types/connectors";
 
+import { type SapColumn } from "./mappingState";
+import {
+  type MappingTableFilterChip,
+  filterMappingTableRows,
+  unmappedSourceTableRows,
+} from "./mappingTableFilters";
 import { useVirtualizer } from "@tanstack/react-virtual";
-
-type FilterChip =
-  | "all"
-  | "unmapped_source"
-  | "unmapped_target"
-  | "warnings"
-  | "removed";
 
 interface VirtualMappingTableProps {
   rows: MappingTableRow[];
+  removedRows?: MappingTableRow[];
+  sapColumns: SapColumn[];
   search: string;
-  filter: FilterChip;
+  filter: MappingTableFilterChip;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -28,6 +29,7 @@ const STATUS_COLOR: Record<string, string> = {
   Narrowed: "orange",
   "Date check": "yellow",
   "From script": "purple",
+  "Not selected": "gray",
   "Not in SAP": "red",
   "Added by user": "teal",
   Overridden: "purple",
@@ -46,6 +48,8 @@ const formatType = (row: MappingTableRow): string => {
 
 const VirtualMappingTable = ({
   rows,
+  removedRows = [],
+  sapColumns,
   search,
   filter,
 }: VirtualMappingTableProps) => {
@@ -53,24 +57,11 @@ const VirtualMappingTable = ({
   const [expanded, setExpanded] = useState(false);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows.filter((row) => {
-      if (filter === "unmapped_source" && row.status !== "Dropped")
-        return false;
-      if (filter === "unmapped_target" && row.status !== "From script")
-        return false;
-      if (
-        filter === "warnings" &&
-        !["Narrowed", "Date check", "Not in SAP"].includes(row.status)
-      )
-        return false;
-      if (!q) return true;
-      const sap = (row.sap_column || "").toLowerCase();
-      const tgt = (row.target_column || "").toLowerCase();
-      const extra = (row.sap_columns || []).join(" ").toLowerCase();
-      return sap.includes(q) || tgt.includes(q) || extra.includes(q);
-    });
-  }, [rows, search, filter]);
+    if (filter === "unmapped_source") {
+      return unmappedSourceTableRows(sapColumns, rows, search, removedRows);
+    }
+    return filterMappingTableRows(rows, filter, search);
+  }, [filter, removedRows, rows, sapColumns, search]);
 
   const virtualizer = useVirtualizer({
     count: filtered.length,
@@ -207,10 +198,16 @@ const VirtualMappingTable = ({
                   flex="1.2"
                   truncate
                   fontWeight="medium"
-                  color={dropped ? "gray.400" : "gray.800"}
-                  fontStyle={dropped ? "italic" : undefined}
+                  color={
+                    dropped || !row.target_column ? "gray.400" : "gray.800"
+                  }
+                  fontStyle={
+                    dropped || !row.target_column ? "italic" : undefined
+                  }
                 >
-                  {dropped ? "not mapped" : row.target_column}
+                  {dropped
+                    ? "not mapped"
+                    : row.target_column || "not mapped yet"}
                 </Text>
                 <Text w="90px" fontSize="xs" color="gray.600" truncate>
                   {formatType(row)}
@@ -230,7 +227,9 @@ const VirtualMappingTable = ({
         </Box>
         {filtered.length === 0 && (
           <Text p={4} fontSize="sm" color="gray.500">
-            No rows match the current filter.
+            {filter === "unmapped_source"
+              ? "Every SAP column is mapped to a target or marked removed."
+              : "No rows match the current filter."}
           </Text>
         )}
       </Box>

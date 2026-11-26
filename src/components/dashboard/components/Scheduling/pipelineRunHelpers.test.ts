@@ -139,6 +139,25 @@ describe("pipelineRunHelpers", () => {
   });
 
   describe("resolvePipelineRunStatus", () => {
+    it("treats revoked_at as revoked even when status is failed", () => {
+      expect(
+        resolvePipelineRunStatus({
+          status: "failed",
+          revoked_at: "2026-11-23T12:00:00+00:00",
+          overall: {
+            nodes_total: 2,
+            nodes_completed: 1,
+            nodes_failed: 1,
+            nodes_running: 0,
+            tables_total: 4,
+            tables_completed: 2,
+            tables_failed: 1,
+            status: "failed",
+          },
+        }),
+      ).toBe("revoked");
+    });
+
     it("prefers explicit failed status", () => {
       expect(
         resolvePipelineRunStatus({
@@ -155,6 +174,24 @@ describe("pipelineRunHelpers", () => {
           },
         }),
       ).toBe("failed");
+    });
+
+    it("stays revoking until overall rollup says revoked", () => {
+      expect(
+        resolvePipelineRunStatus({
+          status: "revoking",
+          overall: {
+            nodes_total: 1,
+            nodes_completed: 0,
+            nodes_failed: 0,
+            nodes_running: 0,
+            tables_total: 2,
+            tables_completed: 1,
+            tables_failed: 0,
+            status: "revoking",
+          },
+        }),
+      ).toBe("revoking");
     });
 
     it("stays running while backend run is active even if tables_failed > 0", () => {

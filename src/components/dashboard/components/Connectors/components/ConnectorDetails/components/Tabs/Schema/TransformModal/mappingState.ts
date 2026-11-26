@@ -222,13 +222,16 @@ export function validateMappingJsonStructure(
       return;
     }
     const item = row as Record<string, unknown>;
-    const sources = Array.isArray(item.src_fieldnames)
-      ? item.src_fieldnames.filter((name) => String(name || "").trim())
-      : [];
-    if (sources.length === 0 && mappingTypeRequiresSource(item)) {
+    // Empty src_fieldnames is allowed (script/constant/DIRECT-as-script DTP rows).
+    // Only reject a present non-array value.
+    if (
+      item.src_fieldnames !== undefined &&
+      item.src_fieldnames !== null &&
+      !Array.isArray(item.src_fieldnames)
+    ) {
       errors.push({
         path: `field_mapping[${idx}].src_fieldnames`,
-        message: "src_fieldnames is missing",
+        message: "src_fieldnames must be an array",
       });
     }
     if (!item.tgt_fieldname || !String(item.tgt_fieldname).trim()) {
@@ -241,8 +244,6 @@ export function validateMappingJsonStructure(
   return errors;
 }
 
-const NON_SOURCE_MAPPING_TYPES = new Set(["CONSTANT", "SCRIPT", "EXPRESSION"]);
-
 function hasConstantValue(item: Record<string, unknown>): boolean {
   const constant = item.constant_value;
   return (
@@ -250,15 +251,6 @@ function hasConstantValue(item: Record<string, unknown>): boolean {
     constant !== null &&
     String(constant).trim() !== ""
   );
-}
-
-function mappingTypeRequiresSource(item: Record<string, unknown>): boolean {
-  if (hasConstantValue(item)) return false;
-  const mappingType = item.mapping_type
-    ? String(item.mapping_type).trim().toUpperCase()
-    : "";
-  if (!mappingType || NON_SOURCE_MAPPING_TYPES.has(mappingType)) return false;
-  return true;
 }
 
 function truthyKey(value: unknown): boolean {
@@ -986,6 +978,8 @@ export type MappingBaseline = {
   mappingJson: Record<string, unknown> | null;
   overrides: OverrideSnapshot;
   scriptText: string;
+  /** Whether the Apply routine toggle is on (script sent on save/apply). */
+  applyScript: boolean;
   entryPoint: string;
   runOrder: string;
   destName: string;
@@ -1018,6 +1012,7 @@ const normalizeBaseline = (value: MappingBaseline) => ({
   mappingJson: value.mappingJson,
   overrides: canonicalOverrides(value.overrides),
   scriptText: value.scriptText,
+  applyScript: value.applyScript,
   entryPoint: value.entryPoint,
   runOrder: value.runOrder,
   destName: value.destName.trim().toUpperCase(),

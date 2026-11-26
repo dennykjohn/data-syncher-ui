@@ -284,6 +284,7 @@ describe("selectEffectiveMappings", () => {
       mappingJson: null,
       overrides: snapshotOf(emptyDraft()),
       scriptText: "",
+      applyScript: false,
       entryPoint: "",
       runOrder: "filter_script_mapping",
       destName: "TABLE",
@@ -306,6 +307,22 @@ describe("selectEffectiveMappings", () => {
     expect(
       isMappingDirty(baseline, { ...baseline, overrides: history.present }),
     ).toBe(false);
+  });
+
+  it("treats Apply routine toggle off as dirty while script text is unchanged", () => {
+    const baseline = {
+      mappingJson: null,
+      overrides: snapshotOf(emptyDraft()),
+      scriptText: "def transform(df): return df",
+      applyScript: true,
+      entryPoint: "transform",
+      runOrder: "filter_script_mapping",
+      destName: "TABLE",
+      destSource: "DEFAULT",
+    };
+    expect(isMappingDirty(baseline, { ...baseline, applyScript: false })).toBe(
+      true,
+    );
   });
 
   it("summarises mapping changes and omits zero counts", () => {
@@ -505,7 +522,7 @@ describe("removed JSON mappings", () => {
     expect(selectRemovedMappings(draft)[0]?.source).toBe("DMBTR");
   });
 
-  it("accepts empty src_fieldnames for script and constant targets", () => {
+  it("accepts empty src_fieldnames for script, constant, and DIRECT-as-script targets", () => {
     const errors = validateMappingJsonStructure({
       source: {},
       target: {},
@@ -517,11 +534,17 @@ describe("removed JSON mappings", () => {
           constant_value: "X",
         },
         { tgt_fieldname: "DIRECT_COL", mapping_type: "DIRECT" },
+        {
+          tgt_fieldname: "BAD_SRC",
+          src_fieldnames: "BUKRS" as unknown as string[],
+          mapping_type: "DIRECT",
+        },
       ],
     });
     expect(errors.map((error) => error.path)).toEqual([
-      "field_mapping[2].src_fieldnames",
+      "field_mapping[3].src_fieldnames",
     ]);
+    expect(errors[0]?.message).toBe("src_fieldnames must be an array");
     const json = {
       source: { fields: [] },
       target: { fields: [] },

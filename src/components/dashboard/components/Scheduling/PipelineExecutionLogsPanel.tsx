@@ -78,8 +78,10 @@ const PipelineNodeExecutionTab = ({
   const progressTables = useMemo(() => {
     const nodeStatus = String(node.status || "").toLowerCase();
     const usePipelineCoercedStatus =
-      runStatus === "revoked" &&
-      nodeStatus === "revoked" &&
+      (runStatus === "revoked" || runStatus === "revoking") &&
+      ["revoked", "in_progress", "failed", "running", "pending"].includes(
+        nodeStatus,
+      ) &&
       (node.migration_status?.tables?.length ?? 0) > 0;
     if (usePipelineCoercedStatus) {
       return node.migration_status!.tables!;
@@ -96,10 +98,19 @@ const PipelineNodeExecutionTab = ({
     runStatus,
   ]) as Parameters<typeof MigrationProgressTable>[0]["tables"];
 
-  const nodeError =
+  const isRevokedRun =
+    runStatus === "revoked" ||
+    runStatus === "revoking" ||
+    Boolean(run.revoked_at);
+  const rawNodeError =
     summarizePipelineTableErrors(migrationStatus?.tables) ??
     summarizePipelineTableErrors(node.migration_status?.tables) ??
     resolvePipelineNodeError(run, node);
+  const nodeError = isRevokedRun
+    ? String(node.status || "").toLowerCase() === "completed"
+      ? null
+      : "Flow revoked"
+    : rawNodeError;
 
   const startupMessage = pipelineNodeStartupMessage(run, node);
   const nodeBadge = executionLogNodeBadge(runMode, node, run);
@@ -141,7 +152,11 @@ const PipelineNodeExecutionTab = ({
       )}
 
       {nodeError && (
-        <Text fontSize="xs" color="red.600" flexShrink={0}>
+        <Text
+          fontSize="xs"
+          color={isRevokedRun ? "gray.600" : "red.600"}
+          flexShrink={0}
+        >
           {nodeError}
         </Text>
       )}
@@ -157,6 +172,7 @@ const PipelineNodeExecutionTab = ({
               node.migration_status?.progress_count_source
             }
             nodeOrBatchErrorFallback={nodeError}
+            treatWorkerStopAsRevoked={isRevokedRun}
           />
         </Flex>
       ) : runMode === "published" ? (

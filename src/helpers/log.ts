@@ -1,23 +1,37 @@
-function isRevokeStopMessage(message: string): boolean {
+type GetUiStateOptions = {
+  /** Worker-not-ready errors are revoke-stop only when the pipeline run was revoked. */
+  treatWorkerStopAsRevoked?: boolean;
+};
+
+function isRevokeStopMessage(
+  message: string,
+  options?: GetUiStateOptions,
+): boolean {
   const m = message.toLowerCase();
-  return (
+  if (
     m.includes("flow revoked") ||
     m.includes("task revoked") ||
     m.includes("signal 15") ||
-    (m.includes("terminated") && m.includes("revok")) ||
-    m.includes("job worker was not started")
-  );
+    (m.includes("terminated") && m.includes("revok"))
+  ) {
+    return true;
+  }
+  if (m.includes("job worker was not started")) {
+    return options?.treatWorkerStopAsRevoked === true;
+  }
+  return false;
 }
 
 export const getUiState = (
   uiState: string | undefined | null,
   status: string | undefined | null,
   message: string | undefined | null,
+  options?: GetUiStateOptions,
 ): string => {
   const lowerStatus = (status || "").toLowerCase();
   const lowerMessage = (message || "").toLowerCase();
 
-  if (isRevokeStopMessage(lowerMessage)) {
+  if (isRevokeStopMessage(lowerMessage, options)) {
     return "revoked";
   }
 

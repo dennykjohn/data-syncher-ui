@@ -235,7 +235,7 @@ const ColumnMapper = ({
     return rows.filter((row) => {
       if (filter === "removed") return false;
       if (filter === "unmapped_target" && row.source) return false;
-      if (filter === "unmapped_source" && row.source) return false;
+      if (filter === "unmapped_source") return false;
       if (filter === "warnings" && !WARNING.has(row.status)) return false;
       if (!query) return true;
       return (
@@ -993,13 +993,18 @@ const ColumnMapper = ({
   const paneHeight = paneMaxHeight === "100%" ? "100%" : paneMaxHeight;
 
   return (
-    <Box h={paneHeight} minH={paneHeight === "100%" ? 0 : paneHeight}>
+    <Flex
+      direction="column"
+      h={paneHeight}
+      minH={paneHeight === "100%" ? 0 : paneHeight}
+      overflow="hidden"
+    >
       <Flex
         ref={shellRef}
         position="relative"
         gap={3}
         align="stretch"
-        h="100%"
+        flex="1"
         minH={0}
       >
         <Box
@@ -1138,9 +1143,17 @@ const ColumnMapper = ({
                 </Box>
               ))}
             </Box>
-            {sapColumns.length === 0 && (
+            {sourceRows.length === 0 && (
               <Text fontSize="sm" color="gray.500" p={3}>
-                Using same names as SAP. Add a mapping JSON to customise.
+                {sapColumns.length === 0
+                  ? "No SAP columns loaded yet."
+                  : filter === "unmapped_source"
+                    ? hasJson
+                      ? "Every JSON source column is included or every SAP column is mapped."
+                      : "Every SAP column is mapped. Remove a mapping to see unmapped sources."
+                    : filter === "warnings"
+                      ? "No columns with warnings."
+                      : "No columns match this filter or search."}
               </Text>
             )}
           </Box>
@@ -1338,14 +1351,22 @@ const ColumnMapper = ({
           </svg>
         )}
       </Flex>
-      <Flex mt={2} justify="space-between" align="center">
-        <Text fontSize="xs" color="gray.500">
+      <Flex
+        mt={2}
+        flexShrink={0}
+        justify="space-between"
+        align="flex-start"
+        gap={3}
+        minH="20px"
+      >
+        <Text fontSize="xs" color="gray.500" flex="1" minW={0} lineHeight="1.4">
           Connectors are shown for the hovered row only. Locked names come from
           the JSON.
         </Text>
         <Button
           size="xs"
           variant="ghost"
+          flexShrink={0}
           onClick={() => setShowConnectors((value) => !value)}
         >
           {showConnectors ? "Hide connectors" : "Show connectors"}
@@ -1377,7 +1398,7 @@ const ColumnMapper = ({
           {floatLabel}
         </Flex>
       )}
-    </Box>
+    </Flex>
   );
 };
 

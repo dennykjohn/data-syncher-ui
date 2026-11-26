@@ -266,9 +266,11 @@ const ExpandableCodeEditor = ({
         flexWrap="wrap"
       >
         <Flex align="center" gap={2} mr={2}>
-          <Text fontSize="xs" color="white" fontFamily="mono">
-            {fileName}
-          </Text>
+          {!compact && (
+            <Text fontSize="xs" color="white" fontFamily="mono">
+              {fileName}
+            </Text>
+          )}
           <Text
             fontSize="2xs"
             color="#9cdcfe"

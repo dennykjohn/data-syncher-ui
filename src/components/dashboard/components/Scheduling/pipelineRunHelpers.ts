@@ -230,6 +230,7 @@ export function pipelineStatusColor(status: string): string {
   if (s === "completed") return "green";
   if (s === "failed" || s === "timeout") return "red";
   if (s === "revoked") return "gray";
+  if (s === "revoking") return "orange";
   if (s === "queued" || s === "waiting") return "purple";
   if (s === "running" || s === "in_progress") return "blue";
   if (s === "skipped") return "orange";
@@ -320,10 +321,18 @@ export function resolvePipelineNodeError(
 }
 
 export function resolvePipelineRunStatus(
-  run: Pick<PipelineRunDetail, "status" | "overall" | "waiting_for_flow_slot">,
+  run: Pick<
+    PipelineRunDetail,
+    "status" | "overall" | "waiting_for_flow_slot" | "revoked_at"
+  >,
 ): string {
   const top = (run.status || "").toLowerCase();
   const rolled = (run.overall?.status || "").toLowerCase();
+
+  if (run.revoked_at) {
+    if (top === "revoking" || rolled === "revoking") return "revoking";
+    return "revoked";
+  }
 
   // While the backend run is still active, stay "running" until it reaches a
   // terminal status (retries may temporarily surface table error logs).
@@ -333,7 +342,11 @@ export function resolvePipelineRunStatus(
     return top;
   }
 
-  if (top === "revoked") return "revoked";
+  if (top === "revoking") return "revoking";
+  if (top === "revoked") {
+    if (rolled === "revoking" || rolled === "running") return rolled;
+    return "revoked";
+  }
   if (top === "failed" || top === "timeout") return top;
   if (rolled === "failed" || rolled === "timeout") return rolled;
   if (top === "completed") return "completed";
@@ -368,6 +381,7 @@ export function latestRunStatusForPicker(
   const resolved = resolvePipelineRunStatus(run);
   if (resolved === "running" || resolved === "in_progress") return "running";
   if (resolved === "queued" || resolved === "waiting") return "queued";
+  if (resolved === "revoking") return "running";
   if (
     resolved === "completed" ||
     resolved === "revoked" ||
@@ -386,7 +400,11 @@ export function isLivePipelineRunStatus(
 ): boolean {
   const s = (status || "").toLowerCase();
   return (
-    s === "running" || s === "in_progress" || s === "queued" || s === "waiting"
+    s === "running" ||
+    s === "in_progress" ||
+    s === "queued" ||
+    s === "waiting" ||
+    s === "revoking"
   );
 }
 
@@ -412,7 +430,7 @@ export function pipelineRunRefetchInterval(
 ): number | false {
   const s = (status || "").toLowerCase();
   if (s === "queued" || s === "waiting") return PIPELINE_RUN_QUEUED_REFETCH_MS;
-  if (s === "running" || s === "in_progress") {
+  if (s === "running" || s === "in_progress" || s === "revoking") {
     return PIPELINE_RUN_RUNNING_REFETCH_MS;
   }
   return false;

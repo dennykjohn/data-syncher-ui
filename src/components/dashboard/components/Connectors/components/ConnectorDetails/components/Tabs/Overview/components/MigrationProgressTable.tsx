@@ -29,12 +29,15 @@ const MigrationProgressTable = ({
   tables,
   progressCountSource = "staging",
   nodeOrBatchErrorFallback,
+  treatWorkerStopAsRevoked = false,
 }: {
   tables: ConnectorActivityDetailResponse["tables"];
   /** base_merged = live cumulative rows merged to destination (Databricks per-chunk). */
   progressCountSource?: ConnectorActivityDetailResponse["progress_count_source"];
   /** Pipeline/batch-level error when per-table messages are empty or generic. */
   nodeOrBatchErrorFallback?: string | null;
+  /** When true, job-worker-not-ready copy is shown as revoked (revoked pipeline runs). */
+  treatWorkerStopAsRevoked?: boolean;
 }) => {
   const context = useOutletContext<Connector | undefined>();
   const { data: schemaTables } = useFetchConnectorTableById(
@@ -69,6 +72,7 @@ const MigrationProgressTable = ({
       table.status_icon,
       table.status,
       table.message || table.error_message || "",
+      { treatWorkerStopAsRevoked },
     );
     const normalizedState = (uiState || statusRaw).toLowerCase();
     return (
@@ -164,21 +168,24 @@ const MigrationProgressTable = ({
               table.status ||
               ""
             ).toLowerCase();
+            const rowMessage = table.message || table.error_message || "";
             const uiState = getUiState(
               table.status_icon,
               table.status,
-              table.message || table.error_message || "",
+              rowMessage || nodeOrBatchErrorFallback || "",
+              { treatWorkerStopAsRevoked },
             );
             const normalizedState = (uiState || statusRaw).toLowerCase();
             const isSuccess = ["success", "completed", "s"].includes(
               normalizedState,
             );
+            const isRevoked = ["revoked"].includes(normalizedState);
             const isFailed =
-              isTableRowFailed(table) ||
-              ["failed", "error", "f", "e"].includes(normalizedState);
+              !isRevoked &&
+              (isTableRowFailed(table) ||
+                ["failed", "error", "f", "e"].includes(normalizedState));
             const isWarning = ["warning", "p", "w"].includes(normalizedState);
             const isSkipped = ["skipped"].includes(normalizedState);
-            const isRevoked = ["revoked"].includes(normalizedState);
             const isPending =
               normalizedState === "in_progress" ||
               normalizedState === "pending" ||
@@ -214,25 +221,30 @@ const MigrationProgressTable = ({
                 normalizedState,
               );
             const stagingRecordsDisplay = (() => {
+              const staging = table.staging_records_count;
+              const transferCount = table.record_count;
+              // Terminal rows used to prefer record_count even when it was 0 and
+              // staging_records_count had the real Delta/Spark total (DataLake).
               if (isTerminal) {
                 if (
-                  table.record_count !== undefined &&
-                  table.record_count !== null
+                  transferCount !== undefined &&
+                  transferCount !== null &&
+                  Number(transferCount) > 0
                 ) {
-                  return table.record_count;
+                  return transferCount;
+                }
+                if (staging !== undefined && staging !== null) {
+                  return staging;
+                }
+                if (transferCount !== undefined && transferCount !== null) {
+                  return transferCount;
                 }
               }
-              if (
-                table.staging_records_count !== undefined &&
-                table.staging_records_count !== null
-              ) {
-                return table.staging_records_count;
+              if (staging !== undefined && staging !== null) {
+                return staging;
               }
-              if (
-                table.record_count !== undefined &&
-                table.record_count !== null
-              ) {
-                return table.record_count;
+              if (transferCount !== undefined && transferCount !== null) {
+                return transferCount;
               }
               return "--";
             })();
